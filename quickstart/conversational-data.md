@@ -10,6 +10,8 @@ Follow [the shared TinyCloud setup module](../setup/tinycloud.md) only for missi
 
 Load the installed `tc-cli` skill and its relevant references. Keep authentication and detailed command behavior in that owning package. A separate OpenKey CLI is not required for this workflow.
 
+The setup module includes a [project-local installation option](../setup/tinycloud.md#project-local-setup) for isolated projects. Record its absolute CLI path in the trusted bootstrap and start OpenCode after installing both skills. The September 29 acceptance run observed automatic selection of both skills from the ordinary request “Track my weight.” With no prepared context or message-ID adapter, the client correctly kept tracking inactive; discovery alone did not complete setup.
+
 ## 2. Install the workflow skill into the project
 
 Run from the intended destination project, not the prompts source directory. Inspect an existing same-named skill and preserve local modifications. Installing replaces the selected copied skill; resolve a conflict instead of silently overwriting it. Choose only the clients in use.
@@ -41,6 +43,8 @@ Obtain the trusted bootstrap already selected for this task: CLI/profile/host/ow
 Use an existing intended profile with suitable authority when available. If authentication or grants are missing, use the installed `tc-cli/AUTH.md` for that identity and the exact prepared scope. Human identity selection and consent remain in the supported CLI/browser flow; do not transfer signed return codes or keys through model chat. The generic quickstart's note manifest is not the tracking permission set. A new profile, local session, permission listing, or selected space is not evidence of storage access.
 
 For this version, owner-side table/catalog preparation must already be complete. A catalog can list prepared targets with no active intentions. Verify real catalog, guidance and schema reads in the approved scope before relying on them. Do not treat missing resources as empty trackers, make up a catalog key, or create a new account to obtain access.
+
+For a fresh selected scope, the owner can follow the [fixed baseline preparation recipe](../setup/conversational-data.md). Keep that setup authority separate from the conversational profile. This documented route does not change the skill's prerequisite: preparation and client message-ID integration must finish before capture.
 
 ## 4. Continue the conversation
 

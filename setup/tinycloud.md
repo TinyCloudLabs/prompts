@@ -33,6 +33,20 @@ npx --yes skills@1.7.0 add https://registry.npmjs.org/@tinycloud/cli/-/cli-0.10.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
+### Project-local setup
+
+For an isolated project or acceptance test, install the same CLI into a dedicated runtime directory and omit `--global` from the skill installation. This avoids changing the user's global packages or skills. Choose a new runtime directory, or inspect its existing package before replacing it; do not install into an unrelated application's dependency tree.
+
+From the destination project, with `TC_RUNTIME` set to that directory's absolute path:
+
+```sh
+npm install --prefix "$TC_RUNTIME" --no-audit --no-fund @tinycloud/cli@0.10.0
+npx --yes skills@1.7.0 add https://registry.npmjs.org/@tinycloud/cli/-/cli-0.10.0.tgz --skill tc-cli --copy --agent CLIENT --yes
+"$TC_RUNTIME/node_modules/.bin/tc" --version
+```
+
+Preserve any modified same-named project skill. For OpenCode/Codex, verify `.agents/skills/tc-cli/SKILL.md` and its references. Pass the absolute CLI executable to the calling guide; alternatively, prepend `$TC_RUNTIME/node_modules/.bin` to the client process's `PATH`. This route supplies the executable and instructions only. It does not supply authentication, storage preparation, or permission grants.
+
 ## Verify and return
 
 Verify that `tc --version` reports `0.10.0` and that the selected client's `tc-cli/SKILL.md` is readable and belongs to the pinned CLI package. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
