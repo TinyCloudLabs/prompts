@@ -21,14 +21,14 @@ npx --yes skills@1.7.0 add /absolute/path/to/prompts \
   --skill tc-conversational-data --agent opencode codex --copy --yes
 ```
 
-For a published version, replace `FULL_COMMIT_SHA` with an existing full 40-character commit containing the reviewed skill and references:
+For version `0.1.0`, install this published, tested commit:
 
 ```sh
-npx --yes skills@1.7.0 add 'TinyCloudLabs/prompts#FULL_COMMIT_SHA' \
+npx --yes skills@1.7.0 add 'TinyCloudLabs/prompts#b09981215f5873a9c24e3bcb890a7074d9ebefb6' \
   --skill tc-conversational-data --agent opencode codex --copy --yes
 ```
 
-The project-scoped installer is the default; omit `--global`. For OpenCode/Codex the copied folder is `.agents/skills/tc-conversational-data/` and the installer writes project `skills-lock.json`. Use `--agent claude-code` for that client and follow the installer-reported location. Do not hand-copy only `SKILL.md` and lose its references. `#COMMIT` selects a source revision; `@...` is the installer's skill-name selector, not a commit pin.
+The project-scoped installer is the default; omit `--global`. For OpenCode/Codex the copied folder is `.agents/skills/tc-conversational-data/` and the installer writes project `skills-lock.json`. Use `--agent claude-code` for that client and follow the installer-reported location. Do not hand-copy only `SKILL.md` and lose its references. `#COMMIT` selects a source revision; `@...` is the installer's skill-name selector, not a commit pin. For another version, select an existing full 40-character commit containing the reviewed skill and references.
 
 Read the installed `SKILL.md`, confirm metadata version `0.1.0`, and verify its linked references are present. Installing instructions does not change command-execution permissions. Use the client's normal discovery procedure; if a new session is needed, retain the original task and trusted bootstrap. A fresh session must recover active intentions from TinyCloud, not an operator-written summary of prior records.
 

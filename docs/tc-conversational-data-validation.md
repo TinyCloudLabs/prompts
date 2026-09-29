@@ -7,7 +7,7 @@ Validation date: September 29, 2026. The package is authored in this repository;
 - `skill-creator` frontmatter/name validation passes for `skills/tc-conversational-data`.
 - Pinned `skills@1.7.0` discovers this repository's `skills/` layout and copies the complete named skill into the destination project's `.agents/skills/` for OpenCode and Codex.
 - The actual skill and both references were installed into a fresh temporary project. Their SHA256 hashes match the authored files byte-for-byte. The installer also creates project `skills-lock.json`.
-- Local installs were exercised. Full-commit remote pin syntax was checked against the pinned installer's implementation; remote installation of the new unpublished revision is not claimed here. The review starter's mutable branch URL is explicitly distinguished from a release pin.
+- Both local installation and a published full-commit installation were exercised. `TinyCloudLabs/prompts#b09981215f5873a9c24e3bcb890a7074d9ebefb6` installed successfully into a second fresh project for OpenCode and Codex; all three files matched the authored hashes, and the project lockfile was created. The quickstart now includes that tested pin. The review starter's guide URL resolves and is explicitly distinguished from an immutable release guide.
 - No global skill, settings, personal TinyCloud profile or production resource was changed.
 
 ## Behavioral forward tests

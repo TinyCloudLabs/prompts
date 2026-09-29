@@ -409,5 +409,22 @@
     "concurrent writers",
     "automatic provisioning",
     "cross-environment restore"
-  ]
+  ],
+  "published_install": {
+    "source": "TinyCloudLabs/prompts#b09981215f5873a9c24e3bcb890a7074d9ebefb6",
+    "clients": [
+      "opencode",
+      "codex"
+    ],
+    "scope": "project",
+    "copy": true,
+    "exit": 0,
+    "installed_files_sha256": {
+      "SKILL.md": "e77fde31886f67d5a44f8e18976d97afbf5d16da08faff4691774a8cf2613f33",
+      "references/storage-contract.md": "a12bd5b000780d5737e9c93cc5534836a5998016ed5153e7a16e07f78f11151c",
+      "references/sql-patterns.md": "ce49a352db0334b08e48fd2be6488a7ccf8f2fa20218837221e7443ee8845bb8"
+    },
+    "review_starter_guide_url_resolves": true,
+    "project_lockfile_created": true
+  }
 }
