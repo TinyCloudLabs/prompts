@@ -1,0 +1,2 @@
+Use TinyCloud for this conversational tracking task: <describe the tracking, correction, or recall request, or say "install only">. Follow this guide and then continue the task using the trusted TinyCloud context already provided:
+https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/Codex/roman/tc-conversational-data/quickstart/conversational-data.md

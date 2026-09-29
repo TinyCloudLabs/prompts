@@ -1,9 +1,11 @@
 # TinyCloud prompt handoff
 
-This repository is the shared development and review point for agent-facing setup prompts. It separates reusable tool prerequisites from app-owned setup without moving runtime code or deployment ownership.
+This repository is the shared development and review point for agent-facing setup prompts and reusable TinyCloud workflows. It separates reusable tool prerequisites, conversational behavior, and app-owned setup without moving runtime code or deployment ownership.
 
 ## Documents
 
+- [`skills/tc-conversational-data/SKILL.md`](skills/tc-conversational-data/SKILL.md) owns conversational tracking, correction, retry reconciliation and fresh-session recovery for prepared TinyCloud scopes. Its current version is `0.1.0`.
+- [`quickstart/conversational-data.md`](quickstart/conversational-data.md) installs that skill into the current project and identifies the caller-provided storage context; [`quickstart/conversational-data-prompt.txt`](quickstart/conversational-data-prompt.txt) is its review starter.
 - [`quickstart/tinycloud.md`](quickstart/tinycloud.md) is the generic OpenCode entry guide for ordinary TinyCloud tasks: shared prerequisites, profile and space selection, human login, access verification, then the original task.
 - [`quickstart/tinycloud-prompt.txt`](quickstart/tinycloud-prompt.txt) is its separate starter prompt. Replace the task placeholder before use. Its URL targets `Codex/roman/tinycloud-generic-quickstart` for review; update it to a retained published ref before deleting that branch. The generic flow still requires the live smoke test described in the guide.
 - [`setup/tinycloud.md`](setup/tinycloud.md) installs and verifies the pinned TinyCloud CLI and its core skill, then returns to the calling app guide.
@@ -11,7 +13,9 @@ This repository is the shared development and review point for agent-facing setu
 - [`apps/tinychat/setup.md`](apps/tinychat/setup.md) owns TinyChat's skill, adapter activation, app context, permission grant, retrieval behavior and lifecycle.
 - [`prompt.txt`](prompt.txt) points to this branch's TinyChat entry document for local client testing.
 
-The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository intentionally contains no helpers, generated release archives, sync framework or evaluation runtime.
+The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository owns `tc-conversational-data`, which depends on the CLI's core skill without copying its authentication or command manual. This repository contains no runtime helpers, generated release archives, sync framework or evaluation runtime.
+
+Install workflow skills from a reviewed local checkout or a published full commit, keeping the whole skill folder and its references together. Their instructions can evolve independently of CLI releases; each skill records its tested CLI/node baseline. User intentions, data and domain guidance remain in TinyCloud, outside the installed package.
 
 ## Snapshot provenance
 

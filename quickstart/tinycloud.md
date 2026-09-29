@@ -2,6 +2,8 @@
 
 Use this guide to enable an ordinary TinyCloud task, such as saving a note or reading an existing value. Keep the user's original task throughout setup, then return to it. If they asked only for setup, stop after the verification described below; do not create example data automatically.
 
+For recurring conversational tracking, correction or recall, follow the [conversational-data quickstart](conversational-data.md). It reuses the CLI prerequisites and core skill, then loads the workflow skill and the caller's prepared tracking scope. Do not substitute this guide's example KV manifest or general default-space login for that scope.
+
 This guide uses the TinyCloud CLI and its core `tc-cli` skill. It does not require TinyCloud Chat, an app skill pack, a custom MCP server, or a separate OpenKey CLI login. Preserve existing agent settings, model-provider login, packages, skills and TinyCloud profiles.
 
 The commands below use a POSIX shell. Replace uppercase placeholders with the selected values before running them; pass user-supplied values as literal subprocess arguments. Keep profile, host and space explicit in subsequent commands, even when a new tool invocation does not retain shell variables.
