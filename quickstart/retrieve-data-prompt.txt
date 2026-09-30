@@ -1,0 +1,1 @@
+Compare my avg weight in Aug vs Mar. Check TinyCloud: <absolute path to your local entry or this checkout's quickstart/retrieve-data.md>

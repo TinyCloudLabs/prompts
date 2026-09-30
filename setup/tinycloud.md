@@ -20,7 +20,7 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 ## Reuse or install
 
-First check for an existing CLI with `command -v tc` and `tc --version`. Reuse it when it is the required `0.10.0` installation.
+If the caller supplies an existing absolute CLI path in saved nonsecret context, verify that executable with `--version` and reuse it when it is `0.10.0`; it need not be on this process's `PATH`. Otherwise check `command -v tc` and `tc --version`. Preserve the selected executable path on return to the caller.
 
 Also inspect an existing `tc-cli/SKILL.md` before replacing it. With the pinned installer, the usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `$HOME/.claude/skills/tc-cli/SKILL.md` for Claude Code. Reuse an intact skill from `@tinycloud/cli@0.10.0`. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
 

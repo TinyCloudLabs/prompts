@@ -4,10 +4,10 @@ This repository is the shared development and review point for agent-facing setu
 
 ## Documents
 
+- [`quickstart/tinycloud.md`](quickstart/tinycloud.md) is the general entry for Codex, OpenCode or Claude Code: preserve the task, discover its app, read the app's conventions, obtain the needed permissions, execute the supported operation and verify it. Use its [local starter](quickstart/tinycloud-prompt.txt). It handles explicit one-off operations and routes first-use storage into [private application creation](setup/create-application.md); recurring automatic capture retains its separate delivery requirements. See [existing-app validation](docs/general-operations-validation.md) and [creation results and limits](docs/app-creation-validation.md).
+- [`quickstart/retrieve-data.md`](quickstart/retrieve-data.md) is the standalone retrieval entry for ordinary Codex: retain the question, authenticate, discover registered apps live, read their guidance, and query existing data. Its [short starter](quickstart/retrieve-data-prompt.txt), [knowledge convention](references/application-knowledge.md), and [verification report](docs/retrieve-data-validation.md) are included in [PR #2](https://github.com/TinyCloudLabs/prompts/pull/2).
 - [`skills/tc-conversational-data/SKILL.md`](skills/tc-conversational-data/SKILL.md) owns conversational tracking, correction, retry reconciliation and fresh-session recovery for prepared TinyCloud scopes. Its current version is `0.1.0`.
 - [`quickstart/conversational-data.md`](quickstart/conversational-data.md) installs that skill into the current project and identifies the caller-provided storage context; [`quickstart/conversational-data-prompt.txt`](quickstart/conversational-data-prompt.txt) is its review starter.
-- [`quickstart/tinycloud.md`](quickstart/tinycloud.md) is the generic OpenCode entry guide for ordinary TinyCloud tasks: shared prerequisites, profile and space selection, human login, access verification, then the original task.
-- [`quickstart/tinycloud-prompt.txt`](quickstart/tinycloud-prompt.txt) is its separate starter prompt. Replace the task placeholder before use. Its URL targets `Codex/roman/tinycloud-generic-quickstart` for review; update it to a retained published ref before deleting that branch. The generic flow still requires the live smoke test described in the guide.
 - [`setup/tinycloud.md`](setup/tinycloud.md) installs and verifies the pinned TinyCloud CLI and its core skill, then returns to the calling app guide.
 - [`setup/openkey.md`](setup/openkey.md) optionally installs and verifies the standalone OpenKey CLI. It is not part of TinyChat authorization.
 - [`apps/tinychat/setup.md`](apps/tinychat/setup.md) owns TinyChat's skill, adapter activation, app context, permission grant, retrieval behavior and lifecycle.
@@ -15,7 +15,7 @@ This repository is the shared development and review point for agent-facing setu
 
 The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository owns `tc-conversational-data`, which depends on the CLI's core skill without copying its authentication or command manual. This repository contains no runtime helpers, generated release archives, sync framework or evaluation runtime.
 
-Install workflow skills from a reviewed local checkout or a published full commit, keeping the whole skill folder and its references together. Their instructions can evolve independently of CLI releases; each skill records its tested CLI/node baseline. User intentions, data and domain guidance remain in TinyCloud, outside the installed package.
+Install workflow skills from a reviewed local checkout or a published full commit, keeping the whole skill folder and its references together. This PR updates the `0.1.0` workflow baseline with retrieval routing, conversation-export corrections and one-off task identity; historical commit `b09981215f5873a9c24e3bcb890a7074d9ebefb6` does not contain them. Use the matching checkout, or select a reviewed full commit from this PR containing the guide and skill together. Their instructions can evolve independently of CLI releases; each skill records its tested CLI/node baseline. User intentions, data and domain guidance remain in TinyCloud, outside the installed package.
 
 ## Snapshot provenance
 
@@ -32,9 +32,9 @@ The reviewed pins are:
 
 ## Source and deployment boundary
 
-These files are an initial handoff on `docs/initial-setup-split` for local client testing. The draft is not wired to TinyChat's production deployment. The production entry point at `https://tinycloud.chat/agents/setup.md` and its versioned app pack remain unchanged.
+The TinyChat setup split originated on `docs/initial-setup-split`. General task, retrieval, app-creation and conversational workflow changes are under review in [PR #2](https://github.com/TinyCloudLabs/prompts/pull/2), stacked on [PR #1](https://github.com/TinyCloudLabs/prompts/pull/1). These review branches are not wired to TinyChat's production deployment. The production entry point at `https://tinycloud.chat/agents/setup.md` and its versioned app pack remain unchanged.
 
-The draft starter uses the branch's raw GitHub URL. Shared setup links resolve within that same branch. Repository access determines whether a client can fetch these files; this change does not alter repository visibility.
+The TinyChat draft starter uses the original split branch's raw GitHub URL. Shared setup links resolve within that same branch. The general task and retrieval starters take the local entry or guide path from a matching review checkout. Repository access determines whether a client can fetch these files; this change does not alter repository visibility.
 
 ## Local OpenCode test
 

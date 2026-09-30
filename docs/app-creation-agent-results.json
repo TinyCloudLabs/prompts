@@ -1,0 +1,133 @@
+{
+  "classification": "fresh ordinary Codex processes; agent-created apps on disposable local node; synthetic callback signing",
+  "baseline": {
+    "oldGuideStoppedAtEmptyRegistry": true,
+    "savedItems": 0
+  },
+  "firstTodo": {
+    "initialRegisteredApps": 0,
+    "agentAuthoredRepresentation": "KV JSON",
+    "newApps": 1,
+    "requestedItems": 1,
+    "remoteMutationCommands": 3,
+    "separateSetupAndOrdinaryProfiles": true
+  },
+  "secondSession": {
+    "sameApp": true,
+    "requestedTotalItems": 2,
+    "canonicalAndGuidanceUnchanged": true,
+    "setupProfileDeleted": true,
+    "onlyNonsecretOrdinaryHintsProvided": true,
+    "originalPlanNotRead": true,
+    "recordWrites": 1,
+    "setupMutations": 0
+  },
+  "ordinaryOperations": {
+    "freshReadEditCompletion": true,
+    "freshReopeningAndDeletion": true,
+    "originalIdentityAndCreationTimePreserved": true,
+    "unrelatedItemPreservedDuringEdit": true,
+    "finalTodoCount": 1,
+    "finalStateIndependentlyVerified": true
+  },
+  "secondNewModel": {
+    "agentAuthoredRepresentation": "SQL reading log",
+    "preEnrolledByFixture": false,
+    "originalItemSavedAndVerified": true,
+    "bookRows": 1,
+    "originalIdRetained": true,
+    "summaryQueriesVerified": true
+  },
+  "interruptions": {
+    "storage": "see setupOnlyStorageInterruption in app-creation-negative-results.json",
+    "guidance": {
+      "observedAfterStorageAndGuidanceBeforeRegistration": true,
+      "schemaAndRootReused": true
+    },
+    "registration": {
+      "actualWriteReceiptSuppressed": true,
+      "canonicalVerifiedIndependently": true,
+      "emptyBooksTableAtBoundary": true
+    },
+    "firstItem": {
+      "sameRemoteSnapshot": true,
+      "sameOriginalIdentity": true,
+      "operationConfirmed": true,
+      "remoteMutationAttempts": 0,
+      "mode": "CLI receipt suppressed; in-flight helper verified before termination, then local receipt alone was discarded to simulate crash before durable acknowledgement",
+      "originalIdsTimestampsAndStoredRowRetained": true
+    }
+  },
+  "conflicts": {
+    "conflict-schema": {
+      "unexpectedSchemaAndRecordPreserved": true,
+      "noNewRegistration": true,
+      "agentMutationCommands": 0
+    },
+    "conflict-knowledge": {
+      "differentGuidancePreserved": true,
+      "noNewRegistration": true,
+      "agentMutationCommands": 0
+    },
+    "conflict-canonical-real": {
+      "differentCanonicalMetadataPreserved": true,
+      "firstItemStillAbsent": true,
+      "agentMutationCommands": 0
+    }
+  },
+  "scopeDenials": [
+    {
+      "case": "ordinary sibling KV read",
+      "denied": true
+    },
+    {
+      "case": "ordinary sibling KV write",
+      "denied": true
+    },
+    {
+      "case": "ordinary sibling SQL read",
+      "denied": true
+    },
+    {
+      "case": "ordinary sibling SQL write",
+      "denied": true
+    },
+    {
+      "case": "ordinary guidance write",
+      "denied": true
+    },
+    {
+      "case": "ordinary exact registry write",
+      "denied": true
+    },
+    {
+      "case": "protected reader item write",
+      "denied": true
+    },
+    {
+      "case": "ordinary SQL app schema",
+      "denied": true
+    },
+    {
+      "case": "ordinary SQL app registry put",
+      "denied": true
+    },
+    {
+      "case": "ordinary SQL app guidance put",
+      "denied": true
+    }
+  ],
+  "actualSyntheticSiblingsPreserved": true,
+  "finalRegisteredApps": 2,
+  "regression": {
+    "registeredSqlKvFixturePassed": true,
+    "monthlyRetrievalProbePassed": true,
+    "hostedReadRerun": false
+  },
+  "limits": [
+    "Synthetic signing is not human OpenKey consent or hosted onboarding.",
+    "Spaces were already hosted; new hosting remains unverified.",
+    "Single provisioner and app-documented KV single writer; no distributed concurrency guarantee."
+  ],
+  "publicationOrHostedMutationsDuringAcceptance": false
+}

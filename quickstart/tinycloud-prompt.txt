@@ -1,2 +1,1 @@
-Use TinyCloud from OpenCode for this task: <describe your task, or say "setup only">. Follow this guide, then continue that task:
-https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/Codex/roman/tinycloud-generic-quickstart/quickstart/tinycloud.md
+Add buy milk to my todos. Use TinyCloud: <absolute path to your local entry or this checkout's quickstart/tinycloud.md>

@@ -1,2 +1,1 @@
-Use TinyCloud for this conversational tracking task: <describe the tracking, correction, or recall request, or say "install only">. Follow this guide and then continue the task using the trusted TinyCloud context already provided:
-https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/Codex/roman/tc-conversational-data/quickstart/conversational-data.md
+Use TinyCloud for this conversational tracking task: <describe the tracking or correction request, or say "install only">. Follow conversational-data.md beside this file, supplying its exact local path from the matching review checkout, and continue the original task. For a read-only question about existing records, follow retrieve-data.md instead. No deployed one-link release is implied.
