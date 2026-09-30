@@ -10,11 +10,11 @@ For an explicit one-off request such as “record my weight as 76.2 kg today,”
 
 ## 1. Reuse the CLI and its core skill
 
-Follow [the shared TinyCloud setup module](../setup/tinycloud.md) ([published guide](https://github.com/TinyCloudLabs/prompts/blob/docs/initial-setup-split/setup/tinycloud.md)) only for missing prerequisites. Supply the current client (`opencode`, `codex`, or `claude-code`), the user's original task, this guide's location, and the return heading **2. Install the workflow skill into the project**. Its reviewed pins are CLI `0.10.0` and installer `skills@1.7.0`; the combined setup requires Node.js 22.20 or later. Reuse a compatible installation and preserve unrelated packages and settings. Use the [general quickstart](tinycloud.md) for prerequisite guidance if needed, then return here.
+Follow [the shared TinyCloud setup module](../setup/tinycloud.md) only for missing prerequisites. Supply the current client (`opencode`, `codex`, or `claude-code`), the user's original task, this guide's location, and the return heading **2. Install the workflow skill into the project**. Its reviewed pins are CLI `0.10.0` and installer `skills@1.7.0`; the combined setup requires Node.js 22.20 or later. Reuse a compatible installation and preserve unrelated packages and settings. Use the [general quickstart](tinycloud.md) for prerequisite guidance if needed, then return here.
 
 Load the installed `tc-cli` skill and its relevant references. Keep authentication and detailed command behavior in that owning package. A separate OpenKey CLI is not required for this workflow.
 
-If a calling workflow also needs direct OpenKey CLI commands, reuse [the shared OpenKey setup module](../setup/openkey.md) ([published guide](https://github.com/TinyCloudLabs/prompts/blob/docs/initial-setup-split/setup/openkey.md)). That module installs the optional standalone tool. TinyCloud browser sign-in and scoped access use the installed `tc-cli/AUTH.md` in step 3 below; standalone `openkey login` does not grant the conversational agent TinyCloud permissions. Both shared modules return to their caller with the original request preserved.
+If a calling workflow also needs direct OpenKey CLI commands, reuse [the shared OpenKey setup module](../setup/openkey.md). That module installs the optional standalone tool. TinyCloud browser sign-in and scoped access use the installed `tc-cli/AUTH.md` in step 3 below; standalone `openkey login` does not grant the conversational agent TinyCloud permissions. Both shared modules return to their caller with the original request preserved.
 
 The setup module includes a [project-local installation option](../setup/tinycloud.md#project-local-setup) for isolated projects. Record its absolute CLI path in the trusted bootstrap and start OpenCode after installing both skills. The September 29 acceptance run observed automatic selection of both skills from the ordinary request “Track my weight.” With no prepared context or message-ID adapter, the client correctly kept tracking inactive; discovery alone did not complete setup.
 
@@ -29,7 +29,14 @@ npx --yes skills@1.7.0 add /absolute/path/to/prompts \
   --skill tc-conversational-data --agent opencode codex --copy --yes
 ```
 
-The historical published `0.1.0` pin is `b09981215f5873a9c24e3bcb890a7074d9ebefb6`. It lacks the subsequent conversation-export correction, retrieval routing and one-off identity extension in this checkout. Use the local install above, or select a reviewed full commit from [PR #2](https://github.com/TinyCloudLabs/prompts/pull/2) containing this guide and matching skill/references. The earlier published-install test covers the historical pin; this revision's acceptance used the matching local checkout.
+When following an immutable public guide URL, take `PROMPTS_REV` from its full 40-character commit and install the matching skill without a checkout:
+
+```sh
+npx --yes skills@1.7.0 add "https://github.com/TinyCloudLabs/prompts/tree/$PROMPTS_REV" \
+  --skill tc-conversational-data --agent opencode codex --copy --yes
+```
+
+Resolve all relative guide links against that same revision. Do not substitute the historical `b09981215f5873a9c24e3bcb890a7074d9ebefb6` skill: it lacks the later one-off identity and retrieval changes. For a local source, use the reviewed checkout above.
 
 The project-scoped installer is the default; omit `--global`. For OpenCode/Codex the copied folder is `.agents/skills/tc-conversational-data/` and the installer writes project `skills-lock.json`. Use `--agent claude-code` for that client and follow the installer-reported location. Do not hand-copy only `SKILL.md` and lose its references. `#COMMIT` selects a source revision; `@...` is the installer's skill-name selector, not a commit pin. For another version, select an existing full 40-character commit containing the reviewed skill and references.
 

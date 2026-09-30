@@ -18,17 +18,9 @@ All commands below are templates: substitute inspected values as literal subproc
 
 ## 2. Select the existing owner and host
 
-An authenticated identity does not discover every TinyCloud server. The actual data host is a prerequisite. Use the host selected by the user's prompt or entry document; this is sufficient host context and needs no infrastructure question. Otherwise reuse the host from the intended existing CLI context, or ask for the existing app's TinyCloud host if none is available. The supported hosted trial for this guide uses `https://tee.node.tinycloud.xyz`; use it only when it is the user's intended data host. Never substitute the CLI default `https://node.tinycloud.xyz` for existing data on another host. Do not scan hosts or create a new owner account.
+Follow [context selection](../setup/authenticate.md#1-select-and-retain-the-context) with the actual client/mode and original question or calling task. Preserve explicit/saved host/profile selections. If none exists, use `https://node.tinycloud.xyz` and a suitable isolated local session profile; do not ask the hosted user for a DID, host or space. Keep `TC_READER_HOME` below equal to that selected configuration home (`TASK_TC_HOME` in the shared module). Preserve the user's default and all existing profiles.
 
-Inspect only supported safe surfaces: `tc profile list` and `tc --profile PROFILE --host HOST context --json`, with the chosen `TC_HOME`. Do not read profile/session/key files to repair identity metadata. For standalone retrieval, reuse an intended **owner-backed reader** profile if it already has the needed authority. Do not reuse a setup/writer profile for standalone retrieval or claim a new narrow manifest removes its earlier broad grants. In the general guide's discovery phase, its explicitly selected ordinary task profile is also suitable; do not create a reader merely because its name lacks “reader.”
-
-For a fresh isolated reader, choose a durable, unused TinyCloud configuration directory and an unused profile name, then run:
-
-```sh
-TC_HOME="$TC_READER_HOME" "$TC_BIN" init --name "$PROFILE" --host "$HOST" --key-only
-```
-
-Do not replace an existing profile or change the user's default profile. A fresh isolated home has its own default. Local keys are not account authorization. The human selects their existing owner in OpenKey; after login retain its returned primary owner DID. An expected DID already supplied by the user may be passed as `--owner` to login.
+For standalone retrieval, select a suitable owner-backed **reader**. Do not reuse a setup/writer profile or claim a narrower manifest removes its earlier grants. In the general guide's discovery phase, its selected ordinary task profile is suitable; reuse the context already retained there. An explicitly protected reader must not acquire write grants. The browser chooses the intended existing primary owner; a local session key is not that owner. Multiple plausible saved accounts may require an account choice, never host scanning or silent owner switching.
 
 ## 3. Obtain registry-read access
 
@@ -53,16 +45,9 @@ Create a local JSON consent manifest containing exactly this resource set. It is
 
 The explicit capabilities permission is required by the selected OpenKey flow; it grants neither registry records nor app data. Do not request the SDK composer's default account envelope, account SQL/index writes, hosting, or registry puts for a reader.
 
-If an existing owner-backed reader already succeeds at the live list below, reuse it. Otherwise, for a fresh reader, launch the CLI and keep its process alive while the human selects their owner and approves:
+If the intended profile already succeeds at the live list below, reuse its authority. Otherwise invoke [scoped authentication](../setup/authenticate.md#2-prepare-exactly-the-missing-scope), supplying this registry manifest, current client/mode, the original request and return heading **3. Obtain registry-read access**. A fresh scoped login accepts logical `account` while the owner is unknown: OpenKey selects the owner and the CLI verifies the returned full account space and exact scope. Do not ask for a DID or substitute unscoped login. Use `--owner` only when the intended primary owner is already known.
 
-```sh
-TC_HOME="$TC_READER_HOME" "$TC_BIN" --profile "$PROFILE" --host "$HOST" auth login \
-  --method openkey --manifest "$REGISTRY_READER_MANIFEST"
-```
-
-Use the normal browser/loopback flow. Poll the still-running process until completion; do not terminate it merely because browser consent takes time. Human selection and signed consent remain human actions. Do not route credentials, signed return codes or delegation payloads through model chat, tool arguments or generated scripts. If loopback cannot complete in this client, the human must run the same CLI command in a direct interactive terminal and enter any response directly into that waiting CLI. Record that extra terminal step; ordinary Codex has no native private chat-code capture.
-
-For a profile with a valid existing primary login, follow the installed `AUTH.md` additional-access route instead of replacing its primary grant just to add registry access. A restored delegated profile reporting `ACCOUNT_SPACE_UNAVAILABLE` needs a supported owner-backed login/profile; adding registry permissions alone does not repair missing owner metadata. Do not fabricate that metadata.
+Keep a valid primary login and use `auth request --manifest FILE --grant --expiry 7d` for missing authority instead of replacing it. A fresh/expired primary uses `auth login --method openkey --manifest FILE --expiry 7d`. The shared module specifies browser callback, private native-terminal intervention when needed, and automatic continuation. Keep the waiter alive; no signed response may pass through the model. A delegated profile reporting `ACCOUNT_SPACE_UNAVAILABLE` needs a supported owner-backed context, not fabricated metadata or wider permissions.
 
 After successful consent:
 
@@ -71,7 +56,7 @@ TC_HOME="$TC_READER_HOME" "$TC_BIN" --profile "$PROFILE" --host "$HOST" context 
 TC_HOME="$TC_READER_HOME" "$TC_BIN" --profile "$PROFILE" --host "$HOST" account apps list --live --json
 ```
 
-Retain the full account-space URI and selected owner from `context`. `--live` is mandatory: default listing may return a nonempty stale SQL index. The account commands derive the account space from that owner; they do not take an app-space override. A successful default-space read or a saved session is not evidence that the account space is accessible or hosted.
+Compare the actual host/primary owner with the retained selection, then retain the full account-space URI and selected owner from `context`. `--live` is mandatory: default listing may return a nonempty stale SQL index. The account commands derive the account space from that owner; they do not take an app-space override. A successful default-space read or a saved session is not evidence that the account space is accessible or hosted.
 
 ## 4. Select the app and its declared resources
 
@@ -126,7 +111,7 @@ TC_HOME="$TC_READER_HOME" "$TC_BIN" --profile "$PROFILE" --host "$HOST" auth req
   --manifest "$APP_READER_MANIFEST" --grant --expiry 7d
 ```
 
-This uses the CLI's default seven-day request duration, capped by the active session's expiry; choose a shorter duration if the user requests it. It is another human consent when that scope is absent, not a second primary login. Reuse working saved app authority on later questions. Keep its browser callback process alive with the same secret-handling rule as step 3. Do not promise a single consent. Runtime grants must survive fresh-process use; successful subsequent live reads establish that, not `auth caps`/`auth retry`, which can misreport restored primary UCAN coverage in this release.
+This uses the CLI's default seven-day request duration, capped by the active session's expiry; choose a shorter duration if the user requests it. It is another human consent when that scope is absent, not a second primary login. Reuse working saved app authority on later questions. Use the [shared consent transport](../setup/authenticate.md#3-complete-consent-through-a-supported-transport), retaining this guide's return heading **5. Read guidance, catalog and schema**. Keep its browser callback process alive and resume here automatically after verified consent. Do not promise a single consent. Runtime grants must survive fresh-process use; successful subsequent live reads establish that, not `auth caps`/`auth retry`, which can misreport restored primary UCAN coverage in this release.
 
 ## 5. Read guidance, catalog and schema
 
