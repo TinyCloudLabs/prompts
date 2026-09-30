@@ -4,6 +4,8 @@ This module orchestrates CLI `0.10.0` authentication for the [general task guide
 
 The caller supplies the original request, actual client and execution mode, request date/timezone, its exact return heading, the role (reader, ordinary task or provisioner), and a narrowly scoped manifest when known. Return there automatically after verified consent; installation or a login receipt does not finish the user's operation.
 
+Every `auth login` and `auth request --grant` in this procedure includes `--manifest FILE`. If a CLI error hint or general installed example omits it, keep this caller's scoped procedure. Prepare and inspect the manifest before launching consent; a missing manifest is not permission to request the CLI's broad defaults.
+
 ## 1. Select and retain the context
 
 Use safe supported commands with the selected absolute `TC_BIN` and any intended `TC_HOME`:

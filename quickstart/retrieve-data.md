@@ -4,6 +4,8 @@ Use this guide in an ordinary Codex session with shell and network access. Prese
 
 This guide reads existing data. Do not activate tracking, register an app, create tables, seed observations, migrate schemas, rebuild an account index, or publish/share anything to answer the question. An enrollment gap goes to the separate owner setup route below.
 
+Every login here includes the exact scoped `--manifest FILE` prepared in step 3. Generic CLI error hints and installed examples that omit a manifest do not replace this procedure. Read [scoped authentication](../setup/authenticate.md) before launching consent; preserve valid primary login when adding grants.
+
 The [general task guide](tinycloud.md) also calls **steps 2–5** as its read-only discovery phase. In that mode retain the caller's original operation and selected context, perform only discovery reads here, and return the verified app/resources/guidance/schema to the caller after step 5, or an accurate no-match/gap outcome when selection cannot proceed. Do not answer or stop the whole task because it requests a write; the caller handles operation-specific authority and execution. This phase can reuse the caller's intended ordinary task profile even if it already has write grants, without claiming that profile is read-only. Never substitute a provisioning profile or expand an explicitly protected reader's permissions.
 
 This review revision targets CLI `0.10.0`; see [verification and live gates](../docs/retrieve-data-validation.md). No deployed one-link release is implied. The [short starter](retrieve-data-prompt.txt) can accompany this guide's exact local path.
