@@ -7,6 +7,7 @@ const requireString = value => { if (typeof value !== 'string' || !value) throw 
 
 // Single writer: the enclosing client holds directory/client.lock for its lifetime.
 export class DeliveryLedger {
+  #persistedState;
   static async open(directory) {
     await mkdir(directory,{recursive:true,mode:0o700});
     const ledger = new DeliveryLedger();
@@ -14,13 +15,23 @@ export class DeliveryLedger {
     try { ledger.state = JSON.parse(await readFile(ledger.file,'utf8')); }
     catch(error) { if(error.code !== 'ENOENT') throw error; ledger.state = {format:'tc-delivery-ledger/v1',events:{},turns:{},active:null}; }
     if(ledger.state.format !== 'tc-delivery-ledger/v1') throw new Error('Unsupported delivery ledger');
+    ledger.#persistedState = clone(ledger.state);
     return ledger;
   }
   async save() {
-    const file = await open(this.file+'.tmp','w',0o600);
-    try { await file.writeFile(JSON.stringify(this.state,null,2)+'\n'); await file.sync(); }
-    finally { await file.close(); }
-    await rename(this.file+'.tmp',this.file);
+    try {
+      const snapshot = clone(this.state);
+      const file = await open(this.file+'.tmp','w',0o600);
+      try { await file.writeFile(JSON.stringify(snapshot,null,2)+'\n'); await file.sync(); }
+      finally { await file.close(); }
+      await rename(this.file+'.tmp',this.file);
+      this.#persistedState = snapshot;
+    } catch(error) {
+      // Calls are serialized by the client. A retry must never acknowledge a
+      // plan, binding or dispatch clock that only reached in-memory state.
+      this.state = clone(this.#persistedState);
+      throw error;
+    }
   }
   async beginHuman(threadId,{text,timezone,receivedAt = new Date().toISOString()}) {
     if(this.state.active) throw new Error('A pending delivery must be reconciled before another submission');

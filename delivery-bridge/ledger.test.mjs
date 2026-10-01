@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DeliveryLedger } from './ledger.mjs';
@@ -100,4 +100,36 @@ test('an app requiring a UUID record key can bind it without calling it native i
  assert.equal(planned.items[0].record_id,record_id);
  assert.match(planned.items[0].source_key,/native-message-1/);
  assert.notEqual(planned.items[0].source_key,record_id);
+});
+
+
+test('failed plan persistence cannot expose or acknowledge an unsaved frozen payload',async t=>{
+ const {ledger,dir}=await fixture(t);
+ await bind(ledger);
+ // A real temporary filesystem failure, without replacing the save method.
+ const blocked=join(dir,'delivery.json.tmp');
+ await mkdir(blocked);
+ await assert.rejects(ledger.freeze(human().params,[item(800)]),{code:'EISDIR'});
+ assert.equal((await ledger.context(human().params)).plan,null);
+ assert.equal((await (await DeliveryLedger.open(dir)).context(human().params)).plan,null);
+ await rm(blocked,{recursive:true});
+ const retried=await ledger.freeze(human().params,[item(800)]);
+ const restarted=await DeliveryLedger.open(dir);
+ assert.deepEqual((await restarted.context(human().params)).plan,retried);
+ await assert.rejects(restarted.freeze(human().params,[item(801)]),/frozen/);
+});
+
+test('failed dispatch persistence must save the clock on retry before acknowledging it',async t=>{
+ const {ledger,dir}=await fixture(t);
+ await bind(ledger);
+ await ledger.freeze(human().params,[item(800)]);
+ const blocked=join(dir,'delivery.json.tmp');
+ await mkdir(blocked);
+ await assert.rejects(ledger.dispatch(human().params,'1'),{code:'EISDIR'});
+ assert.equal((await ledger.context(human().params)).plan.items[0].first_dispatched_at,undefined);
+ await rm(blocked,{recursive:true});
+ const retried=await ledger.dispatch(human().params,'1');
+ const restarted=await DeliveryLedger.open(dir);
+ assert.equal((await restarted.context(human().params)).plan.items[0].first_dispatched_at,retried);
+ assert.equal(await restarted.dispatch(human().params,'1'),retried);
 });
