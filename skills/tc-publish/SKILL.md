@@ -1,125 +1,94 @@
 ---
 name: tc-publish
-description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the user asks the agent to publish, share, or host a file for a person or the public — private owner links, public bearer links, verification, and revocation.
+description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and revocation.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Publish documents and HTML with `tc share`
 
-Publish a file to the owner's TinyCloud space and return a link. The agent holds a scoped delegation approved by the owner through an OpenKey device authorization — no passwords, no copied credentials.
+Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-Requires `@tinycloud/cli` release `1.0.0-beta.15` or newer (device login with `--manifest`, `builtin:share-publishing`, and `tc share publish`). Earlier releases return `INVALID_ARGUMENT` on `share publish` from OpenKey sessions.
+Requires `@tinycloud/cli` **1.0.0-beta.16 or newer** (TC-540: `tc enable share`, device login with `--manifest` and `--expiry`; TC-538: publish from OpenKey sessions). Install with `npm install --global @tinycloud/cli@beta` or an exact version pin — never `@latest` (still 0.9.0).
 
-## 1. Verify the CLI before anything else
+## Rules that are never optional
 
-The `tc` executable is bundled with the `tc-cli` skill, not the system PATH. Resolve it by absolute path and check its version:
+- **Never log or paste** link fragments (`#tc1=…`), user codes, session keys, delegations or signed responses — except the link the owner asked for, sent on the owner's own channel.
+- **Always verify a publish by hash** before reporting it (step 4). Stdout alone is not proof.
+- **Choose the link type explicitly.** Use the owner-only email link for anything private; use a public link only when the owner asks for one or the content is clearly shareable. Bearer links are un-revocable until TC-545.
 
-```sh
-TC="$(command -v tc)"                       # verify it is not /usr/sbin/tc or another shim
-"$TC" --version                              # must be >= 1.0.0-beta.15
-"$TC" auth login --help | grep -- --manifest # device login + manifest must exist
-"$TC" share publish --help | grep -- --to    # publish with --to must exist
-```
+## 1. Locate and check the CLI
 
-If the version or flags are missing, install or upgrade the CLI and `tc-cli` skill per `tc-cli/INSTALL.md` (`npm install --global @tinycloud/cli@latest` after TC-540 merges; pin the release named there) and re-run the checks. Do not proceed with an older CLI: `share publish` will fail with `INVALID_ARGUMENT` on the adapter's `publish` call.
-
-Then confirm the session profile:
+`tc` is an npm-installed CLI, not bundled with a skill, and `command -v tc` can resolve to `/usr/sbin/tc` (Linux traffic control). Use the absolute path the operator provides — conventionally `TC_BIN` — and check it prints a TinyCloud semver:
 
 ```sh
-"$TC" --profile PROFILE context --json
+"$TC_BIN" --version                 # must be >= 1.0.0-beta.16
+"$TC_BIN" enable share --help       # enable share must exist
 ```
 
-Reports `profile`, `ownerDid`, `host`, `spaceId`, `session.state`. A `host` of `http://` (not `https://`) or a missing `spaceId` means the profile is stale or the CLI predates TC-540 — stop and fix the install before continuing. Keep `profile`, `host`, and `space` explicit on every `tc` command.
+If the version or command is missing, install/upgrade `@tinycloud/cli@beta` and re-check. Do not proceed on an older CLI.
 
-## 2. Obtain consent — device login with the publishing manifest
+## 2. One-time setup per profile
 
-Skip this step if `context --json` already shows a live session for this profile. Otherwise request a scoped delegation:
+Use a dedicated profile — scoped login refuses to replace an existing session:
 
 ```sh
-"$TC" --profile PROFILE auth login --device \
-  --manifest builtin:share-publishing --expiry 7d
+"$TC_BIN" init --name publisher --key-only
+"$TC_BIN" --profile publisher enable share &
 ```
 
-The CLI prints a consent URL and a user code, then keeps a waiter running. Three rules are non-negotiable:
+`enable share` is `auth login --device --manifest builtin:share-publishing` with the reason "Allow this TinyCloud CLI profile to publish Share links." It prints `Approve on your phone: https://openkey.so/device?user_code=XXXX-XXXX (code XXXX-XXXX)` and waits about 10 minutes. **Run it in the background and capture output to a file.** Send the owner the link and code on the agent's own channel (e.g. iMessage) — never through a shared paste buffer.
 
-- Run the waiter in the background (`&` / `nohup` / a detached process). It exits when the owner approves, declines, or it expires (~10 minutes). The delegation is invalid until then.
-- Surface the URL and code to the owner on the agent's own channel — iMessage, email, a signed status page — not in an untrusted paste buffer or relayed chat transcript. The owner approves from their own device (typically their phone).
-- Never relay the signed response, session key, delegation, or proof material back through chat or into logs. Approval flows directly from the owner's device to OpenKey and the TinyCloud node.
+On success it prints JSON: `authenticated: true`, `scoped: true`, the approved `permissions`, `declined: []`, `expiresAt` (session lifetime, `--expiry 7d` up to 30 days).
 
-On success the waiter writes `authenticated: true` and the profile's `context` shows a `session.expiresAt`. On failure it reports the machine-readable error and a non-zero exit.
+Check the profile afterwards: `"$TC_BIN" --profile publisher context --json` → `host` (`https://tee.node.tinycloud.xyz`), `spaceId` (`tinycloud:pkh:eip155:1:0x…:default`), `ownerDid`, `session.state`/`session.expiresAt`.
 
-## 3. Publish — choose the link type first
-
-Two link types, different trust models. Pick before publishing; never default silently.
-
-**Private / owner-addressed** (`--to email:<address>`) — the interim private link. Only the addressed account can open it; the viewer requires a TinyCloud identity. Until TC-533 lands, address it to the owner's email. After TC-533, address the owner's OpenKey DID instead:
+## 3. Publish
 
 ```sh
-"$TC" --profile PROFILE share publish FILE --to email:owner@example.com --expires 7d
+# Owner-only (private): addressed to the owner's email
+"$TC_BIN" --profile publisher share publish FILE --to email:owner@example.com --expires 7d
+
+# Public: anyone with the link (only when the owner asks)
+"$TC_BIN" --profile publisher share publish FILE --expires 7d
 ```
 
-The returned URL encodes the share and recipient; access requires the recipient's session.
+Both print one line: the URL. For bearer links it's `https://share.tinycloud.xyz/viewer#tc1=…`. The fragment carries an access delegation plus key — the whole URL is the credential (the file is stored unencrypted in the owner's space). `--json` deliberately omits the URL; read it from human-mode stdout or recover it later with `share show <id> --reveal-link`.
 
-**Public / bearer** (no `--to`) — anyone holding the URL can open it. The decryption key lives in the URL fragment (`#tc1=…`); browsers do not send fragments to servers, so the server never sees the key:
+Share lifetime is clamped to the session's end. An explicit `--expires` beyond the session fails `SESSION_LIFETIME_EXCEEDED`; under 60 s is refused. Pick a duration inside the session's remaining lifetime (`context --json` → `session.expiresAt`).
+
+## 4. Verify — always, before reporting
 
 ```sh
-"$TC" --profile PROFILE share publish FILE --expires 7d
+printf '%s' "$URL" | "$TC_BIN" --profile publisher share receive - --stdout | sha256sum
+sha256sum FILE     # must match byte-for-byte
 ```
 
-The full URL *is* the credential. Treat it accordingly — see "Handling links" below.
+For addressed links, `printf '%s' "$URL" | "$TC_BIN" --profile publisher share inspect - --json` shows `target.kind: email`, `resource.path`, `expiresAt` — no account needed to inspect; `receive` still requires the recipient's session.
 
-Both accept `--expires <duration>` (e.g. `24h`, `7d`, `30d`). `--json` emits the share `cid` and `resource.path` for downstream tooling; the `link` field then contains only the share reference, not the URL — combine it with `share show --reveal-link` to recover the openable URL.
+## 5. What each link does
 
-### What's rendered where
+- **Public (`viewer#tc1=…`)**: opens without sign-in; Markdown renders; `.html`/`.htm` executes in a sandboxed opaque-origin frame (scripts run, can't reach viewer/storage/fragment; external resources blocked → self-contained files only). "Sender unverified" — the link proves content, not identity.
+- **Owner-only (`--to email:`)**: a policy link; the recipient proves the mailbox with an 8-digit code in the viewer — no TinyCloud account needed. HTML downloads instead of rendering.
 
-- **Markdown, plain text, images** render in the share viewer inside a sandboxed iframe (`sandbox=""` with CSP `default-src 'none'`). The reader sees styled content; scripts in the source do not run.
-- **HTML** currently downloads rather than renders — TC-542 wires sandboxed `text/html` preview into the viewer. Until then publish HTML as a self-contained single file (inline CSS, no external resources, no tracking) and tell recipients to download and open it.
-- Any file the viewer can't preview gets a download link plus filename, size, and expiry.
-
-## 4. Verify before reporting done
-
-Every publish is verified against the source hash, not by trusting stdout:
+## 6. Lifecycle
 
 ```sh
-LINK="$("$TC" --profile PROFILE share publish FILE --expires 7d | tail -1)"
-echo "$LINK" | "$TC" --profile PROFILE share receive - --stdout | sha256sum
-sha256sum FILE    # hashes must match byte-for-byte
+"$TC_BIN" --profile publisher share list                    # active shares
+"$TC_BIN" --profile publisher share show <id>               # metadata
+"$TC_BIN" --profile publisher share show <id> --reveal-link # full URL
+"$TC_BIN" --profile publisher share revoke <id>             # addressed links only
 ```
 
-`share inspect` accepts an addressed (`--to`) link and shows metadata — target kind, recipient, path, expiry — without revealing content. It does **not** accept bearer links (`UNSUPPORTED_LINK`); for those, `share receive` + hash comparison is the verification, and `share list` shows the share id and expiry. `share show --reveal-link <shareId>` returns the full openable URL from a stored share id.
+Bearer links cannot be revoked until TC-545 — use the shortest workable `--expires`.
 
-## 5. Lifecycle — list, reveal, revoke
+## Errors — `{code, message, hint}`, never server text
 
-```sh
-"$TC" --profile PROFILE share list                    # all active shares, type, expiry
-"$TC" --profile PROFILE share show ID                 # metadata only
-"$TC" --profile PROFILE share show ID --reveal-link   # include the full URL
-"$TC" --profile PROFILE share revoke ID               # addressed links: revokes access
-```
-
-Important asymmetry: **bearer links cannot be revoked.** The key is embedded in the link, so `share revoke` is rejected for them — publish them with the shortest viable `--expires` and treat the link itself as the credential. Addressed links revoke cleanly and `share show` then reports `revoked: true`.
-
-`tc share` returns non-zero and a `{code, message, hint}` JSON error on failure; do not guess exit-code meanings from other `tc` commands.
-
-## Handling links — rules that prevent leaks
-
-- The fragment (`#tc1=…`) is the decryption key. Never log it, paste it into shared channels, or include it in test output, diffs, or issue text. When citing evidence, use the share `cid` from `--json` output or `share list`, not the URL.
-- `share receive` fetches content using the fragment locally; nothing about the key leaves the client.
-- `--expires` is required for forward tests and strongly recommended everywhere — bearer links are un-revocable, so expiry is the only bound.
-- If a link leaks, revoke addressed links immediately; for bearer links, delete the KV entry (`share list` → resource path → `tc kv delete`) and publish a fresh link — the old fragment becomes useless once the data moves.
-
-## Errors you will hit and what they mean
-
-| Error | Cause | Fix |
+| Code | Meaning | Action |
 |---|---|---|
-| `INVALID_ARGUMENT` on `share publish` | CLI < `1.0.0-beta.15` or OpenKey session on a stale node | Reinstall the CLI per step 1; re-login if the profile is old |
-| `NETWORK_NOT_FOUND` (encryption) on `--to` publish | The owner account has no default encryption network — happens on brand-new throwaway accounts that skipped OpenKey bootstrap | Real accounts bootstrap at first login; for throwaways the coordinator must run the bootstrap step |
-| `CLAIM_REQUIRED` on `share receive` of an addressed link | Only the addressed recipient's session can claim it — a fresh agent profile cannot | Receive addressed links only from the recipient's own profile; verify them with `share inspect` instead |
-| `UNSUPPORTED_LINK` on `share inspect` of a bearer link | Inspect accepts addressed links only | Verify bearer links via `share receive` + hash |
-| Consent URL expires (~10 min) | Owner didn't approve in time | Re-run `auth login --device`; the waiter exits non-zero |
+| `AUTH_REQUIRED` | Session expired or invalid | Re-run `enable share` (device login) |
+| `PERMISSION_DENIED` | Scope missing `builtin:share-publishing` | Re-enable on this profile |
+| `SESSION_LIFETIME_EXCEEDED` | `--expires` outlives the session | Shorten `--expires` or re-login |
+| `ORIGIN_MISMATCH` | Session bound to another host/origin | Re-login against the right host |
 
-## Notes
-
-- Addressed links need the node's encryption network, created by OpenKey bootstrap on the owner's first real login. This is why `--to` publish can fail `NETWORK_NOT_FOUND` on synthetic accounts even when bearer publish works — it is a property of the account, not the skill.
-- The viewer sends `referrerpolicy="no-referrer"` on the preview iframe and shows "Sender unverified" — the link proves content integrity, not sender identity. Do not claim otherwise to the user.
+See `QUICKSTART.md` for the minimal checklist and a plain-words description of what the owner does on their phone.

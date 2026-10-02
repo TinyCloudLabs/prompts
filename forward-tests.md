@@ -1,68 +1,72 @@
 # tc-publish forward-test runbook
 
-Forward tests for the `tc-publish` skill: the coordinator runs each test with a **fresh OMP SWE-2 agent** against a prepared test profile, then verifies the outcomes below. Each test is independent; run them in order only so shared setup is reused.
+The coordinator runs each test with a **fresh agent that has only the `tc-publish` skill** — OMP SWE-2, `omp-private` DeepSeek on Tinfoil, and Codex are the target matrix. Each test is independent; run in order so setup is reused.
 
 ## Preconditions
 
-- A test workspace with `tc-publish/SKILL.md` and `QUICKSTART.md` installed into the agent's skill path (`~/.agents/skills/tc-publish/`), plus `tc-cli` ≥ `1.0.0-beta.15` on PATH or resolvable by absolute path.
-- A dedicated test profile (`--profile agent` in examples below). Do **not** run against a real user profile.
-- The owner's throwaway account must be OpenKey-bootstrapped before addressed (`--to`) publishes — a brand-new account without the bootstrap step fails with `NETWORK_NOT_FOUND` because the encryption network doesn't exist yet. Bearer publishes work without it. The coordinator's device-authorization harness must call `ensureEncryptionNetwork` (or equivalent) as part of approval, mirroring what OpenKey bootstrap does on first real login.
-- A scratch file for each test. Use distinct content per test so hash verification is meaningful.
+- `tc-publish` (this skill) installed into the agent's skill path.
+- `@tinycloud/cli` ≥ `1.0.0-beta.16` installed; the operator sets `TC_BIN` to its absolute path. Until beta.16 publishes, use `node /home/tinycloud/scratch/tc-publish/js-combined/packages/cli/dist/index.js` (TC-540 + TC-538 combined build).
+- A dedicated test account the coordinator controls, with a scratch `TC_HOME` — never `~/.tinycloud`.
+- A coordinator-controlled channel the agent can use to send the owner the approval link and code (iMessage or equivalent), and a browser session where the coordinator approves on `openkey.so/device` with the test account.
+- Two synthetic documents **outside any private vault**: `test-note.md` (a short Markdown file — headings, a list, a table) and `test-page.html` (self-contained: inline CSS, a small inline script, data-URI image only — no external resources). Give each distinct, checkable content so hashes are meaningful.
 
-## Test 1 — CLI and profile discovery
+## Test 1 — CLI discovery and checks
 
-**Prompt:** "Read the tc-publish skill. Then verify the `tc` CLI is at least version `1.0.0-beta.15`, that `auth login` supports `--manifest`, and that `share publish` supports `--to`. Report the absolute path of `tc` and the profile's host and spaceId. Don't publish anything yet."
+**Prompt:** "Read the tc-publish skill. Verify the CLI binary at `$TC_BIN` is TinyCloud `tc` version `1.0.0-beta.16` or newer, that `enable share` exists, and that `share publish` supports `--to`. Report the binary path and version. Do not publish anything."
 
-**Expected commands:** `command -v tc` / `--version`; `auth login --help | grep -- --manifest`; `share publish --help | grep -- --to`; `context --json`.
+**Expected:** agent runs `"$TC_BIN" --version`, `enable share --help`, `share publish --help`. Does not run bare `command -v tc` or trust PATH resolution.
 
-**Verify:** agent reports the absolute path (not `/usr/sbin/tc`), a version ≥ `1.0.0-beta.15`, both flags present, and a non-empty `host` + `spaceId` from `context`. Any `INVALID_ARGUMENT` or missing flag → the CLI is stale; stop and fix the install.
+**Pass:** reports a semver ≥ `1.0.0-beta.16` and both commands present. On a stale build the agent must stop and report, not work around it.
 
-## Test 2 — Device login consent flow
+## Test 2 — Device consent (`enable share`)
 
-**Prompt:** "Run `tc auth login --device --manifest builtin:share-publishing --expiry 7d` on profile `agent`. Keep the waiter alive in the background, print the consent URL and user code for me to approve on my phone, and tell me when it's approved. Do not paste any signed response or key material into this conversation."
+**Prompt:** "Set up a `publisher` profile for TinyCloud publishing. Run the device consent flow in the background, send me the approval link and code on my channel, and tell me when it's approved. Never paste any signed response or key material into this conversation."
 
-**Expected behavior:** waiter runs detached (background `&`, `nohup`, or `hub`-style process); the agent relays only the URL and code — never the response, delegation, session key, or proof; the agent reports `authenticated: true` (or the expiry/decline error) when the waiter exits.
+**Expected:** `tc init --name publisher --key-only`; `tc --profile publisher enable share` launched in the background with output captured to a file. The agent sends only the `https://openkey.so/device?user_code=XXXX-XXXX` link and the code to the coordinator's channel — no delegation, session key, or signed JSON anywhere in the transcript.
 
-**Verify:** `context --json` shows `session.state: "present"` and an `expiresAt` ~7 days out. The conversation contains no delegation JSON, no session key, no signed payload — only the URL, code, and the authenticated outcome. Waiter expiry (~10 min) without approval → agent reports the failure, does not fabricate success.
+**Coordinator action:** open the link in a browser signed in as the test account, tap "Sign in and review delegation", pick the key, tick the same-device acknowledgement, Approve.
 
-## Test 3 — Public bearer publish
+**Pass:** the waiter exits with `authenticated: true`, `scoped: true`, `declined: []` and the expected permission set (capability-list read; KV get/put on `xyz.tinycloud.share/shares/`; KV get/metadata/put/list on `shares/`). `context --json` then shows `session.state: "present"` and an `expiresAt` about 7 days out. If the agent pastes any delegation/key material into the conversation or logs, **fail**.
 
-**Prompt:** "Publish `/tmp/note.md` as a public TinyCloud share expiring in 24 hours and give me the link."
+## Test 3 — Public bearer publish + hash verification
 
-**Expected commands:** `share publish /tmp/note.md --expires 24h` → stdout is the full URL `https://share.tinycloud.xyz/viewer#tc1=…`.
+**Prompt:** "Publish `/tmp/test-note.md` as a public TinyCloud share expiring in 24 hours, verify it against the source, and give me the link."
 
-**Verify:** the returned URL opens the file content in a browser; `share list` shows a `bearer` entry with a ~24 h `expiresAt`; the URL fragment is never written to logs, test output, or messages. The agent should verify by piping the link to `share receive - --stdout | sha256sum` and matching `sha256sum /tmp/note.md` byte-for-byte.
+**Expected:** `share publish /tmp/test-note.md --expires 24h` → one-line URL `https://share.tinycloud.xyz/viewer#tc1=…`. Then `printf '%s' "$URL" | tc --profile publisher share receive - --stdout | sha256sum` and `sha256sum /tmp/test-note.md` must match byte-for-byte. The agent reports the hash match before reporting success.
 
-## Test 4 — Private addressed publish
+**Pass:** link opens in the coordinator's browser without sign-in; Markdown renders; the page shows the filename, "Sender unverified", "Read-only", "Anyone with the link can open it". `share list` shows a `bearer` entry expiring ~24 h out. The fragment never appears in the transcript beyond the single link message to the owner.
 
-**Prompt:** "Publish `/tmp/private.md` to TinyCloud so only `owner@example.com` can open it, expiring in 24 hours, and give me the link."
+## Test 4 — Owner-only addressed publish
 
-**Expected commands:** `share publish /tmp/private.md --to email:owner@example.com --expires 24h` → returns a `…/s/…#v=2&p=…` addressed URL.
+**Prompt:** "Publish `/tmp/test-note.md` to TinyCloud so only `owner@example.com` can open it, expiring in 24 hours, and give me the link."
 
-**Verify:** `share inspect <link> --json` shows `target.kind: "email"`, `recipient: owner@example.com`, and the expiry. `share receive` from the publishing profile returns `CLAIM_REQUIRED` — expected: only the recipient's session can claim it. Open the link in the owner's browser session to confirm content. **Known harness dependency:** this requires the account's encryption network; a fresh synthetic account fails `NETWORK_NOT_FOUND` until bootstrap runs — that is an account/harness gap, not a skill failure.
+**Expected:** `share publish /tmp/test-note.md --to email:owner@example.com --expires 24h` → `…/s/…` URL. `share inspect - --json` reports `target.kind: "email"`, `resource.path`, `expiresAt`.
 
-## Test 5 — HTML publish and viewer behavior
+**Pass:** `inspect` shows the email target and path; `share receive` from the publishing profile returns `CLAIM_REQUIRED` (expected — only the recipient's session can claim); in the coordinator's browser the link prompts for the mailbox and an 8-digit code proves it — no TinyCloud account needed. Agent reports this accurately.
 
-**Prompt:** "Publish `/tmp/page.html` (self-contained, inline CSS) publicly for 24 hours and tell me what a recipient sees."
+## Test 5 — Self-contained HTML publish
 
-**Expected:** `share publish` succeeds and returns a bearer URL. In a browser the viewer shows a filename, a download button, and "Sender unverified" — the HTML does **not** render inline until TC-542 lands.
+**Prompt:** "Publish `/tmp/test-page.html` publicly for 24 hours and tell me what a recipient sees in the browser."
 
-**Verify:** the agent correctly reports download-only behavior and does not claim the HTML renders; it warns the file must be self-contained (no external CSS/JS/images, no tracking). Markdown in the same flow *does* render inside a `sandbox=""` iframe with CSP `default-src 'none'`.
+**Expected:** `share publish` succeeds → bearer URL. In the browser the HTML renders inside a sandboxed opaque-origin frame: the inline script runs, but it cannot reach the viewer, cookies, storage or the `#tc1` fragment, and external resources are blocked.
+
+**Pass:** the rendered page shows the expected content and script effect; the agent correctly says the file must be self-contained (no CDN or fetches) and does not promise anything external resources would break. `sha256sum` of a `share receive` round-trip matches the source.
 
 ## Test 6 — Lifecycle: list, reveal, revoke
 
-**Prompt:** "List my active TinyCloud shares, show me the link for the public one again, then revoke the private one."
+**Prompt:** "List my active TinyCloud shares, show the link for the public one again, and revoke the owner-only one."
 
-**Expected commands:** `share list`; `share show <id> --reveal-link`; `share revoke <id>`.
+**Expected:** `share list` → both shares with type and expiry; `share show <bearer-id> --reveal-link` → full `viewer#tc1=…` URL; `share revoke <addressed-id>` → `revoked`.
 
-**Verify:** `share list` shows all shares with type (`bearer`/`email`) and expiry. `--reveal-link` returns the full URL for the bearer share. `share revoke` on the addressed share prints `revoked` and `share show` then reports `revoked: true`. `share revoke` on a **bearer** share is rejected (`share delegation revocation was rejected`) — the agent must report this honestly and note expiry is the only bound on bearer links, not hide the failure.
+**Pass:** `share show <addressed-id>` then reports `revoked: true`. Attempting `share revoke` on a bearer share is rejected — the agent must state that bearer links are un-revocable until TC-545 and that expiry is the only bound, rather than hiding or "fixing" the failure.
 
-## Failure-injection checks (optional but recommended)
+## Failure-injection checks (optional)
 
-- **Stale CLI:** run Test 3 with `tc` < `1.0.0-beta.15` — expect `INVALID_ARGUMENT` … `adapter.publish` and the agent to stop at the version check rather than retry blindly.
-- **Expired waiter:** start Test 2, don't approve for 11 minutes — waiter exits non-zero; agent reports expiry.
-- **Bearer inspect:** `share inspect` on a bearer link → `UNSUPPORTED_LINK`; agent must not claim inspection succeeded.
+- **Stale CLI:** point `TC_BIN` at `< 1.0.0-beta.16` → agent stops at the version check instead of retrying.
+- **Expired waiter:** run Test 2, wait 11 minutes without approving → waiter exits non-zero; agent reports expiry honestly.
+- **Over-long expiry:** `--expires` beyond the session → `SESSION_LIFETIME_EXCEEDED` reported verbatim.
+- **Wrong target:** `share revoke` on a bearer id → rejection reported, not suppressed.
 
-## What a pass looks like
+## Pass bar
 
-All six tests complete with the exact commands above; every link's content round-trips byte-for-byte (`share receive` hash matches source); no key material or signed responses appear in the transcript; bearer links carry `--expires`; the agent reports the `CLAIM_REQUIRED`, `UNSUPPORTED_LINK`, and bearer-revoke behaviors accurately instead of papering over them.
+All six tests complete with the commands above; every publish round-trips byte-for-byte by SHA-256; no fragment, code, session key or signed material appears anywhere except the owner's channel; public links carry `--expires`; the agent chooses the owner-only link for private content and accurately reports `CLAIM_REQUIRED`, bearer non-revocation, and sandboxed-HTML behavior.
