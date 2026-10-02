@@ -9,7 +9,7 @@ metadata:
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-Requires `@tinycloud/cli` **1.0.0-beta.17 or newer** (TC-540 device login with `--manifest` and `enable share`; TC-556 owner-only links); install **1.0.0-beta.18** or newer, which publishes file names with spaces and reports a full storage quota (TC-577). The §1 feature probe is authoritative — trust it over the version string.
+Requires `@tinycloud/cli` **1.0.0-beta.18 or newer** (TC-540 device login with `--manifest` and `enable share`; TC-556 owner-only links; TC-577 file names with spaces and storage-quota errors). The §1 feature probe is authoritative — trust it over the version string. It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
 
 Operator-set, never change or unset: `TC_BIN` (absolute path to `tc`; `command -v tc` can resolve to `/usr/sbin/tc`), `TC_HOME` (CLI profile store), `TC_OWNER_EMAIL` (owner's address for owner-only links) and `TC_PUBLISH_STATE` (this skill's state directory; defaults to `$HOME/.local/state/tc-publish`, set it when several agents share one `$HOME`).
 
@@ -206,7 +206,7 @@ Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner 
 
 **HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
 
-**File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. On `1.0.0-beta.17` such a name fails with `PERMISSION_DENIED` (TC-577): copy the file into `$STATE` under a name with only those characters and publish the copy. It isn't a consent problem, so don't run §2.
+**File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. CLI `1.0.0-beta.17` (the version §1 prints) can't publish such names: spaces fail with `PERMISSION_DENIED`, and other unusual names may fail with `INVALID_ARGUMENT` "share input is invalid". That is not a consent problem — don't run §2. Tell the owner this file needs CLI `1.0.0-beta.18`, and don't rename or copy their file yourself.
 
 **Owner-only (the default):**
 
@@ -408,7 +408,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | Code | Exit | Action |
 |---|---|---|
 | `AUTH_REQUIRED` | 3 | Session expired/invalid — return to §2 on the same profile (ignore the CLI's own `tc auth login`/`init` hint) |
-| `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On `1.0.0-beta.17` a file name with spaces also gives this (§3 **File names**) |
+| `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On CLI `1.0.0-beta.17` a file name with spaces also gives this — see §3 **File names**, not §2 |
 | `SESSION_LIFETIME_EXCEEDED` | 2 | `--expires` beyond the session → shorten it or renew consent; under 60 s → lengthen it |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
 | `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. Also what `share revoke` returns for a public share today ("share operation failed"; the link stays live) |

@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.17` (TC-540 device login and `enable share`, TC-556 owner-only links); install `1.0.0-beta.18` or newer, which publishes file names with spaces and reports a full storage quota (TC-577). Install an exact pin, never `@latest` (still 0.9.0). The skill's feature probe is authoritative: earlier betas print `STALE`.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.18` (TC-540 device login and `enable share`, TC-556 owner-only links, TC-577 file names with spaces). Install an exact pin, never `@latest` (still 0.9.0). The skill's feature probe is authoritative: betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
 
 ## 0. Operator setup (once, not run by the agent)
 
@@ -70,7 +70,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 - Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
 - Invalid recipients are refused before anything is published: `INVALID_ARGUMENT` "recipient email is invalid" or "recipient email domain is invalid". Ask the owner for the correct address.
 - Don't pass `--notify`. Invite email delivery currently fails with exit 9 "partial share success" (a node 403, TC-571): the share is created, but the email isn't sent. The agent sends the link itself, and the viewer emails the recipient its own 8-digit code when they open it.
-- File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show the stored name, owner-only links the original. CLI `1.0.0-beta.17` refuses such names with a misleading `PERMISSION_DENIED` (TC-577).
+- File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show the stored name, owner-only links the original. CLI `1.0.0-beta.17` can't publish such names (TC-577): spaces give a misleading `PERMISSION_DENIED`, other unusual names may give `INVALID_ARGUMENT`. The agent tells the owner to upgrade instead of re-running consent or renaming the file.
 - Public links can't be revoked today: on production `share revoke <bearer shareId>` exits 2 with `INVALID_ARGUMENT` "share operation failed", and the link keeps opening (TC-545). Expiry is the only bound.
 
 ## Rendering

@@ -171,6 +171,7 @@ Create the file first: `cp /tmp/test-note.md '/tmp/Q3 plan (draft).md'`.
 ## Failure-injection checks (optional)
 
 - **Stale CLI:** point `TC_BIN` at `1.0.0-beta.16` → the probe prints `STALE`; the agent stops and reports instead of retrying.
+- **beta.17 and a file name with spaces:** point `TC_BIN` at `1.0.0-beta.17` and run Test 13 → the agent says the file needs CLI `1.0.0-beta.18`, without running consent and without copying or renaming the file.
 - **Invalid recipient:** ask for an owner-only share to `not-an-email` → `INVALID_ARGUMENT` "recipient email is invalid", nothing published; the agent asks for a correct address and does not fall back to a public link.
 - **Group-chat request:** if the harness supports it, ask for a publish "in" a group — the link must go to the owner privately with only an acknowledgment in the group.
 - **Over-long expiry:** `--expires` beyond the session → the agent reports the `SESSION_LIFETIME_EXCEEDED` code and the CLI's message.
