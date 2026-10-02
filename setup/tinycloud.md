@@ -18,7 +18,7 @@ tc --version
 npm root --global
 ```
 
-The package already contains `skills/tc-cli/SKILL.md` and its reference files. Read those directly beneath the installed `@tinycloud/cli` directory; client skill discovery is not a prerequisite for following this link. Preserve the absolute executable and package reference paths for the caller.
+The package already contains `skills/tc-cli/SKILL.md` and its reference files. Consult only packaged sections needed for the pending operation beneath the installed `@tinycloud/cli` directory; client skill discovery is not a prerequisite for following this link. Preserve the absolute executable and package reference paths for the caller.
 
 ### Project-local setup
 
@@ -29,7 +29,7 @@ npm install --prefix "$TC_RUNTIME" --no-audit --no-fund @tinycloud/cli@0.10.0
 "$TC_RUNTIME/node_modules/.bin/tc" --version
 ```
 
-Read `$TC_RUNTIME/node_modules/@tinycloud/cli/skills/tc-cli/SKILL.md` and its references. Keep the same executable across independent subprocesses. Disposable acceptance runs may use temporary directories, but that is not the normal saved-context strategy.
+Keep the same executable across independent subprocesses. Disposable acceptance runs may use temporary directories, but that is not the normal saved-context strategy.
 
 ## Optional client discovery
 
