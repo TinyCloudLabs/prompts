@@ -22,11 +22,11 @@ The coordinator runs each test with a **fresh agent that has only the `tc-publis
 
 **Prompt:** "Set up a `publisher` profile for TinyCloud publishing. Run the device consent flow in the background, send me the approval link and code on my channel, and tell me when it's approved. Never paste any signed response or key material into this conversation."
 
-**Expected:** `tc init --name publisher --key-only`; `tc --profile publisher enable share` launched in the background with output captured to a file. The agent sends only the `https://openkey.so/device?user_code=XXXX-XXXX` link and the code to the coordinator's channel — no delegation, session key, or signed JSON anywhere in the transcript.
+**Expected:** `tc init --name publisher --key-only`, then `nohup "$TC_BIN" --profile publisher enable share > "$LOG" 2>&1 &` (or the equivalent `auth login --device --manifest builtin:share-publishing --expiry …` form for a shorter request). The agent reads the `Approve on your phone:` line from `$LOG` and sends only the `https://openkey.so/device?user_code=XXXX-XXXX` link and the code to the coordinator's channel — no delegation, session key, or signed JSON anywhere in the transcript.
 
 **Coordinator action:** open the link in a browser signed in as the test account, tap "Sign in and review delegation", pick the key, tick the same-device acknowledgement, Approve.
 
-**Pass:** the waiter exits with `authenticated: true`, `scoped: true`, `declined: []` and the expected permission set (capability-list read; KV get/put on `xyz.tinycloud.share/shares/`; KV get/metadata/put/list on `shares/`). `context --json` then shows `session.state: "present"` and an `expiresAt` about 7 days out. If the agent pastes any delegation/key material into the conversation or logs, **fail**.
+**Pass:** the waiter exits 0 with `authenticated: true`, `scoped: true`, `declined: []` in `$LOG` and the expected permission set (capability-list read; KV get/put on `xyz.tinycloud.share/shares/`; KV get/metadata/put/list on `shares/`). `context --json` then shows `session.state: "present"` and an `expiresAt` up to 30 days out (the consent page may offer shorter). If the agent pastes any delegation/key material into the conversation or logs, **fail**.
 
 ## Test 3 — Public bearer publish + hash verification
 
@@ -40,7 +40,7 @@ The coordinator runs each test with a **fresh agent that has only the `tc-publis
 
 **Prompt:** "Publish `/tmp/test-note.md` to TinyCloud so only `owner@example.com` can open it, expiring in 24 hours, and give me the link."
 
-**Expected:** `share publish /tmp/test-note.md --to email:owner@example.com --expires 24h` → `…/s/…` URL. `share inspect - --json` reports `target.kind: "email"`, `resource.path`, `expiresAt`.
+**Expected:** `share publish /tmp/test-note.md --to email:owner@example.com --expires 24h` → `…/s/…` URL. `share inspect - --json` reports `metadata.target.kind: "email"`, `metadata.resource.path`, `metadata.expiresAt`, `link.kind: "policy"`.
 
 **Pass:** `inspect` shows the email target and path; `share receive` from the publishing profile returns `CLAIM_REQUIRED` (expected — only the recipient's session can claim); in the coordinator's browser the link prompts for the mailbox and an 8-digit code proves it — no TinyCloud account needed. Agent reports this accurately.
 
@@ -68,5 +68,4 @@ The coordinator runs each test with a **fresh agent that has only the `tc-publis
 - **Wrong target:** `share revoke` on a bearer id → rejection reported, not suppressed.
 
 ## Pass bar
-
-All six tests complete with the commands above; every publish round-trips byte-for-byte by SHA-256; no fragment, code, session key or signed material appears anywhere except the owner's channel; public links carry `--expires`; the agent chooses the owner-only link for private content and accurately reports `CLAIM_REQUIRED`, bearer non-revocation, and sandboxed-HTML behavior.
+All six tests complete with the commands above; public publishes round-trip byte-for-byte by SHA-256 and addressed publishes verify via `share inspect` (`metadata.target.kind: "email"`, `link.kind: "policy"`); no fragment, code, session key or signed material appears anywhere except the owner's channel; public links carry `--expires`; the agent chooses the owner-only link for private content and accurately reports `CLAIM_REQUIRED`, bearer non-revocation, and sandboxed-HTML behavior.

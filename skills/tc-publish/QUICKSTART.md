@@ -23,10 +23,19 @@ npx --yes skills@1.7.0 add <cli-tarball-url> --skill tc-cli --global --copy --ag
 
 ```sh
 "$TC_BIN" init --name publisher --key-only
-"$TC_BIN" --profile publisher enable share > /tmp/enable-share.log 2>&1 &
+LOG=$(mktemp /tmp/enable-share.XXXXXX.log)
+nohup "$TC_BIN" --profile publisher enable share > "$LOG" 2>&1 &
 ```
 
-The waiter prints `Approve on your phone: https://openkey.so/device?user_code=XXXX-XXXX (code XXXX-XXXX)` and waits ~10 minutes. Send the owner the link and code on the agent's own channel (iMessage, email — not a paste buffer), then keep the process alive until it prints `authenticated: true` or exits on expiry.
+`enable share` has no `--expiry` option — it requests the maximum 30-day session and the owner can pick a shorter lifetime on the consent page. For a shorter request, use the explicit form:
+
+```sh
+nohup "$TC_BIN" --profile publisher auth login --device --manifest builtin:share-publishing --expiry 7d > "$LOG" 2>&1 &
+```
+
+(`--expiry` accepts 1 minute to 30 days; anything else is `INVALID_EXPIRY`.)
+
+Read the `Approve on your phone: https://openkey.so/device?user_code=XXXX-XXXX (code XXXX-XXXX)` line from `$LOG` and send the owner the link and code on the agent's own channel (iMessage, email — not a paste buffer). The waiter exits within ~10 minutes: exit 0 with `authenticated: true` in `$LOG` means approved; non-zero means expired or declined — re-run. If the session later expires (`AUTH_REQUIRED`), run the same command again on the same profile — renewing the same scope needs no `--replace-session`; only narrowing or shortening it does.
 
 ### What the owner sees
 
@@ -50,13 +59,23 @@ Both print the URL on one line. Keep `--expires` inside the session's remaining 
 
 ## 4. Verify — every time, before reporting
 
+Public links round-trip and hash:
+
 ```sh
 URL=…                                             # the printed URL
 printf '%s' "$URL" | "$TC_BIN" --profile publisher share receive - --stdout | sha256sum
 sha256sum ./report.md                             # must match
 ```
 
-For an owner-only link, `printf '%s' "$URL" | "$TC_BIN" --profile publisher share inspect - --json` shows `target.kind: email`, `resource.path`, `expiresAt`. The recipient opens the link in a browser and proves the mailbox with an 8-digit code — no TinyCloud account needed.
+Owner-only links can't be received by this profile (`CLAIM_REQUIRED` — the recipient's session is required); verify with `share inspect`:
+
+```sh
+printf '%s' "$URL" | "$TC_BIN" --profile publisher share inspect - --json
+# expect: metadata.target.kind = "email", metadata.resource.path = the file,
+#         metadata.expiresAt = the requested expiry, link.kind = "policy"
+```
+
+The recipient opens the link in a browser and proves the mailbox with an 8-digit code — no TinyCloud account needed.
 
 ## 5. Manage
 
@@ -82,5 +101,5 @@ Bearer links are un-revocable until TC-545 — expiry is the only bound, so keep
 ## Never
 
 - Never paste link fragments, user codes, session keys, delegations or signed responses into chat, logs or files — except the link the owner asked for, sent on the owner's channel.
-- Never report a publish without the hash check above.
+- Never report a publish without the verification above — hash for public links, `share inspect` for owner-only.
 - Never publish publicly without the owner asking, or make private content a bearer link.

@@ -12,9 +12,8 @@ Publish a file from the owner's TinyCloud space and return a link. The agent hol
 Requires `@tinycloud/cli` **1.0.0-beta.16 or newer** (TC-540: `tc enable share`, device login with `--manifest` and `--expiry`; TC-538: publish from OpenKey sessions). Install with `npm install --global @tinycloud/cli@beta` or an exact version pin — never `@latest` (still 0.9.0).
 
 ## Rules that are never optional
-
+- **Always verify a publish before reporting it.** Public links: `share receive - --stdout` piped to `sha256sum`, matching the source. Addressed links: `share inspect - --json` — the agent cannot `receive` an addressed link (the recipient's session is required; `CLAIM_REQUIRED`).
 - **Never log or paste** link fragments (`#tc1=…`), user codes, session keys, delegations or signed responses — except the link the owner asked for, sent on the owner's own channel.
-- **Always verify a publish by hash** before reporting it (step 4). Stdout alone is not proof.
 - **Choose the link type explicitly.** Use the owner-only email link for anything private; use a public link only when the owner asks for one or the content is clearly shareable. Bearer links are un-revocable until TC-545.
 
 ## 1. Locate and check the CLI
@@ -34,14 +33,25 @@ Use a dedicated profile — scoped login refuses to replace an existing session:
 
 ```sh
 "$TC_BIN" init --name publisher --key-only
-"$TC_BIN" --profile publisher enable share &
+LOG=$(mktemp /tmp/enable-share.XXXXXX.log)
+nohup "$TC_BIN" --profile publisher enable share > "$LOG" 2>&1 &
 ```
 
-`enable share` is `auth login --device --manifest builtin:share-publishing` with the reason "Allow this TinyCloud CLI profile to publish Share links." It prints `Approve on your phone: https://openkey.so/device?user_code=XXXX-XXXX (code XXXX-XXXX)` and waits about 10 minutes. **Run it in the background and capture output to a file.** Send the owner the link and code on the agent's own channel (e.g. iMessage) — never through a shared paste buffer.
+`enable share` is `auth login --device --manifest builtin:share-publishing` with the reason "Allow this TinyCloud CLI profile to publish Share links." Its only option is `--replace-session` — it has no `--expiry`; it requests the maximum 30-day session and the owner may pick a shorter lifetime on the consent page. For a shorter request use:
 
-On success it prints JSON: `authenticated: true`, `scoped: true`, the approved `permissions`, `declined: []`, `expiresAt` (session lifetime, `--expiry 7d` up to 30 days).
+```sh
+nohup "$TC_BIN" --profile publisher auth login --device --manifest builtin:share-publishing --expiry 7d > "$LOG" 2>&1 &
+```
+
+`--expiry` accepts 1 minute to 30 days; anything else is `INVALID_EXPIRY`.
+
+Read the `Approve on your phone: https://openkey.so/device?user_code=XXXX-XXXX (code XXXX-XXXX)` line from `$LOG` and send the owner the link and code on the agent's own channel (e.g. iMessage) — never through a shared paste buffer. The waiter exits in about 10 minutes: exit 0 with `authenticated: true` in `$LOG` means approved; any non-zero exit means expired or declined — re-run.
+
+On success the JSON shows `authenticated: true`, `scoped: true`, the approved `permissions`, `declined: []`, `expiresAt` (session lifetime, up to 30 days).
 
 Check the profile afterwards: `"$TC_BIN" --profile publisher context --json` → `host` (`https://tee.node.tinycloud.xyz`), `spaceId` (`tinycloud:pkh:eip155:1:0x…:default`), `ownerDid`, `session.state`/`session.expiresAt`.
+
+If `AUTH_REQUIRED` later reports the session expired, re-run the same `enable share` (or the same `auth login --device --manifest …`) on the same profile — renewing the same scope needs no `--replace-session`; only narrowing or shortening the scope does.
 
 ## 3. Publish
 
@@ -59,12 +69,20 @@ Share lifetime is clamped to the session's end. An explicit `--expires` beyond t
 
 ## 4. Verify — always, before reporting
 
+Public (bearer) links — round-trip and hash:
+
 ```sh
 printf '%s' "$URL" | "$TC_BIN" --profile publisher share receive - --stdout | sha256sum
 sha256sum FILE     # must match byte-for-byte
 ```
 
-For addressed links, `printf '%s' "$URL" | "$TC_BIN" --profile publisher share inspect - --json` shows `target.kind: email`, `resource.path`, `expiresAt` — no account needed to inspect; `receive` still requires the recipient's session.
+Addressed (`--to email:`) links — `receive` is not possible without the recipient's session (`CLAIM_REQUIRED`); inspect instead:
+
+```sh
+printf '%s' "$URL" | "$TC_BIN" --profile publisher share inspect - --json
+```
+
+Check `metadata.target.kind` is `email`, `metadata.resource.path` matches the published file, `metadata.expiresAt` is the requested expiry, and `link.kind` is `policy`.
 
 ## 5. What each link does
 
