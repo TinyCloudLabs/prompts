@@ -8,7 +8,9 @@ This repository is the shared development and review point for agent-facing setu
 - [`setup/openkey.md`](setup/openkey.md) optionally installs and verifies the standalone OpenKey CLI. It is not part of TinyChat authorization.
 - [`apps/tinychat/setup.md`](apps/tinychat/setup.md) owns TinyChat's skill, adapter activation, app context, permission grant, retrieval behavior and lifecycle.
 - [`prompt.txt`](prompt.txt) points to this branch's TinyChat entry document for local client testing.
-
+- [`skills/tc-publish/SKILL.md`](skills/tc-publish/SKILL.md) teaches an agent to publish a document or HTML page to TinyCloud and return a private or public share link, with consent, verification and lifecycle commands.
+- [`skills/tc-publish/QUICKSTART.md`](skills/tc-publish/QUICKSTART.md) is the five-step minimal version of the same flow.
+- [`forward-tests.md`](forward-tests.md) is the coordinator runbook: fresh-agent prompts, expected commands, and how to verify each outcome.
 The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository intentionally contains no helpers, generated release archives, sync framework or evaluation runtime.
 
 ## Snapshot provenance
