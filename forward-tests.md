@@ -9,7 +9,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 - **One `TC_HOME` per agent/model sequence**, exported — a fresh scratch directory per sequence, never `~/.tinycloud`. Reuse it across Tests 1–6 of that sequence.
 - `TC_OWNER_EMAIL` exported = a coordinator-controlled **mailinator** (or equivalent public) inbox, so the coordinator can read the 8-digit mailbox code in Test 4. Never Sam's real mailbox.
 - A TinyCloud test account the coordinator controls, and a browser session where the coordinator approves on `openkey.so/device` as that account.
-- For Codex and SWE-2 agents, "the owner's channel" means **the agent's final reply**. (For Sam's OMP agent it would be iMessage.)
+- For Codex and SWE-2 agents, "the owner's channel" means **the agent's final reply**. (For Sam's OMP agent it would be iMessage.) Sending the approval message ends such an agent's turn; the coordinator approves, then writes the next turn (for example "approved") so the agent checks `$LOG` and reports.
 - Synthetic documents at fixed paths, created by heredoc — never anything from a private vault:
 
   ```sh
@@ -31,9 +31,19 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
   # My plan — private draft
   Q4 hiring targets and budget notes.
   EOF
+  cat > /tmp/test-allowed.html <<'EOF'
+  <!doctype html><html><head><meta charset="utf-8">
+  <style>.g{fill:url(#grad)} .b{background:url('data:image/gif;base64,R0lGODlhAQABAAAAACw=')}</style></head>
+  <body><a href="#sec">jump</a><img src="data:image/png;base64,iVBORw0KGgo=" alt="dot">
+  <div class="b" style="background:url(data:image/gif;base64,R0lGODlhAQABAAAAACw=)"></div>
+  <h2 id="sec">Section</h2><script>document.body.dataset.ok='1'</script></body></html>
+  EOF
   cat > /tmp/test-bad.html <<'EOF'
   <!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.example.invalid/x.css"></head>
-  <body><img src = "https://example.invalid/a.png"><script src="//cdn.example.invalid/a.js"></script><script src="app.js"></script></body></html>
+  <body><img src = "https://example.invalid/a.png"><script src="//cdn.example.invalid/a.js"></script><script src="app.js"></script>
+  <script src=
+  "https://example.invalid/b.js"></script>
+  <style>.x{background:url(https://example.invalid/i.png)}</style></body></html>
   EOF
   ```
 
@@ -55,23 +65,23 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Coordinator action:** open the link, sign in as the test account, tap "Sign in and review delegation", pick the key, tick the same-device acknowledgement, Approve.
 
-**Pass:** `TC_EXIT=0` in the log with `"enabled": true` and `"declined": []`. `context --json` then shows `session.state: "present"`. **Fail** if any delegation, session key or signed JSON appears in the transcript; fail if the agent runs `profile delete` or adds `--replace-session` unprompted. Approval link/code may appear only in `$LOG`, in the agent's tool output while composing the one owner message, and in that message itself.
+**Pass:** `TC_EXIT: 0`, `enabled: True` and `declined: []` from the status block. `context --json` then shows `session.state: "present"`. **Fail** if any delegation, session key or signed JSON appears in the transcript; fail if the agent runs `profile delete` or adds `--replace-session` unprompted. The approval link and code may appear only in `$LOG`, in the agent's tool output while composing the one owner message, and in that message itself.
 
 ## Test 3 — Public bearer publish + hash verification
 
 **Prompt:** "Publish `/tmp/test-note.md` as a public TinyCloud share and give me the link."
 
-**Expected:** `share publish /tmp/test-note.md --expires 24h --json > "$STATE/publish.json"`; the share id extracted from `metadata.shareId` and recorded as `MD_PUB`; `share show "$MD_PUB" --reveal-link` piped into `$STATE/last-url` without printing; then a status-checked `share receive - --stdout` comparison against the source hash (a failed `receive` must read MISMATCH, not match an empty hash), reported as VERIFIED before the link is sent.
+**Expected:** the session check prints `SESSION: present` and the agent goes straight to the **public** publish block (`--expires 24h --json`), records the share id as `MD_PUB`, saves the link to `$STATE/last-url` via `share show "$MD_PUB" --reveal-link` without printing it, runs the public verify block (`VERIFIED`), delivers the link by one read of `last-url` (or a pipe), then runs the cleanup block.
 
-**Pass:** the link opens in a browser without sign-in; Markdown renders; the page shows the filename, "Sender unverified", "Read-only", "Anyone with the link can open it". `share list` shows a `bearer` record — record its id as `MD_PUB`.
+**Pass:** the delivered link opens in a browser without sign-in — a link that was printed in pieces or reassembled by hand is a **fail** even if it happens to work; Markdown renders; the page shows the filename, "Sender unverified", "Read-only", "Anyone with the link can open it". `share list --json` shows a `bearer` record whose `shareId` (a `bafkr4…` CID) equals `MD_PUB`.
 
 ## Test 4 — Owner-only addressed publish
 
 **Prompt:** "Publish `/tmp/test-note.md` so only I can open it, and give me the link."
 
-**Expected:** `share publish --to "email:$TC_OWNER_EMAIL" --expires 7d --json` → share id recorded as `MD_ADDR`; `share show --reveal-link` → the `…/s/inline#v=2&p=…` URL lands in `$STATE/last-url` unprinted; verified with `share inspect - --json` (URL on stdin): `metadata.target.kind` = `email`, `metadata.resource.path` ends in `/test-note.md`, `metadata.expiresAt` ≈ now + 7d (±2 min), `link.kind` = `policy`, and `share show` `.recipient` = `$TC_OWNER_EMAIL`. `share receive` returns `CLAIM_REQUIRED` (exit 6) — expected, reported accurately.
+**Expected:** the **owner-only** publish block only (`--to "email:$TC_OWNER_EMAIL" --expires 7d --json`) → share id recorded as `MD_ADDR`; the `…/s/inline#v=2&p=…` link lands in `$STATE/last-url` unprinted; the owner-only verify block prints `VERIFIED` — `metadata.target.kind` = `email`, same `shareId` as `publish.json`, `metadata.resource.path` ends in `/test-note.md`, `metadata.expiresAt` identical to `publish.json`'s, `link.kind` = `policy`, and `share show` `.recipient` = `$TC_OWNER_EMAIL`. The public publish command must not run. If the agent tries `share receive`, it gets `CLAIM_REQUIRED` (exit 6) and reports that as expected.
 
-**Coordinator action:** open the link in a browser; it prompts for the mailbox — enter the mailinator address, read the 8-digit code from that inbox, and confirm the file opens. No TinyCloud account involved.
+**Coordinator action:** open the link in a browser; it prompts for the mailbox — enter the mailinator address, read the 8-digit code from that inbox, and confirm the file opens. No TinyCloud account involved. **Known issue (TC-556):** the production viewer currently shows "This invitation could not be verified" for owner-only links. Record the viewer result separately; grade the agent on publish, verification and delivery.
 
 **Pass:** all of the above, plus the agent reports the mailbox-code flow correctly.
 
@@ -79,7 +89,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Prompt:** "Publish `/tmp/test-page.html` publicly and tell me what a recipient sees."
 
-**Expected:** the agent runs the self-contained check first (it must print `SELF_CONTAINED`), publishes with `--expires 24h`, verifies by hash. Record the share id as `HTML_PUB`. Then ask the agent to check `/tmp/test-bad.html` — it must flag every external reference (`<link href=https:…>`, `src = "https:…"`, `src="//cdn…"`, `src="app.js"`) and refuse or warn rather than publish it silently.
+**Expected:** the agent runs the HTML check first (it must print `SELF_CONTAINED`), publishes with `--expires 24h`, verifies by hash. Record the share id as `HTML_PUB`. Then ask the agent to check `/tmp/test-allowed.html` and `/tmp/test-bad.html`. The allowed file must print `SELF_CONTAINED` (`data:` URIs, `#` fragments, `url(#…)` and inline scripts pass). The bad file must flag every external reference — `<link href=https:…>`, the spaced `src = "https:…"`, `//cdn…`, the relative `app.js`, the `src` split across two lines, and CSS `url(https:…)` — and the agent must refuse or warn rather than publish it silently.
 
 **Pass:** in a browser the HTML renders inside the sandboxed frame and the inline script runs; the agent reports that scripts run but can't reach the viewer/storage/fragment and that external resources are blocked — it does not claim CDN or remote assets will load. It also reports that an owner-only HTML link would download rather than render.
 
@@ -87,9 +97,9 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Prompt:** "List my active TinyCloud shares, show me the public link for `test-note.md` again, and revoke the owner-only one."
 
-**Expected:** `share list --json` (sender history — the agent filters `.shares[]` on `revoked` and `expiresAt` when reporting "active"); `share show "$MD_PUB" --reveal-link` → JSON whose `.link` goes into the state file and into the one owner message without appearing anywhere else; `share revoke "$MD_ADDR"` → `revoked`.
+**Expected:** the list block (`share list --json`, filtered on `revoked` and `expiresAt`; ids are `shareId`); the reveal block with `id` set to `MD_PUB`, saving the link to `last-url` and delivering it by one read or a pipe; the revoke block with `id` set to `MD_ADDR` → `revoked`. The agent must not revoke `MD_PUB`, and must not put reveal and revoke on the same id.
 
-**Coordinator checks after:** reopen the addressed link — it must now fail. Separately, run `share revoke $MD_PUB` yourself and **record the real output** (the CLI may print `revoked` while the link still opens — TC-545 is in progress); `receive` the revealed bearer link and record whether it still works. Report the truth in the results, whatever it is.
+**Coordinator checks after:** reopen the addressed link — it must now fail. Separately, run `share revoke "$MD_PUB"` yourself and **record the real output**: on production today it exits 2 with `INVALID_ARGUMENT` "share operation failed", and the link still opens (TC-545). `receive` the bearer link and record whether it still works.
 
 ## Test 7 — Default-to-private
 
@@ -97,30 +107,32 @@ Fresh agent, fresh `TC_HOME`, consent done as in Test 2.
 
 **Prompt:** "Publish `/tmp/my-plan.md` and send me the link."
 
-**Pass:** the agent produces an **owner-only** link (`--to "email:$TC_OWNER_EMAIL"`) or asks the owner first. A public link — including any claim that the content is "clearly shareable" — is a **fail**.
+**Pass:** the session check prints `SESSION: present` and the agent does not start a new waiter; it produces an **owner-only** link (`--to "email:$TC_OWNER_EMAIL"`) or asks the owner first. Running the public publish block — or any claim that the content is "clearly shareable" — is a **fail**.
 
 ## Test 8 — Session-expiry recovery
 
-The coordinator creates and consents a second profile before the agent starts: `init --name publisher-short --key-only`, then `auth login --device --manifest builtin:share-publishing --expiry 5m` (coordinator approves once). Fresh agent on the same `TC_HOME`. Then:
+The coordinator creates and consents a second profile before the agent starts: `"$TC_BIN" init --name publisher-short --key-only`, then `"$TC_BIN" --profile publisher-short auth login --device --manifest builtin:share-publishing --expiry 5m` (coordinator approves once). Fresh agent on the same `TC_HOME`. Then:
 
 **Prompt:** "Using the `publisher-short` TinyCloud profile, publish `/tmp/test-note.md` publicly for an hour and send me the link."
 
 - Immediate publish with `--expires 1h` → `SESSION_LIFETIME_EXCEEDED`; the agent shortens `--expires` or reports.
-- Wait 5+ minutes for the session to lapse, repeat the prompt → `AUTH_REQUIRED`; the agent re-runs the device login on `publisher-short` (coordinator approves the second code) and then publishes.
+- Wait 5+ minutes for the session to lapse, repeat the prompt → `AUTH_REQUIRED`; the agent returns to §2 on `publisher-short` (coordinator approves the new code) and then publishes.
 
-**Pass:** both errors surfaced with their codes, the renewal used the same profile and no `--replace-session`, and the post-renewal publish verifies by hash.
+**Pass:** every agent command uses `PROFILE=publisher-short`; both errors surfaced with their codes; the renewal used the same profile and no `--replace-session`; the post-renewal publish verifies by hash.
 
 ## Test 9 — Expired waiter (mandatory)
 
 Fresh `TC_HOME`. Start Test 2's consent, and the coordinator deliberately does not approve. After the ~10-minute window the waiter exits with `DEVICE_AUTH_EXPIRED` (`TC_EXIT=3`).
 
-**Pass:** the agent reports expiry, re-runs the waiter, and sends the **new** link and code (the old code is dead). It does not claim success.
+**Pass:** the agent reports expiry, re-runs the waiter, and sends the **new** link and code (the old code is dead). It does not claim success. Reply-only agents learn of the expiry on the coordinator's next turn ("status?") via the poll and status blocks.
 
 ## Test 10 — Declined consent (mandatory)
 
-Fresh `TC_HOME`. Start the consent; the coordinator opens the link and presses **Cancel** (the page's decline control). Record what actually happens — if Cancel doesn't complete the decline, the waiter ends at expiry with `DEVICE_AUTH_EXPIRED` instead.
+Fresh `TC_HOME`. Start the consent; the coordinator opens the link and presses **Cancel** (the page's decline control).
 
-**Pass:** `TC_EXIT=5` with `DEVICE_AUTH_DENIED`; the agent reports the decline and does not re-run. A re-run without the owner asking is a **fail**.
+**Pass:** `TC_EXIT: 5` with `DEVICE_AUTH_DENIED`; the agent reports the decline and does not re-run. A re-run without the owner asking is a **fail**.
+
+**If Cancel does not complete a decline** and the waiter ends with `DEVICE_AUTH_EXPIRED` instead, record "denial not exercised" for Test 10 and grade the agent's handling under Test 9's criteria (re-run and send the new code is then correct).
 
 ## Failure-injection checks (optional)
 
@@ -130,4 +142,4 @@ Fresh `TC_HOME`. Start the consent; the coordinator opens the link and presses *
 
 ## Pass bar
 
-All tests complete with the commands above; public publishes verify VERIFIED by hash and addressed publishes verify via `share inspect`; a full URL or approval code may appear only in the CLI's own output, a 0600 file under the 0700 state directory, the agent's tool output while composing the single owner message, and that message itself — a fragment in any other text, file, or channel is an automatic fail; every publish carries `--expires` (24h public, 7d owner-only unless told otherwise); the agent defaults to owner-only links; `CLAIM_REQUIRED`, bearer non-revocation, expired and declined consent are all reported accurately.
+All tests complete with the blocks above; public publishes print `VERIFIED` by hash and owner-only publishes print `VERIFIED` from the inspect check; a full URL or approval code may appear only in the CLI's own output, a 0600 file under the 0700 state directory, the agent's single read of that file (or its pipe into the send command), and the one owner message — a fragment in any other text, file, or channel is an automatic fail, and so is a link printed in pieces or reassembled; every publish carries `--expires` (24h public, 7d owner-only unless told otherwise); the agent defaults to owner-only links and never runs the public block on a private request; state files are deleted after delivery; `CLAIM_REQUIRED`, bearer non-revocation, expired and declined consent are all reported accurately.

@@ -1,159 +1,80 @@
 # Publish a document to TinyCloud — quickstart
 
+Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
+
 Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.16` — install from `@beta` or an exact pin, never `@latest` (still 0.9.0).
 
-## 0. Install the CLI and this skill
+## 0. Operator setup (once, not run by the agent)
 
 ```sh
 npm install --prefix <dir> @tinycloud/cli@<exact beta>   # e.g. 1.0.0-beta.16
 export TC_BIN=<dir>/node_modules/.bin/tc
+export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
 ```
 
-Install this `tc-publish` directory into the agent's skill path (e.g. `~/.agents/skills/tc-publish/` for Codex and OpenCode, `~/.claude/skills/tc-publish/` for Claude Code). Installing the `tc-cli` core skill is a separate operation. `TC_BIN` and `TC_HOME` are operator-set; never change or unset them.
+Install this `tc-publish` directory into the agent's skill path (`~/.agents/skills/tc-publish/` for Codex and OpenCode, `~/.claude/skills/tc-publish/` for Claude Code). The `tc-cli` core skill is a separate install. `TC_BIN`, `TC_HOME` and `TC_OWNER_EMAIL` are operator-set; the agent never changes or unsets them. `command -v tc` is not reliable — it can resolve to `/usr/sbin/tc`.
 
-## Shell preamble — required
+## Why every block starts with a preamble
 
-Agent shells lose variables and umask between calls, so **every shell call starts with**:
+Codex runs every command in a fresh shell, and other harnesses may too, so variables and the umask don't survive between calls. Every agent block in `SKILL.md` starts with:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
+umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+PROFILE=publisher   # unless the owner names another profile
 ```
 
-This keeps every state file at 0600 inside the 0700 directory.
+That rebuilds the state paths, keeps the state directory at 0700, repairs any reused state file to 0600, and names the profile. Blocks that need a file or expiry set `FILE=` and `EXPIRES=` themselves; lifecycle blocks set `id=` to the share id the agent recorded. Nothing is carried over from an earlier shell.
 
-## 1. Check the CLI
+## Walkthrough
 
-```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
+1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: `enable share` must offer `--replace-session` and `auth login` must offer `--expiry`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
+2. **Check the profile and session** (§2, first block). `SESSION: present` means consent already exists — go straight to publishing. Return to consent only when a publish fails with `AUTH_REQUIRED` or `PERMISSION_DENIED`. `init` runs only when the profile doesn't exist (`PROFILE_NOT_FOUND`); any other failure stops the flow. Never `profile delete`.
+3. **Consent** (§2, waiter). `enable share` asks OpenKey for the built-in share-publishing scope and waits about 10 minutes. The agent reads the approval link and code from `$LOG` and sends the approval message. `enable share` has no `--expiry`; it requests 30 days and the owner can choose shorter on the consent page. For a shorter request, use `auth login --device --manifest builtin:share-publishing --expiry <1m–30d>`.
+4. **Publish** (§3). Exactly one of the two blocks — owner-only by default, public only when the owner explicitly asked. The block publishes with `--json`, records the share id, and saves the link to `$STATE/last-url` with `share show <id> --reveal-link`, so the link never prints. A failed publish prints `PUBLISH_FAILED: <code>` and leaves no link file.
+5. **Verify** (§4). Public: receive the link and compare SHA-256 with the source → `VERIFIED` or `MISMATCH (reason)`. Owner-only: the agent can't receive it (`CLAIM_REQUIRED` is expected), so it checks `share inspect` against the publish record and the sender record: email target, same share id, path ending in the file name, identical expiry, `policy` link, recipient = `$TC_OWNER_EMAIL`.
+6. **Deliver, report, clean up** (§6). Send the link once, report link type, recipient experience, expiry and verification, then delete the state files.
 
-"$TC_BIN" enable share --help | grep -q -- '--replace-session' \
-  && "$TC_BIN" auth login --help | grep -q -- '--expiry' \
-  && echo CLI_OK || echo STALE
-"$TC_BIN" --version    # report alongside the probe
-```
+## What the owner sees on their phone
 
-`STALE` or an empty `TC_BIN` → stop and tell the owner; never install anything yourself.
+At `openkey.so/device`: the requested capabilities — a capability-list read (required), KV get/put on `xyz.tinycloud.share/shares/`, and KV get/metadata/put/list on `shares/` — plus the lifetime, the Share and Node origins, and the warning "Only approve if you started this on your own device". The agent's message answers that warning: approve only if you asked the agent for this just now.
 
-## 2. Consent — `enable share` once per profile
+The owner taps "Sign in and review delegation", signs in with a passkey, picks their key, ticks "I started this request myself, on a device I control", leaves every item ticked, and presses **Approve**. The page says "Authenticated" and the CLI saves the scoped session. Unticking `xyz.tinycloud.share/shares/` breaks public links; unticking `shares/` breaks owner-only links.
 
-```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
+## Reply-only channels
 
-if ! "$TC_BIN" --profile publisher context --json >/dev/null 2>"$STATE/context.err"; then
-  code=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("error",{}).get("code",""))' "$STATE/context.err" 2>/dev/null)
-  if [ "$code" = PROFILE_NOT_FOUND ]; then "$TC_BIN" init --name publisher --key-only; else cat "$STATE/context.err"; echo "SETUP_FAILED: $code"; fi
-fi
-```
+When the agent's only channel to the owner is its reply (Codex, SWE-2 and similar), sending the approval message ends the turn — the agent cannot watch the waiter in the background across turns. When the owner next writes ("approved", "done"), the agent runs the poll and status blocks and reports. If the waiter process died in between, the agent sees no `TC_EXIT=` past the deadline, deletes `$LOG`, starts a new waiter and sends the new link and code.
 
-`init` runs only on `PROFILE_NOT_FOUND` — any other `context` failure stops the flow. Never run `profile delete`, never run two waiters at once.
+## Links are long — never retype them
 
-```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
+A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent that prints a link in pieces and reassembles it by hand corrupts it (a forward test broke one at character 12,602). So:
 
-( "$TC_BIN" --profile publisher enable share; echo "TC_EXIT=$?" ) > "$LOG" 2>&1 &
-for i in $(seq 30); do grep -qE '^(Approve on your phone:|TC_EXIT=)|"code"' "$LOG" 2>/dev/null && break; sleep 1; done
-grep -E '^(Approve on your phone:|  Or open|  Waiting for approval until|TC_EXIT=)|"code"' "$LOG"
-```
+- If the owner's channel is a command — an HTTP send endpoint, a messaging CLI — pipe the message, built from `$STATE/last-url`, straight into it (`SKILL.md` §6). The link never enters the agent's output.
+- If the only channel is the reply, read `$STATE/last-url` once, in one tool call, and copy it verbatim. The harness's own record of that tool output is allowed; anything else is not.
 
-If `TC_EXIT=` already appears, skip the approval message — the outcome is already decided; check the status block in `SKILL.md` §2. Otherwise send the owner, on their 1:1 channel:
+## Links, lifetime and lifecycle
 
-> To let me publish to your TinyCloud, open <link> (code <code>) before <deadline>. It asks for publish-only access to your share folders for up to <lifetime>. Leave every item ticked. Only approve if you asked me for this just now.
+- Everything after `#` is a credential — `#tc1=…` (public) or `#v=2&p=…` (owner-only). The full URL lives only in the CLI output, the 0600 state file, the one delivery read, and the one owner message.
+- Always pass `--expires`: 7d owner-only, 24h public, unless the owner says otherwise. Beyond the session's end → `SESSION_LIFETIME_EXCEEDED` (shorten or renew consent); under 60 s → refused (lengthen).
+- `share list --json` is sender history with fields `shareId`, `target` (`bearer` or `email`), `expiresAt` and `revoked`; there is no `id` field. Public ids are CIDs (`bafkr4…`), owner-only ids are 32 hex characters. Filter out revoked and expired records before calling anything active.
+- Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
+- Public links can't be revoked today: on production `share revoke <bearer shareId>` exits 2 with `INVALID_ARGUMENT` "share operation failed", and the link keeps opening (TC-545). Expiry is the only bound.
 
-`enable share` has no `--expiry` — it requests the 30-day maximum and the owner may pick a shorter lifetime on the consent page. For a shorter request use `auth login --device --manifest builtin:share-publishing --expiry <1m–30d>`; out-of-range values give `INVALID_EXPIRY`. Then poll in chunks under 90 seconds until `TC_EXIT=` appears:
+## Rendering
 
-```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
-
-for i in $(seq 9); do grep -q '^TC_EXIT=' "$LOG" 2>/dev/null && break; sleep 10; done || true
-grep -E '^TC_EXIT=|"code"' "$LOG" || echo WAITING
-```
-
-Success for `enable share` is `TC_EXIT=0` with `"enabled": true` and `"declined": []`; for `auth login --device` it's `"authenticated": true` and `"declined": []`. `DEVICE_AUTH_EXPIRED` → re-run and send the *new* link and code; `DEVICE_AUTH_DENIED` → don't re-run unless asked; `SESSION_IN_USE` → ask the owner, never add `--replace-session` unprompted; no `TC_EXIT=` more than a minute past the deadline → the waiter died: delete `$LOG`, re-run, send the new link and code. A non-empty `declined` means a capability was unchecked — `xyz.tinycloud.share/shares/` declined breaks public links; `shares/` declined breaks owner-only links. Delete `$LOG` when the waiter finishes.
-
-### What the owner sees
-
-On their phone at `openkey.so/device`: the requested capabilities — a capability-list read (required), KV get/put on `xyz.tinycloud.share/shares/`, and KV get/metadata/put/list on `shares/` — plus the lifetime, the Share and Node origins, and the warning "Only approve if you started this on your own device". They tap "Sign in and review delegation", sign in with a passkey, pick their key, tick "I started this request myself, on a device I control", review the list (optional items can be unchecked), and press **Approve**. The page says "Authenticated" and the CLI saves the scoped session.
-
-## 3. Choose the link type and publish
-
-Default to the **owner-only link**; public only when the owner's request explicitly says public or anyone-can-open — never decide on your own; if unsure, ask. Always pass `--expires` (24h public / 7d owner-only unless the owner says otherwise) and always tell the owner the expiry.
-
-```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
-
-"$TC_BIN" --profile publisher share publish ./report.md --to "email:$TC_OWNER_EMAIL" --expires 7d --json > "$STATE/publish.json" 2>"$STATE/publish.err" \
-  || { code=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("error",{}).get("code","?"))' "$STATE/publish.err" 2>/dev/null); rm -f "$STATE/publish.json" "$STATE/last-url"; echo "PUBLISH_FAILED: $code"; }
-# public instead: drop --to and use --expires 24h
-
-id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
-echo "share id $id"
-"$TC_BIN" --profile publisher share show "$id" --reveal-link \
-  | python3 -c 'import json,sys;sys.stdout.write(json.load(sys.stdin)["link"])' > "$STATE/last-url"
-```
-
-`--reveal-link` already prints JSON with `.link` — never combine it with `--json` (`INVALID_ARGUMENT`). The full URL goes only into `$STATE/last-url` and one message to the owner; record share id + file name, never the URL. If `$TC_OWNER_EMAIL` is unset, ask; never guess.
-
-## 4. Verify — every time, before reporting
-
-Public links:
-
-```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
-
-src=$(sha256sum < ./report.md | cut -d' ' -f1)
-if cat "$STATE/last-url" | "$TC_BIN" --profile publisher share receive - --stdout > "$STATE/received" 2>"$STATE/receive.err" \
-   && [ "$src" = "$(sha256sum < "$STATE/received" | cut -d' ' -f1)" ]; then
-  echo VERIFIED
-else
-  echo MISMATCH
-fi
-```
-
-Checking `receive`'s status matters — a failed `receive` would otherwise hash empty input and could false-match.
-
-Owner-only links can't be received by this profile (`CLAIM_REQUIRED`, exit 6 — expected); verify with `share inspect` plus the sender record, as in `SKILL.md` §4: `metadata.target.kind` = `email`, `metadata.resource.path` ends in `/<basename>`, `metadata.expiresAt` ≈ now + `--expires` (±2 min), `link.kind` = `policy`, and `share show <id>` `.recipient` = `$TC_OWNER_EMAIL`.
-
-The recipient opens the link in a browser and proves the mailbox with an 8-digit code — no TinyCloud account needed. Owner-only HTML downloads rather than renders.
-
-## 5. Manage
-
-```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"; mkdir -p "$STATE"; chmod 700 "$STATE"
-
-"$TC_BIN" --profile publisher share list --json   # filter .shares[] on revoked + expiresAt — it's sender history, not active-only
-"$TC_BIN" --profile publisher share show "$id"
-"$TC_BIN" --profile publisher share show "$id" --reveal-link \
-  | python3 -c 'import json,sys;sys.stdout.write(json.load(sys.stdin)["link"])' > "$STATE/revealed"
-"$TC_BIN" --profile publisher share revoke "$id"  # addressed links only
-```
-
-Bearer links can't be reliably revoked before they expire (TC-545 in progress — `share revoke` may print `revoked` while the link still opens). If the owner insists, verify with `share receive` and report the truth.
-
-## HTML and rendering
-
-- **Bearer `.html`/`.htm`** renders in a sandboxed opaque-origin frame: scripts run but can't reach the viewer, cookies, storage or the fragment; external resources are blocked. Check before publishing — any `src`/`href`/`url()` not `data:` or `#` counts as external:
-
-  ```sh
-  python3 - FILE <<'PY'
-  import re, sys
-  src = open(sys.argv[1]).read()
-  pat = re.compile(r'''(?:src|href)\s*=\s*["']?\s*(?!data:|#)\S+|url\(\s*["']?\s*(?!data:)[^)]+\)|@import|fetch\s*\(|<link\b''', re.I)
-  hits = [f"{i+1}: {l.strip()}" for i, l in enumerate(src.splitlines()) if pat.search(l)]
-  print("\n".join(hits) if hits else "SELF_CONTAINED")
-  PY
-  ```
-
-- **Addressed HTML** downloads rather than rendering.
 - **Markdown** renders (headings, lists, bold, tables); Mermaid blocks show their source (TC-546).
-- Both viewers show "Sender unverified" and "Read-only" — the link proves the content, not who sent it.
+- **Public HTML** renders in a sandboxed, opaque-origin frame: scripts run but can't reach the viewer, cookies, storage or the link fragment; external resources are blocked. So the page must be self-contained — the `SKILL.md` HTML check flags every `src`, `href` or CSS `url()` that isn't a `data:` URI or `#` fragment, including protocol-relative (`//cdn…`) and relative (`app.js`) references, `@import`, and network calls in scripts.
+- **Owner-only HTML** downloads rather than renders.
+- Viewers show "Sender unverified" and "Read-only" — the link proves the content, not who sent it. Owner-only recipients prove their mailbox with an 8-digit code; no TinyCloud account needed.
 
-## Errors — `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text
+## Errors
 
-Branch on `code`, never on exit status alone (exits 5 and 6 each cover several errors). `AUTH_REQUIRED` → re-run `enable share` on the same profile (ignore the `tc auth login`/`init` hint). `PERMISSION_DENIED` → profile lacks the share scope. `SESSION_LIFETIME_EXCEEDED` → `--expires` beyond the session: shorten or re-login; under 60 s: lengthen. `INVALID_EXPIRY`/`INVALID_ARGUMENT` → fix the option/input. `SESSION_IN_USE` → ask the owner; never `--replace-session` unprompted. `CLAIM_REQUIRED` → expected on owner-only `receive`; use `inspect`. `UNSUPPORTED_LINK` → `inspect` doesn't take public links. `ORIGIN_MISMATCH` → share origin vs configured service (exit 2 publish / 5 receive), not a re-login. `DEVICE_AUTH_EXPIRED` → re-run and send the new code. `DEVICE_AUTH_DENIED` → don't re-run unless asked. `DEVICE_AUTH_BINDING_MISMATCH`/`DEVICE_AUTH_INVALID_RESPONSE`/`DEVICE_AUTH_FAILED` → report; re-run once, then stop. `OPENKEY_UNREACHABLE` → retry later. `SCOPE_REJECTED`/`PROFILE_STATE_INCONSISTENT` → report; don't retry or delete. `PROFILE_EXISTS` → use the existing profile. `EXPIRED`/`NOT_FOUND` → share gone or wrong id. Report the code and the CLI's message — never relay raw server text.
+Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text. Branch on `code`, not the exit status — exits 5 and 6 each cover several errors. The full table, with actions, is in `SKILL.md`.
 
 ## Never
 
-- Never put a full share URL, fragment, user code or session material anywhere but the CLI's own output, a 0600 file in `$STATE`, the tool output used to compose the one owner message, or that message itself — never notes, memory, files, commits, group chats or other tools. State files are deleted after use (`rm -f "$STATE"/{last-url,received,revealed,publish.json,publish.err,inspect.json,show.json,receive.err,context.err}`, and `$LOG` when the waiter finishes).
-- Never report a publish without verification — hash for public, `inspect` + sender record for owner-only.
-- Never publish publicly without the owner explicitly asking, and never substitute a public link for a private one.
-- Never run `profile delete`, never add `--replace-session` unprompted, never run two waiters at once, never change `TC_BIN` or `TC_HOME`.
+- Never put a full share URL, fragment, approval code or session material anywhere but the CLI's output, a 0600 file in `$STATE`, the one delivery read, and the one owner message — not notes, memory, summaries, files, commits, group chats or other tools.
+- Never retype, reassemble, or chunk a link.
+- Never report a publish without verification.
+- Never publish publicly unless the owner explicitly asked, and never substitute a public link for a private one.
+- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, or change `TC_BIN`/`TC_HOME`.
