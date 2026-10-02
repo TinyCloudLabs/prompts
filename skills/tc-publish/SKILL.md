@@ -84,22 +84,60 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 - `SESSION: missing` / `expired` / `unknown-expiry` → start the waiter below.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
-Start the waiter. Never run two waiters at once; the deadline is the `Waiting for approval until` line:
+**Consent is precious.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on it. Every launch counts — including relaunches after an expired or dead waiter. Never run two waiters at once, and never start a new request while a code is outstanding (waiter alive, deadline not passed).
+
+**Write the waiter script.** It records its own pid, runs the device login, and appends `TC_EXIT=` when it ends:
+
+```sh
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+
+rm -f "$LOG" "$STATE/waiter.pid"
+cat > "$STATE/waiter.sh" <<'W'
+umask 077
+STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
+echo $$ > "$STATE/waiter.pid"
+if [ -n "$2" ]; then
+  "$TC_BIN" --profile "$1" auth login --device --manifest builtin:share-publishing --expiry "$2"
+else
+  "$TC_BIN" --profile "$1" enable share
+fi > "$STATE/enable-share.log" 2>&1
+echo "TC_EXIT=$?" >> "$STATE/enable-share.log"
+W
+echo "waiter script: $STATE/waiter.sh"
+```
+
+**Start it so it survives the end of this tool call and of your turn.** A plain `( … ) &` job is killed when the command or turn ends, and an approval that lands with nobody waiting is lost.
+
+- **If your harness offers a supervised background process** (for example OMP's supervised process), start `sh <waiter script path> <profile>` there — the path printed above, and `publisher` unless the owner named another profile — with the same environment (`TC_BIN`, `TC_HOME`, `TC_PUBLISH_STATE`).
+- **Otherwise detach it:**
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
-rm -f "$LOG"
-( "$TC_BIN" --profile "$PROFILE" enable share; echo "TC_EXIT=$?" ) > "$LOG" 2>&1 &
-for i in $(seq 30); do grep -qE '^(Approve on your phone:|TC_EXIT=)|"code"' "$LOG" 2>/dev/null && break; sleep 1; done
-grep -E '^(Approve on your phone:|  Or open|  Waiting for approval until|TC_EXIT=)|"code"' "$LOG"
+DETACH=$(command -v setsid)   # empty on macOS — prefer a supervised process there
+$DETACH nohup sh "$STATE/waiter.sh" "$PROFILE" > /dev/null 2>&1 < /dev/null &
+echo STARTED
 ```
 
-If `TC_EXIT=` already appears, skip the approval message and use the outcome table. Otherwise send the owner the approval message (template below).
+`enable share` has no `--expiry`: it requests the maximum 30-day session and the owner can pick a shorter lifetime on the consent page. For a shorter request, pass the lifetime as a second argument — `sh <waiter script path> "$PROFILE" 7d` — which runs `auth login --device --manifest builtin:share-publishing --expiry 7d`. `--expiry` accepts 1 minute to 30 days; anything else is `INVALID_EXPIRY`.
 
-`enable share` has no `--expiry`: it requests the maximum 30-day session and the owner can pick a shorter lifetime on the consent page. For a shorter request, replace the `enable share` line with `( "$TC_BIN" --profile "$PROFILE" auth login --device --manifest builtin:share-publishing --expiry 7d; echo "TC_EXIT=$?" ) > "$LOG" 2>&1 &`. `--expiry` accepts 1 minute to 30 days; anything else is `INVALID_EXPIRY`.
+**Check the waiter in a separate command before sending anything:**
+
+```sh
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+
+for i in $(seq 30); do grep -qE '^(Approve on your phone:|TC_EXIT=)|"code"' "$LOG" 2>/dev/null && break; sleep 1; done
+if [ -s "$STATE/waiter.pid" ] && kill -0 "$(cat "$STATE/waiter.pid")" 2>/dev/null; then echo WAITER_ALIVE; else echo WAITER_GONE; fi
+grep -E '^(Approve on your phone:|  Or open|  Waiting for approval until|TC_EXIT=)|"code"' "$LOG" 2>/dev/null
+```
+
+- `WAITER_ALIVE` and an `Approve on your phone:` line → send the approval message (template below).
+- `TC_EXIT=` present → the waiter already finished; don't send a code; use the outcome table.
+- `WAITER_GONE` with no `TC_EXIT=` → the waiter died. **Don't send the code** — nobody would receive the approval. Fix the launch (supervised process, or the detached form) and start again, within the rate limit.
 
 **Waiting.** If you can keep working in the same turn, poll in chunks of about 90 seconds:
 
@@ -108,10 +146,11 @@ umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STA
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 for i in $(seq 9); do grep -q '^TC_EXIT=' "$LOG" 2>/dev/null && break; sleep 10; done
-grep -E '^TC_EXIT=|"code"' "$LOG" || echo WAITING
+grep -E '^TC_EXIT=|"code"' "$LOG" 2>/dev/null \
+  || { kill -0 "$(cat "$STATE/waiter.pid" 2>/dev/null)" 2>/dev/null && echo WAITING || echo WAITER_DIED; }
 ```
 
-If your only channel to the owner is your reply (Codex, SWE-2 and similar harnesses), sending the approval message ends your turn — you cannot watch in the background across turns. When the owner next writes (for example "approved"), run the poll and status blocks and report. If the waiter died meanwhile, the dead-waiter row applies.
+**Turn boundaries — be honest.** Only promise a follow-up ("I'll tell you when it's done") if your harness will wake you when the waiter exits; OMP supervised processes do. Otherwise — any reply-only channel such as Codex or SWE-2 — sending the approval message ends your turn and nothing watches for you, so end the message by asking the owner to reply once they've approved. On their next message, run the poll and status blocks and report.
 
 ### Waiter outcomes — branch on `code`, never on exit status alone (exits 4, 5 and 6 each cover several errors)
 
@@ -137,6 +176,7 @@ last = next((o for o in reversed(objs) if isinstance(o, dict)), {})
 exitm = re.search(r'^TC_EXIT=(\d+)', txt, re.M)
 print("TC_EXIT:", exitm.group(1) if exitm else None)
 print("code:", last.get("error", {}).get("code"))
+print("message:", last.get("error", {}).get("message"))
 print("enabled:", last.get("enabled"), "authenticated:", last.get("authenticated"))
 print("declined:", json.dumps(last.get("declined")))
 print("expiresAt:", last.get("expiresAt"))
@@ -148,20 +188,23 @@ PY
 | `TC_EXIT: 0`, `enabled: True`, `declined: []` | Approved (`enable share`) | Done; go to §3 |
 | `TC_EXIT: 0`, `authenticated: True`, `declined: []` | Approved (`auth login --device`) | Done; go to §3 |
 | `TC_EXIT: 0`, `declined` non-empty | A capability was unchecked | Proceed, and tell the owner: `xyz.tinycloud.share/shares/` declined → **public** links fail; `shares/` declined → **owner-only** links fail |
-| `TC_EXIT: 3`, `DEVICE_AUTH_EXPIRED` | Window closed (~10 min) | Re-run the waiter — it issues a **new** code; send the new link and code |
+| `TC_EXIT: 3`, `DEVICE_AUTH_EXPIRED` | Window closed (~10 min) | Re-run the waiter (counts against the rate limit) — it issues a **new** code; send the new link and code |
 | `TC_EXIT: 5`, `DEVICE_AUTH_DENIED` | Owner declined | Do not re-run unless the owner asks |
 | `TC_EXIT: 2`, `SESSION_IN_USE` | A live session would be narrowed or shortened | Ask the owner; never add `--replace-session` on your own |
 | `TC_EXIT: 6`, `OPENKEY_UNREACHABLE` | Can't reach OpenKey | Report; retry when connectivity returns |
 | `TC_EXIT: 5`, `SCOPE_REJECTED` | Manifest rejected | Report; do not retry the same request |
 | `TC_EXIT: 1`, `PROFILE_STATE_INCONSISTENT` | Corrupt local profile state | Report; do not delete the profile |
-| `DEVICE_AUTH_BINDING_MISMATCH` (5) / `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (1) | Delegation binding or verification failed | Report; re-run once, then stop |
-| `TC_EXIT: None` more than 1 minute past the deadline | Waiter died | Delete `$LOG`, re-run, send the new link and code |
+| `DEVICE_AUTH_FAILED` (1), `message` contains `rate_limited` | More than 5 device sign-in starts in 10 minutes on this network | Wait at least 10 minutes, then start **one** more waiter. Never retry in a loop. Tell the owner why there's a delay (TC-575 will give this its own code) |
+| `DEVICE_AUTH_BINDING_MISMATCH` (5) / `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (1), any other message | Delegation binding or verification failed | Report; re-run once, then stop |
+| `TC_EXIT: None` with `WAITER_GONE`/`WAITER_DIED`, or more than 1 minute past the deadline | Waiter died | Don't send (or re-send) a code. Tell the owner any approval they made was lost; fix the launch (§2), then re-run within the rate limit and send the new link and code |
 
-Delete `$LOG` once the waiter has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/enable-share.log"`.
+Delete the waiter files once it has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/enable-share.log" "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/waiter.pid" "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/waiter.sh"`.
 
 ## 3. Publish — run exactly one of the two blocks
 
 Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner says otherwise — and always tell the owner the expiry. `--expires` beyond the session fails `SESSION_LIFETIME_EXCEEDED`; under 60 s is refused.
+
+**HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
 
 **Owner-only (the default):**
 
@@ -313,9 +356,13 @@ Afterwards `share show "$id"` reports `"revoked": true`.
 
 ## 6. Deliver and report
 
-Report: link type, what the recipient experiences, expiry, verification result, then the URL:
+Report with the template for the link type — fill in the placeholders, keep the revocation sentence as written, and put the URL last:
 
-> Published `report.md` — owner-only link (opens after an 8-digit code is emailed to you) / public link (anyone holding it can open; can't be revoked before it expires). Expires <date>. Verified (hash match / inspect matched). <URL>
+> **Owner-only:** Published `<file>` as an owner-only link. Only `<recipient email>` can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
+
+> **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>` and cannot be revoked before then. Verified: hash match. `<URL>`
+
+For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
@@ -375,14 +422,21 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
 | `DEVICE_AUTH_DENIED` | 5 | Owner declined — don't re-run unless asked |
 | `DEVICE_AUTH_BINDING_MISMATCH` | 5 | Session/transaction binding failed — report; re-run once |
-| `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` | 1 | Malformed or unverifiable OpenKey response — report; re-run once, then stop |
+| `DEVICE_AUTH_FAILED`, message contains `rate_limited` | 1 | More than 5 device sign-in starts in 10 minutes on this network — wait at least 10 minutes, then start one more waiter; never retry in a loop |
+| `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (other messages) | 1 | Malformed or unverifiable OpenKey response — report; re-run once, then stop |
 | `OPENKEY_UNREACHABLE` | 6 | OpenKey unreachable — report, retry later |
 | `SCOPE_REJECTED` | 5 | Manifest rejected — report; don't retry the same request |
 | `PROFILE_STATE_INCONSISTENT` | 1 | Corrupt local profile state — report; don't delete the profile |
 
 ## Approval message template (to the owner, 1:1)
 
+Send exactly this text, filling in the placeholders — don't shorten it or drop sentences. `<lifetime>` is 30 days for `enable share`, or the `--expiry` you requested:
+
 > To let me publish to your TinyCloud, open <link> (code <code>) before <deadline>. It asks for publish-only access to your share folders for up to <lifetime>. Leave every item ticked. Only approve if you asked me for this just now.
+
+If your harness won't wake you when the waiter exits (see "Turn boundaries" in §2), add this final sentence:
+
+> When you've approved, reply here and I'll finish setting up.
 
 ## HTML
 
@@ -425,6 +479,6 @@ print("\n".join(c.hits) if c.hits else "SELF_CONTAINED")
 PY
 ```
 
-It must print `SELF_CONTAINED`. Otherwise inline each flagged resource (data URI, inline `<style>`/`<script>`) or tell the owner what won't load.
+**If it prints anything other than `SELF_CONTAINED`, do not publish.** Tell the owner which resources will break (the flagged lines) and ask which they want: you inline the resources (data URIs, inline `<style>`/`<script>`) and re-check, or you publish it as-is. Publish an unchanged file only after the owner explicitly says to publish anyway.
 
 Markdown renders (headings, lists, bold, tables); Mermaid blocks show their source (TC-546). See `QUICKSTART.md` for the walkthrough and what the owner sees on their phone.

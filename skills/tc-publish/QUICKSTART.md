@@ -32,10 +32,10 @@ That rebuilds the state paths, keeps the state directory at 0700, repairs any re
 
 1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: `enable share` must offer `--replace-session` and `auth login` must offer `--expiry`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
 2. **Check the profile and session** (§2, first block). `SESSION: present` means consent already exists — go straight to publishing. Return to consent only when a publish fails with `AUTH_REQUIRED` or `PERMISSION_DENIED`. `init` runs only when the profile doesn't exist (`PROFILE_NOT_FOUND`); any other failure stops the flow. Never `profile delete`.
-3. **Consent** (§2, waiter). `enable share` asks OpenKey for the built-in share-publishing scope and waits about 10 minutes. The agent reads the approval link and code from `$LOG` and sends the approval message. `enable share` has no `--expiry`; it requests 30 days and the owner can choose shorter on the consent page. For a shorter request, use `auth login --device --manifest builtin:share-publishing --expiry <1m–30d>`.
+3. **Consent** (§2, waiter). The agent writes a small waiter script into `$STATE` and starts it so it outlives the tool call and the turn — as the harness's supervised background process if there is one, otherwise detached with `setsid nohup … < /dev/null &`. In a **separate** command it checks that the waiter is alive and the `Approve on your phone:` line is in `$LOG`; only then does it send the approval message, word for word from the template. `enable share` has no `--expiry`; it requests 30 days and the owner can choose shorter on the consent page. For a shorter request, the waiter script takes the lifetime as a second argument and runs `auth login --device --manifest builtin:share-publishing --expiry <1m–30d>`.
 4. **Publish** (§3). Exactly one of the two blocks — owner-only by default, public only when the owner explicitly asked. The block publishes with `--json`, records the share id, and saves the link to `$STATE/last-url` with `share show <id> --reveal-link`, so the link never prints. A failed publish prints `PUBLISH_FAILED: <code>` and leaves no link file.
 5. **Verify** (§4). Public: receive the link and compare SHA-256 with the source → `VERIFIED` or `MISMATCH (reason)`. Owner-only: the agent can't receive it (`CLAIM_REQUIRED` is expected), so it checks `share inspect` against the publish record and the sender record: email target, same share id, path ending in the file name, identical expiry, `policy` link, recipient = `$TC_OWNER_EMAIL` lowercased (the CLI canonicalizes the whole address to lower case).
-6. **Deliver, report, clean up** (§6). Send the link once, report link type, recipient experience, expiry and verification, then delete the state files.
+6. **Deliver, report, clean up** (§6). Send the link once, report with the template for the link type (public links can't be revoked before they expire; owner-only links can be revoked any time), then delete the state files.
 
 ## What the owner sees on their phone
 
@@ -43,9 +43,17 @@ At `openkey.so/device`: the requested capabilities — a capability-list read (r
 
 The owner taps "Sign in and review delegation", signs in with a passkey, picks their key, ticks "I started this request myself, on a device I control", leaves every item ticked, and presses **Approve**. The page says "Authenticated" and the CLI saves the scoped session. Unticking `xyz.tinycloud.share/shares/` breaks public links; unticking `shares/` breaks owner-only links.
 
-## Reply-only channels
+## Keeping the waiter alive
 
-When the agent's only channel to the owner is its reply (Codex, SWE-2 and similar), sending the approval message ends the turn — the agent cannot watch the waiter in the background across turns. When the owner next writes ("approved", "done"), the agent runs the poll and status blocks and reports. If the waiter process died in between, the agent sees no `TC_EXIT=` past the deadline, deletes `$LOG`, starts a new waiter and sends the new link and code.
+In the second forward-test round, a plain `( … ) &` waiter was killed when the command finished (Codex) and between turns (SWE-2 on OMP). The owner's approval then landed with nobody waiting and was lost. A supervised process (OMP) or a `setsid nohup` detached process survived in both harnesses. The liveness check exists so the agent never sends a code that nobody is waiting for: `WAITER_GONE` without `TC_EXIT=` means the waiter died, and the agent fixes the launch instead of sending the code. `setsid` isn't available on macOS; use the harness's supervised process there.
+
+## Consent is rate-limited
+
+OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on that network. Over the limit, the CLI currently reports `DEVICE_AUTH_FAILED` with "OpenKey device authorization failed: rate_limited (too many device authorization requests)"; TC-575 will give it its own code. The agent waits at least 10 minutes and tries once more — never in a loop. Every start counts, including relaunches after expiry or a dead waiter, so the agent never starts a new request while a code is outstanding.
+
+## Turn boundaries
+
+An agent may promise a follow-up ("I'll let you know when it's approved") only if its harness wakes it when the waiter exits — OMP supervised processes do. In a reply-only channel (Codex, SWE-2 and similar), sending the approval message ends the turn and nothing watches on the agent's behalf, so the message ends with "When you've approved, reply here and I'll finish setting up." On the owner's next message the agent runs the poll and status blocks and reports. If the waiter died in between, the agent says the approval was lost, fixes the launch, and sends a new link and code within the rate limit.
 
 ## Links are long — never retype them
 
@@ -82,4 +90,5 @@ Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option er
 - Never retype, reassemble, or chunk a link.
 - Never report a publish without verification.
 - Never publish publicly unless the owner explicitly asked, and never substitute a public link for a private one.
-- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, pass `--notify`, or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
+- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, start a new consent request while a code is outstanding, retry a rate-limited request in a loop, pass `--notify`, or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
+- Never publish HTML that fails the self-contained check unless the owner, told what will break, explicitly says to publish anyway.
