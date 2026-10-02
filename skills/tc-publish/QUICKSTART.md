@@ -70,7 +70,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 - Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
 - Invalid recipients are refused before anything is published: `INVALID_ARGUMENT` "recipient email is invalid" or "recipient email domain is invalid". Ask the owner for the correct address.
 - Don't pass `--notify`. Invite email delivery currently fails with exit 9 "partial share success" (a node 403, TC-571): the share is created, but the email isn't sent. The agent sends the link itself, and the viewer emails the recipient its own 8-digit code when they open it.
-- File names with spaces or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show the stored name, owner-only links the original. CLI `1.0.0-beta.17` refuses such names with a misleading `PERMISSION_DENIED` (TC-577).
+- File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show the stored name, owner-only links the original. CLI `1.0.0-beta.17` refuses such names with a misleading `PERMISSION_DENIED` (TC-577).
 - Public links can't be revoked today: on production `share revoke <bearer shareId>` exits 2 with `INVALID_ARGUMENT` "share operation failed", and the link keeps opening (TC-545). Expiry is the only bound.
 
 ## Rendering

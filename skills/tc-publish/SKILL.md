@@ -206,7 +206,7 @@ Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner 
 
 **HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
 
-**File names:** a name with spaces or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. On `1.0.0-beta.17` such a name fails with `PERMISSION_DENIED` (TC-577): copy the file into `$STATE` under a name with only those characters and publish the copy. It isn't a consent problem, so don't run §2.
+**File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. On `1.0.0-beta.17` such a name fails with `PERMISSION_DENIED` (TC-577): copy the file into `$STATE` under a name with only those characters and publish the copy. It isn't a consent problem, so don't run §2.
 
 **Owner-only (the default):**
 
@@ -419,7 +419,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `EXPIRED` / `NOT_FOUND` | 4 | The share expired or the id is wrong |
 | `UNAVAILABLE` | 4 | Location registry or network unreachable — nothing was shared; retry shortly |
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
-| `STORAGE_QUOTA_EXCEEDED` | 4 | The owner's TinyCloud storage is full; the message gives the used and limit sizes. Nothing was shared. Tell the owner; don't retry and don't run §2 |
+| `STORAGE_QUOTA_EXCEEDED` | 4 | The owner's TinyCloud storage is full; the message includes the used and limit sizes when the node reports them. Nothing was shared. Tell the owner; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The node didn't store the file; nothing was shared. Retry once shortly, then report |
 | exit 9, "partial share success" | 9 | Only with `--notify` (TC-571): the share exists but the invite email failed. Don't use `--notify`; send the link yourself |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
