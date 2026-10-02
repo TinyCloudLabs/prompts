@@ -2,12 +2,12 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.17` (TC-540 device login and `enable share`, TC-556 owner-only links). Install an exact pin, never `@latest` (still 0.9.0). The skill's feature probe is authoritative: earlier betas print `STALE`.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.18` (TC-540 device login and `enable share`, TC-556 owner-only links, TC-577 file names with spaces). Install an exact pin, never `@latest` (still 0.9.0). The skill's feature probe is authoritative: betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.17
+npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.18
 export TC_BIN=<dir>/node_modules/.bin/tc
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
@@ -31,10 +31,10 @@ That rebuilds the state paths, keeps the state directory at 0700, repairs any re
 ## Walkthrough
 
 1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: `enable share` must offer `--replace-session` and `auth login` must offer `--expiry`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
-2. **Check the profile and session** (§2, first block). `SESSION: present` means consent already exists — go straight to publishing. Return to consent only when a publish fails with `AUTH_REQUIRED` or `PERMISSION_DENIED`. `init` runs only when the profile doesn't exist (`PROFILE_NOT_FOUND`); any other failure stops the flow. Never `profile delete`.
+2. **Check the profile and session** (§2, first block). `SESSION: present` means consent already exists — go straight to publishing. Return to consent only when a publish fails with `AUTH_REQUIRED` or `PERMISSION_DENIED`, and only once: `STORAGE_QUOTA_EXCEEDED` and `UPLOAD_FAILED` are never consent problems. `init` runs only when the profile doesn't exist (`PROFILE_NOT_FOUND`); any other failure stops the flow. Never `profile delete`.
 3. **Consent** (§2, waiter). The agent writes a small waiter script into `$STATE` and starts it so it outlives the tool call and the turn — as the harness's supervised background process if there is one, otherwise detached with `setsid nohup … < /dev/null &`. In a **separate** command it checks that the waiter is alive and the `Approve on your phone:` line is in `$LOG`; only then does it send the approval message, word for word from the template. `enable share` has no `--expiry`; it requests 30 days and the owner can choose shorter on the consent page. For a shorter request, the waiter script takes the lifetime as a second argument and runs `auth login --device --manifest builtin:share-publishing --expiry <1m–30d>`.
 4. **Publish** (§3). Exactly one of the two blocks — owner-only by default, public only when the owner explicitly asked. The block publishes with `--json`, records the share id, and saves the link to `$STATE/last-url` with `share show <id> --reveal-link`, so the link never prints. A failed publish prints `PUBLISH_FAILED: <code>` and leaves no link file.
-5. **Verify** (§4). Public: receive the link and compare SHA-256 with the source → `VERIFIED` or `MISMATCH (reason)`. Owner-only: the agent can't receive it (`CLAIM_REQUIRED` is expected), so it checks `share inspect` against the publish record and the sender record: email target, same share id, path ending in the file name, identical expiry, `policy` link, recipient = `$TC_OWNER_EMAIL` lowercased (the CLI canonicalizes the whole address to lower case).
+5. **Verify** (§4). Public: receive the link and compare SHA-256 with the source → `VERIFIED` or `MISMATCH (reason)`. Owner-only: the agent can't receive it (`CLAIM_REQUIRED` is expected), so it checks `share inspect` against the publish record and the sender record: email target, same share id, same stored path, display name equal to the file name, identical expiry, `policy` link, recipient = `$TC_OWNER_EMAIL` lowercased (the CLI canonicalizes the whole address to lower case).
 6. **Deliver, report, clean up** (§6). Send the link once, report with the template for the link type (public links can't be revoked before they expire; owner-only links can be revoked any time), then delete the state files.
 
 ## What the owner sees on their phone
@@ -70,6 +70,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 - Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
 - Invalid recipients are refused before anything is published: `INVALID_ARGUMENT` "recipient email is invalid" or "recipient email domain is invalid". Ask the owner for the correct address.
 - Don't pass `--notify`. Invite email delivery currently fails with exit 9 "partial share success" (a node 403, TC-571): the share is created, but the email isn't sent. The agent sends the link itself, and the viewer emails the recipient its own 8-digit code when they open it.
+- File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show the stored name, owner-only links the original. CLI `1.0.0-beta.17` can't publish such names (TC-577): spaces give a misleading `PERMISSION_DENIED`, other unusual names may give `INVALID_ARGUMENT`. The agent tells the owner to upgrade instead of re-running consent or renaming the file.
 - Public links can't be revoked today: on production `share revoke <bearer shareId>` exits 2 with `INVALID_ARGUMENT` "share operation failed", and the link keeps opening (TC-545). Expiry is the only bound.
 
 ## Rendering
