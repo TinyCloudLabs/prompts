@@ -420,7 +420,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `UNAVAILABLE` | 4 | Location registry or network unreachable — nothing was shared; retry shortly |
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
 | `STORAGE_QUOTA_EXCEEDED` | 4 | The owner's TinyCloud storage is full; the message includes the used and limit sizes when the node reports them. Nothing was shared. Tell the owner; don't retry and don't run §2 |
-| `UPLOAD_FAILED` | 4 | The node didn't store the file; nothing was shared. Retry once shortly, then report |
+| `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
 | exit 9, "partial share success" | 9 | Only with `--notify` (TC-571): the share exists but the invite email failed. Don't use `--notify`; send the link yourself |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
