@@ -1,10 +1,10 @@
 # tc-publish forward-test runbook
 
-The coordinator runs each sequence with a **fresh agent that has only the `tc-publish` skill** — OMP SWE-2, `omp-private` DeepSeek on Tinfoil, and Codex are the target matrix. Tests 1–6 share one setup per agent; Tests 7–10 are additional sequences.
+The coordinator runs each sequence with a **fresh agent that has only the `tc-publish` skill** — OMP SWE-2, `omp-private` DeepSeek on Tinfoil, and Codex are the target matrix. Tests 1–6 and 13 share one setup per agent; Tests 7–12 are additional sequences.
 
 ## Preconditions
 
-- **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.17` — do not run these tests until beta.17 publishes. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
+- **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.18` — do not run these tests until beta.18 publishes. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
 - `TC_BIN` = the absolute path to that executable, exported into the agent's environment. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent must never change or unset them.
 - **One `TC_HOME` and one `TC_PUBLISH_STATE` per agent/model sequence**, both exported — fresh scratch directories per sequence, never `~/.tinycloud` or the default `~/.local/state/tc-publish`. Reuse them across Tests 1–6 of that sequence. Separate state directories let sequences run in parallel on one machine without sharing a waiter log or link file.
 - `TC_OWNER_EMAIL` exported = a coordinator-controlled **mailinator** (or equivalent public) inbox, so the coordinator can read the 8-digit mailbox code in Test 4. Never Sam's real mailbox.
@@ -57,7 +57,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Expected:** the agent runs the feature probe (`enable share --help` → `--replace-session`, `auth login --help` → `--expiry`) and prints `CLI_OK`, reports `"$TC_BIN" --version`, and echoes `TC_HOME`. It does not run bare `command -v tc` or trust PATH.
 
-**Pass:** probe prints `CLI_OK`; the reported version is `1.0.0-beta.17` or later; `TC_HOME` echoed. A stale or missing `TC_BIN` → the agent must stop and report, not install anything.
+**Pass:** probe prints `CLI_OK`; the reported version is `1.0.0-beta.18` or later; `TC_HOME` echoed. A stale or missing `TC_BIN` → the agent must stop and report, not install anything.
 
 ## Test 2 — Device consent (`enable share`)
 
@@ -81,7 +81,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Prompt:** "Publish `/tmp/test-note.md` so only I can open it, and give me the link."
 
-**Expected:** the **owner-only** publish block only (`--to "email:$TC_OWNER_EMAIL" --expires 7d --json`, no `--notify`) → share id recorded as `MD_ADDR`; the `…/s/inline#v=2&p=…` link lands in `$STATE/last-url` unprinted; the owner-only verify block prints `VERIFIED` — `metadata.target.kind` = `email`, same `shareId` as `publish.json`, `metadata.resource.path` ends in `/test-note.md`, `metadata.expiresAt` identical to `publish.json`'s, `link.kind` = `policy`, and `share show` `.recipient` = `$TC_OWNER_EMAIL` lowercased. The public publish command must not run. If the agent tries `share receive`, it gets `CLAIM_REQUIRED` (exit 6) and reports that as expected.
+**Expected:** the **owner-only** publish block only (`--to "email:$TC_OWNER_EMAIL" --expires 7d --json`, no `--notify`) → share id recorded as `MD_ADDR`; the `…/s/inline#v=2&p=…` link lands in `$STATE/last-url` unprinted; the owner-only verify block prints `VERIFIED` — `metadata.target.kind` = `email`, same `shareId` as `publish.json`, `metadata.resource.path` equal to `publish.json`'s, `metadata.display.filename` = `test-note.md`, `metadata.expiresAt` identical to `publish.json`'s, `link.kind` = `policy`, and `share show` `.recipient` = `$TC_OWNER_EMAIL` lowercased. The public publish command must not run. If the agent tries `share receive`, it gets `CLAIM_REQUIRED` (exit 6) and reports that as expected.
 
 **Coordinator action:** open the delivered link in a browser; it asks for the mailbox — enter the mailinator address, read the 8-digit code from that inbox, enter it, and confirm the file opens with "Verified sender". No TinyCloud account involved.
 
@@ -155,6 +155,18 @@ Run when no other sequence needs consent for the next 20 minutes. The coordinato
 **Prompt:** as Test 2.
 
 **Pass:** the waiter exits with `DEVICE_AUTH_FAILED` and a message containing `rate_limited`; the agent sends no code, tells the owner it must wait at least 10 minutes, and starts exactly **one** more waiter after that. A retry before 10 minutes, or more than one retry, is a **fail**. (Reply-only agents learn the outcome on the next turn and should ask the owner to come back after 10 minutes.)
+
+## Test 13 — File name with spaces
+
+Create the file first: `cp /tmp/test-note.md '/tmp/Q3 plan (draft).md'`.
+
+**Prompt:** "Publish `/tmp/Q3 plan (draft).md` so only I can open it, and give me the link."
+
+**Expected:** the **owner-only** block with the path quoted as given → `PUBLISHED`; the owner-only verify block prints `VERIFIED` — `metadata.resource.path` ends in `/Q3-plan-draft.md` and `metadata.display.filename` = `Q3 plan (draft).md`. No consent step runs.
+
+**Coordinator action:** open the link with the mailbox code; the viewer shows the file as `Q3 plan (draft).md`.
+
+**Pass:** all of the above. Running consent, or any `PERMISSION_DENIED`, is a **fail** (TC-577).
 
 ## Failure-injection checks (optional)
 

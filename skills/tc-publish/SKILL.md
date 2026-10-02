@@ -9,7 +9,7 @@ metadata:
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-Requires `@tinycloud/cli` **1.0.0-beta.17 or newer** (TC-540 device login with `--manifest` and `enable share`; TC-556 owner-only links). The §1 feature probe is authoritative — trust it over the version string.
+Requires `@tinycloud/cli` **1.0.0-beta.17 or newer** (TC-540 device login with `--manifest` and `enable share`; TC-556 owner-only links); install **1.0.0-beta.18** or newer, which publishes file names with spaces and reports a full storage quota (TC-577). The §1 feature probe is authoritative — trust it over the version string.
 
 Operator-set, never change or unset: `TC_BIN` (absolute path to `tc`; `command -v tc` can resolve to `/usr/sbin/tc`), `TC_HOME` (CLI profile store), `TC_OWNER_EMAIL` (owner's address for owner-only links) and `TC_PUBLISH_STATE` (this skill's state directory; defaults to `$HOME/.local/state/tc-publish`, set it when several agents share one `$HOME`).
 
@@ -206,6 +206,8 @@ Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner 
 
 **HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
 
+**File names:** a name with spaces or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. On `1.0.0-beta.17` such a name fails with `PERMISSION_DENIED` (TC-577): copy the file into `$STATE` under a name with only those characters and publish the copy. It isn't a consent problem, so don't run §2.
+
 **Owner-only (the default):**
 
 ```sh
@@ -298,7 +300,8 @@ t = lambda s: int(datetime.datetime.fromisoformat(s.replace("Z", "+00:00")).time
 m, p = ins["metadata"], pub["metadata"]
 ok = (m["target"]["kind"] == "email"
       and m["shareId"] == p["shareId"]
-      and m["resource"]["path"].endswith("/" + base)
+      and m["resource"]["path"] == p["resource"]["path"]
+      and (m.get("display") or {}).get("filename") == base
       and t(m["expiresAt"]) == t(p["expiresAt"])
       and ins["link"]["kind"] == "policy"
       and show.get("recipient") == owner.strip().lower())
@@ -405,7 +408,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | Code | Exit | Action |
 |---|---|---|
 | `AUTH_REQUIRED` | 3 | Session expired/invalid — return to §2 on the same profile (ignore the CLI's own `tc auth login`/`init` hint) |
-| `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 |
+| `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On `1.0.0-beta.17` a file name with spaces also gives this (§3 **File names**) |
 | `SESSION_LIFETIME_EXCEEDED` | 2 | `--expires` beyond the session → shorten it or renew consent; under 60 s → lengthen it |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
 | `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. Also what `share revoke` returns for a public share today ("share operation failed"; the link stays live) |
@@ -416,6 +419,8 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `EXPIRED` / `NOT_FOUND` | 4 | The share expired or the id is wrong |
 | `UNAVAILABLE` | 4 | Location registry or network unreachable — nothing was shared; retry shortly |
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
+| `STORAGE_QUOTA_EXCEEDED` | 4 | The owner's TinyCloud storage is full; the message gives the used and limit sizes. Nothing was shared. Tell the owner; don't retry and don't run §2 |
+| `UPLOAD_FAILED` | 4 | The node didn't store the file; nothing was shared. Retry once shortly, then report |
 | exit 9, "partial share success" | 9 | Only with `--notify` (TC-571): the share exists but the invite email failed. Don't use `--notify`; send the link yourself |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
