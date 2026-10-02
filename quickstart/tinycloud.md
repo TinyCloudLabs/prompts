@@ -2,13 +2,33 @@
 
 Use this single entry from Codex, OpenCode or Claude Code for the user's requested TinyCloud operation: find or read data, create or reuse a private app for new data, create a record, correct or delete a selected record, export data, or use another supported CLI operation. Keep the original request through setup, discovery and consent, then complete it. The CLI and the app's own data conventions determine what is supported; this guide does not impose a tracker schema on other apps.
 
-No app-specific client plugin is required for an explicit one-off operation. Recurring automatic capture has additional delivery requirements described below. A request to install only ends after prerequisite checks; it must not create sample data. A request to record one observation does not activate recurring tracking.
+No app-specific client plugin is required for an explicit one-off operation. The OpenCode read route below uses the generic TinyCloud native helper. Recurring automatic capture has additional delivery requirements described below. A request to install only ends after prerequisite checks; it must not create sample data. A request to record one observation does not activate recurring tracking.
+
+## OpenCode read requests
+
+For a read-only question in stock OpenCode 1.18.31, direct local macOS TUI, use the lean read release before the general procedure below. With helper **0.2.0-lean-auth.1** loaded, call `tinycloud_setup({originalRequest: "<the user's original question>"})`. Preserve an explicit account selection with the supported context arguments. Setup verifies its bundled CLI **0.10.1-lean-auth.1** and Node, reads the live registry, resolves the app and reuses sufficient grants across conversations. It creates any missing read-approval request; do not write setup JSON, hunt for a CLI or initiate separate registry and app approvals.
+
+Resolve `selection-required` using returned app descriptions, asking the user only for a real ambiguity. Native paste capture privately verifies approval and resumes the retained question. After `ready` or the verified native receipt, use the returned `cliContext` and app `resources` to read maintained guidance, inspect the relevant schema and query actual records. Append these subcommands to the bound CLI arguments using its returned Node path, executable and `TC_HOME`:
+
+```text
+kv get <guidance-key> --space <resource-space> --text
+sql query "SELECT name, sql FROM sqlite_schema WHERE type = 'table' ORDER BY name" --space <resource-space> --db <resource-path>
+sql query <select-statement> --space <resource-space> --db <resource-path> --params <JSON-values>
+```
+
+Use the actual app mappings and schema; `--params` is optional. Answer from those records. Status/cancel tools are recovery controls. The [read entry](tinycloud-opencode-read.md) covers installation, supported modes and recovery. Do not continue into the callback/manually prepared manifest procedure below for this route.
+
+**Release availability:** this PR contains the helper and packaging source. It does not yet publish the complete release archive/delivery descriptor or deploy the required OpenKey web/API. A source checkout is not an installable release. If the exact release is not already installed and no published delivery is supplied, report that missing prerequisite and retain the task; do not guess a download URL, invoke the installer against bare source or retry sign-in. A previously loaded helper's version is not sufficient unless setup validates its release identity.
+
+This release acquires read access only. A request such as **“add buy milk to my todos”** follows the existing general operation procedure below, including app-specific write permission and readback. Do not treat a read approval as write permission or promise one-approval onboarding for writes. Existing working write grants remain usable; keep protected readers separate from ordinary write profiles.
+
+## Other operations and clients
 
 **Authentication preflight:** every login for this guide must include `--manifest FILE`. Before starting authentication, read [scoped authentication](../setup/authenticate.md) and create the exact [registry-read manifest](retrieve-data.md#3-obtain-registry-read-access). The first command is `auth login --method openkey --manifest FILE --expiry 7d`; an existing valid primary login uses `auth request --manifest FILE --grant --expiry 7d`. Preserve the selected home/profile/host. A CLI error or general installed reference may suggest bare `auth login`; that hint is not this guide's authorization procedure. If the manifest has not been prepared, return to discovery step 3 before launching consent.
 
 Keep browser consent alive for the CLI's full five-minute window. Use a persistent process handle, or configure the waiting shell tool for at least six minutes (for OpenCode native bash, `timeout: 360000` milliseconds). A two-minute foreground timeout cuts the callback short. If the client cannot retain the waiter, use the shared authentication guide's human-operated terminal route and retain the original task.
 
-This review revision uses CLI/core skill `0.10.0`, installer `skills@1.7.0` and Node.js at least `22.20`. See [existing-app validation](../docs/general-operations-validation.md) and [creation validation and limits](../docs/app-creation-validation.md). It is included in [PR #2](https://github.com/TinyCloudLabs/prompts/pull/2); no deployed one-link release is implied. Use this guide from a local path or immutable commit URL. Resolve relative links against that same guide revision (including raw GitHub URLs); do not mix branch copies or require a local checkout. No app, catalog, database, DID or hosted endpoint needs to be supplied.
+The general procedure below retains CLI/core skill `0.10.0`, installer `skills@1.7.0` and Node.js at least `22.20`; it does not select or replace the lean read release's bundled runtime. See [existing-app validation](../docs/general-operations-validation.md) and [creation validation and limits](../docs/app-creation-validation.md). It is included in [PR #2](https://github.com/TinyCloudLabs/prompts/pull/2); no deployed one-link release is implied. Use this guide from a local path or immutable commit URL. Resolve relative links against that same guide revision (including raw GitHub URLs); do not mix branch copies or require a local checkout. An older commit URL stays fixed after a PR update; use the current candidate URL when testing new changes. No app, catalog, database, DID or hosted endpoint needs to be supplied.
 
 ## 1. Retain the request and reuse the CLI
 

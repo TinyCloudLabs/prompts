@@ -1,5 +1,7 @@
 # Select a TinyCloud account and authorize the pending task
 
+For a standalone read-only question in supported local OpenCode, follow the [lean read entry](../quickstart/tinycloud-opencode-read.md) and its single `tinycloud_setup` call. That release owns context, manifests, runtime selection and native approval capture. Its publication/deployment prerequisites must be satisfied; the callback instructions below do not repair a missing or incompatible lean release. This module remains the existing scoped procedure for other clients and for general operations requiring write/provisioning authority. A lean read receipt never authorizes a write.
+
 This module orchestrates CLI `0.10.0` authentication for the [general task guide](../quickstart/tinycloud.md), [read-only discovery](../quickstart/retrieve-data.md) and their scoped app operations. [Shared prerequisites](tinycloud.md) remain installation-only. Do not invoke authentication for an installation-only request. No TinyChat pack, standalone OpenKey CLI or new owner identity is needed.
 
 The caller supplies the original request, actual client and execution mode, request date/timezone, its exact return heading, the role (reader, ordinary task or provisioner), and a narrowly scoped manifest when known. Return there automatically after verified consent; installation or a login receipt does not finish the user's operation.

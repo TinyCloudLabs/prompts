@@ -1,5 +1,7 @@
 # Find and read existing TinyCloud data
 
+For a standalone read-only question in stock OpenCode 1.18.31, direct local macOS TUI, follow the [lean read entry](tinycloud-opencode-read.md). Its single `tinycloud_setup` call validates the bundled runtime, resolves the app and reuses existing grants or requests the selected app's read scope. Read its release-availability requirements before installation. Do not also run the registry/app callback procedure below. The procedure below remains for other clients and for discovery called by a general write/creation task; retain that caller's original operation and return heading.
+
 Use this guide in an ordinary Codex session with shell and network access. Preserve the user's original question through installation, identity selection, consent and discovery. The same CLI procedure is reusable by OpenCode and Claude Code. It requires no playground, OpenCode adapter, custom MCP server, preselected database, or writer message IDs.
 
 This guide reads existing data. Do not activate tracking, register an app, create tables, seed observations, migrate schemas, rebuild an account index, or publish/share anything to answer the question. An enrollment gap goes to the separate owner setup route below.
