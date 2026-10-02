@@ -1,0 +1,44 @@
+{
+  "classification": "fresh Codex processes; synthetic loopback data and saved synthetic grants",
+  "cases": {
+    "sqlCreate": {
+      "freshProcess": true,
+      "liveDiscovery": true,
+      "knowledgeRead": true,
+      "completedCommands": 13,
+      "dataMutationCommands": 1,
+      "finalResponse": true
+    },
+    "kvCreate": {
+      "freshProcess": true,
+      "liveDiscovery": true,
+      "knowledgeRead": true,
+      "completedCommands": 15,
+      "dataMutationCommands": 1,
+      "finalResponse": true
+    },
+    "sqlReconcile": {
+      "freshProcess": true,
+      "liveDiscovery": true,
+      "knowledgeRead": true,
+      "completedCommands": 13,
+      "dataMutationCommands": 0,
+      "finalResponse": true
+    },
+    "kvDelete": {
+      "freshProcess": true,
+      "liveDiscovery": true,
+      "knowledgeRead": true,
+      "completedCommands": 14,
+      "dataMutationCommands": 1,
+      "finalResponse": true
+    }
+  },
+  "independentSQLReadback": true,
+  "oneNewMeasurementOnly": true,
+  "baselineRowsUnchanged": true,
+  "uncertainTaskReconciledWithoutMutation": true,
+  "noteDeletionVerified": true,
+  "realUserWrites": false,
+  "newHumanConsentTested": false
+}

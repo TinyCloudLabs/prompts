@@ -1,0 +1,430 @@
+{
+  "skill": "tc-conversational-data",
+  "version": "0.1.0",
+  "validation_date": "2026-09-29",
+  "run_id": "r20260929s",
+  "method": "Independent Codex agents explicitly loaded installed skill and core dependency, then used real CLI against a disposable localhost node. Operator checked stored state. All records are synthetic; command summaries omit raw payloads and local credentials.",
+  "environment": {
+    "cli": "0.10.0",
+    "node": "1.17.1",
+    "node_release_target": "7a58693f8bcd0d4e9d4df40dd464abd8c9c763ed",
+    "node_binary_sha256": "25e762067916fd99db922332ef83eb62bb54462f3d81a50da317771af26192c9",
+    "installer": "skills@1.7.0",
+    "catalog_format": "tc-conversational-data/v1",
+    "writers": 1
+  },
+  "installed_package": {
+    "byte_identical_to_source": true,
+    "files": {
+      "SKILL.md": "e77fde31886f67d5a44f8e18976d97afbf5d16da08faff4691774a8cf2613f33",
+      "references/sql-patterns.md": "ce49a352db0334b08e48fd2be6488a7ccf8f2fa20218837221e7443ee8845bb8",
+      "references/storage-contract.md": "a12bd5b000780d5737e9c93cc5534836a5998016ed5153e7a16e07f78f11151c"
+    }
+  },
+  "scope_checks": {
+    "agent_measurements_read_exit": 0,
+    "agent_catalog_read_exit": 0,
+    "agent_sibling_exit": 1,
+    "agent_sibling_error_code": "AUTH_UNAUTHORIZED"
+  },
+  "read_only_cases": {
+    "no_mutations": true,
+    "unchanged_baseline": true,
+    "all_cli_storage_commands_succeeded": true,
+    "storage_command_count": 11,
+    "schema_query_count": 3
+  },
+  "initial_records": {
+    "fitness": [
+      {
+        "id": "seed:sleep",
+        "source_key": "seed:sleep",
+        "occurrence_date": "2026-09-29",
+        "date_precision": "day",
+        "timezone": "Europe/Lisbon",
+        "captured_at": "2026-09-29T09:01:00Z",
+        "revision": 1,
+        "last_operation_id": "seed:sleep:op",
+        "source_message": "I slept 6.25 hours last night.",
+        "correction_message": null,
+        "metric": "sleep",
+        "value": 6.25,
+        "unit": "hours"
+      },
+      {
+        "id": "seed:weight:a",
+        "source_key": "seed:weight:a",
+        "occurrence_date": "2026-09-28",
+        "date_precision": "morning",
+        "timezone": "Europe/Lisbon",
+        "captured_at": "2026-09-29T09:00:00Z",
+        "revision": 1,
+        "last_operation_id": "seed:weight:a:op",
+        "source_message": "79.6 kg on 2026-09-28 morning",
+        "correction_message": null,
+        "metric": "weight",
+        "value": 79.6,
+        "unit": "kg"
+      },
+      {
+        "id": "seed:weight:b",
+        "source_key": "seed:weight:b",
+        "occurrence_date": "2026-09-29",
+        "date_precision": "morning",
+        "timezone": "Europe/Lisbon",
+        "captured_at": "2026-09-29T09:00:00Z",
+        "revision": 1,
+        "last_operation_id": "seed:weight:b:op",
+        "source_message": "80.1 kg on 2026-09-29 morning",
+        "correction_message": null,
+        "metric": "weight",
+        "value": 80.1,
+        "unit": "kg"
+      }
+    ],
+    "finance": [
+      {
+        "id": "seed:expense",
+        "source_key": "seed:expense",
+        "occurrence_date": "2026-09-29",
+        "date_precision": "day",
+        "timezone": "Europe/Lisbon",
+        "captured_at": "2026-09-29T09:02:00Z",
+        "revision": 1,
+        "last_operation_id": "seed:expense:op",
+        "source_message": "Lunch today was EUR 24.25.",
+        "correction_message": null,
+        "amount_minor": 2425,
+        "currency": "EUR",
+        "category": "lunch"
+      }
+    ]
+  },
+  "capture": {
+    "id": "package:m03:item01",
+    "source_key": "package:m03:item01",
+    "occurrence_date": "2026-09-30",
+    "date_precision": "day",
+    "timezone": "Europe/Lisbon",
+    "captured_at": "2026-09-29T10:58:18Z",
+    "revision": 1,
+    "last_operation_id": "package:m03:op01",
+    "source_message": "I slept 8.25 hours last night.",
+    "correction_message": null,
+    "metric": "sleep",
+    "value": 8.25,
+    "unit": "hours"
+  },
+  "correction": {
+    "id": "package:m03:item01",
+    "source_key": "package:m03:item01",
+    "occurrence_date": "2026-09-30",
+    "date_precision": "day",
+    "timezone": "Europe/Lisbon",
+    "captured_at": "2026-09-29T10:58:18Z",
+    "revision": 2,
+    "last_operation_id": "package:m04:op01",
+    "source_message": "I slept 8.25 hours last night.",
+    "correction_message": "Actually, it was 7.75 hours.",
+    "metric": "sleep",
+    "value": 7.75,
+    "unit": "hours"
+  },
+  "correction_replay": {
+    "unchanged_corrected_row": true,
+    "last_agent_command_was_successful_read": true,
+    "agent_command_count_after_replay": 18
+  },
+  "final_checks": {
+    "capture_redelivery_preserves_correction": true,
+    "unique_captured_row": true,
+    "exactly_one_insert_and_one_update": true,
+    "each_mutation_changed_one_row": true,
+    "all_agent_storage_commands_succeeded": true,
+    "agent_storage_command_count": 19,
+    "final_row_counts": {
+      "fitness": 4,
+      "finance": 1
+    },
+    "all_seed_records_unchanged": true
+  },
+  "agent_storage_commands": [
+    {
+      "time": "2026-09-29T10:56:31.322205+00:00",
+      "command": "kv get",
+      "exit": 0,
+      "key": "conversational-trial/r20260929s/catalog.json",
+      "result": {
+        "successful_read": true
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:39.437671+00:00",
+      "command": "kv get",
+      "exit": 0,
+      "key": "conversational-trial/r20260929s/catalog.json",
+      "result": {
+        "successful_read": true
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:42.398626+00:00",
+      "command": "kv get",
+      "exit": 0,
+      "key": "conversational-trial/r20260929s/finance.md",
+      "result": {
+        "successful_read": true
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:42.402328+00:00",
+      "command": "kv get",
+      "exit": 0,
+      "key": "conversational-trial/r20260929s/fitness.md",
+      "result": {
+        "successful_read": true
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:42.402348+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_finance",
+      "statement": "SELECT name, sql FROM sqlite_master WHERE type = ?",
+      "parameters": [
+        "table"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:42.407833+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT name, sql FROM sqlite_master WHERE type = ?",
+      "parameters": [
+        "table"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:50.602979+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT name, sql FROM sqlite_master WHERE type = ?",
+      "parameters": [
+        "table"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:50.603217+00:00",
+      "command": "kv get",
+      "exit": 0,
+      "key": "conversational-trial/r20260929s/fitness.md",
+      "result": {
+        "successful_read": true
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:53.178093+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_finance",
+      "statement": "SELECT id, occurrence_date, date_precision, timezone, amount_minor, currency, category FROM expenses ORDER BY occurrence_date DESC, captured_at DESC, id",
+      "parameters": [],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T10:56:53.178768+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, occurrence_date, date_precision, timezone, captured_at, metric, value, unit FROM measurements WHERE metric IN (?, ?) ORDER BY occurrence_date DESC, captured_at DESC, id",
+      "parameters": [
+        "weight",
+        "sleep"
+      ],
+      "result": {
+        "rowCount": 3
+      }
+    },
+    {
+      "time": "2026-09-29T10:57:03.646387+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit FROM measurements WHERE metric = ? ORDER BY occurrence_date DESC, captured_at DESC",
+      "parameters": [
+        "weight"
+      ],
+      "result": {
+        "rowCount": 2
+      }
+    },
+    {
+      "time": "2026-09-29T10:58:10.923918+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit FROM measurements WHERE source_key = ? OR id = ?",
+      "parameters": [
+        "package:m03:item01",
+        "package:m03:item01"
+      ],
+      "result": {
+        "rowCount": 0
+      }
+    },
+    {
+      "time": "2026-09-29T10:58:29.477418+00:00",
+      "command": "sql execute",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "INSERT INTO measurements (id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "parameters": [
+        "package:m03:item01",
+        "package:m03:item01",
+        "2026-09-30",
+        "day",
+        "Europe/Lisbon",
+        "2026-09-29T10:58:18Z",
+        1,
+        "package:m03:op01",
+        "I slept 8.25 hours last night.",
+        null,
+        "sleep",
+        8.25,
+        "hours"
+      ],
+      "result": {
+        "changes": 1
+      }
+    },
+    {
+      "time": "2026-09-29T10:58:37.298904+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit FROM measurements WHERE source_key = ? OR id = ?",
+      "parameters": [
+        "package:m03:item01",
+        "package:m03:item01"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T11:01:54.690469+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit FROM measurements WHERE id = ?",
+      "parameters": [
+        "package:m03:item01"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T11:02:04.905671+00:00",
+      "command": "sql execute",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "UPDATE measurements SET value = ?, correction_message = ?, revision = revision + 1, last_operation_id = ? WHERE id = ? AND revision = ? AND last_operation_id <> ?",
+      "parameters": [
+        7.75,
+        "Actually, it was 7.75 hours.",
+        "package:m04:op01",
+        "package:m03:item01",
+        1,
+        "package:m04:op01"
+      ],
+      "result": {
+        "changes": 1
+      }
+    },
+    {
+      "time": "2026-09-29T11:02:20.503268+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit FROM measurements WHERE id = ?",
+      "parameters": [
+        "package:m03:item01"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T11:02:46.677090+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit FROM measurements WHERE id = ?",
+      "parameters": [
+        "package:m03:item01"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    },
+    {
+      "time": "2026-09-29T11:03:25.723235+00:00",
+      "command": "sql query",
+      "exit": 0,
+      "database": "tc_trial_r20260929s_fitness",
+      "statement": "SELECT id, source_key, occurrence_date, date_precision, timezone, captured_at, revision, last_operation_id, source_message, correction_message, metric, value, unit FROM measurements WHERE source_key = ? OR id = ?",
+      "parameters": [
+        "package:m03:item01",
+        "package:m03:item01"
+      ],
+      "result": {
+        "rowCount": 1
+      }
+    }
+  ],
+  "cleanup": {
+    "node_stopped": true,
+    "signal": "SIGTERM",
+    "checked_at": "2026-09-29T11:04:12Z",
+    "listener_closed": true
+  },
+  "not_exercised": [
+    "automatic client skill discovery",
+    "generic browser onboarding",
+    "production client delivery-ID integration",
+    "concurrent writers",
+    "automatic provisioning",
+    "cross-environment restore"
+  ],
+  "published_install": {
+    "source": "TinyCloudLabs/prompts#b09981215f5873a9c24e3bcb890a7074d9ebefb6",
+    "clients": [
+      "opencode",
+      "codex"
+    ],
+    "scope": "project",
+    "copy": true,
+    "exit": 0,
+    "installed_files_sha256": {
+      "SKILL.md": "e77fde31886f67d5a44f8e18976d97afbf5d16da08faff4691774a8cf2613f33",
+      "references/storage-contract.md": "a12bd5b000780d5737e9c93cc5534836a5998016ed5153e7a16e07f78f11151c",
+      "references/sql-patterns.md": "ce49a352db0334b08e48fd2be6488a7ccf8f2fa20218837221e7443ee8845bb8"
+    },
+    "review_starter_guide_url_resolves": true,
+    "project_lockfile_created": true
+  }
+}

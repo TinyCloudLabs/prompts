@@ -1,0 +1,14 @@
+{
+  "classification": "local static checks plus previously executed focused regression",
+  "documentFilesChecked": 9,
+  "localLinksAndAnchors": 68,
+  "jsonExamples": 5,
+  "pythonFilesCompiled": 5,
+  "javascriptSyntax": true,
+  "trackedAndNewFileWhitespace": true,
+  "sharedResultPrivacyCheck": true,
+  "editedSkillMetadataFiles": 0,
+  "monthlyRetrievalSqlRegression": "passed",
+  "existingRegisteredSqlKvFixture": "passed",
+  "passed": true
+}
