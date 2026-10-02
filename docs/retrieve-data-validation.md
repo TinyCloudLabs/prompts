@@ -2,7 +2,7 @@
 
 September 29, 2026. Local validation run; the implementation is included in [PR #2](https://github.com/TinyCloudLabs/prompts/pull/2). No merge or deployment was part of validation.
 
-The entry is [quickstart/retrieve-data.md](../quickstart/retrieve-data.md), with its [starter](../quickstart/retrieve-data-prompt.txt), [knowledge convention](../references/application-knowledge.md), and [owner enrollment](../setup/conversational-data.md#enroll-an-existing-or-newly-prepared-tracker). The existing OpenCode onboarding integration is unchanged; an existing tracker needs owner enrollment before this new reader can discover it.
+At the September 29 validation, [quickstart/retrieve-data.md](../quickstart/retrieve-data.md) was a separate entry with a retrieval starter, [knowledge convention](../references/application-knowledge.md), and [owner enrollment](../setup/conversational-data.md#enroll-an-existing-or-newly-prepared-tracker). The existing OpenCode onboarding integration was unchanged; an existing tracker needed owner enrollment before that reader could discover it. October 2 update: the separate starter has been retired in favor of the single [generic starter](../quickstart/tinycloud-prompt.txt); retrieval is now supporting material. This link repair does not change the historical results below.
 
 ## Evidence boundaries
 
@@ -45,3 +45,9 @@ A separate hosted scope test verified that a random synthetic table did not exis
 Full short-prompt retrieval and fresh-process reuse are verified for this selected owner/host and saved grants. Consent is still a human action and must be renewed when access expires. The guide's CLI decoding workaround remains necessary for the tested release. Existing exports and running client remain unchanged. The reader's CLI-managed state was moved intact from temporary to durable storage and verified through `context`; credential files were not inspected.
 
 Missing enrollment is a precise owner setup gap; adding reader instructions cannot make an unregistered app discoverable. Hosted account access and owner context must also be verified independently of existing app-data reads. Historical workflow pin `b09981215f5873a9c24e3bcb890a7074d9ebefb6` lacks the retrieval/export corrections; use the matching review checkout or a reviewed full commit from this PR.
+
+## October 2, 2026: fixture decoupling
+
+The [query probe](validation/retrieval-query-probe.py) now owns its disposable SQLite query instead of extracting SQL from guide prose. Its fixture-specific schema and domain are not generic application requirements. The implementation parent ran it successfully after this change: half-open occurrence-date boundaries, capture-date independence, multiple readings per day, exclusion of unrelated metrics, separate units, mean difference, missing-month nulls and empty-dataset nulls remain checked. The query uses bound parameters and never contacts TinyCloud or user data.
+
+The September 29 statement that the probe executed the guide's SQL remains historical evidence. The new probe does not prove that an agent generated a correct query or followed the new public entry. Current runner modes, private evidence, publication/consent gates and unexercised public journeys are documented in the [October 2 runner update](app-creation-validation.md#october-2-2026-public-entry-runner-boundary). Published CLI `0.10.0` still needs the canonical-record workaround; no corrected runtime adoption is claimed.

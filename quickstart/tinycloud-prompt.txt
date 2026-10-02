@@ -1,1 +1,3 @@
-Add buy milk to my todos. Use TinyCloud: <absolute path to your local entry or this checkout's quickstart/tinycloud.md>
+Use TinyCloud to carry out my request below. Follow quickstart/tinycloud.md from this matching checkout, or its exact published URL when supplied. Preserve my request through any necessary setup or consent, then verify the result.
+
+My request: [your request]

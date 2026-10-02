@@ -32,7 +32,7 @@ try {
   } else await cp(runtime, join(root, 'runtime'), { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
   await mkdir(join(root, 'quickstart'));
   await mkdir(join(root, 'references'));
-  await cp(resolve(values.guide ?? join(source, '../quickstart/tinycloud-opencode-read.md')), join(root, 'quickstart/tinycloud-opencode-read.md'));
+  await cp(resolve(values.guide ?? join(source, 'quickstart/tinycloud-opencode-read.md')), join(root, 'quickstart/tinycloud-opencode-read.md'));
   await cp(resolve(values.reference ?? join(source, 'references/cli.md')), join(root, 'references/cli.md'));
   const manifest = { schemaVersion: 1, version: releaseVersion, cli: { path: bundledCli, version: supportedCliVersion }, files: await releaseInventory(root) };
   await writeFile(join(root, 'release-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

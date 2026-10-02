@@ -38,7 +38,7 @@ def snapshot():
     return result
 
 def command(directory, continuation=None):
-    values = [sys.executable, str(runner), "--connection", context["connectionFile"], "--guide", str(guide), "--directory", str(directory), "--state", str(state), "--request", request]
+    values = [sys.executable, str(runner), "--mode", "synthetic", "--connection", context["connectionFile"], "--guide", str(guide), "--directory", str(directory), "--state", str(state), "--request", request, "--timeout", "1200"]
     return values + (["--continuation", str(continuation)] if continuation else [])
 
 before = snapshot()

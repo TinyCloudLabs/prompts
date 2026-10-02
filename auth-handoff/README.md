@@ -1,10 +1,12 @@
-# TinyCloud OpenCode read setup
+# Experimental TinyCloud OpenCode read setup
+
+This optional experiment is not the generic quickstart or an available dependency of it. Its helper package is private and its matching release/deployment prerequisites remain explicit. Ordinary CLI agents use the published CLI procedure in the repository's generic entry instead. Moving this guide does not publish the experiment or change its historical acceptance status.
 
 This release extends the existing TinyChat-derived native handoff with one model-facing `tinycloud_setup` call. Code owns the bundled runtime, durable account selection, canonical app read scope, approval and private import. The CLI remains the signed-proof verifier. Transport provenance is TinyCloudLabs/tinychat `f67bf08417c8954fc0bab4379e99db13977f4d96`.
 
 The supported client is stock OpenCode 1.18.31, direct local macOS TUI. The release binds CLI 0.10.1-lean-auth.1 and OpenCode plugin schema 1.18.31 with a complete dependency lock and per-file integrity inventory. Node is bound to the actual Node executable at installation; compiled OpenCode is never used as a Node replacement. Use Node 22.22.2 LTS or newer compatible LTS.
 
-Use `quickstart/tinycloud-opencode-read.md` from the complete release. Existing installations must upgrade the whole release. The bootstrap checks the archive digest, stages a new versioned directory and validates the complete tree before the installer atomically switches only its managed loader. Validation failure retains the prior loader. The installer preserves existing account state and unrelated plugins.
+The experimental source guide is [`quickstart/tinycloud-opencode-read.md`](quickstart/tinycloud-opencode-read.md), colocated here with its helper. The builder preserves that same `quickstart/tinycloud-opencode-read.md` path inside the complete release archive. Existing installations must upgrade the whole release. The bootstrap checks the archive digest, stages a new versioned directory and validates the complete tree before the installer atomically switches only its managed loader. Validation failure retains the prior loader. The installer preserves existing account state and unrelated plugins.
 
 ```sh
 node scripts/bootstrap-opencode.mjs --delivery /absolute/release-output/delivery.json --activate

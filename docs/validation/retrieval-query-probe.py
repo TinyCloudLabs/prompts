@@ -1,11 +1,24 @@
-"""Execute the guide's actual SQL against synthetic SQLite records, never user data."""
+"""Disposable SQL semantics fixture, independent of guide prose; never user data."""
 import json
-import re
 import sqlite3
-from pathlib import Path
 
-guide = Path(__file__).resolve().parents[2] / "quickstart/retrieve-data.md"
-sql = re.findall(r"```sql\n(.*?)\n```", guide.read_text(), re.S)[0]
+# This app-owned fixture deliberately uses its own schema, not a generic app model.
+sql = """
+SELECT periods.month, m.unit, COUNT(m.value) AS measurement_count,
+       AVG(m.value) AS mean_recorded_value,
+       MIN(m.occurrence_date) AS first_reading,
+       MAX(m.occurrence_date) AS last_reading
+FROM (
+  SELECT ? AS month, ? AS start_date, ? AS end_date
+  UNION ALL SELECT ?, ?, ?
+) AS periods
+LEFT JOIN measurements AS m
+  ON m.metric = ?
+ AND m.occurrence_date >= periods.start_date
+ AND m.occurrence_date < periods.end_date
+GROUP BY periods.month, m.unit
+ORDER BY periods.month, m.unit
+"""
 params = ["2026-03", "2026-03-01", "2026-04-01",
           "2026-08", "2026-08-01", "2026-09-01", "weight"]
 db = sqlite3.connect(":memory:")
@@ -40,7 +53,7 @@ assert db.execute(sql, params).fetchall() == [
     ("2026-03", None, 0, None, None, None),
     ("2026-08", None, 0, None, None, None)]
 print(json.dumps({"classification": "synthetic SQLite only", "checks": [
-    "actual guide SQL executes", "half-open occurrence-date boundaries",
+    "fixture-owned parameterized SQL executes", "half-open occurrence-date boundaries",
     "capture date ignored", "counts readings including duplicate days",
     "other metrics excluded", "units kept separate",
     "August-minus-March means", "missing month null mean", "empty dataset null means"

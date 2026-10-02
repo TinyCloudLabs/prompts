@@ -69,7 +69,7 @@ def run_case(name, request, selected_connection=connection):
     first_grant = len(json.loads(Path(context["grantLog"]).read_text()))
     target = private / name
     state = private / (name + "-state")
-    command = [sys.executable, str(runner), "--connection", str(selected_connection), "--guide", str(guide),
+    command = [sys.executable, str(runner), "--mode", "synthetic", "--connection", str(selected_connection), "--guide", str(guide),
         "--directory", str(target), "--state", str(state), "--request", request]
     run = subprocess.run(command, capture_output=True, text=True, timeout=900)
     (private / (name + "-runner-output.txt")).write_text(run.stdout + run.stderr)
@@ -117,7 +117,7 @@ if args.reuse_compatible:
     first_command = len(log_records(context["commandLog"]))
     first_grant = len(json.loads(Path(context["grantLog"]).read_text()))
     target, state = private / "agent", private / "state"
-    result = subprocess.run([sys.executable, str(runner), "--connection", str(connection), "--guide", str(guide), "--directory", str(target), "--state", str(state), "--request", "Add buy milk to my todos."], capture_output=True, text=True, timeout=900)
+    result = subprocess.run([sys.executable, str(runner), "--mode", "synthetic", "--connection", str(connection), "--guide", str(guide), "--directory", str(target), "--state", str(state), "--request", "Add buy milk to my todos."], capture_output=True, text=True, timeout=900)
     (private / "runner-output.txt").write_text(result.stdout + result.stderr)
     after = snapshot()
     (private / "after.json").write_text(json.dumps(after, sort_keys=True))

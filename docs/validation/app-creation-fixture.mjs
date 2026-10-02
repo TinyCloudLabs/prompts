@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
 import { mkdtemp, readFile, writeFile, mkdir, open, chmod } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
@@ -16,7 +17,7 @@ const packageDir = resolve(process.argv[2]);
 const binary = resolve(process.argv[3]);
 const keep = process.argv.includes("--keep");
 const modulesDir = dirname(dirname(packageDir));
-const directory = await mkdtemp("/private/tmp/tc-app-creation-");
+const directory = await mkdtemp(join(tmpdir(), "tc-app-creation-"));
 const privateDirectory = join(directory, "private");
 const agentDirectory = join(directory, "agent");
 await mkdir(privateDirectory);
@@ -214,7 +215,7 @@ try {
   checks.push("exact SQL read+schema permits CREATE; read+write permits INSERT but server denies CREATE; sibling KV and registry writes denied");
   assert.equal((await call(["account", "apps", "list", "--live"])).json.count, 0);
   const connection = { cli, tcHome, readerHome: tcHome, profile: "reader", host, expectedOwnerDid: ownerDid, accountSpace, appSpace, openkeyHost,
-    installedSkill: resolve(packageDir, "../../../..", ".agents/skills/tc-cli/SKILL.md") };
+    installedSkill: join(packageDir, "skills/tc-cli/SKILL.md") };
   const connectionFile = join(agentDirectory, "connection.json");
   await writeFile(connectionFile, JSON.stringify(connection, null, 2));
   const context = { classification: "disposable synthetic fixture; no user credentials", directory, agentDirectory, connectionFile, cli, tcHome, profile: "reader", host, expectedOwnerDid: ownerDid, accountSpace, appSpace, openkeyHost, fixturePid: process.pid, nodePid: node.pid,
