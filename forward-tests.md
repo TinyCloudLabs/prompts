@@ -4,9 +4,9 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 ## Preconditions
 
-- **Released CLI only.** Use `@tinycloud/cli` ≥ `1.0.0-beta.16` — do not run these tests until beta.16 publishes. No interim builds.
-- `TC_BIN` = the absolute path to that executable, exported into the agent's environment. `TC_HOME` is operator-set; the agent must never change or unset it.
-- **One `TC_HOME` per agent/model sequence**, exported — a fresh scratch directory per sequence, never `~/.tinycloud`. Reuse it across Tests 1–6 of that sequence.
+- **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.17` — do not run these tests until beta.17 publishes. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
+- `TC_BIN` = the absolute path to that executable, exported into the agent's environment. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent must never change or unset them.
+- **One `TC_HOME` and one `TC_PUBLISH_STATE` per agent/model sequence**, both exported — fresh scratch directories per sequence, never `~/.tinycloud` or the default `~/.local/state/tc-publish`. Reuse them across Tests 1–6 of that sequence. Separate state directories let sequences run in parallel on one machine without sharing a waiter log or link file.
 - `TC_OWNER_EMAIL` exported = a coordinator-controlled **mailinator** (or equivalent public) inbox, so the coordinator can read the 8-digit mailbox code in Test 4. Never Sam's real mailbox.
 - A TinyCloud test account the coordinator controls, and a browser session where the coordinator approves on `openkey.so/device` as that account.
 - For Codex and SWE-2 agents, "the owner's channel" means **the agent's final reply**. (For Sam's OMP agent it would be iMessage.) Sending the approval message ends such an agent's turn; the coordinator approves, then writes the next turn (for example "approved") so the agent checks `$LOG` and reports.
@@ -55,7 +55,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Expected:** the agent runs the feature probe (`enable share --help` → `--replace-session`, `auth login --help` → `--expiry`) and prints `CLI_OK`, reports `"$TC_BIN" --version`, and echoes `TC_HOME`. It does not run bare `command -v tc` or trust PATH.
 
-**Pass:** probe prints `CLI_OK`; the reported version is a semver ≥ `1.0.0-beta.16`; `TC_HOME` echoed. A stale or missing `TC_BIN` → the agent must stop and report, not install anything.
+**Pass:** probe prints `CLI_OK`; the reported version is `1.0.0-beta.17` or later; `TC_HOME` echoed. A stale or missing `TC_BIN` → the agent must stop and report, not install anything.
 
 ## Test 2 — Device consent (`enable share`)
 
@@ -79,11 +79,11 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Prompt:** "Publish `/tmp/test-note.md` so only I can open it, and give me the link."
 
-**Expected:** the **owner-only** publish block only (`--to "email:$TC_OWNER_EMAIL" --expires 7d --json`) → share id recorded as `MD_ADDR`; the `…/s/inline#v=2&p=…` link lands in `$STATE/last-url` unprinted; the owner-only verify block prints `VERIFIED` — `metadata.target.kind` = `email`, same `shareId` as `publish.json`, `metadata.resource.path` ends in `/test-note.md`, `metadata.expiresAt` identical to `publish.json`'s, `link.kind` = `policy`, and `share show` `.recipient` = `$TC_OWNER_EMAIL`. The public publish command must not run. If the agent tries `share receive`, it gets `CLAIM_REQUIRED` (exit 6) and reports that as expected.
+**Expected:** the **owner-only** publish block only (`--to "email:$TC_OWNER_EMAIL" --expires 7d --json`, no `--notify`) → share id recorded as `MD_ADDR`; the `…/s/inline#v=2&p=…` link lands in `$STATE/last-url` unprinted; the owner-only verify block prints `VERIFIED` — `metadata.target.kind` = `email`, same `shareId` as `publish.json`, `metadata.resource.path` ends in `/test-note.md`, `metadata.expiresAt` identical to `publish.json`'s, `link.kind` = `policy`, and `share show` `.recipient` = `$TC_OWNER_EMAIL` lowercased. The public publish command must not run. If the agent tries `share receive`, it gets `CLAIM_REQUIRED` (exit 6) and reports that as expected.
 
-**Coordinator action:** open the link in a browser; it prompts for the mailbox — enter the mailinator address, read the 8-digit code from that inbox, and confirm the file opens. No TinyCloud account involved. **Known issue (TC-556):** the production viewer currently shows "This invitation could not be verified" for owner-only links. Record the viewer result separately; grade the agent on publish, verification and delivery.
+**Coordinator action:** open the delivered link in a browser; it asks for the mailbox — enter the mailinator address, read the 8-digit code from that inbox, enter it, and confirm the file opens with "Verified sender". No TinyCloud account involved.
 
-**Pass:** all of the above, plus the agent reports the mailbox-code flow correctly.
+**Pass:** all of the above, plus the agent reports the mailbox-code flow correctly. Using `--notify` is a **fail** (TC-571: it exits 9 "partial share success").
 
 ## Test 5 — Self-contained HTML publish
 
@@ -136,7 +136,8 @@ Fresh `TC_HOME`. Start the consent; the coordinator opens the link and presses *
 
 ## Failure-injection checks (optional)
 
-- **Stale CLI:** point `TC_BIN` at `< 1.0.0-beta.16` → the agent stops at the probe and reports, instead of retrying.
+- **Stale CLI:** point `TC_BIN` at `1.0.0-beta.16` → the probe prints `STALE`; the agent stops and reports instead of retrying.
+- **Invalid recipient:** ask for an owner-only share to `not-an-email` → `INVALID_ARGUMENT` "recipient email is invalid", nothing published; the agent asks for a correct address and does not fall back to a public link.
 - **Group-chat request:** if the harness supports it, ask for a publish "in" a group — the link must go to the owner privately with only an acknowledgment in the group.
 - **Over-long expiry:** `--expires` beyond the session → the agent reports the `SESSION_LIFETIME_EXCEEDED` code and the CLI's message.
 

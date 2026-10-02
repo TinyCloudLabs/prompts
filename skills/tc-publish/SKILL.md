@@ -9,14 +9,16 @@ metadata:
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-Requires `@tinycloud/cli` **1.0.0-beta.16 or newer** (TC-540). `TC_BIN` (absolute path to `tc`) and `TC_HOME` are operator-set; never change or unset them. `command -v tc` can resolve to `/usr/sbin/tc` (Linux traffic control).
+Requires `@tinycloud/cli` **1.0.0-beta.17 or newer** (TC-540 device login with `--manifest` and `enable share`; TC-556 owner-only links). The §1 feature probe is authoritative — trust it over the version string.
+
+Operator-set, never change or unset: `TC_BIN` (absolute path to `tc`; `command -v tc` can resolve to `/usr/sbin/tc`), `TC_HOME` (CLI profile store), `TC_OWNER_EMAIL` (owner's address for owner-only links) and `TC_PUBLISH_STATE` (this skill's state directory; defaults to `$HOME/.local/state/tc-publish`, set it when several agents share one `$HOME`).
 
 ## Shell preamble — required
 
 Agent shells lose variables and umask between calls. **Start every shell call with this preamble**; each block below already does:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 ```
@@ -36,12 +38,14 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 Default to the **owner-only email link**. Create a public link only when the owner's current request explicitly asks for a public or anyone-can-open link. Never decide on your own that content is shareable — if unsure, ask.
 
-Address owner-only links with `--to "email:$TC_OWNER_EMAIL"` (operator-set). If `$TC_OWNER_EMAIL` is unset, ask the owner and never guess. To share with someone else, use their address as confirmed by the owner. Never use a public link as a substitute for a private one.
+Address owner-only links with `--to "email:$TC_OWNER_EMAIL"`. If `$TC_OWNER_EMAIL` is unset, ask the owner and never guess. To share with someone else, use their address as confirmed by the owner. Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
+
+Never pass `--notify`. Invite email delivery currently fails (exit 9, "partial share success", TC-571) even though the share is created. Send the link yourself (§6); the recipient's viewer emails its own 8-digit code when they open it.
 
 ## 1. Check the CLI — feature probes, not version strings
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -59,7 +63,7 @@ If `TC_BIN` is empty or the probe prints `STALE`, stop and tell the owner. Never
 Check the profile and session first:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -83,7 +87,7 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 Start the waiter. Never run two waiters at once; the deadline is the `Waiting for approval until` line:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -100,7 +104,7 @@ If `TC_EXIT=` already appears, skip the approval message and use the outcome tab
 **Waiting.** If you can keep working in the same turn, poll in chunks of about 90 seconds:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 for i in $(seq 9); do grep -q '^TC_EXIT=' "$LOG" 2>/dev/null && break; sleep 10; done
@@ -109,12 +113,12 @@ grep -E '^TC_EXIT=|"code"' "$LOG" || echo WAITING
 
 If your only channel to the owner is your reply (Codex, SWE-2 and similar harnesses), sending the approval message ends your turn — you cannot watch in the background across turns. When the owner next writes (for example "approved"), run the poll and status blocks and report. If the waiter died meanwhile, the dead-waiter row applies.
 
-### Waiter outcomes — branch on `code`, never on exit status alone (exits 5 and 6 each cover several errors)
+### Waiter outcomes — branch on `code`, never on exit status alone (exits 4, 5 and 6 each cover several errors)
 
 Read the status structurally — the log may contain pretty-printed JSON:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 python3 - "$LOG" <<'PY'
@@ -153,7 +157,7 @@ PY
 | `DEVICE_AUTH_BINDING_MISMATCH` (5) / `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (1) | Delegation binding or verification failed | Report; re-run once, then stop |
 | `TC_EXIT: None` more than 1 minute past the deadline | Waiter died | Delete `$LOG`, re-run, send the new link and code |
 
-Delete `$LOG` once the waiter has finished: `rm -f "$HOME/.local/state/tc-publish/enable-share.log"`.
+Delete `$LOG` once the waiter has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/enable-share.log"`.
 
 ## 3. Publish — run exactly one of the two blocks
 
@@ -162,7 +166,7 @@ Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner 
 **Owner-only (the default):**
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -185,7 +189,7 @@ fi
 **Public — only if the owner explicitly asked:**
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -212,7 +216,7 @@ On `PUBLISH_FAILED`, stop and use the errors table. Record the share id, file na
 **Public links** — receive and hash; `receive`'s status is checked, so a failure can't pass:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -233,7 +237,7 @@ fi
 **Owner-only links** — the agent cannot `receive` them (`CLAIM_REQUIRED`, exit 6, expected). Inspect the link and compare it with the publish record and the sender record:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -254,7 +258,7 @@ ok = (m["target"]["kind"] == "email"
       and m["resource"]["path"].endswith("/" + base)
       and t(m["expiresAt"]) == t(p["expiresAt"])
       and ins["link"]["kind"] == "policy"
-      and show.get("recipient") == owner)
+      and show.get("recipient") == owner.strip().lower())
 print("VERIFIED" if ok else "MISMATCH")
 PY
 ```
@@ -266,7 +270,7 @@ PY
 **List active shares:**
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -281,7 +285,7 @@ for s in json.load(sys.stdin)["shares"]:
 **Reveal a public share's link again** (into the state file, for delivery per §6):
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 id='<public share id you recorded>'
@@ -295,7 +299,7 @@ rm -f "$STATE/last-url"
 **Revoke an owner-only share:**
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 id='<owner-only share id you recorded>'
@@ -316,7 +320,7 @@ Report: link type, what the recipient experiences, expiry, verification result, 
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 python3 - "$STATE/last-url" "<summary line without the URL>" <<'PY' \
@@ -331,7 +335,7 @@ PY
 **If the only channel is your reply**, read the file once, in a single tool call, and copy the link verbatim into your reply:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 cat "$STATE/last-url"
@@ -340,7 +344,7 @@ cat "$STATE/last-url"
 **Last step, always — clean up:**
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
@@ -349,7 +353,7 @@ rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.j
 
 ## Errors — `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text
 
-Branch on `code`, never on the exit status alone — exits 5 and 6 each cover several errors. Report the code and the CLI's message; never relay raw server text.
+Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover several errors. Report the code and the CLI's message; never relay raw server text.
 
 | Code | Exit | Action |
 |---|---|---|
@@ -357,12 +361,15 @@ Branch on `code`, never on the exit status alone — exits 5 and 6 each cover se
 | `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 |
 | `SESSION_LIFETIME_EXCEEDED` | 2 | `--expires` beyond the session → shorten it or renew consent; under 60 s → lengthen it |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
-| `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. Also what `share revoke` returns for a public share today ("share operation failed"; the link stays live) |
+| `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. Also what `share revoke` returns for a public share today ("share operation failed"; the link stays live) |
 | `SESSION_IN_USE` | 2 | Live session would narrow — ask the owner; never `--replace-session` unprompted |
 | `CLAIM_REQUIRED` | 6 | Expected on `receive` of an owner-only link — use `inspect` |
 | `UNSUPPORTED_LINK` | 2 | `inspect` on a public link — verify by `receive` + hash instead |
 | `ORIGIN_MISMATCH` | 2 publish / 5 receive | Share origin vs configured service — check host/viewer-origin config, not re-login |
 | `EXPIRED` / `NOT_FOUND` | 4 | The share expired or the id is wrong |
+| `UNAVAILABLE` | 4 | Location registry or network unreachable — nothing was shared; retry shortly |
+| `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
+| exit 9, "partial share success" | 9 | Only with `--notify` (TC-571): the share exists but the invite email failed. Don't use `--notify`; send the link yourself |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
 | `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
@@ -384,7 +391,7 @@ Public `.html`/`.htm` renders in a sandboxed, opaque-origin frame: scripts run b
 Before publishing HTML, check that it is self-contained. Any `src`, `href` or CSS `url()` whose value isn't a `data:` URI or a `#` fragment counts as external — absolute, protocol-relative (`//cdn…`) and relative (`app.js`) references all fail to load in the viewer:
 
 ```sh
-umask 077; STATE="$HOME/.local/state/tc-publish"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 FILE='<absolute path of the file>'
 
