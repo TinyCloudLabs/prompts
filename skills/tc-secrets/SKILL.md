@@ -39,8 +39,8 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 - **Never ask the owner to paste a secret value into the conversation.** A missing secret is added by the owner in Secret Manager.
 - **Never enable shell tracing.** Every block here disables it first.
 - **Approval link and code:** the link and the code the owner sends back complete one sign-in for this profile.
+  - The link lives in `$STATE/approve.url` (0600). Read it once, to compose your one approval message to the owner. It must not appear anywhere else.
   - Keep the code only in `$STATE` until the sign-in completes, then delete it.
-  - The link may appear only in your one approval message to the owner.
 - **Only the owner approves.** Never open the approval link yourself, never approve anything for the owner, and never relay a code you didn't get from the owner.
 - **Run only the blocks the task needs, as written.**
   - Don't create, rename or delete profiles beyond §3a's `init`, and never run `profile delete`.
@@ -88,19 +88,23 @@ try: ctx = json.load(open(sys.argv[1]))
 except Exception: print("NO_PROFILE"); sys.exit()
 have, want = (ctx.get("ownerDid") or "").split("#")[0], sys.argv[2]
 norm = lambda d: d.rsplit(":", 1)[0] + ":" + d.rsplit(":", 1)[-1].lower() if d else ""
-print("OWNER_MATCH" if have and norm(have) == norm(want) else "OWNER_UNSET" if not have else "OWNER_MISMATCH " + have)
+state = (ctx.get("session") or {}).get("state")
+if have: print("OWNER_MATCH" if norm(have) == norm(want) else "OWNER_MISMATCH " + have)
+elif state in (None, "missing"): print("NO_SESSION")
+else: print("OWNER_UNKNOWN")
 PY
 )
 case "$OWNER" in
   NO_PROFILE) for n in $NAMES; do echo "NOT_READABLE $n $(errcode "$STATE/context.err")"; done ;;
-  OWNER_MISMATCH*) echo "$OWNER — profile $PROFILE belongs to another account; stop and tell the operator" ;;
-  *) for n in $NAMES; do
+  NO_SESSION) for n in $NAMES; do echo "NOT_READABLE $n AUTH_REQUIRED"; done ;;
+  OWNER_MATCH) for n in $NAMES; do
        timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get "$n" --raw < /dev/null > /dev/null 2> "$STATE/get.err"
        rc=$?
        if [ $rc -eq 0 ]; then echo "READABLE $n"
        elif [ $rc -eq 124 ]; then echo "NOT_READABLE $n TIMEOUT"
        else echo "NOT_READABLE $n $(errcode "$STATE/get.err")"; fi
      done ;;
+  *) echo "$OWNER — profile $PROFILE is not provably signed in to TC_OWNER_DID; stop and tell the operator" ;;
 esac
 rm -f "$STATE/context.json" "$STATE/context.err" "$STATE/get.err"
 ```
@@ -108,7 +112,7 @@ rm -f "$STATE/context.json" "$STATE/context.err" "$STATE/get.err"
 - Every name `READABLE` → go to §4.
 - `AUTH_REQUIRED`, `PROFILE_NOT_FOUND`, `PERMISSION_DENIED` or `TIMEOUT` → go to §3 with the full list of names the task needs. `TIMEOUT` happens on CLIs before the TC-599 release, which wait instead of failing when the session doesn't cover a name.
 - `NOT_FOUND` → the secret doesn't exist yet. Tell the owner to add it in Secret Manager, then run §2 again. Don't start §3 for it.
-- `OWNER_MISMATCH` → stop. The profile is signed in to a different account than `TC_OWNER_DID`. Tell the operator. Never switch profiles, log out or replace the session yourself.
+- `OWNER_MISMATCH` or `OWNER_UNKNOWN` → stop. The profile is signed in to a different account than `TC_OWNER_DID`, or has a session with no recorded owner. Tell the operator. Never switch profiles, log out or replace the session yourself.
 - Anything else → see §5.
 
 ## 3. Consent — only when §2 says so
@@ -173,7 +177,7 @@ while (m := re.compile(r"\{").search(text, i)):
     except ValueError: i = m.start() + 1
 code = (last.get("error") or {}).get("code")
 if code not in (None, "PASTE_CODE_MISSING"):
-    sys.exit(print("LOGIN_PREFLIGHT_FAILED", code, (last["error"].get("message") or "")[:200]))
+    sys.exit(print("LOGIN_PREFLIGHT_FAILED", code, re.sub(r"https://\S+", "<link>", last["error"].get("message") or "")[:200]))
 # The approval link is the line that holds nothing but the URL.
 urls = [l.strip() for l in text.splitlines() if re.fullmatch(r"\s*https://\S+\s*", l)]
 if len(set(urls)) != 1: sys.exit(print("NO_URL" if not urls else "REQUEST_MISMATCH ambiguous link"))
@@ -187,6 +191,19 @@ if set(q) - {"did", "jwk", "host", "permissions", "reason", "expiry", "protocolV
 if any(len(v) != 1 for v in q.values()): fail("repeated parameter")
 one = {k: v[0] for k, v in q.items()}
 if one.get("did") != ctx.get("sessionDid"): fail("link is for another key")
+# OpenKey signs for the key in `jwk`, so it must be this profile's public key.
+B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+def b58(b):
+    n, s = int.from_bytes(b, "big"), ""
+    while n: n, r = divmod(n, 58); s = B58[r] + s
+    return "1" * (len(b) - len(b.lstrip(b"\0"))) + s
+try:
+    j = one.get("jwk", ""); jwk = json.loads(base64.urlsafe_b64decode(j + "=" * (-len(j) % 4)))
+    x = base64.urlsafe_b64decode(jwk["x"] + "=" * (-len(jwk["x"]) % 4))
+except Exception: fail("unreadable key")
+if set(jwk) - {"kid", "kty", "crv", "x"} or jwk.get("kty") != "OKP" or jwk.get("crv") != "Ed25519" or len(x) != 32:
+    fail("key is not a public Ed25519 key")
+if "did:key:z" + b58(b"\xed\x01" + x) != (ctx.get("sessionDid") or "").split("#")[0]: fail("link signs for another key")
 if one.get("host") != ctx.get("host"): fail("link is for another node")
 if not re.fullmatch(r"\d+s", one.get("expiry", "")) or int(one["expiry"][:-1]) > 2592000: fail("lifetime over 30 days")
 p = one.get("permissions", "")
@@ -262,7 +279,7 @@ Then finish the sign-in:
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
-if [ ! -s "$STATE/code" ] || [ ! -s "$STATE/manifest.json" ]; then echo NO_CODE
+if ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null || [ ! -s "$STATE/manifest.json" ]; then echo NO_CODE
 else
   printf '\n' >> "$STATE/code"
   rm -f "$STATE/login.json" "$STATE/login.err"
@@ -282,7 +299,7 @@ while (m := re.compile(r"\{").search(text, i)):
     try: o, i = dec.raw_decode(text, m.start()); last = o if isinstance(o, dict) and "error" in o else last
     except ValueError: i = m.start() + 1
 e = last.get("error") or {}
-print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", (e.get("message") or "")[:200])
+print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", e.get("message") or "")[:200])
 PY
 fi
 rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
@@ -310,13 +327,13 @@ STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; c
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 rm -f "$STATE/use.err"
-if ELEVENLABS_API_KEY="$(timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get ELEVENLABS_API_KEY --raw < /dev/null 2> "$STATE/use.err")"; then
+(
+  ELEVENLABS_API_KEY="$(timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get ELEVENLABS_API_KEY --raw < /dev/null 2> "$STATE/use.err")" \
+    || { echo "SECRET_UNAVAILABLE — run §2 for ELEVENLABS_API_KEY"; exit 90; }
   export ELEVENLABS_API_KEY
   '<your command, e.g. bun run tools/voice.ts>'
-  unset ELEVENLABS_API_KEY
-else
-  echo "SECRET_UNAVAILABLE — run §2 for ELEVENLABS_API_KEY"
-fi
+)
+echo "EXIT $?"
 rm -f "$STATE/use.err"
 ```
 
@@ -328,16 +345,16 @@ STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; c
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 rm -f "$STATE/use.err"
-if KEY="$(timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get ELEVENLABS_API_KEY --raw < /dev/null 2> "$STATE/use.err")"; then
+(
+  KEY="$(timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get ELEVENLABS_API_KEY --raw < /dev/null 2> "$STATE/use.err")" \
+    || { echo "SECRET_UNAVAILABLE — run §2 for ELEVENLABS_API_KEY"; exit 90; }
   printf 'xi-api-key: %s\n' "$KEY" | curl -sS -H @- '<https://api.example/v1/…>' -o '<output file>'
-  unset KEY
-else
-  echo "SECRET_UNAVAILABLE — run §2 for ELEVENLABS_API_KEY"
-fi
+)
+echo "EXIT $?"
 rm -f "$STATE/use.err"
 ```
 
-Both patterns close stdin and send the CLI's stderr to a private file, so the CLI never waits for a browser approval mid-task. `SECRET_UNAVAILABLE` means access changed since §2 (for example, the session expired): go back to §2.
+Both patterns read the secret inside a subshell, so the value never stays in your shell, even when the read fails. They also close stdin and send the CLI's stderr to a private file, so the CLI never waits for a browser approval mid-task. `EXIT` is your command's exit status; `EXIT 90` with `SECRET_UNAVAILABLE` means access changed since §2 (for example, the session expired), so go back to §2.
 
 If a tool insists on a key file, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command.
 

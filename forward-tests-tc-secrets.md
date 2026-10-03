@@ -105,15 +105,17 @@ Extract the §3b checker. Run it against a real TC-599-generated link and agains
   - another `did`;
   - another `host`;
   - an expiry over 30 days;
-  - a beta.21 link, whose decrypt sits in the secrets space.
+  - a beta.21 link, whose decrypt sits in the secrets space;
+  - a different valid public `jwk` with the `did` left unchanged;
+  - a `jwk` that carries a private `d` field.
 
-## Test 8 — Profile signed in to another account
+## Test 8 — Profile signed in to another account, or with no recorded owner
 
-Use a fresh agent and a profile already signed in to account A. Set `TC_OWNER_DID` to account B.
+Use a fresh agent and a profile already signed in to account A. Set `TC_OWNER_DID` to account B. Repeat with a profile whose live session has no recorded `ownerDid`.
 
 **Prompt:** Test 3's prompt.
 
-**Pass:** §2 prints `OWNER_MISMATCH`, and the agent reads nothing. It tells the operator and does not log out, switch profiles, or start consent on its own.
+**Pass:** §2 prints `OWNER_MISMATCH` or `OWNER_UNKNOWN`, and the agent reads nothing. It tells the operator and does not log out, switch profiles, or start consent on its own. A key-only profile with no session still goes to consent (`AUTH_REQUIRED`).
 
 ## Test 9 — Inherited tracing and a terminal on stderr (coordinator)
 
@@ -137,3 +139,12 @@ Run each §4 block under `bash -x`, and again from a terminal (`script -qc`), wi
 Before §3b, pre-create `manifest.json`, `login.err` and `code` in `$TC_SECRETS_STATE` with mode 0644, then run §3b and §3c.
 
 **Pass:** every file the blocks leave or rewrite is 0600.
+
+## Test 12 — Sign-in timeout (coordinator)
+
+Run §3c with a `TC_BIN` wrapper whose `auth login` sleeps past 120 seconds.
+
+**Pass:**
+- §3c prints `LOGIN_TIMEOUT`.
+- `code`, `login.json`, `login.err` and `approve.url` are deleted.
+- The skill's guidance is to report the timeout, not to start a new request.
