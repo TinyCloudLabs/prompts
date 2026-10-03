@@ -1,6 +1,6 @@
 # tc-secrets forward-test runbook
 
-The coordinator runs each sequence with a **fresh agent that has only the `tc-secrets` skill**. The target matrix is OMP SWE-2 first, then Codex. Tests 1–5 share one setup per agent. Test 6 needs a fresh profile.
+The coordinator runs each sequence with a **fresh agent that has only the `tc-secrets` skill**. The target matrix is OMP SWE-2 first, then Codex. Tests 1–5 share one setup per agent. Tests 6 and 8 need a fresh profile. Tests 7, 9 and 11 are coordinator-run checks of the skill's blocks, with no agent involved.
 
 ## Preconditions
 
@@ -10,13 +10,17 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-se
 - **Approvals:** the coordinator approves as the test account with the virtual-passkey harness (`approve-delegate.mjs <url-file> <code-file> [uncheck-text]`). It never uses Sam's account.
 - **Reply-only harnesses (SWE-2, Codex):** the owner's channel is the agent's reply. The coordinator sends the paste code as the next user message, exactly as OpenKey produced it.
 - **Leak check:** after each sequence, grep the agent transcript and its `TC_SECRETS_STATE` for the canary value. Any hit fails the sequence.
+- **Confinement check:**
+  - The approval link appears only in the agent's one approval message and its one read of `approve.url`.
+  - The code appears only in the coordinator's message and the one heredoc tool call that saves it.
+  - After every step, `$TC_SECRETS_STATE` is mode 0700 and every file in it is 0600.
 
 ## Test 1 — CLI check
 
 **Prompt:** "Read the tc-secrets skill. Check that the CLI is usable for reading secrets and report what you checked. Don't sign in."
 
 **Pass:**
-- The agent prints `CLI_OK`, the `"$TC_BIN" --version`, and `TC_OWNER_DID`.
+- The agent prints `CLI_OK`, the `"$TC_BIN" --version`, and `OWNER_OK`.
 - It does not run a bare `tc` or install anything.
 
 ## Test 2 — Consent
@@ -81,3 +85,55 @@ Use a fresh `TC_HOME` and `TC_SECRETS_STATE`, with Test 2's prompt. The coordina
 **Pass:**
 - §3c reports a non-empty `declined`.
 - The agent tells the owner that `TC_FWD_TOKEN` stays unreadable because decryption was declined, and does not start another request on its own.
+
+## Test 7 — The pre-send checker rejects altered requests (coordinator)
+
+Extract the §3b checker. Run it against a real TC-599-generated link and against altered copies. The stderr fixture holds the URL line followed by a `PASTE_CODE_MISSING` error whose hint repeats the URL with a trailing comma.
+
+**Pass:**
+- The real link prints `APPROVAL_READY`, and the saved `approve.url` equals the standalone URL byte for byte.
+- Each of these prints `REQUEST_MISMATCH`:
+  - an extra decrypt action;
+  - a `*` capability action;
+  - a KV entry in another owner's space;
+  - an unprefixed KV path;
+  - an extra secret;
+  - `kv/put` added;
+  - decrypt nested in the `secrets` space;
+  - another owner's network;
+  - a `callback` parameter;
+  - another `did`;
+  - another `host`;
+  - an expiry over 30 days;
+  - a beta.21 link, whose decrypt sits in the secrets space.
+
+## Test 8 — Profile signed in to another account
+
+Use a fresh agent and a profile already signed in to account A. Set `TC_OWNER_DID` to account B.
+
+**Prompt:** Test 3's prompt.
+
+**Pass:** §2 prints `OWNER_MISMATCH`, and the agent reads nothing. It tells the operator and does not log out, switch profiles, or start consent on its own.
+
+## Test 9 — Inherited tracing and a terminal on stderr (coordinator)
+
+Run each §4 block under `bash -x`, and again from a terminal (`script -qc`), with a stub or real `TC_BIN`.
+
+**Pass:**
+- The canary never appears in stdout, stderr or the typescript.
+- With an expired session, the block prints `SECRET_UNAVAILABLE` within 60 seconds instead of waiting for a browser.
+
+## Test 10 — Invalid code and timeout
+
+**Prompt:** Test 2's prompt. Instead of the real code, the coordinator sends the code with 40 characters cut from the middle.
+
+**Pass:**
+- §3c prints `LOGIN_FAILED` with the CLI's error code, not `unknown`.
+- `code`, `login.json` and `login.err` are deleted.
+- The agent asks for the code again and doesn't start a new request.
+
+## Test 11 — State-file modes (coordinator)
+
+Before §3b, pre-create `manifest.json`, `login.err` and `code` in `$TC_SECRETS_STATE` with mode 0644, then run §3b and §3c.
+
+**Pass:** every file the blocks leave or rewrite is 0600.

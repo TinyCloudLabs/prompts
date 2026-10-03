@@ -22,17 +22,25 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
 ## Walkthrough
 
 1. **Check the CLI** (§1). Feature probes plus `TC_OWNER_DID`. `STALE` → stop and tell the owner; never install anything.
-2. **Check access** (§2). Read each needed name into `/dev/null`:
+2. **Check access** (§2). First confirm the profile belongs to `TC_OWNER_DID`; a profile signed in to another account stops with `OWNER_MISMATCH`, and the agent never switches or resets it. Then read each needed name into `/dev/null`:
    - `READABLE` → use it.
    - `AUTH_REQUIRED`, `PERMISSION_DENIED`, `PROFILE_NOT_FOUND`, or `TIMEOUT` (older CLIs hang on a missing grant) → consent.
    - `NOT_FOUND` → the owner adds the secret in Secret Manager first.
 3. **Consent** (§3), in three steps:
    1. Create the key-only profile if it's missing.
-   2. Write a manifest that asks for read and decrypt on exactly the listed names. Run `auth login --paste` once with stdin from `/dev/null` to get the OpenKey link, then decode the link and check it asks for exactly those names, a raw decrypt grant on the owner's network, and the capability read. Only then send the approval message.
-   3. When the owner sends back the code, write it to a 0600 file and run the same login with the code on stdin.
+   2. **Build and check the link.**
+      - Write a manifest naming exactly the listed secrets.
+      - Run `auth login --paste` once with stdin from `/dev/null`. The CLI prints the OpenKey link and stops with `PASTE_CODE_MISSING`.
+      - The checker takes the line that holds only the URL. It accepts the link only if it requests exactly: `kv/get` on each named secret in the owner's `secrets` space, decrypt on the owner's default network, and the capability read.
+      - It also requires this profile's key and node, no callback, and at most 30 days.
+      - Only then send the approval message.
+   3. When the owner sends back the code, write it to a fresh 0600 file and run the same login with the code on stdin. The result is parsed from the CLI's JSON (`SIGNED_IN`, `LOGIN_FAILED <code>` or `LOGIN_TIMEOUT`), and the code is deleted.
 
    No background waiter is needed: the second run accepts the code the first run's link produced.
-4. **Use** (§4). Capture the value with `secrets get NAME --raw` inside the one command that needs it, and pass it through the environment or stdin. Read it again in each command instead of caching it on disk.
+4. **Use** (§4).
+   - Capture the value with `secrets get NAME --raw` inside the one command that needs it, with stdin closed and stderr sent to a private file, so the CLI never stops to wait for a browser approval. Pass the value through the environment or stdin.
+   - Read it again in each command instead of caching it on disk.
+   - Shell capture drops trailing newlines, so for a multi-line value, pipe `--raw` into the consumer instead.
 
 ## Why not the phone code?
 
@@ -47,6 +55,8 @@ At `openkey.so/delegate`, the owner signs in with their passkey and picks their 
 - the expiry;
 - each capability: "Read secret values" and "Decrypt protected data" (both marked Sensitive), plus the required "Check your TinyCloud permissions".
 
+Reads are limited to the named secrets. The decrypt permission covers the owner's default encryption network, which is not limited to those names. So the approval message says so: the profile can only fetch the named secrets, but it could decrypt anything encrypted to that network that it gets from elsewhere.
+
 After **Approve**, the page shows the code with "Only paste this code into a terminal you started yourself." The code is 7–10 KB of base64. Sending it back through chat is safe in the sense that it only works with this machine's profile key. It still belongs in a private channel, and harness private inputs (for example Paseo's Secret Bridge) keep it out of the transcript entirely.
 
 ## Never let a value leak
@@ -54,3 +64,4 @@ After **Approve**, the page shows the code with "Only paste this code into a ter
 - `secrets get` without `--raw` prints JSON containing the value. Always capture with `--raw`.
 - Command-line arguments are visible to other local users through the process list, so pass values through the environment or stdin. For HTTP headers, use `curl -H @-`.
 - Nothing goes into notes, memory, commits, logs, or summaries. A missing secret is the owner's to add in Secret Manager.
+- Every block starts by turning off inherited shell tracing (`{ set +x; } 2>/dev/null`) and exit-on-error, sets `umask 077`, and repairs the modes of reused state files.
