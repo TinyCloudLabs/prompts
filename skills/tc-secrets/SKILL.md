@@ -59,7 +59,9 @@ PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9a-fA-F]{40}$' && echo OWNER_OK || echo OWNER_UNSET
 ```
 
-If it prints `STALE` or `OWNER_UNSET`, stop and tell the owner. Never install anything yourself. When the owner only asked you to check the CLI, stop after this block and report what it printed.
+If it prints `STALE` or `OWNER_UNSET`, stop and tell the owner. Never install anything yourself.
+
+If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tc` command.
 
 ## 2. Check access
 
