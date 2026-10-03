@@ -75,7 +75,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 
 ## Rendering
 
-- **Markdown** renders (headings, lists, bold, tables); Mermaid blocks show their source (TC-546).
+- **Markdown** renders (headings, lists, bold, tables). Mermaid diagrams render with their labels, in a sandbox, on a white card that stays readable in dark mode. A diagram that can't render shows its source. Very long documents can be cut off when printed from the viewer; "Download original" gives the full file.
 - **Public HTML** renders in a sandboxed, opaque-origin frame: scripts run but can't reach the viewer, cookies, storage or the link fragment; external resources are blocked. So the page must be self-contained — the `SKILL.md` HTML check flags every `src`, `href` or CSS `url()` that isn't a `data:` URI or `#` fragment, including protocol-relative (`//cdn…`) and relative (`app.js`) references, `@import`, and network calls in scripts.
 - **Owner-only HTML** downloads rather than renders.
 - **Owner-only links** ask the recipient for their mailbox, email an 8-digit code, and then show the file with "Verified sender". No TinyCloud account needed.

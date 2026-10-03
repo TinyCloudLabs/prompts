@@ -486,4 +486,4 @@ PY
 
 **If it prints anything other than `SELF_CONTAINED`, do not publish.** Tell the owner which resources will break (the flagged lines) and ask which they want: you inline the resources (data URIs, inline `<style>`/`<script>`) and re-check, or you publish it as-is. Publish an unchanged file only after the owner explicitly says to publish anyway.
 
-Markdown renders (headings, lists, bold, tables); Mermaid blocks show their source (TC-546). See `QUICKSTART.md` for the walkthrough and what the owner sees on their phone.
+Markdown renders (headings, lists, bold, tables), and so do Mermaid diagrams; one that can't render shows its source. See `QUICKSTART.md` for the walkthrough and what the owner sees on their phone.
