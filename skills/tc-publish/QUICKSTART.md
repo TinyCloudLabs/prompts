@@ -7,7 +7,7 @@ Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.18
+npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.21
 export TC_BIN=<dir>/node_modules/.bin/tc
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
@@ -49,7 +49,7 @@ In the second forward-test round, a plain `( … ) &` waiter was killed when the
 
 ## Consent is rate-limited
 
-OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on that network. Over the limit, the CLI currently reports `DEVICE_AUTH_FAILED` with "OpenKey device authorization failed: rate_limited (too many device authorization requests)"; TC-575 will give it its own code. The agent waits at least 10 minutes and tries once more — never in a loop. Every start counts, including relaunches after expiry or a dead waiter, so the agent never starts a new request while a code is outstanding.
+OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on that network. Over the limit, the CLI reports `DEVICE_AUTH_RATE_LIMITED` (CLI `1.0.0-beta.18` and earlier report `DEVICE_AUTH_FAILED` with "rate_limited" in the message). The agent waits at least 10 minutes and tries once more — never in a loop. Every start counts, including relaunches after expiry or a dead waiter, so the agent never starts a new request while a code is outstanding.
 
 ## Turn boundaries
 
@@ -75,7 +75,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 
 ## Rendering
 
-- **Markdown** renders (headings, lists, bold, tables); Mermaid blocks show their source (TC-546).
+- **Markdown** renders (headings, lists, bold, tables). Mermaid diagrams render with their labels, in a sandbox, on a white card that stays readable in dark mode. A diagram that can't render shows its source. Very long documents can be cut off when printed from the viewer; "Download original" gives the full file.
 - **Public HTML** renders in a sandboxed, opaque-origin frame: scripts run but can't reach the viewer, cookies, storage or the link fragment; external resources are blocked. So the page must be self-contained — the `SKILL.md` HTML check flags every `src`, `href` or CSS `url()` that isn't a `data:` URI or `#` fragment, including protocol-relative (`//cdn…`) and relative (`app.js`) references, `@import`, and network calls in scripts.
 - **Owner-only HTML** downloads rather than renders.
 - **Owner-only links** ask the recipient for their mailbox, email an 8-digit code, and then show the file with "Verified sender". No TinyCloud account needed.

@@ -4,7 +4,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 ## Preconditions
 
-- **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.18` — do not run these tests until beta.18 publishes. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
+- **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.21`. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
 - `TC_BIN` = the absolute path to that executable, exported into the agent's environment. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent must never change or unset them.
 - **One `TC_HOME` and one `TC_PUBLISH_STATE` per agent/model sequence**, both exported — fresh scratch directories per sequence, never `~/.tinycloud` or the default `~/.local/state/tc-publish`. Reuse them across Tests 1–6 of that sequence. Separate state directories let sequences run in parallel on one machine without sharing a waiter log or link file.
 - `TC_OWNER_EMAIL` exported = a coordinator-controlled **mailinator** (or equivalent public) inbox, so the coordinator can read the 8-digit mailbox code in Test 4. Never Sam's real mailbox.
@@ -154,7 +154,7 @@ Run when no other sequence needs consent for the next 20 minutes. The coordinato
 
 **Prompt:** as Test 2.
 
-**Pass:** the waiter exits with `DEVICE_AUTH_FAILED` and a message containing `rate_limited`; the agent sends no code, tells the owner it must wait at least 10 minutes, and starts exactly **one** more waiter after that. A retry before 10 minutes, or more than one retry, is a **fail**. (Reply-only agents learn the outcome on the next turn and should ask the owner to come back after 10 minutes.)
+**Pass:** the waiter exits with `DEVICE_AUTH_RATE_LIMITED` (on CLI `1.0.0-beta.18` and earlier, `DEVICE_AUTH_FAILED` with a message containing `rate_limited`); the agent sends no code, tells the owner it must wait at least 10 minutes, and starts exactly **one** more waiter after that. A retry before 10 minutes, or more than one retry, is a **fail**. (Reply-only agents learn the outcome on the next turn and should ask the owner to come back after 10 minutes.)
 
 ## Test 13 — File name with spaces
 

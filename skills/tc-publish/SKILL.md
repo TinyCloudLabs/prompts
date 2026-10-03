@@ -194,7 +194,7 @@ PY
 | `TC_EXIT: 6`, `OPENKEY_UNREACHABLE` | Can't reach OpenKey | Report; retry when connectivity returns |
 | `TC_EXIT: 5`, `SCOPE_REJECTED` | Manifest rejected | Report; do not retry the same request |
 | `TC_EXIT: 1`, `PROFILE_STATE_INCONSISTENT` | Corrupt local profile state | Report; do not delete the profile |
-| `DEVICE_AUTH_FAILED` (1), `message` contains `rate_limited` | More than 5 device sign-in starts in 10 minutes on this network | Wait at least 10 minutes, then start **one** more waiter. Never retry in a loop. Tell the owner why there's a delay (TC-575 will give this its own code) |
+| `DEVICE_AUTH_RATE_LIMITED` (1); on CLI `1.0.0-beta.18` and earlier, `DEVICE_AUTH_FAILED` (1) with `message` containing `rate_limited` | More than 5 device sign-in starts in 10 minutes on this network | Wait at least 10 minutes, then start **one** more waiter. Never retry in a loop. Tell the owner why there's a delay |
 | `DEVICE_AUTH_BINDING_MISMATCH` (5) / `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (1), any other message | Delegation binding or verification failed | Report; re-run once, then stop |
 | `TC_EXIT: None` with `WAITER_GONE`/`WAITER_DIED`, or more than 1 minute past the deadline | Waiter died | Don't send (or re-send) a code. Tell the owner any approval they made was lost; fix the launch (§2), then re-run within the rate limit and send the new link and code |
 
@@ -293,7 +293,7 @@ rm -f "$STATE/inspect.json" "$STATE/show.json"
   && id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json") \
   && "$TC_BIN" --profile "$PROFILE" share show "$id" > "$STATE/show.json" \
   && python3 - "$STATE/inspect.json" "$STATE/publish.json" "$STATE/show.json" "$(basename "$FILE")" "$TC_OWNER_EMAIL" <<'PY' || echo MISMATCH
-import json, sys, datetime
+import json, sys, datetime, unicodedata
 ins, pub, show = (json.load(open(p)) for p in sys.argv[1:4])
 base, owner = sys.argv[4], sys.argv[5]
 t = lambda s: int(datetime.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp())
@@ -301,7 +301,7 @@ m, p = ins["metadata"], pub["metadata"]
 ok = (m["target"]["kind"] == "email"
       and m["shareId"] == p["shareId"]
       and m["resource"]["path"] == p["resource"]["path"]
-      and (m.get("display") or {}).get("filename") == base
+      and unicodedata.normalize("NFC", (m.get("display") or {}).get("filename") or "") == unicodedata.normalize("NFC", base)
       and t(m["expiresAt"]) == t(p["expiresAt"])
       and ins["link"]["kind"] == "policy"
       and show.get("recipient") == owner.strip().lower())
@@ -427,7 +427,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
 | `DEVICE_AUTH_DENIED` | 5 | Owner declined — don't re-run unless asked |
 | `DEVICE_AUTH_BINDING_MISMATCH` | 5 | Session/transaction binding failed — report; re-run once |
-| `DEVICE_AUTH_FAILED`, message contains `rate_limited` | 1 | More than 5 device sign-in starts in 10 minutes on this network — wait at least 10 minutes, then start one more waiter; never retry in a loop |
+| `DEVICE_AUTH_RATE_LIMITED` (on CLI `1.0.0-beta.18` and earlier: `DEVICE_AUTH_FAILED`, message contains `rate_limited`) | 1 | More than 5 device sign-in starts in 10 minutes on this network — wait at least 10 minutes, then start one more waiter; never retry in a loop |
 | `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (other messages) | 1 | Malformed or unverifiable OpenKey response — report; re-run once, then stop |
 | `OPENKEY_UNREACHABLE` | 6 | OpenKey unreachable — report, retry later |
 | `SCOPE_REJECTED` | 5 | Manifest rejected — report; don't retry the same request |
@@ -486,4 +486,4 @@ PY
 
 **If it prints anything other than `SELF_CONTAINED`, do not publish.** Tell the owner which resources will break (the flagged lines) and ask which they want: you inline the resources (data URIs, inline `<style>`/`<script>`) and re-check, or you publish it as-is. Publish an unchanged file only after the owner explicitly says to publish anyway.
 
-Markdown renders (headings, lists, bold, tables); Mermaid blocks show their source (TC-546). See `QUICKSTART.md` for the walkthrough and what the owner sees on their phone.
+Markdown renders (headings, lists, bold, tables), and so do Mermaid diagrams; one that can't render shows its source. See `QUICKSTART.md` for the walkthrough and what the owner sees on their phone.
