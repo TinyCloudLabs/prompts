@@ -39,7 +39,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 - **Never ask the owner to paste a secret value into the conversation.** A missing secret is added by the owner in Secret Manager.
 - **Never enable shell tracing.** Every block here disables it first.
 - **Approval link and code:** the link and the code the owner sends back complete one sign-in for this profile.
-  - The link lives in `$STATE/approve.url` (0600). Read it once, to compose your one approval message to the owner. It must not appear anywhere else.
+  - The link lives in `$STATE/approve.url` (0600). Read it once, to compose your one approval message to the owner. The CLI also writes it into the temporary `$STATE/login.err`, which the blocks parse and then delete. Never display that file. The link must not appear anywhere else.
   - Keep the code only in `$STATE` until the sign-in completes, then delete it.
 - **Only the owner approves.** Never open the approval link yourself, never approve anything for the owner, and never relay a code you didn't get from the owner.
 - **Run only the blocks the task needs, as written.**
