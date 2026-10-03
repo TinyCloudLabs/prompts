@@ -11,6 +11,9 @@ This repository is the shared development and review point for agent-facing setu
 - [`skills/tc-publish/SKILL.md`](skills/tc-publish/SKILL.md) teaches an agent to publish a document or HTML page to TinyCloud and return a private or public share link, with consent, verification and lifecycle commands.
 - [`skills/tc-publish/QUICKSTART.md`](skills/tc-publish/QUICKSTART.md) is the five-step minimal version of the same flow.
 - [`forward-tests.md`](forward-tests.md) is the coordinator runbook: fresh-agent prompts, expected commands, and how to verify each outcome.
+- [`skills/tc-secrets/SKILL.md`](skills/tc-secrets/SKILL.md) teaches an agent to read API keys the owner keeps in TinyCloud Secrets without exposing them, with OpenKey consent, read patterns and errors.
+- [`skills/tc-secrets/QUICKSTART.md`](skills/tc-secrets/QUICKSTART.md) explains that flow and what the owner sees.
+- [`forward-tests-tc-secrets.md`](forward-tests-tc-secrets.md) is the coordinator runbook for `tc-secrets`.
 The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository intentionally contains no helpers, generated release archives, sync framework or evaluation runtime.
 
 ## Snapshot provenance
