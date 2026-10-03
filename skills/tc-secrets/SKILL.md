@@ -40,7 +40,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 - **Never enable shell tracing.** Every block here disables it first.
 - **Approval link and code:** the link and the code the owner sends back complete one sign-in for this profile.
   - The link lives in `$STATE/approve.url` (0600). Read it once, to compose your one approval message to the owner. The CLI also writes it into the temporary `$STATE/login.err`, which the blocks parse and then delete. Never display that file. The link must not appear anywhere else.
-  - Keep the code only in `$STATE` until the sign-in completes, then delete it.
+  - Keep your copy of the code only in `$STATE` until the sign-in completes, then delete it. The owner's original message stays wherever the harness keeps it; leave that untouched.
 - **Only the owner approves.** Never open the approval link yourself, never approve anything for the owner, and never relay a code you didn't get from the owner.
 - **Run only the blocks the task needs, as written.**
   - Don't create, rename or delete profiles beyond §3a's `init`, and never run `profile delete`.
@@ -263,7 +263,7 @@ First put the code into `$STATE/code`, using exactly one of these. Prefer the pr
   ```
 
 - **Otherwise** ask the owner to send the code in your 1:1 channel.
-  - If the harness saves the owner's messages in a file you can read (for example a chat log), extract the code from that file with a command instead of retyping it.
+  - If the harness exposes an existing, authorized log of this 1:1 conversation, extract the owner's code for this sign-in directly into a fresh 0600 `$STATE/code` in one command, with tracing disabled. Don't print the code or the log, don't put the code in a command-line argument, and don't make intermediate copies. Leave the harness's log untouched, and never create a log for this purpose.
   - If not, paste it between the `CODE` markers exactly as received, in one tool call:
 
   ```sh

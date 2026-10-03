@@ -12,7 +12,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-se
 - **Leak check:** after each sequence, grep the agent transcript and its `TC_SECRETS_STATE` for the canary value. Any hit fails the sequence.
 - **Confinement check:**
   - The approval link appears only in the agent's one approval message and its one read of `approve.url`.
-  - The code appears only in the coordinator's message and the one heredoc tool call that saves it.
+  - The code appears only in the coordinator's message and the one tool call that saves it: a private-input pipe, an extraction from the harness's existing log, or the heredoc.
   - After every step, `$TC_SECRETS_STATE` is mode 0700 and every file in it is 0600.
 
 ## Test 1 — CLI check
