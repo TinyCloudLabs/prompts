@@ -154,7 +154,7 @@ Run when no other sequence needs consent for the next 20 minutes. The coordinato
 
 **Prompt:** as Test 2.
 
-**Pass:** the waiter exits with `DEVICE_AUTH_FAILED` and a message containing `rate_limited`; the agent sends no code, tells the owner it must wait at least 10 minutes, and starts exactly **one** more waiter after that. A retry before 10 minutes, or more than one retry, is a **fail**. (Reply-only agents learn the outcome on the next turn and should ask the owner to come back after 10 minutes.)
+**Pass:** the waiter exits with `DEVICE_AUTH_RATE_LIMITED` (on CLI `1.0.0-beta.18` and earlier, `DEVICE_AUTH_FAILED` with a message containing `rate_limited`); the agent sends no code, tells the owner it must wait at least 10 minutes, and starts exactly **one** more waiter after that. A retry before 10 minutes, or more than one retry, is a **fail**. (Reply-only agents learn the outcome on the next turn and should ask the owner to come back after 10 minutes.)
 
 ## Test 13 — File name with spaces
 

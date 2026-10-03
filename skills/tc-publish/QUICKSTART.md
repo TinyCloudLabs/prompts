@@ -49,7 +49,7 @@ In the second forward-test round, a plain `( … ) &` waiter was killed when the
 
 ## Consent is rate-limited
 
-OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on that network. Over the limit, the CLI currently reports `DEVICE_AUTH_FAILED` with "OpenKey device authorization failed: rate_limited (too many device authorization requests)"; TC-575 will give it its own code. The agent waits at least 10 minutes and tries once more — never in a loop. Every start counts, including relaunches after expiry or a dead waiter, so the agent never starts a new request while a code is outstanding.
+OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on that network. Over the limit, the CLI reports `DEVICE_AUTH_RATE_LIMITED` (CLI `1.0.0-beta.18` and earlier report `DEVICE_AUTH_FAILED` with "rate_limited" in the message). The agent waits at least 10 minutes and tries once more — never in a loop. Every start counts, including relaunches after expiry or a dead waiter, so the agent never starts a new request while a code is outstanding.
 
 ## Turn boundaries
 
