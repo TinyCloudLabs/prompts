@@ -30,6 +30,7 @@ Run each block below as one tool call. Replace every `'<…>'` placeholder first
 - Never ask the owner to paste a secret value into the conversation. A missing secret is added by the owner in Secret Manager.
 - Never turn on shell tracing (`set -x`) in a block that reads a secret.
 - The OpenKey approval link and the code the owner sends back finish one sign-in for this profile. Treat them as sensitive: keep the code only in `$STATE` until the sign-in completes, then delete it.
+- Run only the blocks the task needs, as written. Never create, rename or delete profiles beyond §3a's `init`, never run `profile delete`, and never improvise extra `tc` commands to "test" access: §2 is the access test.
 
 ## 1. Check the CLI
 
@@ -43,7 +44,7 @@ PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 echo "TC_OWNER_DID=${TC_OWNER_DID:-unset}"
 ```
 
-If it prints `STALE` or `TC_OWNER_DID=unset`, stop and tell the owner. Never install anything yourself.
+If it prints `STALE` or `TC_OWNER_DID=unset`, stop and tell the owner. Never install anything yourself. When the owner only asked you to check the CLI, stop after this block and report what it printed.
 
 ## 2. Check access
 
@@ -106,7 +107,7 @@ PY
 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" --paste \
   --owner "$TC_OWNER_DID" --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
 grep -oE 'https://openkey\.so/delegate\?[^ ]+' "$STATE/login.err" | tail -1 > "$STATE/approve.url"
-python3 - "$STATE/approve.url" "$TC_OWNER_DID" $NAMES <<'PY'
+VERDICT=$(python3 - "$STATE/approve.url" "$TC_OWNER_DID" $NAMES <<'PY'
 import base64, json, sys, urllib.parse
 url_file, owner, names = sys.argv[1], sys.argv[2], set(sys.argv[3:])
 url = open(url_file).read().strip()
@@ -121,6 +122,8 @@ ok = (kv == names and len(dec) == 1 and dec[0].get("space") == "encryption"
       and len(perms) == len(names) + 2)
 print("APPROVAL_READY" if ok else "REQUEST_MISMATCH")
 PY
+)
+echo "$VERDICT"; [ "$VERDICT" = APPROVAL_READY ] || rm -f "$STATE/approve.url"
 rm -f "$STATE/login.err"
 ```
 
