@@ -293,7 +293,7 @@ rm -f "$STATE/inspect.json" "$STATE/show.json"
   && id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json") \
   && "$TC_BIN" --profile "$PROFILE" share show "$id" > "$STATE/show.json" \
   && python3 - "$STATE/inspect.json" "$STATE/publish.json" "$STATE/show.json" "$(basename "$FILE")" "$TC_OWNER_EMAIL" <<'PY' || echo MISMATCH
-import json, sys, datetime
+import json, sys, datetime, unicodedata
 ins, pub, show = (json.load(open(p)) for p in sys.argv[1:4])
 base, owner = sys.argv[4], sys.argv[5]
 t = lambda s: int(datetime.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp())
@@ -301,7 +301,7 @@ m, p = ins["metadata"], pub["metadata"]
 ok = (m["target"]["kind"] == "email"
       and m["shareId"] == p["shareId"]
       and m["resource"]["path"] == p["resource"]["path"]
-      and (m.get("display") or {}).get("filename") == base
+      and unicodedata.normalize("NFC", (m.get("display") or {}).get("filename") or "") == unicodedata.normalize("NFC", base)
       and t(m["expiresAt"]) == t(p["expiresAt"])
       and ins["link"]["kind"] == "policy"
       and show.get("recipient") == owner.strip().lower())
