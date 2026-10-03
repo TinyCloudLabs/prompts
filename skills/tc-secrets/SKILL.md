@@ -246,7 +246,7 @@ rm -f "$STATE/login.err" "$STATE/context.json"
 
 **3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows a long code (about 7–10 KB) and the message "Only paste this code into a terminal you started yourself". The code completes sign-in only for this profile's key. Keep it out of the conversation when you can.
 
-First put the code into `$STATE/code`, using exactly one of these:
+First put the code into `$STATE/code`, using exactly one of these. Prefer the private input: copying a code this long by hand can corrupt it.
 
 - **The harness has a private input** that can pipe a value into a command, such as Paseo's Secret Bridge. Request it, wait for the owner to submit it, then write it with one call. For example, with Secret Bridge:
 
@@ -262,7 +262,9 @@ First put the code into `$STATE/code`, using exactly one of these:
   secret-bridge pipe OPENKEY_CODE -- sh -c 'umask 077; rm -f "$1"; cat > "$1"' sh "$STATE/code" && echo CODE_SAVED
   ```
 
-- **Otherwise** ask the owner to send the code in your 1:1 channel. Paste it between the `CODE` markers exactly as received, in one tool call:
+- **Otherwise** ask the owner to send the code in your 1:1 channel.
+  - If the harness saves the owner's messages in a file you can read (for example a chat log), extract the code from that file with a command instead of retyping it.
+  - If not, paste it between the `CODE` markers exactly as received, in one tool call:
 
   ```sh
   { set +x; } 2>/dev/null; set +e; umask 077
@@ -358,7 +360,7 @@ rm -f "$STATE/use.err"
 
 Both patterns read the secret inside a subshell, so the value never stays in your shell, even when the read fails. They also close stdin and send the CLI's stderr to a private file, so the CLI never waits for a browser approval mid-task. `EXIT` is your command's exit status; `EXIT 90` with `SECRET_UNAVAILABLE` means access changed since §2 (for example, the session expired), so go back to §2.
 
-If a tool insists on a key file, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command.
+If a tool insists on a key file, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command. Never offer or agree to leave a value in a file after the command, even when the owner asks. The owner can copy their own values in Secret Manager.
 
 ## 5. Errors — `{"error":{"code","message","hint"?}}` on stderr
 
