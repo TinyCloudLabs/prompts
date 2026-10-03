@@ -130,16 +130,42 @@ rm -f "$STATE/login.err"
 - `APPROVAL_READY` → send the approval message (template at the end) with the link from one read of `$STATE/approve.url`.
 - `REQUEST_MISMATCH` or `NO_URL` → stop and tell the owner the CLI is too old to request secret reads correctly. Don't send a link.
 
-**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows a long code (about 7–10 KB). If your harness gives the owner a private input that pipes into a command (for example Paseo's Secret Bridge: `secret-bridge request NAME …`, then `secret-bridge pipe NAME -- sh -c '…'`), use it so the code never enters the conversation, and feed the block below from that pipe. Otherwise ask the owner to send the code in your 1:1 channel and paste it between the `CODE` markers exactly as received, in one tool call.
+**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows a long code (about 7–10 KB) and the message "Only paste this code into a terminal you started yourself." The code only completes sign-in for this profile's key, but keep it out of the conversation when you can.
+
+First put the code into `$STATE/code`, using exactly one of these:
+
+- **The harness has a private input** that can pipe a value into a command, such as Paseo's Secret Bridge. Request it, wait for the owner to submit it, then write it with one call. For example, with Secret Bridge:
+
+  ```sh
+  secret-bridge request OPENKEY_CODE --reason "Paste the code OpenKey showed after you approved. It finishes the TinyCloud sign-in for this machine's <profile> profile."
+  ```
+
+  then, after the owner submits it:
+
+  ```sh
+  umask 077; STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"
+  secret-bridge pipe OPENKEY_CODE -- sh -c 'umask 077; cat > "$1"' sh "$STATE/code" && echo CODE_SAVED
+  ```
+
+- **Otherwise** ask the owner to send the code in your 1:1 channel, and paste it between the `CODE` markers exactly as received, in one tool call:
+
+  ```sh
+  umask 077; STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"
+  cat > "$STATE/code" <<'CODE'
+  <code exactly as the owner sent it>
+  CODE
+  echo CODE_SAVED
+  ```
+
+Then finish the sign-in:
 
 ```sh
 umask 077; STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
-cat > "$STATE/code" <<'CODE'
-<code exactly as the owner sent it>
-CODE
-"$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" --paste \
+[ -s "$STATE/code" ] || { echo "NO_CODE"; exit 0; }
+printf '\n' >> "$STATE/code"
+timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" --paste \
   --owner "$TC_OWNER_DID" --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
 python3 - "$STATE/login.json" "$STATE/login.err" <<'PY'
 import json, sys
@@ -155,10 +181,11 @@ rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
 ```
 
 - `SIGNED_IN` with `declined []` → run §2 again; every name should now be `READABLE`.
-- A non-empty `declined` → the owner unticked something. Tell them which names stay unreadable.
+- A non-empty `declined` → something was not granted. Tell the owner which names stay unreadable and why: an unticked item, or (when the declined entry is the decrypt permission and the owner left everything ticked) an OpenKey deployment too old to grant agent decryption.
+- `NO_CODE` → the code never arrived; ask the owner to send it again.
 - `LOGIN_FAILED` → see §5. A code copied wrongly fails here; ask the owner to send it again, don't start a new request.
 
-The code is single-use in practice: it signs in this profile's key and nothing else. Never reuse it for another profile.
+The code completes sign-in only for this profile's key. Never reuse it for another profile.
 
 ## 4. Use a secret
 
