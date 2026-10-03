@@ -112,7 +112,7 @@ rm -f "$STATE/context.json" "$STATE/context.err" "$STATE/get.err"
 ```
 
 - Every name `READABLE` → go to §4.
-- `AUTH_REQUIRED`, `PROFILE_NOT_FOUND`, `PERMISSION_DENIED` or `TIMEOUT` → go to §3 with the full list of names the task needs. `TIMEOUT` happens on CLIs before the TC-599 release, which wait instead of failing when the session doesn't cover a name.
+- `AUTH_REQUIRED`, `PROFILE_NOT_FOUND`, `PERMISSION_DENIED` or `TIMEOUT` → go to §3 with the full list of names the task needs. `TIMEOUT` happens on CLIs older than 1.0.0-beta.23, which wait instead of failing when the session doesn't cover a name.
 - `NOT_FOUND` → the secret doesn't exist yet. Tell the owner to add it in Secret Manager, then run §2 again. Don't start §3 for it.
 - `OWNER_MISMATCH` or `OWNER_UNKNOWN` → stop. The profile is signed in to a different account than `TC_OWNER_DID`, or has a session with no recorded owner. Tell the operator. Never switch profiles, log out or replace the session yourself.
 - Anything else → see §5.
@@ -242,7 +242,7 @@ rm -f "$STATE/login.err" "$STATE/context.json"
 
 - `APPROVAL_READY` → send the approval message (template at the end), with the link from one read of `$STATE/approve.url`.
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
-- `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than the TC-599 release.
+- `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than 1.0.0-beta.23.
 
 **3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows a long code (about 7–10 KB) and the message "Only paste this code into a terminal you started yourself". The code completes sign-in only for this profile's key. Keep it out of the conversation when you can.
 

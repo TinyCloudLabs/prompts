@@ -2,12 +2,12 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and an exact `@tinycloud/cli` pin that includes TC-599. Decryption also needs OpenKey with TC-598 live. Before those releases, sign-in succeeds but decryption is refused (`SECRET_DECRYPT_FAILED`).
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli@1.0.0-beta.23` or later; pin an exact version. Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@<pinned version>
+npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.23
 export TC_BIN=<dir>/node_modules/.bin/tc
 export TC_OWNER_DID=did:pkh:eip155:1:<owner address>    # the account that owns the secrets
 export TC_HOME=<profile store for this agent>             # optional
