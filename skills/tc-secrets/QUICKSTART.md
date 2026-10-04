@@ -25,7 +25,7 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
 2. **Check access** (§2). First confirm the profile belongs to `TC_OWNER_DID`; a profile signed in to another account stops with `OWNER_MISMATCH`, and the agent never switches or resets it. Then read each needed name into `/dev/null`:
    - `READABLE` → use it.
    - `AUTH_REQUIRED`, `PERMISSION_DENIED`, `PROFILE_NOT_FOUND`, or `TIMEOUT` (older CLIs hang on a missing grant) → consent.
-   - `NOT_FOUND` → the owner adds the secret in Secret Manager first.
+   - `NOT_FOUND` → §2 also prints `ADD_LINK`: Secret Manager with the missing names filled in, for example `https://secrets.tinycloud.xyz/app?secret=ELEVENLABS_API_KEY` (several names: `?secrets=A,B`). The agent sends that link; the owner enters the value there, and the agent checks again.
 3. **Consent** (§3), in three steps:
    1. Create the key-only profile if it's missing.
    2. **Build and check the link.**
@@ -63,5 +63,5 @@ After **Approve**, the page shows the code with "Only paste this code into a ter
 
 - `secrets get` without `--raw` prints JSON containing the value. Always capture with `--raw`.
 - Command-line arguments are visible to other local users through the process list, so pass values through the environment or stdin. For HTTP headers, use `curl -H @-`.
-- Nothing goes into notes, memory, commits, logs, or summaries. A missing secret is the owner's to add in Secret Manager.
+- Nothing goes into notes, memory, commits, logs, or summaries. A missing secret is the owner's to add in Secret Manager, through the link the agent sends.
 - Every block starts by turning off inherited shell tracing (`{ set +x; } 2>/dev/null`) and exit-on-error, sets `umask 077`, and repairs the modes of reused state files.
