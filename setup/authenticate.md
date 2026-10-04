@@ -1,6 +1,6 @@
 # Select a TinyCloud account and authorize the pending task
 
-Use this conditional procedure with published CLI `0.10.0`. Retain the original request, date/timezone, role, selected context and caller's return heading; successful consent resumes that operation, not another setup prompt. Installation alone does not require login.
+Retain the original request, date/timezone, role, selected context and caller's return heading. Usable saved context goes straight to the caller's actual discovery/reads. Missing login or required authority follows scoped consent below; successful verification resumes the original operation in this conversation without another task prompt. Invalid saved configuration follows recovery, not a new login. The published CLI baseline is `0.10.0`; installation alone does not require login.
 
 ## 1. Select and retain the context
 
@@ -18,7 +18,9 @@ Profile precedence is explicit `--profile`, then `TC_PROFILE`, then saved defaul
 
 Retain explicit/environment/saved host intent. Without an explicit host the CLI can discover a local node; inspect the resolved context instead of assuming the hosted default. If deliberately initializing a hosted connection with no other host intent, use `https://node.tinycloud.xyz`. Once resolved, supply that exact `--host` on subsequent commands. Failed access never authorizes a host/profile switch.
 
-Reuse the intended suitable profile. Ask an account question only when genuinely competing saved accounts leave the owner ambiguous. Create a separate role profile only when necessary, for example to separate setup authority from ordinary operations or protect a reader:
+**If saved configuration is invalid:** preserve it and the selected home/profile/host. Retain the exact nonsecret command, diagnostic/error code and client version/mode; do not repeat a reported failed authentication merely to reproduce it. If safe context selection has not been inspected, use the redacted commands above, not raw credential files. Distinguish malformed configuration, an absent profile, missing owner metadata, expired authority and denied scope. Apply only an existing documented nondestructive repair that matches the observed diagnostic, then retry safe context inspection. Do not delete/reset configuration, overwrite a profile, change the saved default or substitute a fresh home/account/host. If no supported repair matches, keep the lookup pending and report the diagnostic and the specific repair/access prerequisite; request only the missing nonsecret detail, not a private session export.
+
+Reuse the intended suitable profile. Ask an account question only when genuinely competing saved accounts leave the owner ambiguous. If the intended profile is absent, initialize it with the CLI below; the OpenCode adapter requires an existing selected profile and will not create or switch one. Create a separate role profile only when necessary, for example to separate setup authority from ordinary operations or protect a reader:
 
 ```sh
 "$TC_BIN" profile create "$PROFILE" --host "$HOST" --posture owner-openkey --operator agent
@@ -35,31 +37,55 @@ For registry discovery use the [registry-read manifest](../quickstart/retrieve-d
 
 For app operations, resolve logical spaces through `context --space ... --json` for the selected owner. Generate a separate consent manifest with one explicit top-level space, `defaults: false`, `includePublicSpace: false`, fully qualified services, fully resolved resource paths and `skipPrefix: true` on every permission. Include the OpenKey-required `tinycloud.capabilities` action `read` on path `""`. CLI `0.10.0` prefix/per-entry-space loading differs from SDK resolution; never copy a broad registered app manifest into consent. Verify exact effective resources and actions. First login supports one space; several app spaces can require several approvals.
 
+Keep nonsecret setup configuration and its referenced consent manifest in private durable files (directories `0700`, files `0600`). Each pending scope is immutable; use a separate manifest/configuration for a different scope after the current approval finishes. Retain every file still referenced by saved setup, including after the task completes, so return visits can reuse it. Do not put a referenced manifest inside a pending-operation directory scheduled for deletion on completion.
+
 ## 3. Complete consent through a supported transport
 
-For an absent or expired primary session, use the prepared scoped manifest:
+### OpenCode
+
+For missing authority in OpenCode, use the existing integration's **`0.1.1-generic.1` branch preview**, not TinyChat's app-specific setup or meeting permissions. [Install/load the pinned preview only if needed](tinycloud.md#opencode-private-sign-in). Continue only when `tinychat_setup`, `tinychat_authorize` and `tinychat_signin_status` are callable. The [versioned transport contract](https://d33365c2.tinychat-4jq.pages.dev/agents/tinychat-retrieval/0.1.1-generic.1/references/setup.md#selected-context-preview) documents this extension; it is not a production release.
+
+The adapter inherits `TC_HOME` (or `HOME`) and resolves `tc` from OpenCode's startup `PATH`. It must be the same executable as the selected `$TC_BIN`, with the same durable home in subsequent CLI commands. Do not silently substitute another installed CLI or override the home in app configuration.
+
+Write a private JSON configuration at an absolute `CONFIG` path using these exact fields:
+
+| Field | Value from this pending operation |
+| --- | --- |
+| `schemaVersion` | `1` |
+| `profile` | The existing selected CLI profile |
+| `host` | The exact resolved host |
+| `space` | The manifest's top-level space: `account`, a logical app space or its full URI |
+| `manifestPath` | The absolute durable path to the narrow manifest from section 2 |
+| `expectedOwner` | The known primary DID, if any; otherwise omit |
+
+The manifest must use `manifest_version: 1`, a nonempty `app_id`, and the explicit permission form in section 2. Configuration `space` and manifest `space` must match. Existing TinyChat selection can adopt this configuration only with its same saved profile and host, retaining the bound owner. `CONTEXT_MISMATCH` is a blocker, not permission to replace saved selection.
+
+1. Call `tinychat_setup` with `configPath` set to `CONFIG`. On return visits to that same saved scope, omit `configPath`. A `ready` result still means `access: not-tested`: go directly to section 4 and real reads. For `login-required` or `grant-required`, continue below; the latter preserves the primary session and adds only missing authority. `PROFILE_NOT_FOUND` returns to profile selection; `SETUP_CONFIG_INVALID` returns to nondestructive diagnostic handling, not consent.
+2. Call `tinychat_authorize` with no arguments. On `delivery.status: launch-requested`, say **“Complete sign-in in the browser, then paste the code here.”** This is the existing adapter's private chat capture: it intercepts the human's original single text part before model processing and native conversation persistence, and passes it to official CLI verification. Never request a paste unless capture is loaded and armed for this conversation; never read, reconstruct or supply the response as a model tool argument/file. Browser launch is not proof of approval.
+3. Call `tinychat_signin_status` with no arguments to observe the bound authorization outcome. Only verified completion advances to section 4. Missing responses remain pending; do not start competing approvals. If scope or selected context changes while approval is pending, do not reuse that approval for the changed request. Complete approval in the same running conversation.
+
+If browser launch fails or the human reports no page, open the returned `delivery.artifactPath` locally. It is the private HTML carrying the exact approval URL; do not read out, decode or reconstruct it. Keep it until completion/cancellation. If the actual client cannot deliver this artifact and privately capture the response, report the transport blocker rather than substituting a model-visible paste.
+
+Never run raw `tc auth login` or `tc auth request` as an OpenCode fallback, start a shell callback waiter, or send the human to a terminal to bypass unavailable capture. If the actual client/version/launch mode lacks the private transport, report that exact blocker. Do not claim URL delivery, setup completion or an open browser proves approval.
+
+Distinguish reported refusal, local cancellation, timeout and transport failure. Closing a browser window is not machine-observed denial. After refusal do not relaunch consent; after an unavailable transport preserve the task and state the missing prerequisite. Never broaden authority to make a failed approval pass.
+
+### Other CLI-capable clients only
+
+This is not an OpenCode fallback. In another client with a supported private browser/loopback transport, use the same prepared manifest and selected context:
 
 ```sh
+# Missing or expired primary session:
 "$TC_BIN" --profile "$PROFILE" --host "$HOST" auth login \
   --method openkey --manifest "$MANIFEST" --expiry 7d --no-popup
-```
-
-Add `--owner "$EXPECTED_OWNER"` when known. Setup consent should be short-lived, normally `--expiry 1h`. Preserve a valid primary session when adding missing authority:
-
-```sh
+# Valid primary session, missing authority (use instead of login):
 "$TC_BIN" --profile "$PROFILE" --host "$HOST" auth request \
   --manifest "$MANIFEST" --grant --expiry 7d --no-popup
 ```
 
-`--no-popup` explicitly prints the approval URL for the agent to relay. Reuse grants that pass actual reads; request no new consent just because a new subprocess started. Do not assume every additional grant is universally capped by primary-session expiry; inspect the resulting validity and actual access.
+For login, add `--owner "$EXPECTED_OWNER"` when known. Setup-only consent should be short-lived, normally `--expiry 1h`. Relay the approval URL, not a signed response. The human's browser must reach the waiting CLI; retain one process for its full five-minute callback window (at least six minutes of tool timeout). If unavailable, stop and state that transport prerequisite rather than mixing this route with OpenCode capture. Do not assume additional grants are universally capped by primary-session expiry; inspect validity and actual access.
 
-Use the browser/loopback callback when the human's browser can reach the waiting CLI on the same machine. Keep one waiter running for its full **five-minute** window, using a persistent process handle or at least **six minutes** of tool timeout (for tools using milliseconds, `360000`). Retain the handle and observe completion; do not kill it because approval is not immediate or start competing logins. The approval URL is not a signed response.
-
-**CLI 0.10.0 warning:** callback failures can be mislabeled “Cannot open browser in non-interactive mode.” Preserve observed timing and underlying diagnostics; this message alone does not prove browser-launch failure or human refusal. Keep this warning until a corrected CLI and dependency chain are published and verified.
-
-If loopback is unreachable or the agent cannot retain the waiter, use a **human-operated native terminal** on the machine holding this same CLI home. Provide the exact nonsecret command with absolute executable/manifest paths, home/profile/host. First login supports `--paste`; additional-grant mode accepts private interactive terminal input but has **no `--paste` flag**. Stop only this task's former waiter before replacement. Signed responses go directly into the human's waiting CLI, never through model chat, generated files, tool arguments or agent-controlled stdin. Record the intervention and resume from safe context/live reads. No plugin, TinyChat interceptor or unpublished helper is required or implied.
-
-Distinguish reported refusal, local cancellation, timeout and transport failure. Closing a browser window is not machine-observed denial. After refusal do not repeatedly launch consent. With no supported transport, keep the task pending and report that precise missing prerequisite; do not broaden login.
+CLI `0.10.0` can mislabel callback failure as “Cannot open browser in non-interactive mode.” Preserve timing and underlying diagnostics; that message alone proves neither browser-launch failure nor refusal.
 
 ## 4. Verify and resume the caller
 

@@ -31,7 +31,7 @@ Only if authority is missing, prepare this registry-read consent manifest and fo
 }
 ```
 
-This requests no account SQL/index writes, hosting, registry puts or app data. Unknown-owner first login may use logical `account`; subsequent resolved app scopes use their full URI. Keep a valid primary login and use `auth request --grant` for missing scope, not another primary login. Denied/unavailable discovery is not no-match.
+This requests no account SQL/index writes, hosting, registry puts or app data. Unknown-owner first login may use logical `account`; subsequent resolved app scopes use their full URI. Keep a valid primary login and obtain only the missing grant through the canonical authentication procedure, not another primary login or a raw CLI fallback in OpenCode. Denied/unavailable discovery is not no-match.
 
 ## 4. Select the app and its declared resources
 

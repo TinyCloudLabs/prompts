@@ -1,6 +1,6 @@
 # Use TinyCloud for this request
 
-Use the user's request with this guide in an ordinary CLI-capable agent. The published baseline is **`@tinycloud/cli@0.10.0`**, Node.js **22.20 or later**. No client plugin or app-specific skill is required for explicit operations.
+Use the user's request with this guide in a CLI-capable agent. The published CLI baseline is **`@tinycloud/cli@0.10.0`**, Node.js **22.20 or later**. Saved access can be used directly; OpenCode sign-in requires the existing private sign-in integration, not a raw CLI login fallback.
 
 ## 1. Retain the request
 
@@ -8,7 +8,7 @@ Keep the intended operation, original date/timezone and explicit account selecti
 
 ## 2. Reuse the connection
 
-Reuse the installed CLI and intended saved profile. Follow [installation](../setup/tinycloud.md) only if needed, and [context selection and scoped consent](../setup/authenticate.md) only when selection or authority is unresolved. Use redacted `context --json`; it reports `access: not-tested`, not proof of access. Keep the resolved host explicit and the same durable home/profile in every subprocess. Failure never authorizes switching accounts or hosts.
+Reuse the installed CLI and intended saved profile. Follow [installation](../setup/tinycloud.md) only if needed. Use redacted `context --json`; it reports `access: not-tested`, not proof of access. Keep the resolved host explicit and the same durable home/profile in every subprocess. With usable context, continue discovery below and try the actual reads. For missing login/authority or invalid saved configuration, follow the single [context, recovery and scoped consent procedure](../setup/authenticate.md), then resume the pending lookup automatically. Preserve invalid configuration; failure never authorizes switching accounts or hosts.
 
 ## 3. Find the relevant applications
 
