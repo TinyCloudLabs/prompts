@@ -2,12 +2,12 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.18` (TC-540 device login and `enable share`, TC-556 owner-only links, TC-577 file names with spaces). Install an exact pin, never `@latest` (still 0.9.0). The skill's feature probe is authoritative: betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.18` (TC-540 device login and `enable share`, TC-556 owner-only links, TC-577 file names with spaces). Install an exact pin, never `@latest` (now `1.0.0`, which predates the TC-571 `--notify`, TC-548 and TC-550 fixes in the pin below). The skill's feature probe is authoritative: betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.0.0-beta.21
+npm install --prefix <dir> @tinycloud/cli@1.0.1-beta.2
 export TC_BIN=<dir>/node_modules/.bin/tc
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
@@ -69,7 +69,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 - `share list --json` is sender history with fields `shareId`, `target` (`bearer` or `email`), `expiresAt` and `revoked`; there is no `id` field. Public ids are CIDs (`bafkr4…`), owner-only ids are 32 hex characters. Filter out revoked and expired records before calling anything active.
 - Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
 - Invalid recipients are refused before anything is published: `INVALID_ARGUMENT` "recipient email is invalid" or "recipient email domain is invalid". Ask the owner for the correct address.
-- Don't pass `--notify`. Invite email delivery currently fails with exit 9 "partial share success" (a node 403, TC-571): the share is created, but the email isn't sent. The agent sends the link itself, and the viewer emails the recipient its own 8-digit code when they open it.
+- `--notify` is optional, only for when the owner asks for an emailed invite, and only on owner-only links (`NOTIFY=--notify` in the owner-only block). From CLI `1.0.1-beta.0` it has TinyCloud email the recipient one invitation with the link. The agent still sends the link itself, and the viewer still emails the recipient its own 8-digit code when they open it. Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9 "partial share success" (a node 403, TC-571): the share is created, but the email isn't sent. The agent reads the version first and on an older CLI publishes without `--notify`. If exit 9 happens anyway, the block prints `INVITE_NOT_SENT`, and the agent delivers the link as usual and tells the owner no invite went out.
 - File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show the stored name, owner-only links the original. CLI `1.0.0-beta.17` can't publish such names (TC-577): spaces give a misleading `PERMISSION_DENIED`, other unusual names may give `INVALID_ARGUMENT`. The agent tells the owner to upgrade instead of re-running consent or renaming the file.
 - Public links can't be revoked today: on production `share revoke <bearer shareId>` exits 2 with `INVALID_ARGUMENT` "share operation failed", and the link keeps opening (TC-545). Expiry is the only bound.
 
@@ -91,5 +91,5 @@ Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option er
 - Never retype, reassemble, or chunk a link.
 - Never report a publish without verification.
 - Never publish publicly unless the owner explicitly asked, and never substitute a public link for a private one.
-- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, start a new consent request while a code is outstanding, retry a rate-limited request in a loop, pass `--notify`, or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
+- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, start a new consent request while a code is outstanding, retry a rate-limited request in a loop, pass `--notify` unless the owner asked for an emailed invite, or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
 - Never publish HTML that fails the self-contained check unless the owner, told what will break, explicitly says to publish anyway.

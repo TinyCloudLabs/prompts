@@ -40,7 +40,7 @@ Default to the **owner-only email link**. Create a public link only when the own
 
 Address owner-only links with `--to "email:$TC_OWNER_EMAIL"`. If `$TC_OWNER_EMAIL` is unset, ask the owner and never guess. To share with someone else, use their address as confirmed by the owner. Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-Never pass `--notify`. Invite email delivery currently fails (exit 9, "partial share success", TC-571) even though the share is created. Send the link yourself (§6); the recipient's viewer emails its own 8-digit code when they open it.
+`--notify` is optional: use it only when the owner asks for an emailed invite, and only on an owner-only publish (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails the recipient one invitation with the link. You still send the link yourself (§6). Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -216,12 +216,15 @@ mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
 EXPIRES=7d
+NOTIFY=             # NOTIFY=--notify only if the owner asked for an emailed invite (CLI 1.0.1-beta.0 or newer)
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
-if "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_OWNER_EMAIL" --expires "$EXPIRES" --json \
-     > "$STATE/publish.json" 2>"$STATE/publish.err" && [ -s "$STATE/publish.json" ]; then
+"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_OWNER_EMAIL" --expires "$EXPIRES" $NOTIFY --json \
+  > "$STATE/publish.json" 2>"$STATE/publish.err"; rc=$?
+if { [ "$rc" = 0 ] || [ "$rc" = 9 ]; } && [ -s "$STATE/publish.json" ]; then
   id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
   echo "PUBLISHED owner-only share id $id file $(basename "$FILE") expires $EXPIRES"
+  [ "$rc" = 9 ] && echo "INVITE_NOT_SENT"
   "$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link \
     | python3 -c 'import json,sys;link=json.load(sys.stdin)["link"];open(sys.argv[1],"w").write(link)' "$STATE/last-url" 2>/dev/null \
     && echo LINK_SAVED || echo REVEAL_FAILED
@@ -254,7 +257,7 @@ else
 fi
 ```
 
-On `PUBLISH_FAILED`, stop and use the errors table. Record the share id, file name and link type — never the URL. `--reveal-link` already prints JSON with `.link`; never combine it with `--json` (`INVALID_ARGUMENT`).
+On `PUBLISH_FAILED`, stop and use the errors table. `INVITE_NOT_SENT` (exit 9, only with `--notify`) means the share was published but the invite email wasn't sent: don't publish again — verify (§4), deliver the link yourself (§6) and tell the owner no invite went out. Record the share id, file name and link type — never the URL. `--reveal-link` already prints JSON with `.link`; never combine it with `--json` (`INVALID_ARGUMENT`).
 
 ## 4. Verify — always, before reporting
 
@@ -367,6 +370,8 @@ Report with the template for the link type — fill in the placeholders, keep th
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
+If you passed `--notify`, add: "TinyCloud also emailed `<recipient email>` an invitation." After `INVITE_NOT_SENT`, add instead: "The invitation email couldn't be sent."
+
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
 ```sh
@@ -421,7 +426,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
 | `STORAGE_QUOTA_EXCEEDED` | 4 | The owner's TinyCloud storage is full; the message includes the used and limit sizes when the node reports them. Nothing was shared. Tell the owner; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
-| exit 9, "partial share success" | 9 | Only with `--notify` (TC-571): the share exists but the invite email failed. Don't use `--notify`; send the link yourself |
+| exit 9, "partial share success" | 9 | Only with `--notify`: the share exists but the invite email failed — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, send the link yourself (§6) and tell the owner no invite went out |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
 | `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
