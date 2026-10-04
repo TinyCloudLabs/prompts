@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Read secrets from TinyCloud with `tc secrets`
@@ -36,7 +36,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
   - Never print, echo or log it. Never write it into the repository, notes, memory, commits or summaries.
   - Never pass it as a command-line argument: other local users can read process arguments.
 - Never run `secrets get` without `--raw` inside a capture: plain `secrets get` prints the value as JSON.
-- **Never ask the owner to paste a secret value into the conversation.** A missing secret is added by the owner in Secret Manager.
+- **Never ask the owner to paste a secret value into the conversation.** A missing secret is added by the owner in Secret Manager, through the `ADD_LINK` that §2 prints.
 - **Never enable shell tracing.** Every block here disables it first.
 - **Approval link and code:** the link and the code the owner sends back complete one sign-in for this profile.
   - The link lives in `$STATE/approve.url` (0600). Read it once, to compose your one approval message to the owner. The CLI also writes it into the temporary `$STATE/login.err`, which the blocks parse and then delete. Never display that file. The link must not appear anywhere else.
@@ -83,6 +83,7 @@ print((last.get("error") or {}).get("code") or "unknown")
 PY
 }
 rm -f "$STATE/context.json" "$STATE/context.err" "$STATE/get.err"
+MISSING=''
 "$TC_BIN" --profile "$PROFILE" context --json < /dev/null > "$STATE/context.json" 2> "$STATE/context.err"
 OWNER=$(python3 - "$STATE/context.json" "$TC_OWNER_DID" <<'PY'
 import json, sys
@@ -104,16 +105,22 @@ case "$OWNER" in
        rc=$?
        if [ $rc -eq 0 ]; then echo "READABLE $n"
        elif [ $rc -eq 124 ]; then echo "NOT_READABLE $n TIMEOUT"
-       else echo "NOT_READABLE $n $(errcode "$STATE/get.err")"; fi
+       else code=$(errcode "$STATE/get.err"); echo "NOT_READABLE $n $code"
+            [ "$code" = NOT_FOUND ] && MISSING="$MISSING${MISSING:+,}$n"; fi
      done ;;
   *) echo "$OWNER — profile $PROFILE is not provably signed in to TC_OWNER_DID; stop and tell the operator" ;;
+esac
+case "$MISSING" in
+  "") ;;
+  *,*) echo "ADD_LINK https://secrets.tinycloud.xyz/app?secrets=$MISSING" ;;
+  *) echo "ADD_LINK https://secrets.tinycloud.xyz/app?secret=$MISSING" ;;
 esac
 rm -f "$STATE/context.json" "$STATE/context.err" "$STATE/get.err"
 ```
 
 - Every name `READABLE` → go to §4.
 - `AUTH_REQUIRED`, `PROFILE_NOT_FOUND`, `PERMISSION_DENIED` or `TIMEOUT` → go to §3 with the full list of names the task needs. `TIMEOUT` happens on CLIs older than 1.0.0-beta.23, which wait instead of failing when the session doesn't cover a name.
-- `NOT_FOUND` → the secret doesn't exist yet. Tell the owner to add it in Secret Manager, then run §2 again. Don't start §3 for it.
+- `NOT_FOUND` → the secret doesn't exist yet. The block also prints `ADD_LINK <url>`: Secret Manager with every missing name filled in. Send the owner the missing-secret message below with that link, wait until they say it's saved, then run §2 again. Don't start §3 for it. The link carries only names, never a value or an approval code, so it goes straight into your message.
 - `OWNER_MISMATCH` or `OWNER_UNKNOWN` → stop. The profile is signed in to a different account than `TC_OWNER_DID`, or has a session with no recorded owner. Tell the operator. Never switch profiles, log out or replace the session yourself.
 - Anything else → see §5.
 
@@ -371,7 +378,7 @@ Branch on `code`, never on the exit status alone.
 | `AUTH_REQUIRED` (exit 3) | No session, or it expired | §3 on the same profile |
 | `PROFILE_NOT_FOUND` | No profile yet | §3a |
 | `PERMISSION_DENIED` (exit 5) | The session doesn't cover this name | §3 with the full list of names, current and new. Approving it widens the session |
-| `NOT_FOUND` | The secret doesn't exist | The owner adds it in Secret Manager (page in `hint`). Never ask for the value |
+| `NOT_FOUND` | The secret doesn't exist | Send the owner the `ADD_LINK` from §2 (the `hint` holds the same page). Never ask for the value |
 | `SECRET_DECRYPT_FAILED` | Decryption failed | Report it |
 | `SECRET_READ_FAILED` | The ciphertext is unreadable | Report it |
 | `NETWORK_ERROR` | The TinyCloud node is unreachable | Retry shortly, then report |
@@ -392,3 +399,9 @@ Branch on `code`, never on the exit status alone.
 Send this text, filling in the placeholders. Don't drop sentences.
 
 > To let me read <NAMES> from your TinyCloud Secrets, open <link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows a long code: send it back to me here, or in the private input I opened. Only you can approve this. Only approve if you asked me for this just now.
+
+## Missing-secret message (to the owner)
+
+Send this text when §2 reports `NOT_FOUND`, with `<link>` from its `ADD_LINK` line.
+
+> <NAMES> isn't in your TinyCloud Secrets yet. Open <link> to add it: Secret Manager opens with the name filled in, and you enter the value there. Never send the value to me. Tell me when it's saved and I'll continue.
