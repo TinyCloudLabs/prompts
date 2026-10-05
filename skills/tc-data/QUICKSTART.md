@@ -23,7 +23,7 @@ Start the client in the project folder:
 | Client | Start | What to expect |
 |---|---|---|
 | Claude Code | `claude` | In auto mode, which 2.1.289 turned on by default in the forward test, it asks nothing. In manual mode it asks six or seven times on first use: once or twice for the setup page (WebFetch, `curl`, or both), once each for the check and the install, then the skill's three: when it reads the paths, when it checks the CLI, and when it starts the sign-in. Each offers "Yes, and don't ask again"; choose it. After that, checks, writes and reads don't ask again, in new conversations too; only a new sign-in asks once more. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir <folder holding TC_HOME and TC_DATA_STATE>` | One approval, for the install: npm writes outside the workspace. The CLI needs the network, and it writes the profile store and the state folder, which are outside the project. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/.tinycloud --add-dir ~/.local/state/tc-data` | One approval, for the install: npm writes outside the workspace. The CLI needs the network, and it writes the profile store and the state folder, which are outside the project. With `TC_HOME` or `TC_DATA_STATE` set, pass `$TC_HOME/.tinycloud` and `$TC_DATA_STATE` instead. The folders don't need to exist yet: the setup creates them, and from then on Codex lets the CLI write there. |
 | OpenCode | `opencode` | No questions. |
 
 Claude Code and Codex also ask whether you trust a folder the first time you start them in it.
@@ -61,7 +61,7 @@ Add `--global` to the second line to install the skill for every project instead
      ```
 
 3. Open the link, on this computer or your phone, and sign in to OpenKey. Check that it shows the same code, then approve.
-4. That's all. The agent notices the approval by itself within a few seconds, writes the record and reads it back to you. You don't need to reply. In the forward test this took 72–97 s from the prompt, including the approval.
+4. That's all. The agent notices the approval by itself within a few seconds, writes the record and reads it back to you. You don't need to reply. In the forward test on a stock machine, Claude Code and Codex took 108 s and 117 s from the prompt, including the install and the approval; OpenCode's own work took about 60 s, plus the time the approval took.
 
 The link stays valid for 10 minutes. If you miss it, the agent tells you; ask again and it starts a new one.
 
