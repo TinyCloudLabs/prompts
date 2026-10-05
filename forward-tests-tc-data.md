@@ -1,6 +1,6 @@
 # tc-data forward-test runbook
 
-The coordinator prepares one project folder per client with only `tc-data` installed in it, and the owner approves every sign-in on OpenKey from the link the agent shows. The matrix is Claude Code, Codex and OpenCode. Tests 1 and 2 run in each client in turn; test 3 runs once, at the end.
+The coordinator prepares one project folder per client with only `tc-data` installed in it, and the owner approves every sign-in on OpenKey from the link the agent shows. The matrix is Claude Code, Codex and OpenCode, in any order. Tests 1 and 2 run in each client in turn; test 3 runs once, at the end.
 
 ## Preconditions
 
@@ -33,7 +33,7 @@ The coordinator prepares one project folder per client with only `tc-data` insta
 
 | Client | Command | Notes |
 |---|---|---|
-| Claude Code | `claude` | It asks three times on first use, for §1, §3 and §4, and each time offers "Yes, and don't ask again", which the owner chooses. Later conversations run §1, §3 and §5 without asking; only a new sign-in asks again. One approval can't cover the flow: Claude Code 2.1.289 saves exact or `<command> <subcommand> *` rules, and never matches a command named by a variable. The agent runs §4 with `run_in_background: true`; Claude Code wakes it when the command exits. |
+| Claude Code | `claude` | In auto mode, which 2.1.289 used by default in the forward test, it asks nothing. In manual mode it asks three times on first use, for §1, §3 and §4, and each time offers "Yes, and don't ask again", which the owner chooses. Later conversations run §1, §3 and §5 without asking; only a new sign-in asks again. One approval can't cover the flow: Claude Code 2.1.289 saves exact or `<command> <subcommand> *` rules, and never matches a command named by a variable. The agent runs §4 with `run_in_background: true`; Claude Code wakes it when the command exits. |
 | Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/projects/tc-lab/data` | Without these flags the CLI has no network and can't write the data folder, which is outside the workspace. Don't edit `~/.codex` or use a separate `CODEX_HOME`. Codex 0.160 runs commands through `exec_command`, which returns after `yield_time_ms` (default 10 s) and leaves a slower command running; the skill asks for 30000, and for §4 it asks for 5000 and then polls the session with `write_stdin` until the CLI exits. |
 | OpenCode | `opencode` | It asks before a file command (`cd`, `rm`, `cp`, `mv`, `mkdir`, `touch`, `chmod`, `chown`, `cat`) that names a literal path outside the project, and the TUI waits on that prompt. The skill's file commands name paths only through variables. Its bash tool streams output into the TUI while a command runs, so §4 runs in the foreground with `timeout: 660000` and the owner reads the link there. Don't launch it with `--yolo`. |
 
@@ -44,7 +44,12 @@ Before involving the owner, replay the flow through each client with a scripted 
 - **Codex:** `codex exec` with a mock Responses provider and the flags above, so the blocks run in the real sandbox; the TUI in tmux shows the link message while the agent polls.
 - **OpenCode:** `opencode run` with an OpenAI-compatible mock provider. It rejects every permission ask and prints it, so a clean run means the TUI won't ask. The TUI in tmux shows the link in the running command's output.
 
-A real model can follow the installed skill against the same stand-ins: `codex exec` with the owner's Codex login, and `opencode run` with the free `opencode/big-pickle` model. Pin the stand-in hosts inside a `TC_BIN` wrapper, so a client that filters the environment can't reach the real OpenKey.
+A real model can follow the installed skill against the same stand-ins:
+- `codex exec` with the owner's Codex login;
+- `opencode run` with the free `opencode/big-pickle` model;
+- `claude -p --input-format stream-json --permission-mode auto` with the owner's Claude login. Keep stdin open until the background sign-in has exited, so Claude Code can wake the agent.
+
+Pin the stand-in hosts inside a `TC_BIN` wrapper, so a client that filters the environment can't reach the real OpenKey.
 
 ## Test 1 — Sign-in, write, read
 
@@ -56,9 +61,9 @@ A real model can follow the installed skill against the same stand-ins: `codex e
 3. §4 writes the request, creates the profile in the first client (its `context` reports `PROFILE_NOT_FOUND`), and starts `auth login --device`. The CLI prints `Approve on your phone: <link> (code <code>)` within a few seconds.
 4. The owner sees the link and code: in the agent's message in Claude Code and Codex, in the command's output in OpenCode.
 5. The owner opens the link, signs in to OpenKey, checks the code and approves. Nothing else.
-6. The CLI exits with `"authenticated": true`. The agent carries on by itself: §3 (`"keys"`), then §5, and reports the value it read back.
+6. The CLI exits with `"authenticated": true`. The agent carries on by itself: §3 (`"keys"`), then §5, and reports the value it read back. From the second client on, §3 lists the day the previous client wrote, and §5 replaces it without asking and says so.
 
-**After Claude Code and after Codex,** log out so the next client signs in again. The profile and its recorded owner stay:
+**After every client but the last,** log out so the next client signs in again. The profile and its recorded owner stay:
 
 ```sh
 TC_HOME="$HOME/projects/tc-lab/data/home" "$HOME/projects/tc-lab/cli-1.0.0/node_modules/.bin/tc" --profile data-weight auth logout
@@ -68,20 +73,20 @@ TC_HOME="$HOME/projects/tc-lab/data/home" "$HOME/projects/tc-lab/cli-1.0.0/node_
 
 **Prompt,** in the same conversation: "What's my weight today?"
 
-**Pass:** the agent reads with §5 and doesn't sign in again.
+**Pass:** the agent reads again with §5, rather than answering from memory, and doesn't sign in again.
 
 ## Test 3 — Cross-client read
 
-After OpenCode, without logging out, start a new Claude Code conversation.
+After the last client, without logging out, start a new conversation in the first client.
 
 **Prompt:** "What's my weight today?"
 
-**Pass:** it answers 80.7, so one sign-in serves every client.
+**Pass:** it answers the last client's value, so one sign-in serves every client.
 
 ## Pass criteria, per client
 
 - **The owner's only actions:** send the prompt, open the link, approve. No script, no second terminal, no paste, no "done", no retries.
-- **Permission prompts:** Claude Code shows only its three first-use prompts. Codex and OpenCode show none.
+- **Permission prompts:** Claude Code shows at most its three first-use prompts, and none in auto mode. Codex and OpenCode show none.
 - **Speed:** prompt to read-back takes under about 2 minutes.
 - **The agent follows the skill:**
   - it checks the CLI;

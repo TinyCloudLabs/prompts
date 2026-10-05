@@ -81,7 +81,7 @@ Run one sign-in at a time, and never retry in a loop: OpenKey allows 5 per 10 mi
 
 ## 5. Write and read
 
-Write, then read back:
+Write, then read back. A key holds one value, so writing a key that already has a record (§3 lists it) replaces that record. When the owner gives a new value for it, that's what they asked for: write it without asking, and tell them it replaced the earlier record.
 
 ```sh
 TC_BIN='<TC_BIN>'; TYPE='<type>'; ID='<id>'; VALUE='<json>'; umask 077
@@ -89,7 +89,7 @@ TC_BIN='<TC_BIN>'; TYPE='<type>'; ID='<id>'; VALUE='<json>'; umask 077
   && "$TC_BIN" kv get "xyz.tinycloud.agent-data.$TYPE/$ID" --space default --json --profile "data-$TYPE"
 ```
 
-Read one record:
+Read one record. Do this for every question about a record, even one you read earlier in the conversation: another agent may have changed it since.
 
 ```sh
 TC_BIN='<TC_BIN>'; TYPE='<type>'; ID='<id>'; umask 077

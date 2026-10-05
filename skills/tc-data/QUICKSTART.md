@@ -25,7 +25,7 @@ Start the client from a shell that has the variables:
 
 | Client | Start | What to expect |
 |---|---|---|
-| Claude Code | `claude` | It asks three times on first use: when it reads the paths, when it checks the CLI, and when it starts the sign-in. Each offers "Yes, and don't ask again"; choose it. After that, checks, writes and reads don't ask again, in new conversations too; only a new sign-in asks once more. |
+| Claude Code | `claude` | In auto mode, which 2.1.289 turned on by default in the forward test, it asks nothing. In manual mode it asks three times on first use: when it reads the paths, when it checks the CLI, and when it starts the sign-in. Each offers "Yes, and don't ask again"; choose it. After that, checks, writes and reads don't ask again, in new conversations too; only a new sign-in asks once more. |
 | Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir <folder holding TC_HOME and TC_DATA_STATE>` | No questions. The CLI needs the network, and it writes the profile store and the state folder, which are outside the project. |
 | OpenCode | `opencode` | No questions. |
 
@@ -33,9 +33,11 @@ Start the client from a shell that has the variables:
 
 1. You ask, for example: "Log my weight: 80.5 kg today, then read it back." The agent checks the CLI and your sign-in, then starts one.
 2. A link and a code appear:
-   - **Claude Code and Codex:** in the agent's message:
+   - **Claude Code and Codex:** in the agent's message, worded by the agent, for example:
 
      > Open https://openkey.so/device?user_code=ABCD-EFGH and approve the request on OpenKey. It should show the code ABCD-EFGH. I'll carry on as soon as you approve.
+
+     Some agents format it as a Markdown link; Claude Code and Codex then show `OpenKey (https://openkey.so/device?user_code=…)`, so the full link is still on screen.
 
    - **OpenCode:** the agent says "Open the OpenKey link that appears below and approve the request.", and the link appears in the output of the command it's running:
 
@@ -46,9 +48,11 @@ Start the client from a shell that has the variables:
      ```
 
 3. Open the link, on this computer or your phone, and sign in to OpenKey. Check that it shows the same code, then approve.
-4. That's all. The agent notices the approval by itself within a few seconds, writes the record and reads it back to you. You don't need to reply.
+4. That's all. The agent notices the approval by itself within a few seconds, writes the record and reads it back to you. You don't need to reply. In the forward test this took 72–97 s from the prompt, including the approval.
 
 The link stays valid for 10 minutes. If you miss it, the agent tells you; ask again and it starts a new one.
+
+Later questions such as "What's my weight today?" read the record again without signing in, in any client that shares the sign-in. Logging a new value for a day that already has one replaces it; the agent says so.
 
 ## What the sign-in grants
 
