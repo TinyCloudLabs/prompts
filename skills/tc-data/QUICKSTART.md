@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-data` skill. The runnable blocks live in `SKILL.md`; the agent runs them from there.
 
-Works in Claude Code, Codex and OpenCode. Requires Node.js 20 or later and `@tinycloud/cli@1.0.0` or later; pin an exact version. CLI 0.10.0 doesn't work: its paste sign-in silently saves nothing.
+Works in Claude Code, Codex and OpenCode. Requires Node.js 20 or later and `@tinycloud/cli@1.0.0` or later; pin an exact version.
 
 ## 0. Owner setup (once, not run by the agent)
 
@@ -25,46 +25,45 @@ Start the client from a shell that has the variables:
 
 | Client | Start | What to expect |
 |---|---|---|
-| Claude Code | `claude` | It asks three times on first use. When it reads the paths and checks the CLI, it offers "Yes, and don't ask again": choose it. For the sign-in files it offers only "Yes". After that, checks, writes and reads don't ask again, in new conversations too; only a new sign-in asks. |
+| Claude Code | `claude` | It asks three times on first use: when it reads the paths, when it checks the CLI, and when it starts the sign-in. Each offers "Yes, and don't ask again"; choose it. After that, checks, writes and reads don't ask again, in new conversations too; only a new sign-in asks once more. |
 | Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir <folder holding TC_HOME and TC_DATA_STATE>` | No questions. The CLI needs the network, and it writes the profile store and the state folder, which are outside the project. |
-| OpenCode | `opencode` | No questions. Never paste the code into OpenCode: it keeps what you type in `prompt-history.jsonl`. |
+| OpenCode | `opencode` | No questions. |
 
 ## What the owner sees
 
-1. You ask, for example: "Log my weight: 80.5 kg today, then read it back." The agent checks the CLI and your sign-in, writes a sign-in script, and sends you one message:
+1. You ask, for example: "Log my weight: 80.5 kg today, then read it back." The agent checks the CLI and your sign-in, then starts one.
+2. A link and a code appear:
+   - **Claude Code and Codex:** in the agent's message:
 
-   > Run `sh <path>/approve-weight.sh` in a terminal on this machine, not in this chat. Open the link it prints, approve on OpenKey, click Copy, paste the code into that terminal and press Enter. Tell me when it says "Signed in". Don't paste the code here.
+     > Open https://openkey.so/device?user_code=ABCD-EFGH and approve the request on OpenKey. It should show the code ABCD-EFGH. I'll carry on as soon as you approve.
 
-2. In your own terminal, the script says what you're approving, then prints the OpenKey link and waits:
+   - **OpenCode:** the agent says "Open the OpenKey link that appears below and approve the request.", and the link appears in the output of the command it's running:
 
-   ```text
-   TinyCloud sign-in: lets your agent read and write your weight records (xyz.tinycloud.agent-data.weight/ in your applications space) for 30 days.
-   Open the link below, approve on OpenKey, click Copy, paste the code here and press Enter.
+     ```text
+     Approve on your phone: https://openkey.so/device?user_code=ABCD-EFGH (code ABCD-EFGH)
+       Or open https://openkey.so/device and enter code ABCD-EFGH.
+       Waiting for approval until 2026-10-05T12:10:00Z. Keep this command running.
+     ```
 
-   Open this URL in a browser to authenticate:
+3. Open the link, on this computer or your phone, and sign in to OpenKey. Check that it shows the same code, then approve.
+4. That's all. The agent notices the approval by itself within a few seconds, writes the record and reads it back to you. You don't need to reply.
 
-     https://openkey.so/delegate?…
-
-   Paste delegation code:
-   ```
-
-3. On OpenKey, sign in, check the request and approve it. The page then shows a long code with a Copy button.
-4. Paste the code into the terminal once and press Enter. The terminal prints the sign-in result as JSON, then "Signed in. Go back to your agent and say done."
-5. Say "done". The agent checks the sign-in itself, writes the record and reads it back to you. If you said "done" before pasting, it tells you the terminal is still waiting.
+The link stays valid for 10 minutes. If you miss it, the agent tells you; ask again and it starts a new one.
 
 ## What the sign-in grants
 
-- **Scope:** one profile per kind of record, for example `data-weight`. It can get, put, list and delete keys under `xyz.tinycloud.agent-data.weight/` in your `applications` space, and nothing else.
-- **Lifetime:** 30 days, OpenKey's maximum. Afterwards the agent's check fails with `AUTH_REQUIRED`, and it sends you the script again.
+- **Scope:** one profile per kind of record, for example `data-weight`. It can get, put, list and delete keys under `xyz.tinycloud.agent-data.weight/` in your `default` space, and nothing else. Every OpenKey approval also lets it read which permissions it holds.
+- **Lifetime:** 30 days, OpenKey's maximum. Afterwards the agent's check fails with `AUTH_REQUIRED`, and it shows you a new link.
 - **Sharing:** every agent on this machine that uses the same `TC_HOME` uses the same sign-in, so one approval serves Claude Code, Codex and OpenCode.
 - **Stopping:** `TC_HOME=<profile store> "$TC_BIN" --profile data-weight auth logout` clears the local session. The approval itself stays valid on TinyCloud until it expires.
 
 ## Why it works this way
 
-- **The code never passes through the agent.** OpenKey's code is about 9 KB. Models that copy it corrupt it, so it goes from your browser into your own terminal. That also keeps it out of every transcript. The agent never sees the link either: its dry run of the script prints only error codes.
-- **The script holds absolute paths,** because your terminal doesn't have the agent's environment.
+- **Device approval.** `tc auth login --device` asks OpenKey for a short code and waits for your approval, so nothing has to reach back to the machine the agent runs on. It works over SSH and from your phone. The link and code aren't secrets: they only identify the request, and the session key never leaves the CLI.
+- **The `default` space.** OpenKey refuses device approvals for the `account`, `applications` and `secrets` spaces, and only grants KV access under an explicit path.
+- **Each client waits its own way.** Claude Code runs the sign-in in the background and wakes the agent when it finishes. Codex keeps polling the running command. OpenCode keeps the command in the foreground and shows its output as it runs.
 - **The agent writes literal paths into its commands.** Claude Code can remember an approval only for a command it can work out from the text; a command named by a variable like `"$TC_BIN"` would ask every time.
 - **Rough edges:**
-  - The first sign-in may ask which key to use if you have several. Later sign-ins preselect it.
-  - A wrapped or retyped code is rejected. Use the page's Copy button and paste once.
-  - If you approve with a different account or key than the profile's first sign-in, the terminal prints `OPENKEY_OWNER_MISMATCH`. Run the script again and approve with the same one.
+  - OpenKey allows 5 sign-in requests per 10 minutes from one network, shared by every agent on it.
+  - If you approve with a different account or key than the profile's first sign-in, the sign-in fails with `OPENKEY_OWNER_MISMATCH`. Ask again and approve with the same one.
+  - A brand-new account may not have its `default` space set up yet. Sign-in then succeeds but every read and write fails with `SPACE_NOT_HOSTED`, and the agent stops and tells you.
