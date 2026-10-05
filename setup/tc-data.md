@@ -23,13 +23,14 @@ printenv TC_BIN || "$HOME/.local/share/tc-data/cli/node_modules/.bin/tc" --versi
 Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-data` skill. Then run:
 
 ```sh
+mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_DATA_STATE:-$HOME/.local/state/tc-data}"
 npm install --prefix "$HOME/.local/share/tc-data/cli" --no-audit --no-fund @tinycloud/cli@1.0.0
 npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/feat/tc-data.tar.gz --skill tc-data --agent <client> --copy --yes
 ```
 
-The CLI goes into a private folder that only this skill uses, and the skill goes into this project: `.claude/skills/tc-data/` for Claude Code, `.agents/skills/tc-data/` for Codex and OpenCode. It takes about 30 s.
+The first line creates the CLI's profile store and this skill's state folder if they don't exist yet. The CLI goes into a private folder that only this skill uses, and the skill goes into this project: `.claude/skills/tc-data/` for Claude Code, `.agents/skills/tc-data/` for Codex and OpenCode. It takes about 30 s.
 
-- **Codex:** the sandbox doesn't let npm write outside the workspace. Run the block with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-data skill" and `yield_time_ms: 30000`; if it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once.
+- **Codex:** the sandbox doesn't let npm write outside the workspace, and it can only write the two folders from the first line once they exist. Run the block with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-data skill" and `yield_time_ms: 30000`; if it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once.
 - If a command fails, stop and report its error. Don't retry it with other options or in another folder.
 
 ## 3. Carry on with the skill
