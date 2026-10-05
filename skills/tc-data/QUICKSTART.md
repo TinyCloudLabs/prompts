@@ -2,36 +2,49 @@
 
 Background and walkthrough for the `tc-data` skill. The runnable blocks live in `SKILL.md`; the agent runs them from there.
 
-Works in Claude Code, Codex and OpenCode. Requires Node.js 20 or later and `@tinycloud/cli@1.0.0` or later; pin an exact version.
+Works in Claude Code, Codex and OpenCode. Requires Node.js 22.20 or later, with npm. The skill runs `@tinycloud/cli@1.0.0` from a folder of its own.
 
-## 0. Owner setup (once, not run by the agent)
+## 0. Setup, in the same prompt
 
-```sh
-npm install --prefix <dir> @tinycloud/cli@1.0.0
-export TC_BIN=<dir>/node_modules/.bin/tc
-export TC_HOME=<profile store>          # optional; without it the CLI uses ~/.tinycloud
-export TC_DATA_STATE=<state folder>     # optional; default ~/.local/state/tc-data
-```
+Add the setup link to your first request:
 
-Install the skill into a project with the pinned installer, from a checkout of this repository:
+> Log my weight: 80.5 kg today, then read it back. Set it up with TinyCloud: https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/feat/tc-data/setup/tc-data.md
 
-```sh
-npx --yes skills@1.7.0 add <checkout> --skill tc-data --agent <claude-code|codex|opencode> --copy --yes
-```
+The agent follows [`setup/tc-data.md`](../../setup/tc-data.md), then carries on with your request in the same conversation:
+1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
+2. It installs the CLI into `~/.local/share/tc-data/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is.
+3. It installs the skill into the project: `.claude/skills/tc-data/` in Claude Code, `.agents/skills/tc-data/` in Codex and OpenCode.
+4. It reads the skill and signs you in, as below.
 
-Claude Code reads it from `.claude/skills/tc-data/`, Codex and OpenCode from `.agents/skills/tc-data/`. Add `--global` to install it for every project instead.
+Nothing to restart and no shell profile to edit. In another project, send the link again: the agent reuses the CLI and only adds the skill there.
 
-Start the client from a shell that has the variables:
+Start the client in the project folder:
 
 | Client | Start | What to expect |
 |---|---|---|
-| Claude Code | `claude` | In auto mode, which 2.1.289 turned on by default in the forward test, it asks nothing. In manual mode it asks three times on first use: when it reads the paths, when it checks the CLI, and when it starts the sign-in. Each offers "Yes, and don't ask again"; choose it. After that, checks, writes and reads don't ask again, in new conversations too; only a new sign-in asks once more. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir <folder holding TC_HOME and TC_DATA_STATE>` | No questions. The CLI needs the network, and it writes the profile store and the state folder, which are outside the project. |
+| Claude Code | `claude` | In auto mode, which 2.1.289 turned on by default in the forward test, it asks nothing. In manual mode it asks six or seven times on first use: once or twice for the setup page (WebFetch, `curl`, or both), once each for the check and the install, then the skill's three: when it reads the paths, when it checks the CLI, and when it starts the sign-in. Each offers "Yes, and don't ask again"; choose it. After that, checks, writes and reads don't ask again, in new conversations too; only a new sign-in asks once more. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir <folder holding TC_HOME and TC_DATA_STATE>` | One approval, for the install: npm writes outside the workspace. The CLI needs the network, and it writes the profile store and the state folder, which are outside the project. |
 | OpenCode | `opencode` | No questions. |
+
+Claude Code and Codex also ask whether you trust a folder the first time you start them in it.
+
+Optional variables, set before you start the client:
+- `TC_HOME`: the CLI profile store. Without it the CLI uses `~/.tinycloud`.
+- `TC_DATA_STATE`: this skill's state folder. Default `~/.local/state/tc-data`.
+- `TC_BIN`: the absolute path to another `tc`, CLI 1.0.0 or later. The skill then uses it instead of its own folder.
+
+To set it up without the agent, run the same two installs yourself, the second one in the project folder:
+
+```sh
+npm install --prefix ~/.local/share/tc-data/cli @tinycloud/cli@1.0.0
+npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/feat/tc-data.tar.gz --skill tc-data --agent <claude-code|codex|opencode> --copy --yes
+```
+
+Add `--global` to the second line to install the skill for every project instead.
 
 ## What the owner sees
 
-1. You ask, for example: "Log my weight: 80.5 kg today, then read it back." The agent checks the CLI and your sign-in, then starts one.
+1. You ask, for example: "Log my weight: 80.5 kg today, then read it back.", with the setup link the first time (§0). The agent installs what's missing, checks your sign-in, then starts one.
 2. A link and a code appear:
    - **Claude Code and Codex:** in the agent's message, worded by the agent, for example:
 
@@ -59,11 +72,12 @@ Later questions such as "What's my weight today?" read the record again without 
 - **Scope:** one profile per kind of record, for example `data-weight`. It can get, put, list and delete keys under `xyz.tinycloud.agent-data.weight/` in your `default` space, and nothing else. Every OpenKey approval also lets it read which permissions it holds.
 - **Lifetime:** 30 days, OpenKey's maximum. Afterwards the agent's check fails with `AUTH_REQUIRED`, and it shows you a new link.
 - **Sharing:** every agent on this machine that uses the same `TC_HOME` uses the same sign-in, so one approval serves Claude Code, Codex and OpenCode.
-- **Stopping:** `TC_HOME=<profile store> "$TC_BIN" --profile data-weight auth logout` clears the local session. The approval itself stays valid on TinyCloud until it expires.
+- **Stopping:** `~/.local/share/tc-data/cli/node_modules/.bin/tc --profile data-weight auth logout`, with `TC_HOME` set as when you started the client, clears the local session. The approval itself stays valid on TinyCloud until it expires. To remove the rest, delete `~/.local/share/tc-data` and the project's `tc-data` skill folder.
 
 ## Why it works this way
 
 - **Device approval.** `tc auth login --device` asks OpenKey for a short code and waits for your approval, so nothing has to reach back to the machine the agent runs on. It works over SSH and from your phone. The link and code aren't secrets: they only identify the request, and the session key never leaves the CLI.
+- **A CLI of its own.** The setup installs CLI 1.0.0 into `~/.local/share/tc-data/cli` rather than globally, so a global `tc` that other tools depend on keeps its version. When `TC_BIN` isn't set, the skill's first block finds the CLI there, so the client's environment doesn't change and nothing needs a restart.
 - **The `default` space.** OpenKey refuses device approvals for the `account`, `applications` and `secrets` spaces, and only grants KV access under an explicit path.
 - **Each client waits its own way.** Claude Code runs the sign-in in the background and wakes the agent when it finishes. Codex keeps polling the running command. OpenCode keeps the command in the foreground and shows its output as it runs.
 - **The agent writes literal paths into its commands.** Claude Code can remember an approval only for a command it can work out from the text; a command named by a variable like `"$TC_BIN"` would ask every time.

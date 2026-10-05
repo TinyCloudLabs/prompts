@@ -16,7 +16,9 @@ This repository is the shared development and review point for agent-facing setu
 - [`forward-tests-tc-secrets.md`](forward-tests-tc-secrets.md) is the coordinator runbook for `tc-secrets`.
 - [`skills/tc-data/SKILL.md`](skills/tc-data/SKILL.md) teaches an agent to save and read the owner's records, such as their weight, in their TinyCloud `default` space. The owner approves the sign-in on OpenKey from a link and code the agent shows, and the agent carries on by itself.
 - [`skills/tc-data/QUICKSTART.md`](skills/tc-data/QUICKSTART.md) covers the owner's setup in Claude Code, Codex and OpenCode, and what they see during sign-in.
+- [`setup/tc-data.md`](setup/tc-data.md) is the one-prompt setup for `tc-data`. The owner adds its raw URL to a request; the agent installs TinyCloud CLI 1.0.0 into a folder of its own and the skill into the project, then carries on with the request in the same conversation.
 - [`forward-tests-tc-data.md`](forward-tests-tc-data.md) is the coordinator runbook for `tc-data`.
+
 The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository intentionally contains no helpers, generated release archives, sync framework or evaluation runtime.
 
 ## Snapshot provenance

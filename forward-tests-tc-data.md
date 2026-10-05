@@ -1,72 +1,63 @@
 # tc-data forward-test runbook
 
-The coordinator prepares one project folder per client with only `tc-data` installed in it, and the owner approves every sign-in on OpenKey from the link the agent shows. The matrix is Claude Code, Codex and OpenCode, in any order. Tests 1 and 2 run in each client in turn; test 3 runs once, at the end.
+The coordinator prepares one empty project folder per client. The owner's first prompt carries the setup link: the agent installs the CLI and the skill itself, then signs in, writes and reads, all in the same conversation. The owner approves every sign-in on OpenKey from the link the agent shows. The matrix is Claude Code, Codex and OpenCode, in any order. Tests 1 and 2 run in each client in turn; test 3 runs once, at the end.
 
 ## Preconditions
 
-- **CLI:** `@tinycloud/cli@1.0.0` in a private prefix, never a global `tc` that other tools depend on:
-
-  ```sh
-  npm install --prefix ~/projects/tc-lab/cli-1.0.0 @tinycloud/cli@1.0.0
-  ```
-
-  `TC_BIN` is `~/projects/tc-lab/cli-1.0.0/node_modules/.bin/tc`, as an absolute path.
-- **Lab data,** standing in for the owner's global setup: `TC_HOME=$HOME/projects/tc-lab/data/home` and `TC_DATA_STATE=$HOME/projects/tc-lab/data/state`. Empty `~/projects/tc-lab/data` (mode 0700) before the first client starts, but keep the folder: Codex's `--add-dir` needs it. Never point either variable at `~/.tinycloud` or the default state folder.
-- **One project folder per client:** `~/projects/tc-lab/clients/{claude,codex,opencode}`, each with `git init`. Install the skill project-locally in each, from a checkout of this branch:
-
-  ```sh
-  npx --yes skills@1.7.0 add <checkout> --skill tc-data --agent <claude-code|codex|opencode> --copy --yes
-  ```
-
-  Claude Code reads `.claude/skills/tc-data/`; Codex and OpenCode read `.agents/skills/tc-data/`. Reinstall after every change to the skill.
-- **Confirm each client lists the skill:**
-  - Claude Code: `/skills`;
-  - Codex: `codex debug prompt-input | grep tc-data`;
-  - OpenCode: `opencode debug skill`.
+- **Setup link:** the raw URL of [`setup/tc-data.md`](setup/tc-data.md) on the branch under test, for example `https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/feat/tc-data/setup/tc-data.md`. The setup installs the skill from the same branch's GitHub archive.
+- **No CLI for tc-data:** the agent installs `@tinycloud/cli@1.0.0` into `~/.local/share/tc-data/cli`. Remove that folder before each client, so every client installs from scratch. A global `tc` that other tools depend on must keep its version: run `tc --version` from a plain shell before and after.
+- **Lab data,** standing in for the owner's global setup: `TC_HOME=$HOME/projects/tc-lab/data/home` and `TC_DATA_STATE=$HOME/projects/tc-lab/data/state`. Empty `~/projects/tc-lab/data` (mode 0700) before each client, but keep the folder: Codex's `--add-dir` needs it. Never point either variable at `~/.tinycloud` or the default state folder.
+- **One new project folder per client,** with no skill in it: `~/projects/tc-lab/fresh/{claude,codex,opencode}`, each with `git init`.
 - **Rate limit:** OpenKey allows 5 device sign-in starts per 10 minutes per network. The matrix needs three; don't loop.
-- **Launch** each client from its folder with the three variables, without exporting them into the owner's shell:
+- **Launch** each client from its folder with the two variables and without `TC_BIN`, without exporting them into the owner's shell:
 
   ```sh
-  env TC_BIN="$HOME/projects/tc-lab/cli-1.0.0/node_modules/.bin/tc" TC_HOME="$HOME/projects/tc-lab/data/home" \
-    TC_DATA_STATE="$HOME/projects/tc-lab/data/state" <client command>
+  env TC_HOME="$HOME/projects/tc-lab/data/home" TC_DATA_STATE="$HOME/projects/tc-lab/data/state" <client command>
   ```
 
 | Client | Command | Notes |
 |---|---|---|
-| Claude Code | `claude` | In auto mode, which 2.1.289 used by default in the forward test, it asks nothing. In manual mode it asks three times on first use, for §1, §3 and §4, and each time offers "Yes, and don't ask again", which the owner chooses. Later conversations run §1, §3 and §5 without asking; only a new sign-in asks again. One approval can't cover the flow: Claude Code 2.1.289 saves exact or `<command> <subcommand> *` rules, and never matches a command named by a variable. The agent runs §4 with `run_in_background: true`; Claude Code wakes it when the command exits. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/projects/tc-lab/data` | Without these flags the CLI has no network and can't write the data folder, which is outside the workspace. Don't edit `~/.codex` or use a separate `CODEX_HOME`. Codex 0.160 runs commands through `exec_command`, which returns after `yield_time_ms` (default 10 s) and leaves a slower command running; the skill asks for 30000, and for §4 it asks for 5000 and then polls the session with `write_stdin` until the CLI exits. |
-| OpenCode | `opencode` | It asks before a file command (`cd`, `rm`, `cp`, `mv`, `mkdir`, `touch`, `chmod`, `chown`, `cat`) that names a literal path outside the project, and the TUI waits on that prompt. The skill's file commands name paths only through variables. Its bash tool streams output into the TUI while a command runs, so §4 runs in the foreground with `timeout: 660000` and the owner reads the link there. Don't launch it with `--yolo`. |
+| Claude Code | `claude` | It asks whether to trust a new folder on first launch. In auto mode, which 2.1.289 used by default in the forward test, it asks nothing else. In manual mode it asks six or seven times on first use: once or twice for the setup page (WebFetch, `curl`, or both), the check, the install, then §1, §3 and §4. Each offers "Yes, and don't ask again", which the owner chooses. Later conversations run §1, §3 and §5 without asking; only a new sign-in asks again. One approval can't cover the flow: Claude Code 2.1.289 saves exact or `<command> <subcommand> *` rules, and never matches a command named by a variable. In the pre-flight, the install moved to the background by itself after about 10 s, and Claude Code woke the agent when it finished. The agent runs §4 with `run_in_background: true`; Claude Code wakes it when the command exits. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/projects/tc-lab/data` | It asks whether to trust a new folder on first launch. Without these flags the CLI has no network and can't write the data folder, which is outside the workspace. Don't edit `~/.codex` or use a separate `CODEX_HOME`. The sandbox blocks npm's cache and the CLI folder in the home folder, so the setup runs its install with `sandbox_permissions: "require_escalated"`: one approval prompt. Codex 0.160 runs commands through `exec_command`, which returns after `yield_time_ms` (default 10 s) and leaves a slower command running; the skill asks for 30000, and for §4 it asks for 5000 and then polls the session with `write_stdin` until the CLI exits. |
+| OpenCode | `opencode` | It asks before a file command (`cd`, `rm`, `cp`, `mv`, `mkdir`, `touch`, `chmod`, `chown`, `cat`) that names a literal path outside the project, and the TUI waits on that prompt. `npm` and `npx` aren't on that list, and the blocks name outside paths only through variables. Its bash tool streams output into the TUI while a command runs, so §4 runs in the foreground with `timeout: 660000` and the owner reads the link there. Don't launch it with `--yolo`. |
 
 ## Coordinator pre-flight (no owner needed)
 
 Before involving the owner, replay the flow through each client with a scripted stand-in model, against a local `tinycloud-node` and a stand-in OpenKey device API at `TC_OPENKEY_HOST`. The stand-in follows OpenKey's device policy (KV only, one space, `account`, `applications` and `secrets` refused, 5 starts per 10 minutes) and approves, denies or lets a request expire on cue:
 - **Claude Code:** `claude -p --input-format stream-json --output-format stream-json --permission-prompt-tool stdio`, with `ANTHROPIC_BASE_URL` pointing at a mock Messages API. Each `can_use_tool` request shows whether a block asks, and its `permission_suggestions` are the "don't ask again" rules. Driving the TUI in tmux the same way shows whether that option is offered at the owner's terminal width, and that Claude Code wakes the agent when the background sign-in exits.
-- **Codex:** `codex exec` with a mock Responses provider and the flags above, so the blocks run in the real sandbox; the TUI in tmux shows the link message while the agent polls.
+- **Codex:** `codex exec` with a mock Responses provider and the flags above, so the blocks run in the real sandbox; the TUI in tmux shows the link message while the agent polls. `codex exec` rejects `require_escalated`, so the setup's install needs the TUI.
 - **OpenCode:** `opencode run` with an OpenAI-compatible mock provider. It rejects every permission ask and prints it, so a clean run means the TUI won't ask. The TUI in tmux shows the link in the running command's output.
 
-A real model can follow the installed skill against the same stand-ins:
-- `codex exec` with the owner's Codex login;
+A real model can follow the setup link against the same stand-ins, starting with no skill and no `TC_BIN`:
+- Codex: the TUI in tmux with the owner's Codex login, answering the install approval;
 - `opencode run` with the free `opencode/big-pickle` model;
 - `claude -p --input-format stream-json --permission-mode auto` with the owner's Claude login. Keep stdin open until the background sign-in has exited, so Claude Code can wake the agent.
 
-Pin the stand-in hosts inside a `TC_BIN` wrapper, so a client that filters the environment can't reach the real OpenKey.
+The CLI the agent installs reaches the stand-ins only through `TC_HOST` and `TC_OPENKEY_HOST` in the client's environment. Stop the client as soon as a sign-in link points anywhere else.
 
-## Test 1 — Sign-in, write, read
+## Test 1 — Setup, sign-in, write, read
 
-**Prompt:** "Log my weight: 80.5 kg today, then read it back." Use 80.6 in Codex and 80.7 in OpenCode.
+**Prompt:** "Log my weight: 80.5 kg today, then read it back. Set it up with TinyCloud: `<setup link>`" Use 80.6 in Codex and 80.7 in OpenCode.
 
 **Expected sequence:**
-1. §1 prints the two paths.
-2. §3 prints `1.0.0` and `AUTH_REQUIRED`: there's no profile in the first client, and no session after a logout.
-3. §4 writes the request, creates the profile in the first client (its `context` reports `PROFILE_NOT_FOUND`), and starts `auth login --device`. The CLI prints `Approve on your phone: <link> (code <code>)` within a few seconds.
-4. The owner sees the link and code: in the agent's message in Claude Code and Codex, in the command's output in OpenCode.
-5. The owner opens the link, signs in to OpenKey, checks the code and approves. Nothing else.
-6. The CLI exits with `"authenticated": true`. The agent carries on by itself: §3 (`"keys"`), then §5, and reports the value it read back. From the second client on, §3 lists the day the previous client wrote, and §5 replaces it without asking and says so.
+1. The agent fetches the setup page.
+2. Setup §1 prints the Node.js and npm versions, and `No such file or directory` for the CLI.
+3. Setup §2 installs the CLI into `~/.local/share/tc-data/cli` and the skill into the project, in about 15 s. Codex asks for one approval first.
+4. The agent reads the installed `SKILL.md` and carries on: skill §1 prints `~/.local/share/tc-data/cli/node_modules/.bin/tc`, expanded, and the state folder.
+5. §3 prints `1.0.0` and `AUTH_REQUIRED`.
+6. §4 writes the request, creates the profile (its `context` reports `PROFILE_NOT_FOUND`), and starts `auth login --device`. The CLI prints `Approve on your phone: <link> (code <code>)` within a few seconds.
+7. The owner sees the link and code: in the agent's message in Claude Code and Codex, in the command's output in OpenCode.
+8. The owner opens the link, signs in to OpenKey, checks the code and approves.
+9. The CLI exits with `"authenticated": true`. The agent carries on by itself: §3 (`"keys"`), then §5, and reports the value it read back.
 
-**After every client but the last,** log out so the next client signs in again. The profile and its recorded owner stay:
+**After every client but the last,** delete the record, log out, empty the lab data and remove the CLI, so the next client starts as a fresh owner:
 
 ```sh
-TC_HOME="$HOME/projects/tc-lab/data/home" "$HOME/projects/tc-lab/cli-1.0.0/node_modules/.bin/tc" --profile data-weight auth logout
+export TC_HOME="$HOME/projects/tc-lab/data/home" TC_BIN="$HOME/.local/share/tc-data/cli/node_modules/.bin/tc"
+"$TC_BIN" --profile data-weight kv delete xyz.tinycloud.agent-data.weight/<date> --space default
+"$TC_BIN" --profile data-weight auth logout
+find ~/projects/tc-lab/data -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+rm -rf ~/.local/share/tc-data
 ```
 
 ## Test 2 — Session reuse
@@ -77,7 +68,7 @@ TC_HOME="$HOME/projects/tc-lab/data/home" "$HOME/projects/tc-lab/cli-1.0.0/node_
 
 ## Test 3 — Cross-client read
 
-After the last client, without logging out, start a new conversation in the first client.
+After the last client, without cleaning up, start a new conversation in the first client. Its project still has the skill, and the CLI is the one the last client installed.
 
 **Prompt:** "What's my weight today?"
 
@@ -85,11 +76,14 @@ After the last client, without logging out, start a new conversation in the firs
 
 ## Pass criteria, per client
 
-- **The owner's only actions:** send the prompt, open the link, approve. No script, no second terminal, no paste, no "done", no retries.
-- **Permission prompts:** Claude Code shows at most its three first-use prompts, and none in auto mode. Codex and OpenCode show none.
-- **Speed:** prompt to read-back takes under about 2 minutes.
-- **The agent follows the skill:**
-  - it checks the CLI;
+- **The owner's only actions:** send the prompt, answer the client's own permission prompts, open the link, approve. No restart, no second terminal, no paste, no "done", no retries. Count the permission prompts.
+- **Permission prompts:** a trust prompt for the new folder in Claude Code and Codex. Then Claude Code shows none in auto mode, and at most its six or seven first-use prompts in manual mode; Codex shows one, for the install; OpenCode shows none.
+- **Installation:** the CLI goes into `~/.local/share/tc-data/cli` and the skill into the project; the global `tc` keeps its version.
+- **Speed:** prompt to read-back takes under about 3 minutes, including the install.
+- **The agent follows the setup and the skill:**
+  - it checks Node.js and installs only the CLI and the skill;
+  - it never runs a `tc` from the `PATH`;
+  - it reads the installed `SKILL.md` and carries on without another prompt;
   - it signs in only with `--device`, never `--paste` or `--replace-session`;
   - it creates the profile only after `PROFILE_NOT_FOUND`, through §4;
   - it verifies the sign-in itself.
@@ -103,14 +97,15 @@ After the last client, without logging out, start a new conversation in the firs
 - The link is valid for 10 minutes. After that the CLI exits with `DEVICE_AUTH_EXPIRED`, and the agent tells the owner instead of starting another.
 - A new account may not have its `default` space hosted. Sign-in then succeeds, and §3 fails with `SPACE_NOT_HOSTED`; the agent stops and tells the owner.
 - A new profile may ask which key to use if the owner has several. Approving with a different one than the profile's first sign-in fails with `OPENKEY_OWNER_MISMATCH`.
+- Codex may load a global `tc-cli` skill for the word "TinyCloud" and run `tc --version` and `tc profile list` with the global `tc` before it reads the setup page. Both only read; afterwards it follows the setup.
 
-If OpenKey or the CLI causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.
+If OpenKey, the CLI or the skills installer causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.
 
 ## Cleanup
 
 ```sh
-export TC_HOME="$HOME/projects/tc-lab/data/home" TC_BIN="$HOME/projects/tc-lab/cli-1.0.0/node_modules/.bin/tc"
+export TC_HOME="$HOME/projects/tc-lab/data/home" TC_BIN="$HOME/.local/share/tc-data/cli/node_modules/.bin/tc"
 "$TC_BIN" --profile data-weight kv delete xyz.tinycloud.agent-data.weight/<date> --space default
 "$TC_BIN" --profile data-weight auth logout
-rm -rf ~/projects/tc-lab/data
+rm -rf ~/projects/tc-lab/data ~/.local/share/tc-data ~/projects/tc-lab/fresh
 ```
