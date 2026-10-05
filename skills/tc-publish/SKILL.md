@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
 ---
 
 # Publish documents and HTML with `tc share`
@@ -424,7 +424,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `EXPIRED` / `NOT_FOUND` | 4 | The share expired or the id is wrong |
 | `UNAVAILABLE` | 4 | Location registry or network unreachable — nothing was shared; retry shortly |
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
-| `STORAGE_QUOTA_EXCEEDED` | 4 | The owner's TinyCloud storage is full; the message includes the used and limit sizes when the node reports them. Nothing was shared. Tell the owner; don't retry and don't run §2 |
+| `STORAGE_QUOTA_EXCEEDED` / `STORAGE_LIMIT_REACHED` | 10 (4 on CLIs before the TC-625 release) | The owner's TinyCloud storage is full, or this file is larger than what is left. Newer CLIs include the account's used and plan sizes. Nothing was shared. Tell the owner and point them to https://account.tinycloud.xyz/billing; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
 | exit 9, "partial share success" | 9 | Only with `--notify`: the share exists but the invite email failed — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, send the link yourself (§6) and tell the owner no invite went out |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
