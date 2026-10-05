@@ -2,7 +2,7 @@
 name: tc-data
 description: Save and read the owner's personal records, such as their weight, in their own TinyCloud storage. The owner approves access once, on OpenKey, from a link and code you show them. Use when the owner asks you to log, record, look up or list a record like their weight, even if they don't mention TinyCloud.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Save and read records in TinyCloud
@@ -10,7 +10,7 @@ metadata:
 You keep one kind of record for the owner, for example their weight, in their TinyCloud `default` space. The owner approves access once, for 30 days: you start a sign-in that prints an OpenKey link and a code, you show them both, and the command finishes by itself when they approve.
 
 Operator-set, never change or unset:
-- `TC_BIN`: absolute path to `tc`, CLI 1.0.0 or newer. `command -v tc` can resolve to `/usr/sbin/tc`.
+- `TC_BIN`: absolute path to `tc`, CLI 1.0.0 or newer. Optional: without it, §1 finds the private CLI that `setup/tc-data.md` installs. `command -v tc` can resolve to `/usr/sbin/tc` or to another tool's `tc`.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_DATA_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-data`.
 
@@ -25,11 +25,11 @@ How to run the blocks:
 ## 1. Read the paths
 
 ```sh
-printenv TC_BIN || echo 'TC_BIN is unset'
+printenv TC_BIN || ls "$HOME/.local/share/tc-data/cli/node_modules/.bin/tc" 2>/dev/null || echo 'TC_BIN is unset'
 printenv TC_DATA_STATE || echo "$HOME/.local/state/tc-data"
 ```
 
-It prints `<TC_BIN>` and `<STATE>`, one per line. `TC_BIN is unset` → stop and tell the owner.
+It prints `<TC_BIN>` and `<STATE>`, one per line. `TC_BIN is unset` → the CLI isn't installed: stop and tell the owner.
 
 ## 2. Name the records
 
@@ -47,7 +47,7 @@ TC_BIN='<TC_BIN>'; TYPE='<type>'; umask 077
 "$TC_BIN" kv list --prefix "xyz.tinycloud.agent-data.$TYPE/" --space default --json --profile "data-$TYPE"
 ```
 
-- The first line must be `1.0.0` or newer. Otherwise stop and tell the owner that `TC_BIN` must point to TinyCloud CLI 1.0.0 or newer.
+- The first line must be `1.0.0` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.0.0 or newer.
 - The list prints `"keys"` → signed in: §5. The keys are the records saved so far.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` → §4.
 - `SPACE_NOT_HOSTED` → stop and tell the owner that their TinyCloud `default` space isn't set up. Don't try to fix it.
