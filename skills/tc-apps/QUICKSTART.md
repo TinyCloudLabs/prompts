@@ -77,13 +77,15 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 - **The catalog** tells any agent what exists and how to read it.
 - **Changes only add.** New fields and new kinds never break old records, and nothing is migrated.
 
-## The SQL index (optional)
+## Faster answers over many records
 
-Questions over many records, such as "bench volume per week since August", are faster with an index: a SQLite copy of every record. Ask "Set up the TinyCloud index", or agree when the agent suggests it.
+You don't need to set anything up. The first time a question needs many records, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of your records:
 
-1. The agent shows an OpenKey link. Open it and sign in. It asks for SQL access to the database `xyz.tinycloud.agent-data.index` in your `default` space, for 30 days.
-2. Approve. OpenKey then shows a long code: copy it and send it to the agent. This step needs OpenKey's approval page because the phone-code sign-in can't grant SQL.
-3. The agent finishes the sign-in, creates the index and copies your records into it.
+1. The agent shows an OpenKey link. Open it and sign in. OpenKey lists the request as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space, for 30 days; that's the copy.
+2. Approve. OpenKey then shows a long code: copy it and send it to the agent. The phone-code approval can't grant this kind of access, which is why there's a code to copy.
+3. The agent finishes, builds the copy from your records, and says when it's done. Questions over many records then take seconds.
+
+If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
 
 Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.

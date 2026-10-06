@@ -11,9 +11,11 @@ Run the blocks as `SKILL.md` says: literal `<TC_BIN>` and `<STATE>` from its §1
 
 **Never run two SQL writes at the same time.** That includes another block of yours, and `xargs`. Parallel writes to one database can fail, or half-apply. Writes in this file run one after another; only reads run side by side.
 
-## 1. Sign in for the index
+## 1. Ask for the fast copy
 
-Do this only when the owner asks for the index, or agrees after you've said a question would be faster with it. It takes two steps.
+`SKILL.md` §7 sends you here when an answer needed many records and the index is missing or expired, or when the owner asks about it. It takes two steps: you ask in 1a, and finish in 1b once the owner sends the code.
+
+When talking to the owner, it's "a fast, searchable copy of your records". Don't say "index", "SQL" or "database"; OpenKey's own page names it, and the message below tells them what they'll see there.
 
 **1a. Get the approval link.**
 
@@ -26,9 +28,11 @@ printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":
 grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep -o '"code": "[A-Z_]*"' "$STATE/sql-login.err"
 ```
 
-- **The link and `"code": "PASTE_CODE_MISSING"`** → expected: the CLI is waiting for the owner's code. Send them:
+- **The link and `"code": "PASTE_CODE_MISSING"`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
 
-  > To set up the index, open <link> and sign in to OpenKey. It asks for SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then copy the code OpenKey shows at the end and send it to me here. The code only works for this computer's `agent-data-sql` profile.
+  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will take seconds. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then copy the code OpenKey shows at the end and send it to me here.
+
+  If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
 
 - **Any other code** → `SKILL.md` §8; `SESSION_IN_USE` means the index is already signed in.
 
@@ -45,7 +49,7 @@ CODE
 rm -f "$STATE/sql-code" "$STATE/sql-login.err"
 ```
 
-- **`"authenticated": true` and `"declined": []`** → §2.
+- **`"authenticated": true` and `"declined": []`** → §2, then §6 for every kind the catalog lists. Then tell the owner in one line, for example: "Done: questions over many records are fast from now on."
 - **`"declined"` lists `tinycloud.sql/schema`** → the owner unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
 - **`OPENKEY_PROOF_INVALID`, or the code was cut short** → ask the owner to send the code again, and rerun 1b. Don't start a new 1a.
 - Never reuse a code for another profile.
@@ -104,7 +108,7 @@ TC_BIN='<TC_BIN>'; umask 077
 
 - **The kind isn't under `index-stale/`, and `n` equals `"count"`** → the index is in step for that kind: §5.
 - **Otherwise** → rebuild that kind (§6), then answer.
-- **`ERROR` "SIWE is expired", or `AUTH_REQUIRED`** → the index needs a new approval (§1). Answer from KV meanwhile (`SKILL.md` §5).
+- **`ERROR` "SIWE is expired", or `AUTH_REQUIRED`** → the fast copy needs a new approval. Answer from KV (`SKILL.md` §5), then ask for it with §1, at most once per conversation.
 
 ## 5. Query
 
@@ -151,7 +155,7 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
 
 ## 7. Lifetime and errors
 
-- **The index session lasts 30 days.** `SKILL.md` §3's `context` shows `"state": "present"` while it's valid, and `"expired"` afterwards. While it's expired, writes mark kinds behind (§3), and reads use KV. Offer the owner §1 again when a question needs the index.
+- **The index session lasts 30 days.** `SKILL.md` §3's `context` shows `"state": "present"` while it's valid, and `"expired"` afterwards. While it's expired, writes mark kinds behind (§3), and reads use KV. The next time an answer needs many records, ask for a new approval with §1.
 - **`AUTH_UNAUTHORIZED` ending in `tinycloud.sql/schema`** → the owner unchecked the schema permission (§1b). Everything except §2 still works.
 - **`SQL_ERROR` "no such table" or "no such view"** → run §2, then §6 for every kind.
 - **`SQL_PERMISSION_DENIED`** → the statement type isn't allowed: rewrite it with `SELECT` or `WITH`.

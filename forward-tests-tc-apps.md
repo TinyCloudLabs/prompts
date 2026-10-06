@@ -88,6 +88,24 @@ Transcripts are in each client's stock home:
 - Codex: `~/.codex/sessions/YYYY/MM/DD/*.jsonl`;
 - OpenCode: the session in `~/.local/share/opencode/opencode.db`, dumped read-only.
 
+## Follow-up test: the fast copy
+
+This test proves that the owner never has to ask for the SQL index. The agent asks for the extra approval itself, in plain words, the first time a question needs many records.
+
+**Precondition:** one kind holds more than about 40 records, for example two months of daily weights. Either the owner backfills real history ("Here are my weights since August: …"), or the coordinator, with the owner's OK, seeds dated test records through the shared store and deletes them afterwards.
+
+| # | Client | Prompt | Expected |
+|---|---|---|---|
+| A | any | "How has my weight changed since August?" | §3 shows no index. The agent reads the records in blocks of up to 40 keys and answers. In the same reply it asks for "a fast, searchable copy of your records" with `SQL.md` §1a's message, without the words index, SQL or database, apart from OpenKey's own label. |
+| – | – | (the owner opens the link, approves, and sends the code) | §1b, §2, then §6 for every kind. One line: questions over many records are fast from now on. |
+| B | another client, new conversation | "What was my average weight per week since August?" | §3 shows the index `present`. `SQL.md` §4 shows matching counts, then one §5 query. The answer comes in seconds, not minutes. |
+| C | a third client | "Log my weight: 79.9 kg today." | It replaces today's record and runs `SQL.md` §3 for that key, with no further approval. |
+
+**Pass:**
+- The owner never asks for the index or learns the word.
+- One approval, and one pasted code.
+- KV and SQL counts match for every kind afterwards.
+
 ## Known rough edges
 
 - The device link is valid for 10 minutes. After that the CLI exits with `DEVICE_AUTH_EXPIRED`, and the agent tells the owner instead of starting another.

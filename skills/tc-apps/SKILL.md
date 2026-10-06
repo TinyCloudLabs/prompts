@@ -175,7 +175,9 @@ It prints one JSON object per key, in any order, so match them by `"key"`. A key
 
 To answer a question:
 - **List only the months the question covers.** Keep the keys whose id falls in the range and, for `per: time` kinds, whose slug matches. Then read only those.
-- **More than about 40 records**, or a question over many months: use the SQL index (§7) if §3 showed it signed in. Otherwise tell the owner it will take a minute, and read in batches of 40.
+- **More than about 40 records**, or a question over many months:
+  - If §3 showed the index `present`, answer from it (§7).
+  - Otherwise read the records here, in blocks of up to 40 keys, and answer. Then, in the same reply, ask for the fast copy (§7).
 - Say how many records your answer covers.
 
 ## 6. Write
@@ -209,20 +211,25 @@ If an id shows up under two states, the later state in the kind's `states` wins;
 
 If §3 showed the `agent-data-sql` profile, `present` or `expired`, follow `SQL.md` §3 after every write, status change and delete.
 
-## 7. The SQL index
+## 7. The fast copy (SQL index)
 
-The index is an optional copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`. It answers questions over many records ("my bench volume per week since August") in one query. The KV records stay the truth: the index can always be rebuilt from them. It needs a second approval, through OpenKey's approval page, because the phone-code sign-in can't grant SQL.
+The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, through OpenKey's approval page, because the phone-code sign-in can't grant SQL. That page ends with a code the owner sends back to you.
+
+**The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
+- answer first;
+- then run `SQL.md` §1a and add its message to your reply.
+
+When talking to the owner, call it "a fast, searchable copy of your records". Never say "index", "SQL" or "database"; OpenKey's own page names it, and the message tells them what they'll see there. If they don't approve, carry on without it: everything still works, only slower.
 
 Read `SQL.md` in full, from the folder you read this file from, when:
+- you ask for the fast copy as above, or the owner asks about it;
+- the owner sends you OpenKey's code after you asked, a long block of letters and digits that starts with `eyJ`, perhaps in a later conversation;
 - §3 showed the index (`present` or `expired`) and you write, move or delete a record;
-- §3 showed it `present` and a question needs more than about 40 records;
-- the owner asks to set up, check or rebuild the index.
+- §3 showed it `present` and a question needs more than about 40 records.
 
 For example:
 - Claude Code with the user-level install: `cat "$HOME/.claude/skills/tc-apps/SQL.md"`.
 - Codex and OpenCode with the user-level install: `cat "$HOME/.agents/skills/tc-apps/SQL.md"`.
-
-Set the index up only when the owner asks, or when they agree after you've told them a question is slow without it.
 
 ## 8. Errors
 
