@@ -55,3 +55,5 @@ cat "$HOME/.agents/skills/tc-apps/SKILL.md"
 The first is for Claude Code, the second for Codex and OpenCode. Your client may not list the new skill until it restarts; you don't need it to.
 
 Follow the skill now for the owner's request, from its §1.
+
+**OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."

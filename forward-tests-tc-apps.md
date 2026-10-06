@@ -35,7 +35,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 |---|---|---|
 | Claude Code | `claude` | It asks whether to trust a new folder on first launch. In auto mode it asks nothing else. In manual mode it asks on first use for each kind of block, and every time for blocks that use a pipeline or write the state folder. |
 | Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, and the skills installer writing `~/.agents/skills`. The state folder doesn't exist at launch; the install creates it. |
-| OpenCode | `opencode -m opencode/big-pickle` | No questions. Don't launch it with `--yolo`. |
+| OpenCode | `opencode -m opencode/big-pickle` | No questions. Don't launch it with `--yolo`. OpenCode loads skills when it starts, so restart it after conversation 1, as the setup tells the agent to say. `/new` alone doesn't pick up the newly installed skill. |
 
 ## Coordinator pre-flight (no owner needed)
 
@@ -95,6 +95,8 @@ Transcripts are in each client's stock home:
 - The SQL grant reaches every SQL database in `default` (`tinycloud-node` names databases by their last path segment). The owner accepted this. The skill always passes the exact `--db`.
 - Parallel SQL writes to one database can fail or half-apply, so the skill writes SQL one block at a time.
 - On a machine that also has TinyChat's global `tc-cli` skill, Codex and OpenCode may load it for the word "TinyCloud".
+- Claude Code's auto mode sometimes blocks the install as unsafe. The setup then has the agent show the block and ask; the owner replies "go ahead".
+- Codex's web tool sometimes fails to fetch the setup page ("Internal Error"). The agent falls back to `curl`.
 
 If OpenKey, the CLI, the node or the skills installer causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.
 
