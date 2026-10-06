@@ -30,7 +30,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep
 
 - **The link and `"code": "PASTE_CODE_MISSING"`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
 
-  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will take seconds. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then copy the code OpenKey shows at the end and send it to me here.
+  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then copy the code OpenKey shows at the end and send it to me here.
 
   If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
 
@@ -49,7 +49,7 @@ CODE
 rm -f "$STATE/sql-code" "$STATE/sql-login.err"
 ```
 
-- **`"authenticated": true` and `"declined": []`** → §2, then §6 for every kind the catalog lists. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records are fast from now on."
+- **`"authenticated": true` and `"declined": []`** → §2, then §6 for every kind the catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
 - **`"declined"` lists `tinycloud.sql/schema`** → the owner unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
 - **`OPENKEY_PROOF_INVALID`, or the code was cut short** → ask the owner to send the code again, and rerun 1b. Don't start a new 1a.
 - Never reuse a code for another profile.
@@ -76,7 +76,7 @@ Do this after every write, status change and delete in `SKILL.md` §6, whenever 
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c 'if R=$("$0" kv get "$1" --raw --space default --profile agent-data 2>/dev/null); then printf "{\"k\":\"%s\",\"r\":%s}\n" "$1" "$R"; elif [ $? -eq 4 ]; then printf "{\"k\":\"%s\"}\n" "$1"; else printf "{\"k\":\"%s\",\"r\":}\n" "$1"; fi' "$TC_BIN" {} > "$STATE/rows"
+printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c 'for i in 1 2 3; do R=$("$0" kv get "$1" --raw --space default --profile agent-data 2>/dev/null); c=$?; [ $c -eq 0 ] || [ $c -eq 4 ] && break; sleep 1; done; if [ $c -eq 0 ]; then printf "{\"k\":\"%s\",\"r\":%s}\n" "$1" "$R"; elif [ $c -eq 4 ]; then printf "{\"k\":\"%s\"}\n" "$1"; else printf "{\"k\":\"%s\",\"r\":}\n" "$1"; fi' "$TC_BIN" {} > "$STATE/rows"
 ROWS=$(sed 's/\\/\\\\/g; s/"/\\"/g' "$STATE/rows" | paste -s -d, -)
 "$TC_BIN" sql execute --db xyz.tinycloud.agent-data.index --space default --json --profile agent-data-sql --params "[\"[$ROWS]\"]" -- "INSERT OR REPLACE INTO records (key, rec) SELECT json_extract(value, '\$.k'), json_extract(value, '\$.r') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NOT NULL" && "$TC_BIN" sql execute --db xyz.tinycloud.agent-data.index --space default --json --profile agent-data-sql --params "[\"[$ROWS]\"]" -- "DELETE FROM records WHERE key IN (SELECT json_extract(value, '\$.k') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NULL)"
 ```
@@ -136,7 +136,7 @@ Rules:
 Rebuild when §4 finds a kind behind, and for every kind after the first sign-in.
 
 1. List the kind's keys with `SKILL.md` §5, using the prefix `xyz.tinycloud.agent-data/<app>/<kind>/`.
-2. Clear the kind's rows:
+2. Clear the kind's rows, unless the copy was created moments ago in §1b and is still empty:
 
    ```sh
    TC_BIN='<TC_BIN>'; umask 077

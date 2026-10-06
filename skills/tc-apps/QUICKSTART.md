@@ -83,7 +83,7 @@ You don't need to set anything up. The first time a question needs many records,
 
 1. The agent shows an OpenKey link. Open it and sign in. OpenKey lists the request as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space, for 30 days; that's the copy.
 2. Approve. OpenKey then shows a long code: copy it and send it to the agent. The phone-code approval can't grant this kind of access, which is why there's a code to copy.
-3. The agent finishes, builds the copy from your records, and says when it's done. Questions over many records then take seconds.
+3. The agent finishes, builds the copy from your records, and says when it's done. From then on it answers questions over many records with one lookup instead of reading every record. The agent's own thinking still takes most of the time.
 
 If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
 
