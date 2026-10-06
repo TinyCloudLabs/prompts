@@ -73,8 +73,9 @@ Each step is a **new conversation**. The first conversation in each client carri
   - They read the catalog in each new conversation, without being told.
   - They announce new apps and kinds.
   - They never run a `tc` from the `PATH`, never use `--replace-session`, and sign in only through §4.
+  - Their `<TC_BIN>` is `~/.local/share/tc-apps/tc`, so dropped connections are retried without showing up. Count the `NETWORK_ERROR`s left in the transcripts; each one means TinyCloud didn't answer three times in a row.
 - **Installation:**
-  - The CLI goes into `~/.local/share/tc-apps/cli` and the skill into the home's user-level skills folder, both downloaded fresh.
+  - The CLI goes into `~/.local/share/tc-apps/cli`, its retry script into `~/.local/share/tc-apps/tc`, and the skill into the home's user-level skills folder, all fresh.
   - The global `tc` keeps its version.
 - **Speed:**
   - Conversation 1 takes under about 3 minutes, including the install and the approval.

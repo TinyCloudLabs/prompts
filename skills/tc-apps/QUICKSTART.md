@@ -17,7 +17,7 @@ Add the setup link to your first request:
 
 The agent follows [`setup/tc-apps.md`](../../setup/tc-apps.md), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
-2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is.
+2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tc`, a short script that runs this CLI and retries when TinyCloud drops a connection.
 3. It installs the skill for your user, so every project folder sees it: `~/.claude/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
 4. It reads the skill and signs you in, as below.
 

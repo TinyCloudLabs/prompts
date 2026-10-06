@@ -10,7 +10,7 @@ metadata:
 You keep the owner's records in their TinyCloud `default` space, under one key root: `xyz.tinycloud.agent-data/`. Records are grouped into apps, one per area of life (`fitness`, `todos`, …), which you create and extend as the owner starts tracking new things. A catalog under the root describes every app, so any agent in any conversation can find what exists and how it's stored. The owner approves access once, for 30 days, from an OpenKey link and code you show them. An optional SQL index answers questions over many records at once (§7).
 
 Operator-set, never change or unset:
-- `TC_BIN`: absolute path to `tc`, CLI 1.0.0 or newer. Optional: without it, §1 finds the private CLI that `setup/tc-apps.md` installs. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
+- `TC_BIN`: absolute path to `tc`, CLI 1.0.0 or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that `setup/tc-apps.md` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
@@ -24,14 +24,14 @@ How to run the blocks:
 ## 1. Read the paths and the time
 
 ```sh
-printenv TC_BIN || ls "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" 2>/dev/null || echo 'TC_BIN is unset'
+printenv TC_BIN || ls "$HOME/.local/share/tc-apps/tc" 2>/dev/null || echo 'TC_BIN is unset'
 printenv TC_APPS_STATE || echo "$HOME/.local/state/tc-apps"
 date +%Y-%m-%dT%H:%M%z
 ```
 
 It prints `<TC_BIN>`, `<STATE>` and `<NOW>`, one per line.
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+0200`. Use it for "today" and "now", unless the owner says otherwise.
-- `TC_BIN is unset` → the CLI isn't installed: stop and tell the owner.
+- `TC_BIN is unset` → the setup hasn't run on this computer, or ran before it installed `~/.local/share/tc-apps/tc`: stop, and ask the owner to send their request again with the setup link.
 
 ## 2. How the records are organised
 
@@ -97,18 +97,18 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" --version
-"$TC_BIN" context --json --profile agent-data-sql
 "$TC_BIN" kv list --prefix xyz.tinycloud.agent-data/catalog/ --space default --json --profile agent-data
+"$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
 - The first line must be `1.0.0` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.0.0 or newer.
-- The `context` output is about the SQL index (§7). Carry on whatever it says:
-  - `"state": "present"` → the index is signed in.
-  - `"state": "expired"` → the index exists but needs a new approval.
-  - `PROFILE_NOT_FOUND` → there's no index.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
 - `SPACE_NOT_HOSTED` → stop and tell the owner that their TinyCloud `default` space isn't set up. Don't try to fix it.
+- The last line is the fast copy's state (§7). Carry on whatever it says:
+  - `"state": "present"` → the fast copy is signed in.
+  - `"state": "expired"` → it exists, but needs a new approval.
+  - `PROFILE_NOT_FOUND` → there's no fast copy yet. That's normal, not an error.
 
 Then read the catalog records of the app or apps the request is about, with §5's block for several records. For "what do you keep for me?", read them all.
 
@@ -238,7 +238,7 @@ The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED` or `PERMISSION_DENIED` → §4.
 - `ERROR` with "persisted SIWE is expired": the 30 days are over. For profile `agent-data` → §4; for `agent-data-sql` → `SQL.md` §7.
 - `AUTH_UNAUTHORIZED` → if the key starts with `xyz.tinycloud.agent-data/` and has no `?`, `#`, space or non-ASCII letter, the sign-in has expired or lost its scope: §4. Otherwise fix the key.
-- `NETWORK_ERROR` → run the command once more. If it fails again, tell the owner.
+- `NETWORK_ERROR` → TinyCloud didn't answer, even after `<TC_BIN>`'s own retries. Run the command once more. If it fails again, tell the owner that TinyCloud isn't reachable right now. Ignore the error's hint to switch profiles: the profiles are right.
 - `DEVICE_AUTH_EXPIRED` → nobody approved within 10 minutes. Tell the owner, and run §4 again only when they ask.
 - `DEVICE_AUTH_DENIED` → the owner declined. Stop.
 - `DEVICE_AUTH_RATE_LIMITED` → too many sign-ins from this network. Tell the owner to ask again in 10 minutes.
