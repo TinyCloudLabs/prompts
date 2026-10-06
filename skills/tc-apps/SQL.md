@@ -115,10 +115,10 @@ TC_BIN='<TC_BIN>'; umask 077
 
 It prints `{"columns": […], "rows": [[…]], "rowCount": …}`. Query the `entries` view. Pass values as `?` parameters in `--params`, a JSON array, and never paste values into the SQL. Inside the SQL, write each `$` as `\$`.
 
-Examples:
+Examples. The app, kind and field names here are illustrations; use the ones the catalog records give:
 - **Weight since a date:** `SELECT day, json_extract(data, '\$.kg') AS kg FROM entries WHERE app = 'fitness' AND kind = 'weight' AND day >= ? ORDER BY day`
 - **Weekly volume for one exercise:** `SELECT strftime('%Y-%W', day) AS week, sum(json_extract(data, '\$.sets') * json_extract(data, '\$.reps') * json_extract(data, '\$.kg')) AS volume FROM entries WHERE app = 'fitness' AND kind = 'lift' AND json_extract(data, '\$.exercise') = ? GROUP BY week ORDER BY week`
-- **Open items:** `SELECT id, json_extract(data, '\$.text') AS text FROM entries WHERE app = 'todos' AND kind = 'todo' AND folder = 'open' ORDER BY id`
+- **Open items:** `SELECT id, json_extract(data, '\$.title') AS title FROM entries WHERE app = 'todos' AND kind = 'todo' AND folder = 'open' ORDER BY id`
 - **Everything on a day:** `SELECT app, kind, id, data FROM entries WHERE day = ? ORDER BY app, kind, id`
 
 Rules:
@@ -147,7 +147,7 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
    "$TC_BIN" kv delete 'xyz.tinycloud.agent-data/index-stale/<app>/<kind>' --space default --json --profile agent-data
    ```
 
-5. Run §4 again: `n` must equal `"count"`.
+5. Run §4's block once, with its lines for every kind you rebuilt. Report `n` and `"count"` for each: they must be equal.
 
 ## 7. Lifetime and errors
 

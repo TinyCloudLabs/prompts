@@ -21,14 +21,17 @@ How to run the blocks:
 - Write files only through these blocks, never with a file-editing tool. Never install anything, and don't run `tc` commands that aren't here.
 - Run §1 and §3 once per conversation.
 
-## 1. Read the paths
+## 1. Read the paths and the time
 
 ```sh
 printenv TC_BIN || ls "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" 2>/dev/null || echo 'TC_BIN is unset'
 printenv TC_APPS_STATE || echo "$HOME/.local/state/tc-apps"
+date +%Y-%m-%dT%H:%M%z
 ```
 
-It prints `<TC_BIN>` and `<STATE>`, one per line. `TC_BIN is unset` → the CLI isn't installed: stop and tell the owner.
+It prints `<TC_BIN>`, `<STATE>` and `<NOW>`, one per line.
+- `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+0200`. Use it for "today" and "now", unless the owner says otherwise.
+- `TC_BIN is unset` → the CLI isn't installed: stop and tell the owner.
 
 ## 2. How the records are organised
 
@@ -43,18 +46,25 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
 
 **Names and keys.**
 - App, kind, state and slug names use lowercase `a-z`, `0-9` and `-`. `catalog` and `index-stale` aren't app names.
+- Field names use lowercase `a-z`, `0-9` and `_`.
 - Keys hold only ASCII letters, digits and `/-._~:+@=,`. Never a space, `?`, `#` or a non-ASCII letter: a `?` silently cuts the key short and overwrites another record.
 
+**Which `per` a log kind gets.**
+- `per: day` → a measurement taken at most once a day, such as body weight, sleep or steps.
+- `per: time` → anything the owner does, which can happen twice in a day: a workout, a run, a meal, a payment.
+
 **Ids.**
-- Log kind with one record per day (`"per": "day"`): the owner's local date, e.g. `2026-10-06`. A new value for that day replaces the record.
-- Log kind with any number per day (`"per": "time"`): local date and time, then a slug of the main subject: `2026-10-06T1830-bench-press`. If that key exists, add `-2`, `-3`.
+- `per: day`: the owner's local date, e.g. `2026-10-06`. A new value for that day replaces the record.
+- `per: time`: local date and time, then a slug of the main subject: `2026-10-06T1830-bench-press`.
+  - Use the time the owner gave. Otherwise use `<NOW>`'s time for today, and `1200` for another day.
+  - If that key exists, add `-2`, `-3`.
 - Item kind: the creation date and a slug of the item: `2026-10-06-renew-passport`.
 - `<YYYY-MM>` is the month of a log id's date.
 
 **A record** is one line of JSON: `{"v":1,"at":"2026-10-06T18:30:00+02:00","data":{"exercise":"bench press","sets":3,"reps":8,"kg":60},"by":"claude-code"}`.
 - `v`: the kind's `v` from its catalog record.
-- `at`: when it happened (ISO 8601 with the owner's UTC offset, or only the date), not when you saved it.
-- `data`: the fields the kind lists. Leave out what the owner didn't say.
+- `at`: when it happened, not when you saved it. Use date, time and UTC offset when you know the time, and only the date (`"2026-10-06"`) when the owner gave just a day.
+- `data`: the fields the kind lists. Leave out what the owner didn't say. Times belong in `at` and the id, never in a field.
 - `by`: your client: `claude-code`, `codex` or `opencode`.
 
 **An app record:** `{"app":"fitness","title":"Fitness","about":"Body weight, fitness goals and training.","created":"2026-10-06","by":"claude-code"}`
@@ -65,7 +75,11 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
 - Optional: `notes` (how to read or sum up the records), `history` (how to read records with an older `v`), `updated`.
 
 **Rules:**
-1. **Pick the app by its `about`.** Use the existing app and kind that fit. Ask the owner only when two apps fit, or when nothing clearly fits and the request is ambiguous. Otherwise create what's missing, and tell the owner in one line, e.g. "I started a `books` app."
+1. **Pick the app and the kind by their `about`, and keep kinds broad.**
+   - Before creating a kind, read every kind record of the app, and extend the closest one with a new field or value (rule 3).
+   - Name a kind for the category and put the specifics in fields: `session` with a `sport` field, not `run` and `bouldering`. The next sport is then a new value, not a new kind.
+   - Ask the owner only when two apps fit, or when nothing clearly fits and the request is ambiguous.
+   - Otherwise create what's missing, and tell the owner in one line, e.g. "I started a `books` app." or "I added a `goal` kind to `fitness`."
 2. **Catalog first.** Write a new app's record and its first kind record, or a new kind record, before the first record that uses them.
 3. **New details become new fields.** When the owner gives a detail the kind doesn't have yet, add it to the kind's `fields` with "(added <date>)", then use it. Older records simply lack it.
 4. **Never rename a field or change its unit or meaning.** Add a new field instead. Convert the owner's units to the kind's (pounds to `kg`), and say so. If a kind truly has to change shape, raise its `v` and describe the old version under `history`; never rewrite old records to match.
@@ -88,7 +102,7 @@ TC_BIN='<TC_BIN>'; umask 077
   - `"state": "expired"` → the index exists but needs a new approval.
   - `PROFILE_NOT_FOUND` → there's no index.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
-- `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list → §4.
+- `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
 - `SPACE_NOT_HOSTED` → stop and tell the owner that their TinyCloud `default` space isn't set up. Don't try to fix it.
 
 Then read the catalog records of the app or apps the request is about, with §5's block for several records. For "what do you keep for me?", read them all.
@@ -172,7 +186,7 @@ EOF
 ```
 
 - Always write the record through `--stdin` like this. Never pass it as an argument: it would be stored as text and read back as a string.
-- For several records, repeat the `kv put` command with its own `EOF` lines inside the block. Then read them all back with §5.
+- For several records, catalog records included, repeat the `kv put` command with its own `EOF` lines inside the block. Then add one `kv get` line for each key you wrote, after the last `EOF`.
 - Report the values you read back, not the ones you sent.
 - **A key that already has a record** (§5 listed it): a new value for a `per: day` record is what the owner asked for. Write it without asking, and tell them it replaced the earlier record. Change other existing records only when the owner asks.
 
@@ -210,6 +224,7 @@ Set the index up only when the owner asks, or when they agree after you've told 
 The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `NOT_FOUND` (exit 4) on `get` → there's no record there.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED` or `PERMISSION_DENIED` → §4.
+- `ERROR` with "persisted SIWE is expired": the 30 days are over. For profile `agent-data` → §4; for `agent-data-sql` → `SQL.md` §7.
 - `AUTH_UNAUTHORIZED` → if the key starts with `xyz.tinycloud.agent-data/` and has no `?`, `#`, space or non-ASCII letter, the sign-in has expired or lost its scope: §4. Otherwise fix the key.
 - `NETWORK_ERROR` → run the command once more. If it fails again, tell the owner.
 - `DEVICE_AUTH_EXPIRED` → nobody approved within 10 minutes. Tell the owner, and run §4 again only when they ask.

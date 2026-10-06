@@ -26,7 +26,7 @@ Nothing to restart, and no shell profile to edit. Afterwards, any new conversati
 | Client | Start | What to expect |
 |---|---|---|
 | Claude Code | `claude` | Auto mode asks nothing. Manual mode asks on first use for the setup page, the check, the install and each kind of skill block; choose "Yes, and don't ask again" where it's offered. Blocks that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/.tinycloud --add-dir ~/.local/state/tc-apps` | One approval, for the install. The CLI needs the network, and it writes the profile store and the state folder, both outside the project. With `TC_HOME` or `TC_APPS_STATE` set, pass `$TC_HOME/.tinycloud` and `$TC_APPS_STATE` instead. The folders don't need to exist yet: the setup creates them. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/.tinycloud --add-dir ~/.local/state/tc-apps` | One approval, for the install. The CLI needs the network, and it writes the profile store and the state folder, both outside the project. With `TC_HOME` or `TC_APPS_STATE` set, pass `$TC_HOME/.tinycloud` and `$TC_APPS_STATE` instead. Folders under your home don't need to exist yet: the setup creates them. A missing `--add-dir` folder under `/tmp`, though, stops Codex's sandbox from starting, so create it first. |
 | OpenCode | `opencode` | No questions. |
 
 Claude Code and Codex also ask whether you trust a folder the first time you start them in it.

@@ -49,10 +49,10 @@ Each step is a **new conversation**. The first conversation in each client carri
 | # | Client | Prompt | Expected |
 |---|---|---|---|
 | 1 | OpenCode | "Log my weight: 80.5 kg today. Set it up with TinyCloud: `<setup link>`" | Install. §3 shows `AUTH_REQUIRED`. §4: **the test's only device approval**. Then app `fitness` with kind `weight` (`per: day`), record `fitness/weight/<YYYY-MM>/<date>`, read back. The agent says it started a fitness app. |
-| 2 | Codex | "My goal is 78 kg by December. Set it up with TinyCloud: `<setup link>`" | Install (one escalation). **No sign-in**: §3 lists the catalog. Kind `goal` (item: `active`, …) is added to `fitness`, and the goal is written under `fitness/goal/active/`. |
-| 3 | Claude Code | "Bench press, 3 sets of 8 at 60 kg. Set it up with TinyCloud: `<setup link>`" | Install. Kind `lift` (`per: time`), key ending `-bench-press`. |
-| 4 | OpenCode | "Ran 5 km in 27 minutes this morning." | No link needed. A new kind for non-strength sport, for example `session` with `sport`, `minutes`, `km`. |
-| 5 | Codex | "Bouldering tonight: 90 minutes, hardest problem 6a." | A new `sport` value, plus a new field for the grade, added to the kind's `fields` with "(added <date>)". |
+| 2 | Codex | "My goal is 78 kg by December. Set it up with TinyCloud: `<setup link>`" | Install (one escalation). **No sign-in**: §3 lists the catalog. An item kind for goals is added to `fitness` (its states are the agent's choice, e.g. `open`/`done`), and the goal is written under its first state. The agent announces the new kind. |
+| 3 | Claude Code | "Bench press, 3 sets of 8 at 60 kg. Set it up with TinyCloud: `<setup link>`" | Install. Kind `lift` or similar (`per: time`), key ending `-bench-press`. |
+| 4 | OpenCode | "Ran 5 km in 27 minutes this morning." | No link needed. One broad `per: time` kind for sports other than lifting, e.g. `session` with `sport`, `minutes`, `km`. Not a `run` kind (`SKILL.md` §2, rule 1). |
+| 5 | Codex | "Bouldering tonight: 90 minutes, hardest problem 6a." | The same kind with a new `sport` value, plus a new field for the grade, added to the kind's `fields` with "(added <date>)". |
 | 6 | Claude Code | "Add a todo: renew my passport." | App `todos` with kind `todo` (item: `open`, `done`), record under `todos/todo/open/`. |
 | 7 | Claude Code | "Set up the TinyCloud index." | `SQL.md` §1a shows the approval link. The owner approves, copies the code and sends it. Then §1b, §2, and §6 for every kind; §4 shows the counts equal. |
 | 8 | OpenCode | "What do you keep for me?" | Reads the catalog: two apps and their kinds, with fields. |
