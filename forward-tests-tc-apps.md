@@ -10,12 +10,14 @@ Every client signs in through one shared profile store, so the whole test needs 
 ## Preconditions
 
 - **Setup link:** the raw URL of [`setup/tc-apps.md`](setup/tc-apps.md) on the branch under test, for example `https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/feat/tc-apps/setup/tc-apps.md`. The setup installs the skill from the same branch's GitHub archive.
-- **A stock home per client:** a new folder, for example `~/projects/tc-lab/stock-apps/<client>/home`. It holds a copy of `/etc/skel` and an empty project folder, `project`, with `git init`.
-  - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`. The private CLI and the state folder go into the home too.
+- **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
+  - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
+  - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
   - The coordinator's own `~/.tinycloud` is never touched.
-- **One shared profile store:** set `TC_HOME=~/projects/tc-lab/stock-apps/shared` for every client, and create `$TC_HOME/.tinycloud` (mode 700) before the first launch. Set no `TC_APPS_STATE` and no `TC_BIN`.
+- **One shared profile store, `$SHARED`.** For example `~/projects/tc-lab/stock/shared-apps`; create `$SHARED/.tinycloud` (mode 700) before the first launch. Every client runs with `TC_HOME=$SHARED`, and with no `TC_APPS_STATE` or `TC_BIN`.
 - **`PATH`:** the system folders plus a folder of links to the three clients, for example `~/projects/tc-lab/stock/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`. The only `tc` on it is Linux's `/usr/sbin/tc`.
-- **Logins:** each client starts logged out in its new home, so the owner logs in once before the test. Codex: `codex login --device-auth`. Claude Code: its first-run screens. OpenCode's free `opencode/big-pickle` model needs no login. Set `DISABLE_AUTOUPDATER=1` for Claude Code.
+- **Logins:** in a new home, the owner logs each client in once before the test. Codex: `codex login --device-auth`. Claude Code: its first-run screens. OpenCode's free `opencode/big-pickle` model needs no login. Set `DISABLE_AUTOUPDATER=1` for Claude Code.
+- **New conversations:** Claude Code `/clear`, Codex `/new`, OpenCode `/new`, or restart the client.
 - **Global `tc`:** run `tc --version` from a plain shell before and after; it must not change.
 - **Rate limit:** OpenKey allows 5 device sign-in starts per 10 minutes per network. The test needs one. Don't loop.
 - **The data is real:** records go to the owner's `default` space under `xyz.tinycloud.agent-data/`, and they stay there as the owner's data unless the owner asks for cleanup.
@@ -99,12 +101,12 @@ If OpenKey, the CLI, the node or the skills installer causes friction, write it 
 
 ## Cleanup
 
-Only when the owner asks: delete test records with `SKILL.md`'s `kv delete`, and the index rows with `SQL.md` §6's clear step. Then log out both profiles and delete the stock homes and the shared store; that also removes the client logins made for the test:
+Only when the owner asks: delete test records with `SKILL.md`'s `kv delete`, and the index rows with `SQL.md` §6's clear step. Then log out both profiles from the shared store, with any client's private CLI:
 
 ```sh
-S=~/projects/tc-lab/stock-apps
-T="$S/opencode/home/.local/share/tc-apps/cli/node_modules/.bin/tc"
-TC_HOME="$S/shared" "$T" --profile agent-data auth logout
-TC_HOME="$S/shared" "$T" --profile agent-data-sql auth logout
-rm -rf "$S"
+T="$H/.local/share/tc-apps/cli/node_modules/.bin/tc"
+TC_HOME="$SHARED" "$T" --profile agent-data auth logout
+TC_HOME="$SHARED" "$T" --profile agent-data-sql auth logout
 ```
+
+Finally, delete `$SHARED`. For each home, either delete it, which also removes the client logins made for the test, or remove what the test added: the project folder, `.local/share/tc-apps`, `.local/state/tc-apps`, and `tc-apps` in `.claude/skills` or `.agents/skills`.
