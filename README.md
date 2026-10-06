@@ -4,6 +4,8 @@ This repository is the shared development and review point for agent-facing setu
 
 ## Documents
 
+- [`quickstart/tinycloud.md`](quickstart/tinycloud.md) is the generic OpenCode entry guide for ordinary TinyCloud tasks: shared prerequisites, profile and space selection, human login, access verification, then the original task.
+- [`quickstart/tinycloud-prompt.txt`](quickstart/tinycloud-prompt.txt) is its separate starter prompt. Replace the task placeholder before use. Its URL targets `Codex/roman/tinycloud-generic-quickstart` for review; update it to a retained published ref before deleting that branch. The generic flow still requires the live smoke test described in the guide.
 - [`setup/tinycloud.md`](setup/tinycloud.md) installs and verifies the pinned TinyCloud CLI and its core skill, then returns to the calling app guide.
 - [`setup/openkey.md`](setup/openkey.md) optionally installs and verifies the standalone OpenKey CLI. It is not part of TinyChat authorization.
 - [`apps/tinychat/setup.md`](apps/tinychat/setup.md) owns TinyChat's skill, adapter activation, app context, permission grant, retrieval behavior and lifecycle.
