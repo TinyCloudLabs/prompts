@@ -1,0 +1,12 @@
+{
+  "name": "@tinycloud/auth-handoff",
+  "version": "0.2.0-lean-auth.1",
+  "private": true,
+  "type": "module",
+  "description": "Generic TinyCloud sign-in using the pinned TinyChat native paste flow",
+  "engines": { "node": ">=22.20.0" },
+  "bin": { "tc-auth-handoff": "scripts/auth.mjs" },
+  "exports": { ".": "./lib/handoff.mjs", "./opencode-plugin": "./lib/opencode-plugin.mjs" },
+  "files": ["lib", "scripts", "README.md", "templates", "references", "quickstart", "runtime", "release-manifest.json"],
+  "scripts": { "test": "node --test test/*.test.mjs", "build:release": "node scripts/build-release.mjs" }
+}

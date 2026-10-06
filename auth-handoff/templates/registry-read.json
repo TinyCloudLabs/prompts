@@ -1,0 +1,11 @@
+{
+  "app_id": "tinycloud-registry-read",
+  "name": "TinyCloud app registry read",
+  "space": "account",
+  "defaults": false,
+  "includePublicSpace": false,
+  "permissions": [
+    { "service": "tinycloud.kv", "space": "account", "path": "applications/", "skipPrefix": true, "actions": ["get", "list"] },
+    { "service": "tinycloud.capabilities", "space": "account", "path": "", "skipPrefix": true, "actions": ["read"] }
+  ]
+}
