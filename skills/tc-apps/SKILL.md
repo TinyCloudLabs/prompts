@@ -56,14 +56,18 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
 **Ids.**
 - `per: day`: the owner's local date, e.g. `2026-10-06`. A new value for that day replaces the record.
 - `per: time`: local date and time, then a slug of the main subject: `2026-10-06T1830-bench-press`.
-  - Use the time the owner gave. Otherwise use `<NOW>`'s time for today, and `1200` for another day.
+  - Use the time the owner gave. A part of the day counts as a time: morning `0800`, afternoon `1500`, evening or tonight `2000`.
+  - With no time at all, use `<NOW>`'s time for today, and `1200` for another day.
   - If that key exists, add `-2`, `-3`.
 - Item kind: the creation date and a slug of the item: `2026-10-06-renew-passport`.
 - `<YYYY-MM>` is the month of a log id's date.
 
 **A record** is one line of JSON: `{"v":1,"at":"2026-10-06T18:30:00+02:00","data":{"exercise":"bench press","sets":3,"reps":8,"kg":60},"by":"claude-code"}`.
 - `v`: the kind's `v` from its catalog record.
-- `at`: when it happened, not when you saved it. Use date, time and UTC offset when you know the time, and only the date (`"2026-10-06"`) when the owner gave just a day.
+- `at`: when it happened, not when you saved it.
+  - With a time (including a part of the day, as for ids): date, time and UTC offset.
+  - With only a day from the owner: only the date, e.g. `"2026-10-06"`.
+  - With neither: `<NOW>`.
 - `data`: the fields the kind lists. Leave out what the owner didn't say. Times belong in `at` and the id, never in a field.
 - `by`: your client: `claude-code`, `codex` or `opencode`.
 
@@ -78,6 +82,7 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
 1. **Pick the app and the kind by their `about`, and keep kinds broad.**
    - Before creating a kind, read every kind record of the app, and extend the closest one with a new field or value (rule 3).
    - Name a kind for the category and put the specifics in fields: `session` with a `sport` field, not `run` and `bouldering`. The next sport is then a new value, not a new kind.
+   - Make a new kind only when the records have a different shape, meaning other main fields, not just another subject. Running and bouldering share `session` (`sport`, `minutes`, `km`); strength exercises with `sets`, `reps` and `kg` are their own kind, like `lift` above.
    - Ask the owner only when two apps fit, or when nothing clearly fits and the request is ambiguous.
    - Otherwise create what's missing, and tell the owner in one line, e.g. "I started a `books` app." or "I added a `goal` kind to `fitness`."
 2. **Catalog first.** Write a new app's record and its first kind record, or a new kind record, before the first record that uses them.

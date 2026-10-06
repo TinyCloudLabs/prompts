@@ -35,7 +35,10 @@ npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs
 
 If something goes wrong:
 - **Codex:** the sandbox doesn't let npm or the skills installer write outside the workspace. It can write the two folders from the first line only once they exist. Run the block with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once.
-- If a command fails, stop and report its error. Don't retry it with other options or in another folder.
+- **Your client refuses the block,** for example Claude Code's auto mode with "Unauthorized Persistence". Show the owner the three lines, say that they install the TinyCloud CLI and this skill for their user, and ask them to allow the block. Run it again only once they agree.
+- **A command fails:** stop and report its error. Don't retry it with other options or in another folder.
+
+Wait until the block has finished before §3: the skill doesn't exist until then.
 
 ## 3. Carry on with the skill
 
