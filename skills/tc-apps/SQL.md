@@ -7,7 +7,7 @@ Part of the `tc-apps` skill: read `SKILL.md` first. The index copies every recor
 - **Lifetime:** 30 days.
 - **Reach:** the grant names one database, but TinyCloud's node also lets it open the space's other SQL databases. The owner accepted this. Always pass exactly `--db xyz.tinycloud.agent-data.index`, never a longer or different name.
 
-Run the blocks as `SKILL.md` says: literal `<TC_BIN>` and `<STATE>` from its §1, values filled into `'<…>'`. Keep the SQL in double quotes, exactly as written: a `\$` stays `\$`. Put every option before `--`, and the SQL after it.
+Run the blocks as `SKILL.md` says: literal `<TC_BIN>` and `<STATE>` from its §1, values filled into `'<…>'`. Keep the SQL in double quotes, exactly as written. Only `$` needs a backslash: write it `\$`, and leave `%` and every other character as it is. Put every option before `--`, and the SQL after it.
 
 **Never run two SQL writes at the same time.** That includes another block of yours, and `xargs`. Parallel writes to one database can fail, or half-apply. Writes in this file run one after another; only reads run side by side.
 
@@ -49,7 +49,7 @@ CODE
 rm -f "$STATE/sql-code" "$STATE/sql-login.err"
 ```
 
-- **`"authenticated": true` and `"declined": []`** → §2, then §6 for every kind the catalog lists. Then tell the owner in one line, for example: "Done: questions over many records are fast from now on."
+- **`"authenticated": true` and `"declined": []`** → §2, then §6 for every kind the catalog lists. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records are fast from now on."
 - **`"declined"` lists `tinycloud.sql/schema`** → the owner unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
 - **`OPENKEY_PROOF_INVALID`, or the code was cut short** → ask the owner to send the code again, and rerun 1b. Don't start a new 1a.
 - Never reuse a code for another profile.
@@ -117,7 +117,7 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" sql query --db xyz.tinycloud.agent-data.index --space default --json --profile agent-data-sql --params '[<values>]' -- "<SELECT …>"
 ```
 
-It prints `{"columns": […], "rows": [[…]], "rowCount": …}`. Query the `entries` view. Pass values as `?` parameters in `--params`, a JSON array, and never paste values into the SQL. Inside the SQL, write each `$` as `\$`.
+It prints `{"columns": […], "rows": [[…]], "rowCount": …}`. Query the `entries` view. Pass values as `?` parameters in `--params`, a JSON array, and never paste values into the SQL. Inside the SQL, write each `$` as `\$`. Leave `%` as it is, for example `strftime('%Y-%W', day)`.
 
 Examples. The app, kind and field names here are illustrations; use the ones the catalog records give:
 - **Weight since a date:** `SELECT day, json_extract(data, '\$.kg') AS kg FROM entries WHERE app = 'fitness' AND kind = 'weight' AND day >= ? ORDER BY day`
@@ -143,7 +143,7 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
    "$TC_BIN" sql execute --db xyz.tinycloud.agent-data.index --space default --json --profile agent-data-sql --params '["xyz.tinycloud.agent-data/<app>/<kind>/"]' -- "DELETE FROM records WHERE instr(key, ?) = 1"
    ```
 
-3. Copy every key with §3's block, at most 200 keys per block, one block after another.
+3. Copy exactly the keys step 1 listed, all of them, with §3's block: at most 200 keys per block, one block after another. Never build key names yourself, for example from dates.
 4. Remove the kind's mark, if §4 listed one:
 
    ```sh

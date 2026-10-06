@@ -216,8 +216,8 @@ If §3 showed the `agent-data-sql` profile, `present` or `expired`, follow `SQL.
 The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, through OpenKey's approval page, because the phone-code sign-in can't grant SQL. That page ends with a code the owner sends back to you.
 
 **The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
-- answer first;
-- then run `SQL.md` §1a and add its message to your reply.
+- first write your answer from the records you read;
+- only then run `SQL.md` §1a, and put its message after the answer, in the same reply.
 
 When talking to the owner, call it "a fast, searchable copy of your records". Never say "index", "SQL" or "database"; OpenKey's own page names it, and the message tells them what they'll see there. If they don't approve, carry on without it: everything still works, only slower.
 
