@@ -5,7 +5,9 @@ The test proves three things across conversations and clients:
 - **Apps change on the fly:** new kinds and fields need no new approval, install or migration.
 - **Any agent picks it up:** a new conversation in Claude Code, Codex or OpenCode finds the apps through the catalog.
 
-Every client signs in through one shared profile store, so the whole test needs one device approval, plus one approval and one pasted code for the SQL index.
+Every client signs in through one shared profile store, so the whole test needs one device approval.
+
+The SQL index isn't part of this run. Its setup is being reworked so that the agent asks for the permission itself, only when a question needs it, and the owner never has to ask for it. It gets its own short test afterwards.
 
 ## Preconditions
 
@@ -56,14 +58,13 @@ Each step is a **new conversation**. The first conversation in each client carri
 | 4 | OpenCode | "Ran 5 km in 27 minutes this morning." | No link needed. One broad `per: time` kind for sports other than lifting, e.g. `session` with `sport`, `minutes`, `km`. Not a `run` kind (`SKILL.md` §2, rule 1). |
 | 5 | Codex | "Bouldering tonight: 90 minutes, hardest problem 6a." | The same kind with a new `sport` value, plus a new field for the grade, added to the kind's `fields` with "(added <date>)". |
 | 6 | Claude Code | "Add a todo: renew my passport." | App `todos` with kind `todo` (item: `open`, `done`), record under `todos/todo/open/`. |
-| 7 | Claude Code | "Set up the TinyCloud index." | `SQL.md` §1a shows the approval link. The owner approves, copies the code and sends it. Then §1b, §2, and §6 for every kind; §4 shows the counts equal. |
-| 8 | OpenCode | "What do you keep for me?" | Reads the catalog: two apps and their kinds, with fields. |
-| 9 | Codex | "How far am I from my weight goal?" | Reads the active goal and the latest weight. |
-| 10 | Claude Code | "Passport renewed. And what did I train this week?" | Moves the todo to `done` and copies both keys into the index (`SQL.md` §3). Answers the training question from the index after §4, or from KV. |
+| 7 | OpenCode | "What do you keep for me?" | Reads the catalog: two apps and their kinds, with fields. |
+| 8 | Codex | "How far am I from my weight goal?" | Reads the open goal and the latest weight. |
+| 9 | Claude Code | "Passport renewed. And what did I train this week?" | Moves the todo to `done` (writes the new key, deletes the old one). Answers the training question from KV. With no `agent-data-sql` profile, no index step runs. |
 
 ## Pass criteria
 
-- **The owner's actions:** the prompts, the clients' own permission prompts (count them), one device approval, and one SQL approval with one pasted code. No restarts, second terminals, retries or "done" messages.
+- **The owner's actions:** the prompts, the clients' own permission prompts (count them), and one device approval. No restarts, second terminals, retries or "done" messages.
 - **The data:**
   - Every app and kind appears in the catalog before its first record.
   - Keys and records follow `SKILL.md` §2: `{v, at, data, by}`, month folders for logs, state folders for items.
@@ -71,8 +72,7 @@ Each step is a **new conversation**. The first conversation in each client carri
 - **The agents:**
   - They read the catalog in each new conversation, without being told.
   - They announce new apps and kinds.
-  - They never run a `tc` from the `PATH`, never use `--replace-session`, and sign in only through §4 and `SQL.md` §1.
-  - They never run SQL writes in parallel.
+  - They never run a `tc` from the `PATH`, never use `--replace-session`, and sign in only through §4.
 - **Installation:**
   - The CLI goes into `~/.local/share/tc-apps/cli` and the skill into the home's user-level skills folder, both downloaded fresh.
   - The global `tc` keeps its version.
@@ -81,7 +81,6 @@ Each step is a **new conversation**. The first conversation in each client carri
   - Later writes and questions take under about a minute each.
 - **Leak check:** the transcripts hold no `key.json` or `session.json` content.
   - Device links and codes may appear.
-  - The pasted SQL code appears in conversation 7, where the owner sent it, and nowhere else.
   - Search for `delegationHeader`, `delegationCid`, `"d":` and base64 runs over 400 characters.
 
 Transcripts are in each client's stock home:
