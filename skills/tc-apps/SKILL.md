@@ -26,11 +26,11 @@ How to run the blocks:
 ```sh
 printenv TC_BIN || ls "$HOME/.local/share/tc-apps/tc" 2>/dev/null || echo 'TC_BIN is unset'
 printenv TC_APPS_STATE || echo "$HOME/.local/state/tc-apps"
-date +%Y-%m-%dT%H:%M%z
+date +%Y-%m-%dT%H:%M%z | sed 's/..$/:&/'
 ```
 
 It prints `<TC_BIN>`, `<STATE>` and `<NOW>`, one per line.
-- `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+0200`. Use it for "today" and "now", unless the owner says otherwise.
+- `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today" and "now", unless the owner says otherwise.
 - `TC_BIN is unset` → the setup hasn't run on this computer, or ran before it installed `~/.local/share/tc-apps/tc`: stop, and ask the owner to send their request again with the setup link.
 
 ## 2. How the records are organised
@@ -47,6 +47,7 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
 **Names and keys.**
 - App, kind, state and slug names use lowercase `a-z`, `0-9` and `-`. `catalog` and `index-stale` aren't app names.
 - Field names use lowercase `a-z`, `0-9` and `_`.
+- `due` and `done` mean the same in every kind: the date something is due, and the date it was done, both `YYYY-MM-DD`. A month counts as its last day: "by December" is `2026-12-31`.
 - Keys hold only ASCII letters, digits and `/-._~:+@=,`. Never a space, `?`, `#` or a non-ASCII letter: a `?` silently cuts the key short and overwrites another record.
 
 **Which `per` a log kind gets.**
@@ -62,10 +63,10 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
 - Item kind: the creation date and a slug of the item: `2026-10-06-renew-passport`.
 - `<YYYY-MM>` is the month of a log id's date.
 
-**A record** is one line of JSON: `{"v":1,"at":"2026-10-06T18:30:00+02:00","data":{"exercise":"bench press","sets":3,"reps":8,"kg":60},"by":"claude-code"}`.
+**A record** is one line of JSON: `{"v":1,"at":"2026-10-06T18:30+02:00","data":{"exercise":"bench press","sets":3,"reps":8,"kg":60},"by":"claude-code"}`.
 - `v`: the kind's `v` from its catalog record.
 - `at`: when it happened, not when you saved it.
-  - With a time (including a part of the day, as for ids): date, time and UTC offset.
+  - With a time (including a part of the day, as for ids): date, time and UTC offset, written like `<NOW>`: `2026-10-06T08:00+02:00`.
   - With only a day from the owner: only the date, e.g. `"2026-10-06"`.
   - With neither: `<NOW>`.
 - `data`: the fields the kind lists. Leave out what the owner didn't say. Times belong in `at` and the id, never in a field.
