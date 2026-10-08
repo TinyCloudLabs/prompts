@@ -13,7 +13,7 @@ It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later wi
 
 Add the setup link to your first request:
 
-> Log my weight: 80.5 kg today. Set it up with TinyCloud: https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/feat/tc-apps/setup/tc-apps.md
+> Log my weight: 80.5 kg today. Set it up with TinyCloud: https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/docs/initial-setup-split/setup/tc-apps.md
 
 The agent follows [`setup/tc-apps.md`](../../setup/tc-apps.md), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.

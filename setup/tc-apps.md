@@ -25,7 +25,7 @@ Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-
 ```sh
 mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}" "$HOME/.local/share/tc-apps"
 npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.0.0
-npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/feat/tc-apps.tar.gz --skill tc-apps --agent <client> --global --copy --yes
+npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/docs/initial-setup-split.tar.gz --skill tc-apps --agent <client> --global --copy --yes
 cat > "$HOME/.local/share/tc-apps/tc" <<'EOF'
 #!/bin/sh
 # tc-apps: runs TinyCloud CLI 1.0.0. A kv or sql command that fails with NETWORK_ERROR (a dropped connection,
