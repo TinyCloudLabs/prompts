@@ -237,4 +237,10 @@ ${listed.filter((d) => !BLOCKS.has(d.path)).map((d) => `      <li><a href="/${d.
 `,
 );
 
+// Without a 404 page, Pages serves index.html with 200 for missing paths.
+writeFileSync(
+  join(OUT, "404.html"),
+  `<!doctype html>\n<meta charset="utf-8">\n<title>Not found · TinyCloud</title>\n<p>Not found. Agents: see <a href="/llms.txt">/llms.txt</a> for every guide and skill on this site.</p>\n`,
+);
+
 console.log(`built ${OUT}: ${files.length} files, ${listed.length} guides, ${skills.length} skills, ${abilities.length} abilities`);
