@@ -40,7 +40,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 
 - **Secret values:**
   - By default a value goes only into the environment or stdin of the one command that uses it. The one exception is a key file under §4 "Key files".
-  - Never print, echo or log it. Never write it into the repository, notes, memory, commits or summaries.
+  - Never print, echo or log it. Never write it into the repository (except a git-ignored key file under §4 "Key files"), notes, memory, commits or summaries.
   - Never pass it as a command-line argument: other local users can read process arguments.
 - Never run `secrets get` without `--raw` inside a capture: plain `secrets get` prints the value as JSON.
 - **Never ask the owner to paste a secret value into the conversation.** A missing secret is added by the owner on the Secret Manager page that §2b prepares.
@@ -458,7 +458,7 @@ Never reuse a code for another profile.
 
 ## 4. Use a secret
 
-Read the value inside the one command that needs it. Each read takes a second or two; read again in the next command rather than caching the value on disk. These patterns suit single-line tokens such as API keys. Shell capture drops trailing newlines, so for a multi-line value pipe `secrets get … --raw` straight into the consumer's stdin.
+Read the value inside the one command that needs it. Each read takes a second or two; by default, read again in the next command rather than caching the value on disk (§4 "Key files" covers the exceptions). These patterns suit single-line tokens such as API keys. Shell capture drops trailing newlines, so for a multi-line value pipe `secrets get … --raw` straight into the consumer's stdin.
 
 **A program that reads its environment:**
 
@@ -520,15 +520,15 @@ DEST='<absolute path the owner or tool needs>'
 D=$(dirname "$DEST")
 if git -C "$D" rev-parse >/dev/null 2>&1 && ! git -C "$D" check-ignore -q "$DEST"; then echo "IN_GIT_TREE — pick a git-ignored path or one outside the repository"
 else
-  rm -f "$STATE/use.err"
-  if timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get "$NAME" --raw < /dev/null 2> "$STATE/use.err" | install -m 600 /dev/stdin "$DEST" \
-     && [ -s "$DEST" ]; then echo "KEY_FILE_WRITTEN $NAME $DEST"
-  else rm -f "$DEST"; echo "KEY_FILE_FAILED — check the directory exists, then run §2 for $NAME"; fi
+  TMP="$DEST.tmp.$$"; rm -f "$STATE/use.err"
+  if ( set -o pipefail; timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get "$NAME" --raw < /dev/null 2> "$STATE/use.err" \
+       | install -m 600 /dev/stdin "$TMP" ) && [ -s "$TMP" ] && mv -f "$TMP" "$DEST"; then echo "KEY_FILE_WRITTEN $NAME $DEST"
+  else rm -f "$TMP"; echo "KEY_FILE_FAILED — check the directory exists, then run §2 for $NAME"; fi
   rm -f "$STATE/use.err"
 fi
 ```
 
-`set -o pipefail` isn't set, so the block checks the file isn't empty; an empty file is removed rather than left behind.
+The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place. For another account, do the same with `sudo install -o <user> -m 600 /dev/stdin "$TMP"` and `sudo mv -f "$TMP" "$DEST"`.
 
 ## 5. Errors — `{"error":{"code","message","hint"?}}` on stderr
 
