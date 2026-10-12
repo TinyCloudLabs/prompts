@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # Read secrets from TinyCloud with `tc secrets`
@@ -39,7 +39,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 ## Handling contract — applies to every step
 
 - **Secret values:**
-  - A value goes only into the environment or stdin of the one command that uses it.
+  - By default a value goes only into the environment or stdin of the one command that uses it. The one exception is a key file under §4 "Key files".
   - Never print, echo or log it. Never write it into the repository, notes, memory, commits or summaries.
   - Never pass it as a command-line argument: other local users can read process arguments.
 - Never run `secrets get` without `--raw` inside a capture: plain `secrets get` prints the value as JSON.
@@ -497,7 +497,38 @@ rm -f "$STATE/use.err"
 
 Both patterns read the secret inside a subshell, so the value never stays in your shell, even when the read fails. They also close stdin and send the CLI's stderr to a private file, so the CLI never waits for a browser approval mid-task. `EXIT` is your command's exit status; `EXIT 90` with `SECRET_UNAVAILABLE` means access changed since §2 (for example, the session expired), so go back to §2.
 
-If a tool insists on a key file, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command. Never offer or agree to leave a value in a file after the command, even when the owner asks. The owner can copy their own values in Secret Manager.
+### Key files
+
+**Default:** one command, no file left behind. If a tool needs the value in a file only for that one run, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command.
+
+**A file that stays** is allowed when the owner asks for one, or when a tool or service can only read the secret from a file (for example a daemon's config or credentials file). Then:
+- Write it with `umask 077`, mode 0600, owned by the account that will read it. For another account, use `sudo install -o <user> -m 600 /dev/stdin <path>`.
+- Pipe the value straight from `"$TC_BIN" --profile "$PROFILE" secrets get NAME --raw` into the file. Never print or echo it, and never pass it as a command-line argument.
+- Before writing, check the path isn't inside a git work tree, or is git-ignored there: `git -C "$(dirname <path>)" check-ignore -q <path>` must succeed, or `git -C "$(dirname <path>)" rev-parse` must fail.
+- Don't copy the file anywhere else.
+- Tell the owner the path and the secret's **name** (never the value), and how to remove it (`rm <path>`) or rotate it (replace the value in Secret Manager, then rewrite the file the same way).
+
+For example, for the current account:
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
+NAME='<SECRET_NAME>'
+DEST='<absolute path the owner or tool needs>'
+
+D=$(dirname "$DEST")
+if git -C "$D" rev-parse >/dev/null 2>&1 && ! git -C "$D" check-ignore -q "$DEST"; then echo "IN_GIT_TREE — pick a git-ignored path or one outside the repository"
+else
+  rm -f "$STATE/use.err"
+  if timeout 60 "$TC_BIN" --profile "$PROFILE" secrets get "$NAME" --raw < /dev/null 2> "$STATE/use.err" | install -m 600 /dev/stdin "$DEST" \
+     && [ -s "$DEST" ]; then echo "KEY_FILE_WRITTEN $NAME $DEST"
+  else rm -f "$DEST"; echo "KEY_FILE_FAILED — check the directory exists, then run §2 for $NAME"; fi
+  rm -f "$STATE/use.err"
+fi
+```
+
+`set -o pipefail` isn't set, so the block checks the file isn't empty; an empty file is removed rather than left behind.
 
 ## 5. Errors — `{"error":{"code","message","hint"?}}` on stderr
 
