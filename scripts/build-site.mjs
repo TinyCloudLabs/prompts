@@ -16,7 +16,7 @@ const OUT = join(ROOT, "_site");
 const PRODUCTION_BRANCH = "docs/initial-setup-split";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || "https://agents.tinycloud.xyz").replace(/\/$/, "");
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "node_modules", "scripts"]);
+const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "functions", "node_modules", "scripts"]);
 
 // Abilities shown on the front page, in order. A card appears only when its
 // guide exists on this branch, so unmerged abilities never link to a 404.
