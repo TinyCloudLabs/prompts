@@ -29,8 +29,8 @@ Run this as one sequential foreground shell call, exactly as written:
 ```sh
 CLI_DIR="$HOME/.local/share/tinycloud/cli"
 TC_BIN="${TC_BIN:-$CLI_DIR/node_modules/.bin/tc}"
-if [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$("$TC_BIN" --version 2>/dev/null)" != 1.2.1 ]; then
-  mkdir -p "$CLI_DIR" && npm install --prefix "$CLI_DIR" --no-audit --no-fund @tinycloud/cli@1.2.1
+if [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$("$TC_BIN" --version 2>/dev/null)" != 1.2.2 ]; then
+  mkdir -p "$CLI_DIR" && npm install --prefix "$CLI_DIR" --no-audit --no-fund @tinycloud/cli@1.2.2
 fi
 WANT=$("$TC_BIN" --version 2>/dev/null)
 HAVE=$(tc --version 2>/dev/null); HAVE_EXIT=$?
@@ -41,15 +41,15 @@ case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
 for DIR in "$HOME/.local/bin" ${G:+"$G/bin"}; do
   case ":$PATH:" in *":$DIR:"*) [ -z "$LINK_DIR" ] && [ -w "$DIR" ] && [ ! -e "$DIR/tc" ] && LINK_DIR=$DIR ;; esac
 done
-if [ -z "$WANT" ] || { [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$WANT" != 1.2.1 ]; }; then
+if [ -z "$WANT" ] || { [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$WANT" != 1.2.2 ]; }; then
   echo "TC_INSTALL_FAILED $TC_BIN"
 elif [ "$HAVE" = "$WANT" ]; then
   echo "TC_READY $WANT"
-elif [ "$WANT" = 1.2.1 ] && [ -n "$G" ] && printf '%s\n' "$HAVE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+' &&
+elif [ "$WANT" = 1.2.2 ] && [ -n "$G" ] && printf '%s\n' "$HAVE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+' &&
   node -e 'const f = require("fs"), [sel, bin, pkg] = process.argv.slice(1).map((p) => f.realpathSync(p)); process.exit(sel === bin && sel.startsWith(pkg + "/") ? 0 : 1)' \
     "$(command -v tc)" "$G/bin/tc" "$G/lib/node_modules/@tinycloud/cli" 2>/dev/null; then
-  if npm install --global --no-audit --no-fund @tinycloud/cli@1.2.1; then
-    [ "$(tc --version 2>/dev/null)" = 1.2.1 ] && echo "TC_READY 1.2.1" || echo "TC_CONFLICT $HAVE"
+  if npm install --global --no-audit --no-fund @tinycloud/cli@1.2.2; then
+    [ "$(tc --version 2>/dev/null)" = 1.2.2 ] && echo "TC_READY 1.2.2" || echo "TC_CONFLICT $HAVE"
   else
     echo "TC_INSTALL_FAILED global"
   fi
@@ -64,7 +64,7 @@ else
 fi
 ```
 
-- `TC_READY 1.2.1` or `TC_LINKED 1.2.1 <link>` → `tc` runs the pinned CLI. Continue with the skill below. `TC_READY` also covers a global TinyCloud CLI from an earlier version of this guide, which the block has just upgraded in place to 1.2.1.
+- `TC_READY 1.2.2` or `TC_LINKED 1.2.2 <link>` → `tc` runs the pinned CLI. Continue with the skill below. `TC_READY` also covers a global TinyCloud CLI from an earlier version of this guide, which the block has just upgraded in place to 1.2.2.
 - `TC_INSTALL_FAILED` → the npm install failed (`global`: upgrading the earlier global CLI failed), or the owner's `TC_BIN` doesn't run. Stop and report the error. Don't retry with other options or `sudo`.
 - `TC_CONFLICT other` → `tc` on the `PATH` is another program, usually the Linux traffic-control tool.
 - `TC_CONFLICT <version>` → the `tc` the `PATH` selects is a TinyCloud CLI at that version, but not npm's global copy, so the block left it and any global copy alone.
@@ -74,19 +74,19 @@ On any `TC_CONFLICT`, change nothing else and return the conflict to the calling
 
 ## Install the core skill
 
-Inspect an existing `tc-cli/SKILL.md` before replacing it. With the pinned installer, the usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse an intact skill from `@tinycloud/cli@1.2.1`. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
+Inspect an existing `tc-cli/SKILL.md` before replacing it. With the pinned installer, the usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse an intact skill from `@tinycloud/cli@1.2.2`. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
 
 If the skill is missing or is a replaceable mismatch, run:
 
 ```sh
-npx --yes skills@1.7.0 add https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.1.tgz --skill tc-cli --global --copy --agent CLIENT --yes
+npx --yes skills@1.7.0 add https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.2.tgz --skill tc-cli --global --copy --agent CLIENT --yes
 ```
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
 ## Verify and return
 
-Verify that `tc --version` reports `1.2.1` (or the version of the owner's `TC_BIN`) and that the selected client's `tc-cli/SKILL.md` is readable and belongs to the pinned CLI package. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
+Verify that `tc --version` reports `1.2.2` (or the version of the owner's `TC_BIN`) and that the selected client's `tc-cli/SKILL.md` is readable and belongs to the pinned CLI package. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 
