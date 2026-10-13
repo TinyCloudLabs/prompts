@@ -16,7 +16,7 @@ export TC_SECRETS_PROFILE=api-keys                        # optional
 export TC_SECRETS_STATE=<state dir for this agent>        # optional; default $HOME/.local/state/tc-secrets
 ```
 
-Install this `tc-secrets` directory into the agent's skill path: `~/.agents/skills/tc-secrets/` for Codex and OpenCode, `~/.claude/skills/tc-secrets/` for Claude Code. The agent never changes or unsets these variables. If several agents share one `$HOME`, give each its own `TC_SECRETS_STATE`. They may share a profile only if they should read the same secrets.
+Install this `tc-secrets` directory into the agent's skill path: `~/.agents/skills/tc-secrets/` for Codex and OpenCode, `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-secrets/` for Claude Code. The agent never changes or unsets these variables. If several agents share one `$HOME`, give each its own `TC_SECRETS_STATE`. They may share a profile only if they should read the same secrets.
 
 The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent never asks for a value in chat.
 

@@ -36,6 +36,8 @@ WANT=$("$TC_BIN" --version 2>/dev/null)
 HAVE=$(tc --version 2>/dev/null); HAVE_EXIT=$?
 G=$(npm prefix --global 2>/dev/null)
 LINK_DIR=
+# ~/.local/bin may be on the PATH (as many shell profiles add it) before it exists.
+case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
 for DIR in "$HOME/.local/bin" ${G:+"$G/bin"}; do
   case ":$PATH:" in *":$DIR:"*) [ -z "$LINK_DIR" ] && [ -w "$DIR" ] && [ ! -e "$DIR/tc" ] && LINK_DIR=$DIR ;; esac
 done
@@ -72,7 +74,7 @@ On any `TC_CONFLICT`, change nothing else and return the conflict to the calling
 
 ## Install the core skill
 
-Inspect an existing `tc-cli/SKILL.md` before replacing it. With the pinned installer, the usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `$HOME/.claude/skills/tc-cli/SKILL.md` for Claude Code. Reuse an intact skill from `@tinycloud/cli@1.2.1`. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
+Inspect an existing `tc-cli/SKILL.md` before replacing it. With the pinned installer, the usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse an intact skill from `@tinycloud/cli@1.2.1`. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
 
 If the skill is missing or is a replaceable mismatch, run:
 

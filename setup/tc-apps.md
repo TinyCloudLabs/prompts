@@ -49,7 +49,7 @@ chmod 755 "$HOME/.local/share/tc-apps/tc" && echo INSTALLED
 
 - **The first line** creates the CLI's profile store, this skill's state folder, and the CLI's folder, if they don't exist yet.
 - **The CLI** goes into a private folder that only this skill uses.
-- **The skill** is installed for your user, so every project folder sees it: `~/.claude/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
+- **The skill** is installed for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
 - **The last lines** write `~/.local/share/tc-apps/tc`, a short script that runs the CLI and quietly retries when TinyCloud drops a connection, and `cli-path` next to it, which names the CLI: `TC_BIN` if the owner set it, otherwise the one in `~/.local/share/tc-apps/cli`. The skill uses the script when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
 - **Each line runs only if the one before it worked.** The block ends by printing `INSTALLED`.
 - It takes about 30 s.
@@ -66,7 +66,7 @@ Wait until the block has finished before §3: the skill doesn't exist until then
 Read the installed skill in full, with the line for your client:
 
 ```sh
-cat "$HOME/.claude/skills/tc-apps/SKILL.md"
+cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"
 ```
 
 ```sh
