@@ -13,7 +13,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
 // Absolute URLs point at production, except on Pages preview builds, where
 // they point at the preview so a branch's example prompts can be tried as-is.
-const PRODUCTION_BRANCH = "docs/initial-setup-split";
+const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || "https://agents.tinycloud.xyz").replace(/\/$/, "");
 const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "functions", "node_modules", "scripts"]);
