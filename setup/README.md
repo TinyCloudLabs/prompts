@@ -18,16 +18,16 @@ You need a shell, Node.js 22.20 or later, and npm.
 - **What it does:** your agent answers questions about your TinyChat meetings: recaps, follow-ups and what was said, with references to the transcript.
 - **Paste into your agent:** `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat`
 - **You approve:** a TinyChat sign-in in your browser that lets this computer read your TinyChat meetings, for 7 days.
-- **Undo:** remove the skill, as [§6 of the page](../apps/tinychat/setup.md#6-return-hand-off-update-or-remove) shows.
+- **Undo:** delete the `tinychat-retrieval` skill folder, and log out if you signed in; [§6 of the page](../apps/tinychat/setup.md#6-return-hand-off-update-or-remove) has both.
 
 ## Publish and share: [/publish](publish.md)
 
-Also at `/share`.
+`/share` redirects here.
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link: private to you by default, or public when you ask.
 - **Run once:** the setup block on [the page](publish.md), then ask your agent "Publish this report and send me a private link."
 - **You approve:** an OpenKey request, on your phone or computer, that lets the agent publish files to your TinyCloud and manage their links, for up to 30 days.
-- **Undo:** ask your agent to revoke a link. Every link also expires on its own.
+- **Undo:** ask your agent to revoke a link; every link also expires on its own. [The page](publish.md#undo) has the commands that end the agent's access and remove its key.
 
 ## Secrets: [/secrets](secrets.md)
 
@@ -41,21 +41,21 @@ Also at `/share`.
 - **What it does:** your agent and a colleague's agent send each other requests and answers over TinyCloud, inside rules you set.
 - **Run once:** the setup block on [the page](courier.md), then pair with the other person.
 - **You approve:** an OpenKey request for Courier's own key to keep messages under `xyz.tinycloud.courier/` in your `agents` space, for 30 days, and each pairing.
-- **Undo:** `courier revoke` ends a pairing; [the page](courier.md#undo) has the exact commands.
+- **Undo:** `"$TC" courier revoke <their-name>` ends a pairing, with `TC` set to the CLI the setup installed; [the page](courier.md#undo) has the exact commands.
 
 ## Building blocks
 
-The pages above call these themselves. You don't need to link them.
-
-- [/cli](tinycloud.md): installs the TinyCloud CLI (`tc`) and its `tc-cli` skill. Nothing to approve.
-- [/openkey](openkey.md): installs the standalone OpenKey CLI, for workflows that need it. Nothing to approve.
+- [/cli](tinycloud.md): installs the TinyCloud CLI (`tc`) and its `tc-cli` skill. Nothing to approve. `/chat` runs it for you; the other pages install the CLI themselves.
+- [/openkey](openkey.md): installs the standalone OpenKey CLI, for workflows that need it. No page here uses it. Nothing to approve.
 
 ## Skills
 
-The pages install these for you. To install one yourself, for Claude Code, Codex or OpenCode:
+The pages install these for you. To install one yourself, replace `<skill>` and `<client>` (`claude-code`, `codex` or `opencode`):
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <skill> --agent claude-code
+curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <skill> --agent <client>
 ```
 
-`<skill>` is `apps`, `chat`, `publish`, `secrets`, `courier`, `cli` or `mcp` (the TinyCloud MCP server's companion skill). The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/apps.md`](https://agents.tinycloud.xyz/skills/apps.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
+`<skill>` is `apps`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/apps.md`](https://agents.tinycloud.xyz/skills/apps.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
+
+`mcp` has no setup page: it's the skill that goes with the TinyCloud MCP server, `@tinycloud/mcp` 0.5.2, for agents that already run that server. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).

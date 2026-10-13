@@ -5,7 +5,7 @@ This module installs and verifies only the TinyCloud CLI (`tc`) and the CLI's co
 ## For the owner
 
 - **What it does:** installs TinyCloud CLI 1.2.2 into `~/.local/share/tinycloud/cli`, makes `tc` run it when nothing else on your `PATH` is called `tc`, and installs the `tc-cli` skill for your agent.
-- **Paste into Claude Code, Codex or OpenCode:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. The other pages on this site run it for you when they need it.
+- **Paste into Claude Code, Codex or OpenCode:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat` runs this page for you; `/apps`, `/publish`, `/secrets` and `/courier` install the CLI themselves.
 - **You approve:** nothing. It doesn't sign in or request any access.
 - **Undo:** see [Undo](#undo).
 
@@ -29,7 +29,7 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 The CLI goes into a folder of its own, `~/.local/share/tinycloud/cli`, and is not installed globally. `TC_BIN` is its absolute path; if the owner already set `TC_BIN`, that CLI is used instead and nothing is installed.
 
-App skills that call this module run the CLI as `tc` from the `PATH`. A `tc` that is already on the `PATH` may be another program: on Linux, `/usr/sbin/tc` is the system's traffic-control tool. So the block makes `tc` reach the CLI only when nothing on the `PATH` is called `tc` yet: it links `tc` to `TC_BIN` in the first of `~/.local/bin` and npm's global `bin` folder that is on the `PATH` and writable. It never replaces or shadows another `tc`, with one exception: earlier versions of this guide installed the CLI globally with npm, so when the `tc` the `PATH` selects is that global TinyCloud CLI itself (same real path as npm's global `bin/tc`, inside npm's global `@tinycloud/cli`), the block upgrades it in place to the pin, as those versions did.
+The skills on this site run the CLI as `TC_BIN` if set, else from `~/.local/share/tinycloud/cli`, so they don't need `tc` on the `PATH`. The block still makes `tc` reach the CLI where it safely can, for the owner's own terminal. A `tc` that is already on the `PATH` may be another program: on Linux, `/usr/sbin/tc` is the system's traffic-control tool. So the block links `tc` only when nothing on the `PATH` is called `tc` yet: it links `tc` to `TC_BIN` in the first of `~/.local/bin` and npm's global `bin` folder that is on the `PATH` and writable. It never replaces or shadows another `tc`, with one exception: earlier versions of this guide installed the CLI globally with npm, so when the `tc` the `PATH` selects is that global TinyCloud CLI itself (same real path as npm's global `bin/tc`, inside npm's global `@tinycloud/cli`), the block upgrades it in place to the pin, as those versions did.
 
 Run this as one sequential foreground shell call, exactly as written:
 
@@ -95,7 +95,7 @@ These commands target the named CLI package and named skill. Preserve unrelated 
 
 ## Verify and return
 
-Verify that `tc --version` reports `1.2.2` (or the version of the owner's `TC_BIN`) and that the selected client's `tc-cli/SKILL.md` is readable and belongs to the pinned CLI package. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
+Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --version` reports `1.2.2` (or the version of the owner's `TC_BIN`), whatever `tc` on the `PATH` is, and that the selected client's `tc-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 

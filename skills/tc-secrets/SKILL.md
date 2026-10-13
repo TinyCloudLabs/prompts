@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
 ---
 
 # Read secrets from TinyCloud with `tc secrets`
@@ -69,7 +69,7 @@ if [ -x "$TC_BIN" ] && "$TC_BIN" secrets get --help 2>/dev/null | grep -q -- '--
      && "$TC_BIN" secrets request --help 2>/dev/null | grep -q -- '--requester'; then echo CLI_OK
   else echo CLI_LEGACY; fi
 else echo STALE; fi
-"$TC_BIN" --version
+if [ -n "$TC_BIN" ]; then "$TC_BIN" --version; else echo "TC_BIN is not set"; fi
 printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9a-fA-F]{40}$' && echo OWNER_OK || echo OWNER_UNSET
 ```
 

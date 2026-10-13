@@ -11,7 +11,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/setup` | The entry point: every ability, what to paste, what the owner approves, how to undo it | [`setup/README.md`](setup/README.md) |
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
-| `/publish`, `/share` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
+| `/publish` | Publish and share (`tc-publish`): owner setup; `/share` redirects here | [`setup/publish.md`](setup/publish.md) |
 | `/secrets` | TinyCloud Secrets (`tc-secrets`): owner setup | [`setup/secrets.md`](setup/secrets.md) |
 | `/courier` | Agent-to-agent threads (`courier`): owner setup | [`setup/courier.md`](setup/courier.md) |
 | `/cli` | Building block: the TinyCloud CLI and its `tc-cli` skill | [`setup/tinycloud.md`](setup/tinycloud.md) |
@@ -21,7 +21,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/skills/index.json` | Every skill's name, short name, version, description, source, changed files, and files with sha256 checksums | generated |
 | `/skills/install.js` | The installer the guides run | [`scripts/install-skill.js`](scripts/install-skill.js) |
 
-The earlier URLs, the repository paths such as `/setup/tc-apps.md`, `/apps/tinychat/setup.md` and `/skills/tc-apps/SKILL.md`, redirect to these. The site also generates `/` (for people), `/llms.txt`, `/llms-full.txt`, the sitemap and `/.well-known/agent-skills/index.json`. This README isn't published; `/README.md` redirects to `/setup`.
+The earlier URLs, the repository paths such as `/setup/tc-apps.md`, `/apps/tinychat/setup.md` and `/skills/tc-apps/SKILL.md`, redirect to these, and so does each page's URL with a trailing slash (`/apps/` → `/apps`). The site also generates `/` (for people), `/llms.txt`, `/llms-full.txt`, the sitemap and `/.well-known/agent-skills/index.json`. This README isn't published; `/README.md` redirects to `/setup`.
 
 Guides link to each other and to skill files by relative repository path; the build rewrites those links to the public URLs. The build then fails if any link in a served Markdown file, relative or to this site, doesn't reach a file the site serves.
 
@@ -41,12 +41,15 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 
 Skills written for these guides live in `skills/`. Skills owned by another repository stay authored there: the build downloads the exact release tarball named in `SKILLS` in `scripts/build-site.mjs` and refuses it unless its sha512 matches the pinned `integrity`, so every build, locally or on Cloudflare Pages, serves the same files. Nothing floats on a branch.
 
-Two released skills are served with small changes, set by `privateCli` and `changes` in `SKILLS` and listed as `changed` in `/skills/index.json`, because they assume a global npm install of the CLI while `/cli` installs it into `~/.local/share/tinycloud/cli`:
+Three released skills are served with small changes, set by `privateCli` and `changes` in `SKILLS` and listed as `changed` in `/skills/index.json`, because they run the CLI from a global npm install or from `tc` on the `PATH`, while `/cli` installs it into `~/.local/share/tinycloud/cli` and on Linux `tc` on the `PATH` is often the traffic-control tool:
 
-- `tc-cli` and `courier`: each CLI lookup (`TC="$(npm prefix --global)/bin/tc"` or `TC_BIN=…`) becomes a three-line resolver: `TC_BIN` if set (and nothing else), else `~/.local/share/tinycloud/cli`, else a global npm install, else it stops with `TC_NOT_FOUND`. Every command in their shell code blocks runs as `"$TC"`, never a bare `tc`. Today that touches tc-cli's `SKILL.md`, `AUTH.md` and `REFERENCE.md`, and courier's `SKILL.md`. The build fails if a served tc-cli or courier file looks up the CLI any other way or runs a bare `tc`.
+- `tc-cli` and `courier`: each CLI lookup (`TC="$(npm prefix --global)/bin/tc"` or `TC_BIN=…`) becomes a three-line resolver: `TC_BIN` if set (and nothing else), else `~/.local/share/tinycloud/cli`, else a global npm install, else it stops with `TC_NOT_FOUND`. Every command in their shell code blocks runs as `"$TC"`, never a bare `tc`. Today that touches tc-cli's `SKILL.md`, `AUTH.md` and `REFERENCE.md`, and courier's `SKILL.md`.
 - `tc-cli`: `INSTALL.md` is replaced by [`overrides/tc-cli/INSTALL.md`](overrides/tc-cli/INSTALL.md), which installs from this site instead of the npm tarball or the `beta` tag.
+- `tinychat-retrieval`: its scripts run `TC_BIN` if set, else the CLI in `~/.local/share/tinycloud/cli`, else `tc` from the `PATH` as before (`defaultTc()` in `lib/retrieval.mjs`, used by `lib/setup.mjs` and `lib/login.mjs`); `scripts/retrieve.mjs --help` and `references/meetings.md` say so.
 
-The served text is what js-sdk adopts upstream in [TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522), byte for byte, except where #522 also documents features CLI 1.2.2 doesn't have (the `tinycloud` executable name, `kv list --all`). Once a pinned release has it, drop the changes here.
+The build fails if a served file of these skills looks up the CLI any other way, has a bare `tc` command in a shell block, or has a script that defaults to `tc`.
+
+The tc-cli and courier text is what js-sdk adopts upstream in [TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522), byte for byte, except where #522 also documents features CLI 1.2.2 doesn't have (the `tinycloud` executable name, `kv list --all`). TinyChat's pack needs the same change upstream. Once pinned releases have them, drop the changes here.
 
 A skill's version is its `SKILL.md`'s `metadata.version`, or, for a package skill without one, the package version. Only the current version of each skill is published.
 

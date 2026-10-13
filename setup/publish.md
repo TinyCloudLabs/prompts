@@ -5,12 +5,14 @@ Your agent publishes a document or web page from your computer to your TinyCloud
 ## For the owner
 
 - **What it does:** installs the TinyCloud CLI 1.2.2 into a folder of its own and the `tc-publish` skill for your agent.
-- **Run once,** in a terminal, with your email address in the last line and your client in the second (`claude-code`, `codex` or `opencode`):
+- **Run once,** in a terminal, after making two replacements:
+  - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
+  - `<your email>`: the address owner-only links go to, for example `you@example.com`.
 
   ```sh
   npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.2 &&
-  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - publish --agent claude-code &&
-  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc" TC_OWNER_EMAIL=you@example.com
+  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - publish --agent <client> &&
+  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc" TC_OWNER_EMAIL=<your email>
   ```
 
   Start your agent from that shell, or add the `export` line to your shell profile so every new shell has it. Then ask: "Publish this report and send me a private link."
@@ -33,6 +35,9 @@ The first is for Claude Code, the second for Codex and OpenCode. If neither exis
 
 ## Undo
 
+These are your steps, run in a terminal with `TC_BIN` and `TC_HOME` set as for the agent. Use the profile name you gave the agent instead of `publisher`, if you named one.
+
 - **A link:** ask your agent to revoke it. Every link also expires on its own: owner-only links after 7 days and public links after 24 hours, unless you asked for another time.
-- **The agent's access:** `"$TC_BIN" --profile publisher auth logout`, with `TC_BIN` and `TC_HOME` set as for the agent, clears its session on this computer; use the profile name you gave the agent instead, if you named one. The approval stays valid on TinyCloud until it expires.
+- **The agent's access:** if you approved the agent, `"$TC_BIN" --profile publisher auth logout` clears its session on this computer. The approval stays valid on TinyCloud until it expires. If you never approved, there's nothing to clear; the command still succeeds.
+- **The agent's key:** the first time it runs, the agent creates a local profile, `publisher`, holding a key that your approval is for. It never deletes profiles itself. Remove it with `"$TC_BIN" profile delete publisher`. `PROFILE_NOT_FOUND` means it was never created. `PROFILE_DELETE_DEFAULT` means it's the default profile: if you have another (`"$TC_BIN" profile list`), make that the default with `"$TC_BIN" profile switch <other>` and delete again; if `publisher` is your only profile, delete its folder, `${TC_HOME:-$HOME}/.tinycloud/profiles/publisher`.
 - **The skill and the CLI:** delete `~/.agents/skills/tc-publish` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-publish`, and `~/.local/share/tinycloud/cli` if nothing else uses it.

@@ -5,12 +5,14 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 ## For the owner
 
 - **What it does:** installs the TinyCloud CLI 1.2.2 into a folder of its own and the `tc-secrets` skill for your agent.
-- **Run once,** in a terminal, with your client in the second line (`claude-code`, `codex` or `opencode`) and, in the last line, the account that owns the secrets as `did:pkh:eip155:1:<your address>`:
+- **Run once,** in a terminal, after making two replacements:
+  - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
+  - `<your DID>`: the account that owns the secrets, `did:pkh:eip155:1:<your address>`.
 
   ```sh
   npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.2 &&
-  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - secrets --agent claude-code &&
-  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc" TC_OWNER_DID=did:pkh:eip155:1:0x…
+  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - secrets --agent <client> &&
+  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc" TC_OWNER_DID=<your DID>
   ```
 
   Start your agent from that shell, or add the `export` line to your shell profile so every new shell has it. Then ask, for example: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud."
@@ -33,5 +35,5 @@ The first is for Claude Code, the second for Codex and OpenCode. If neither exis
 
 ## Undo
 
-- **The agent's access:** `"$TC_BIN" --profile "${TC_SECRETS_PROFILE:-api-keys}" auth logout`, with `TC_BIN`, `TC_HOME` and `TC_SECRETS_PROFILE` set as for the agent, clears the session the skill uses on this computer, so it can't read any secret. The approval stays valid on TinyCloud until it expires.
+- **The agent's access:** if you approved the agent, `"$TC_BIN" --profile "${TC_SECRETS_PROFILE:-api-keys}" auth logout` clears the session the skill uses on this computer, so it can't read any secret. Run it with `TC_BIN`, `TC_HOME` and `TC_SECRETS_PROFILE` set as for the agent. The approval stays valid on TinyCloud until it expires. `PROFILE_NOT_FOUND` means the agent never got as far as signing in; that's fine.
 - **The skill and the CLI:** delete `~/.agents/skills/tc-secrets` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-secrets`, and `~/.local/share/tinycloud/cli` if nothing else uses it.

@@ -5,11 +5,13 @@ Courier lets your agent and another person's agent send each other requests, ans
 ## For the owner
 
 - **What it does:** installs the TinyCloud CLI 1.2.2, which includes `tc courier`, into `~/.local/share/tinycloud/cli` (the same folder as [the CLI setup](tinycloud.md)) and the `courier` skill for your agent, then gives Courier its own key.
-- **Run once,** in a terminal, with your client in the second line (`claude-code`, `codex` or `opencode`) and a short name for yourself in the last:
+- **Run once,** in a terminal, after making two replacements:
+  - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
+  - `<your-name>`: a short name for yourself, which the other person's agent sees.
 
   ```sh
   npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.2 &&
-  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code &&
+  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent <client> &&
   TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" &&
   "$TC" courier init --paste --handle <your-name>
   ```
@@ -35,8 +37,8 @@ The first is for Claude Code, the second for Codex and OpenCode. `init`, `pair` 
 
 ## Undo
 
-With `TC` set as above:
+These are your steps, in a terminal with `TC` set to the CLI the setup installed: `TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"`.
 
-- **A pairing:** `"$TC" courier revoke <their-name>` stops renewing that peer's access. What they could already read lapses when its delegation expires, within 7 days.
+- **A pairing:** if you paired, `"$TC" courier revoke <their-name>` stops renewing that peer's access. What they could already read lapses when its delegation expires, within 7 days. Before you've approved Courier's grant, it exits 1 with `[no-grant] No OpenKey owner grant is installed`; that's fine, there's nothing to revoke.
 - **Courier's key:** delete `${COURIER_HOME:-~/.courier}`, where Courier keeps its key and grant. The grant stays valid on TinyCloud until it expires.
 - **The skill and the CLI:** delete `~/.agents/skills/courier` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/courier`, and `~/.local/share/tinycloud/cli` if nothing else uses it.

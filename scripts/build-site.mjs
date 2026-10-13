@@ -31,12 +31,12 @@ const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "fu
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
 
-// Guides, by public URL. `aliases` serve the same page under other names.
+// Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 const PAGES = [
   { url: "setup", src: "setup/README.md" },
   { url: "apps", src: "setup/tc-apps.md" },
   { url: "chat", src: "apps/tinychat/setup.md" },
-  { url: "publish", src: "setup/publish.md", aliases: ["share"] },
+  { url: "publish", src: "setup/publish.md", redirectFrom: ["share"] },
   { url: "secrets", src: "setup/secrets.md" },
   { url: "courier", src: "setup/courier.md" },
   { url: "cli", src: "setup/tinycloud.md" },
@@ -114,6 +114,43 @@ const SKILLS = [
     tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz",
     integrity: "sha512-uO016ryrnG0A1OR2d0xJs3jRPd+oPorb0oloRApnG5T28qReZZ35bteZgWqPhqf1Nme/rHuRX3qdmuhtsagV2A==",
     dir: "package",
+    privateCli: true,
+    // The pack's scripts run `tc` from PATH. They now run TC_BIN if set, else
+    // the CLI /cli installs, else `tc` from PATH, as before.
+    changes: {
+      "lib/retrieval.mjs": [
+        ["import { constants, readFileSync } from 'node:fs';", "import { accessSync, constants, readFileSync } from 'node:fs';"],
+        ["import { tmpdir } from 'node:os';", "import { homedir, tmpdir } from 'node:os';"],
+        [
+          "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */\nexport function createTcRunner({ executable = 'tc',",
+          [
+            "/** The TinyCloud CLI to run: TC_BIN if set, else where agents.tinycloud.xyz/cli installs it, else `tc` on PATH. */",
+            "export function defaultTc() {",
+            "  if (process.env.TC_BIN) return process.env.TC_BIN;",
+            "  const installed = join(homedir(), '.local/share/tinycloud/cli/node_modules/.bin/tc');",
+            "  try { accessSync(installed, constants.X_OK); return installed; } catch { return 'tc'; }",
+            "}",
+            "",
+            "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */",
+            "export function createTcRunner({ executable = defaultTc(),",
+          ].join("\n"),
+        ],
+      ],
+      "lib/setup.mjs": [
+        ["import { createTcRunner } from './retrieval.mjs';", "import { createTcRunner, defaultTc } from './retrieval.mjs';"],
+        ["manifestPath, executable = 'tc' })", "manifestPath, executable = defaultTc() })"],
+      ],
+      "lib/login.mjs": [
+        ["import { spawn } from 'node:child_process';", "import { spawn } from 'node:child_process';\nimport { defaultTc } from './retrieval.mjs';"],
+        ["{ executable = 'tc', input }", "{ executable = defaultTc(), input }"],
+      ],
+      "scripts/retrieve.mjs": [
+        ["--tc PATH (otherwise resolves tc on PATH; never uses a shell)", "--tc PATH (otherwise TC_BIN, then ~/.local/share/tinycloud/cli, then tc on PATH; never uses a shell)"],
+      ],
+      "references/meetings.md": [
+        ["otherwise the helper resolves `tc` through PATH.", "otherwise the helper runs `TC_BIN` if set, else the CLI that agents.tinycloud.xyz/cli installs in `~/.local/share/tinycloud/cli`, else `tc` from PATH."],
+      ],
+    },
   },
   {
     short: "mcp",
@@ -297,7 +334,7 @@ for (const f of copied) {
 
 const pages = PAGES.map((p) => {
   const text = render(p.src);
-  for (const name of [p.url, ...(p.aliases || [])]) write(name, text);
+  write(p.url, text);
   return { ...p, text, ...describe(text, p.url) };
 });
 const page = (name) => pages.find((p) => p.url === name);
@@ -352,10 +389,10 @@ write(
 
 // Earlier URLs (repository paths) keep working as redirects.
 const redirects = [
-  "/setup/ /setup 301",
   "/setup/index.md /setup 301",
   "/setup/index.html /setup 301",
   "/README.md /setup 301",
+  ...PAGES.flatMap((p) => [`/${p.url}/ /${p.url} 301`, ...(p.redirectFrom || []).flatMap((from) => [`/${from} /${p.url} 301`, `/${from}/ /${p.url} 301`])]),
   ...[...new Map(PAGES.map((p) => [p.src, p.url]))].map(([src, to]) => `/${src} /${to} 301`),
   ...skills.filter((s) => s.name !== s.short).map((s) => `/skills/${s.name}/* /skills/${s.short}/:splat 301`),
 ];
@@ -431,7 +468,7 @@ write(
 
 /*.txt
   Content-Type: text/plain; charset=utf-8
-${PAGES.flatMap((p) => [p.url, ...(p.aliases || [])])
+${PAGES.map((p) => p.url)
   .map((name) => `\n/${name}\n  Content-Type: text/markdown; charset=utf-8\n`)
   .join("")}
 /
@@ -508,8 +545,9 @@ write(
   `<!doctype html>\n<meta charset="utf-8">\n<title>Not found · TinyCloud</title>\n<p>Not found. Agents: see <a href="/setup">/setup</a> for every guide on this site.</p>\n`,
 );
 
-// Served tc-cli and courier files run the CLI only through RESOLVER: no other
-// global npm lookup, and no bare `tc` command in a shell code block.
+// Served files of `privateCli` skills run the CLI only through RESOLVER (in
+// Markdown) or defaultTc() (in scripts): no other global npm lookup, no bare
+// `tc` command in a shell code block, and no script that defaults to `tc`.
 const wrongCli = skills
   .filter((s) => s.privateCli)
   .flatMap((s) =>
@@ -517,7 +555,8 @@ const wrongCli = skills
       const text = f.body.toString("utf8");
       const lookups = text.split("npm prefix --global").length - 1;
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
-      return lookups === text.split(RESOLVER).length - 1 && !bare ? [] : [f.url];
+      const scriptDefault = /\.m?js$/.test(f.path) && /\bexecutable\s*=\s*['"]tc['"]/.test(text);
+      return lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
     }),
   );
 if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);
@@ -530,7 +569,7 @@ const served = new Set(
     .filter((p) => statSync(join(OUT, p)).isFile())
     .map((p) => `/${p}`),
 );
-const markdown = [...served].filter((p) => p.endsWith(".md") || PAGES.some((pg) => [pg.url, ...(pg.aliases || [])].includes(p.slice(1))));
+const markdown = [...served].filter((p) => p.endsWith(".md") || PAGES.some((pg) => pg.url === p.slice(1)));
 const broken = markdown.flatMap((from) => {
   const text = readFileSync(join(OUT, from), "utf8").replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
   return [...text.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)].flatMap(([, target]) => {
