@@ -376,7 +376,7 @@ rm -f "$STATE/login.err" "$STATE/context.json"
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than 1.0.0-beta.23.
 
-**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `k7m2-q9xa`, valid for **10 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. Keep it out of the conversation when you can.
+**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`, valid for **10 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. Keep it out of the conversation when you can.
 
 - **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB). Prefer the private input for it: copying a code that long by hand can corrupt it.
 
@@ -398,7 +398,7 @@ First put the code into `$STATE/code`, using exactly one of these:
 
 - **Otherwise** ask the owner to send the code in your 1:1 channel.
   - If the harness exposes an existing, authorized log of this 1:1 conversation, extract the owner's code for this sign-in directly into a fresh 0600 `$STATE/code` in one command, with tracing disabled. Don't print the code or the log, don't put the code in a command-line argument, and don't make intermediate copies. Leave the harness's log untouched, and never create a log for this purpose.
-  - If not, paste it between the `CODE` markers exactly as received, in one tool call:
+  - If not, paste it between the `CODE` markers exactly as received, in one tool call. Paste it exactly as sent; either case works.
 
   ```sh
   { set +x; } 2>/dev/null; set +e; umask 077
