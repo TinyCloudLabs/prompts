@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # Personal apps in TinyCloud
@@ -10,7 +10,7 @@ metadata:
 You keep the owner's records in their TinyCloud `default` space, under one key root: `xyz.tinycloud.agent-data/`. Records are grouped into apps, one per area of life (`fitness`, `todos`, …), which you create and extend as the owner starts tracking new things. A catalog under the root describes every app, so any agent in any conversation can find what exists and how it's stored. The owner approves access once, for 30 days, from an OpenKey link and code you show them. An optional SQL index answers questions over many records at once (§7).
 
 Operator-set, never change or unset:
-- `TC_BIN`: absolute path to `tc`, CLI 1.0.0 or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that `setup/tc-apps.md` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
+- `TC_BIN`: absolute path to `tc`, CLI 1.2.0 or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that `setup/tc-apps.md` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
@@ -102,7 +102,7 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.0.0` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.0.0 or newer.
+- The first line must be `1.2.0` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.2.0 or newer.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
 - `SPACE_NOT_HOSTED` → stop and tell the owner that their TinyCloud `default` space isn't set up. Don't try to fix it.
@@ -227,7 +227,7 @@ When talking to the owner, call it "a fast, searchable copy of your records". Ne
 
 Read `SQL.md` in full, from the folder you read this file from, when:
 - you ask for the fast copy as above, or the owner asks about it;
-- the owner sends you OpenKey's code after you asked, a long block of letters and digits that starts with `eyJ`, perhaps in a later conversation;
+- the owner sends you OpenKey's code after you asked, perhaps in a later conversation: a short code of eight letters and digits such as `ABCD-EFGH`, or the full code, a long block of letters and digits that starts with `eyJ`;
 - §3 showed the index (`present` or `expired`) and you write, move or delete a record;
 - §3 showed it `present` and a question needs more than about 40 records.
 
