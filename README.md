@@ -7,20 +7,22 @@ This repository is the shared development and review point for agent-facing setu
 - [`setup/tinycloud.md`](setup/tinycloud.md) installs and verifies the pinned TinyCloud CLI and its core skill, then returns to the calling app guide.
 - [`setup/openkey.md`](setup/openkey.md) optionally installs and verifies the standalone OpenKey CLI. It is not part of TinyChat authorization.
 - [`apps/tinychat/setup.md`](apps/tinychat/setup.md) owns TinyChat's skill, adapter activation, app context, permission grant, retrieval behavior and lifecycle.
-- [`prompt.txt`](prompt.txt) points to this branch's TinyChat entry document for local client testing.
+- [`prompt.txt`](prompt.txt) is the TinyChat test prompt. It points at the live entry document, `https://agents.tinycloud.xyz/apps/tinychat/setup.md`.
 - [`skills/tc-publish/SKILL.md`](skills/tc-publish/SKILL.md) teaches an agent to publish a document or HTML page to TinyCloud and return a private or public share link, with consent, verification and lifecycle commands.
 - [`skills/tc-publish/QUICKSTART.md`](skills/tc-publish/QUICKSTART.md) is the five-step minimal version of the same flow.
-- [`forward-tests.md`](forward-tests.md) is the coordinator runbook: fresh-agent prompts, expected commands, and how to verify each outcome.
+- [`forward-tests.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests.md) is the coordinator runbook: fresh-agent prompts, expected commands, and how to verify each outcome.
 - [`skills/tc-secrets/SKILL.md`](skills/tc-secrets/SKILL.md) teaches an agent to read API keys the owner keeps in TinyCloud Secrets without exposing them, and to ask the owner to add a missing one, with one owner message, OpenKey consent, read patterns and errors.
 - [`skills/tc-secrets/QUICKSTART.md`](skills/tc-secrets/QUICKSTART.md) explains that flow and what the owner sees.
-- [`forward-tests-tc-secrets.md`](forward-tests-tc-secrets.md) is the coordinator runbook for `tc-secrets`.
+- [`forward-tests-tc-secrets.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-secrets.md) is the coordinator runbook for `tc-secrets`.
 - [`skills/tc-apps/SKILL.md`](skills/tc-apps/SKILL.md) teaches an agent to keep the owner's personal records in apps it creates and extends on demand, such as fitness and todos.
   - All apps live under one key root in the owner's TinyCloud `default` space, described by a catalog, so any agent in any conversation can find and read them.
   - One OpenKey device approval covers every app.
 - [`skills/tc-apps/SQL.md`](skills/tc-apps/SQL.md) adds an optional SQL index for questions over many records. It's a rebuildable copy of the records, with its own OpenKey approval.
 - [`skills/tc-apps/QUICKSTART.md`](skills/tc-apps/QUICKSTART.md) covers the owner's setup, what they see, and how the data is organised.
-- [`setup/tc-apps.md`](setup/tc-apps.md) is the one-prompt setup for `tc-apps`. It installs TinyCloud CLI 1.2.0 into a folder of its own and the skill for the user, then carries on with the request.
-- [`forward-tests-tc-apps.md`](forward-tests-tc-apps.md) is the coordinator runbook for `tc-apps`: one approval, several conversations and clients.
+- [`setup/tc-apps.md`](setup/tc-apps.md) is the one-prompt setup for `tc-apps`. It installs TinyCloud CLI 1.2.1 into a folder of its own and the skill for the user, then carries on with the request.
+- [`forward-tests-tc-apps.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-apps.md) is the coordinator runbook for `tc-apps`: one approval, several conversations and clients.
+
+The `forward-tests*.md` runbooks stay in this repository and are not published on the site.
 
 The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository intentionally contains no helpers, generated release archives, sync framework or evaluation runtime.
 
@@ -28,25 +30,25 @@ The owning repositories remain authoritative for executable code and core prompt
 
 This initial split was prepared from public TinyChat commit [`f67bf08417c8954fc0bab4379e99db13977f4d96`](https://github.com/TinyCloudLabs/tinychat/tree/f67bf08417c8954fc0bab4379e99db13977f4d96), including its [setup source](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-setup/setup.md) and [release notes](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/docs/agent-skills-release.md).
 
-The reviewed pins are:
+The current pins are:
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@0.10.0` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/0.10.0) |
+| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@1.2.1` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.1) |
 | Skills installer | `skills@1.7.0` | [npm package](https://www.npmjs.com/package/skills/v/1.7.0) |
 | TinyChat retrieval pack | `0.1.1-onboarding.16` | [TinyChat source](https://github.com/TinyCloudLabs/tinychat/tree/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
 
 ## Source and deployment boundary
 
-These files are an initial handoff on `docs/initial-setup-split` for local client testing. The draft is not wired to TinyChat's production deployment. The production entry point at `https://tinycloud.chat/agents/setup.md` and its versioned app pack remain unchanged.
+The site at `https://agents.tinycloud.xyz` is deployed from `main` through Cloudflare Pages. `node scripts/build-site.mjs` copies the repository path for path into `_site/`, which Pages serves, and generates the front page, the `/setup/` index, `llms.txt`, the sitemap and the agent-skills index; `functions/` holds the Pages Functions. Other branches get Pages preview builds. TinyChat's own production entry point at `https://tinycloud.chat/agents/setup.md` and its versioned app pack are separate and unchanged.
 
-The draft starter uses the branch's raw GitHub URL. Shared setup links resolve within that same branch. Repository access determines whether a client can fetch these files; this change does not alter repository visibility.
+Guides link to each other by relative path, so shared setup links resolve on the same site or preview.
 
 ## Local OpenCode test
 
-On your Mac, start the supported direct OpenCode TUI and paste [`prompt.txt`](prompt.txt). The draft entry sends the agent to shared TinyCloud prerequisites, then returns to TinyChat skill installation and app-scoped authorization in the same conversation. See the entry document for the pinned client and Node requirements.
+On your Mac, start the supported direct OpenCode TUI and paste [`prompt.txt`](prompt.txt). The entry sends the agent to shared TinyCloud prerequisites, then returns to TinyChat skill installation and app-scoped authorization in the same conversation. See the entry document for the pinned client and Node requirements.
 
 This tests the new instructions against the existing published CLI and retrieval skill. It still uses your existing TinyChat account and data host. It does not deploy anything or replace the production setup prompt.
 
-When deployment is wired later, publish the shared setup documents and the TinyChat app document together. Preserve their relative-link layout, or rewrite the links during publication and verify every resulting URL anonymously.
+The site publishes the shared setup documents and the TinyChat app document together at their repository paths, which keeps their relative links working. Keep that layout when moving a guide, and check every resulting URL anonymously.

@@ -8,6 +8,8 @@ Keep the user's original request and current client throughout setup. Setup is a
 
 Follow [`setup/tinycloud.md`](../../setup/tinycloud.md) with the current client and record this guide's [install heading](#2-install-the-tinychat-retrieval-skill) as the return location. Reuse valid installations as that module directs. When it finishes, return here and continue immediately.
 
+The TinyChat retrieval skill runs the CLI as `tc` from the `PATH` and has no setting for another path, so it needs the module to end with `TC_READY` or `TC_LINKED`. If the module returns a `TC_CONFLICT`, stop here and tell the user what it found: TinyChat can't use the TinyCloud CLI on this machine until `tc` on their `PATH` runs the CLI the module installed at `TC_BIN`, and that is a change they make themselves. Don't change their `PATH` or another `tc` for them.
+
 Do not run the separate OpenKey CLI setup. TinyChat does not invoke the standalone `openkey` binary, and an OpenKey CLI login does not grant TinyCloud app permissions.
 
 ## 2. Install the TinyChat retrieval skill
