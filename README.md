@@ -19,7 +19,7 @@ This repository is the shared development and review point for agent-facing setu
   - One OpenKey device approval covers every app.
 - [`skills/tc-apps/SQL.md`](skills/tc-apps/SQL.md) adds an optional SQL index for questions over many records. It's a rebuildable copy of the records, with its own OpenKey approval.
 - [`skills/tc-apps/QUICKSTART.md`](skills/tc-apps/QUICKSTART.md) covers the owner's setup, what they see, and how the data is organised.
-- [`setup/tc-apps.md`](setup/tc-apps.md) is the one-prompt setup for `tc-apps`. It installs TinyCloud CLI 1.2.1 into a folder of its own and the skill for the user, then carries on with the request.
+- [`setup/tc-apps.md`](setup/tc-apps.md) is the one-prompt setup for `tc-apps`. It installs TinyCloud CLI 1.2.2 into a folder of its own and the skill for the user, then carries on with the request.
 - [`forward-tests-tc-apps.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-apps.md) is the coordinator runbook for `tc-apps`: one approval, several conversations and clients.
 
 The `forward-tests*.md` runbooks stay in this repository and are not published on the site.
@@ -34,7 +34,7 @@ The current pins are:
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@1.2.1` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.1) |
+| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@1.2.2` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.2) |
 | Skills installer | `skills@1.7.0` | [npm package](https://www.npmjs.com/package/skills/v/1.7.0) |
 | TinyChat retrieval pack | `0.1.1-onboarding.16` | [TinyChat source](https://github.com/TinyCloudLabs/tinychat/tree/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
