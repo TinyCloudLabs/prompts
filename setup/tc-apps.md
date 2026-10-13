@@ -15,7 +15,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or `1.0.0` → the CLI is ready: leave out the `npm install` line in §2.
+- The last line prints a path (the owner set `TC_BIN`) or `1.0.0` → the CLI is ready: leave out the `npm install` line in §2, and run the rest of §2 as written.
 - Anything else, such as `No such file or directory` → run §2 as written.
 
 ## 2. Install
@@ -25,12 +25,11 @@ Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-
 ```sh
 mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}" "$HOME/.local/share/tc-apps"
 npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.0.0
-npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/docs/initial-setup-split.tar.gz --skill tc-apps --agent <client> --global --copy --yes
-cat > "$HOME/.local/share/tc-apps/tc" <<'EOF'
-#!/bin/sh
-# tc-apps: runs TinyCloud CLI 1.0.0. A kv or sql command that fails with NETWORK_ERROR (a dropped connection,
+npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/main.tar.gz --skill tc-apps --agent <client> --global --copy --yes
+printf '#!/bin/sh\nCLI='"'%s'"'\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/tc"
+cat >> "$HOME/.local/share/tc-apps/tc" <<'EOF'
+# tc-apps: runs the TinyCloud CLI at $CLI. A kv or sql command that fails with NETWORK_ERROR (a dropped connection,
 # "fetch failed") runs again, up to twice, after 2 s and 4 s; only the last attempt's error is shown.
-CLI="$(dirname "$0")/cli/node_modules/.bin/tc"
 case "$1" in kv|sql) ;; *) exec "$CLI" "$@" ;; esac
 case " $* " in *" --stdin "*) IN=$(cat) ;; *) IN= ;; esac
 exec 3>&1
@@ -48,7 +47,7 @@ chmod 755 "$HOME/.local/share/tc-apps/tc"
 - **The first line** creates the CLI's profile store, this skill's state folder, and the CLI's folder, if they don't exist yet.
 - **The CLI** goes into a private folder that only this skill uses.
 - **The skill** is installed for your user, so every project folder sees it: `~/.claude/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
-- **The last lines** write `~/.local/share/tc-apps/tc`, a short script that runs the CLI and quietly retries when TinyCloud drops a connection. The skill uses it.
+- **The last lines** write `~/.local/share/tc-apps/tc`, a short script that runs the CLI and quietly retries when TinyCloud drops a connection. The skill uses it. If the owner set `TC_BIN`, the script runs that CLI; otherwise it runs the one in `~/.local/share/tc-apps/cli`.
 - It takes about 30 s.
 
 If something goes wrong:

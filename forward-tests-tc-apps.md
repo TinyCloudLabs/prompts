@@ -11,7 +11,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 
 ## Preconditions
 
-- **Setup link:** `https://raw.githubusercontent.com/TinyCloudLabs/prompts/refs/heads/docs/initial-setup-split/setup/tc-apps.md`. Both this release link and the skill archive in [`setup/tc-apps.md`](setup/tc-apps.md) use the repository's default branch, `docs/initial-setup-split`; they require the tc-apps PR to be merged.
+- **Setup link:** `https://agents.tinycloud.xyz/setup/tc-apps.md`. The site deploys from `main`, and the skill archive in [`setup/tc-apps.md`](setup/tc-apps.md) is `main`'s tarball; both require the tc-apps PR to be merged.
   - **Before merge:** fetch the setup at `https://raw.githubusercontent.com/TinyCloudLabs/prompts/<commit>/setup/tc-apps.md` and, for this test only, replace its release archive URL with `https://github.com/TinyCloudLabs/prompts/archive/<commit>.tar.gz`, using the same commit SHA in both. Fetching setup from a feature branch alone does not change the archive it installs.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
