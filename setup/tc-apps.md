@@ -15,7 +15,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or `1.0.0` → the CLI is ready: leave out the whole `npm install` line in §2, and run the rest of §2 as written.
+- The last line prints a path (the owner set `TC_BIN`) or `1.2.0` → the CLI is ready: leave out the whole `npm install` line in §2, and run the rest of §2 as written.
 - Anything else, such as `No such file or directory` → run §2 as written.
 
 ## 2. Install
@@ -24,7 +24,7 @@ Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-
 
 ```sh
 mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}" "$HOME/.local/share/tc-apps" &&
-npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.0.0 &&
+npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.0 &&
 npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/main.tar.gz --skill tc-apps --agent <client> --global --copy --yes &&
 printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" &&
 cat > "$HOME/.local/share/tc-apps/tc" <<'EOF' &&

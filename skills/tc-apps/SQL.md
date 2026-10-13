@@ -52,6 +52,7 @@ rm -f "$STATE/sql-code" "$STATE/sql-login.err"
 - **`"authenticated": true` and `"declined": []`** → §2, then §6 for every kind the catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
 - **`"declined"` lists `tinycloud.sql/schema`** → the owner unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
 - **`OPENKEY_PROOF_INVALID`, or the code was cut short** → ask the owner to send the code again, and rerun 1b. Don't start a new 1a.
+- **"Delegation code not found or expired"** → the short code is more than 10 minutes old, or mistyped. Ask the owner for the full code OpenKey shows below it, and rerun 1b with that.
 - Never reuse a code for another profile.
 
 ## 2. Create the table and the view

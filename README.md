@@ -19,7 +19,7 @@ This repository is the shared development and review point for agent-facing setu
   - One OpenKey device approval covers every app.
 - [`skills/tc-apps/SQL.md`](skills/tc-apps/SQL.md) adds an optional SQL index for questions over many records. It's a rebuildable copy of the records, with its own OpenKey approval.
 - [`skills/tc-apps/QUICKSTART.md`](skills/tc-apps/QUICKSTART.md) covers the owner's setup, what they see, and how the data is organised.
-- [`setup/tc-apps.md`](setup/tc-apps.md) is the one-prompt setup for `tc-apps`. It installs TinyCloud CLI 1.0.0 into a folder of its own and the skill for the user, then carries on with the request.
+- [`setup/tc-apps.md`](setup/tc-apps.md) is the one-prompt setup for `tc-apps`. It installs TinyCloud CLI 1.2.0 into a folder of its own and the skill for the user, then carries on with the request.
 - [`forward-tests-tc-apps.md`](forward-tests-tc-apps.md) is the coordinator runbook for `tc-apps`: one approval, several conversations and clients.
 
 The owning repositories remain authoritative for executable code and core prompts. TinyChat continues to own and package `tinychat-retrieval`; `@tinycloud/cli` continues to own `tc-cli`; and OpenKey continues to own `openkey-cli`. This repository intentionally contains no helpers, generated release archives, sync framework or evaluation runtime.
