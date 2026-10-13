@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them.
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
 ---
 
 # Personal apps in TinyCloud
@@ -232,7 +232,7 @@ Read `SQL.md` in full, from the folder you read this file from, when:
 - §3 showed it `present` and a question needs more than about 40 records.
 
 For example:
-- Claude Code with the user-level install: `cat "$HOME/.claude/skills/tc-apps/SQL.md"`.
+- Claude Code with the user-level install: `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SQL.md"`.
 - Codex and OpenCode with the user-level install: `cat "$HOME/.agents/skills/tc-apps/SQL.md"`.
 
 ## 8. Errors

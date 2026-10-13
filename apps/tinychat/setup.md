@@ -22,7 +22,7 @@ For a missing or approved replaceable mismatched app pack, substitute the curren
 npx --yes skills@1.7.0 add https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz --skill tinychat-retrieval --global --copy --agent CLIENT --yes
 ```
 
-The usual installed directory is `$HOME/.agents/skills/tinychat-retrieval` for OpenCode and Codex or `$HOME/.claude/skills/tinychat-retrieval` for Claude Code. Resolve it from the current terminal's `HOME`. Load its `SKILL.md` once if it is not already loaded; do not search unrelated directories.
+The usual installed directory is `$HOME/.agents/skills/tinychat-retrieval` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Resolve it from the current terminal's `HOME` and `CLAUDE_CONFIG_DIR`. Load its `SKILL.md` once if it is not already loaded; do not search unrelated directories.
 
 The public, commit-pinned source references are the [skill](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/SKILL.md), [setup recovery](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/references/setup.md), [meeting contract](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/references/meetings.md) and [session handoff](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/references/session-handoff.md).
 
