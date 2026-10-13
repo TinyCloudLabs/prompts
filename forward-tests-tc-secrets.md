@@ -5,6 +5,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-se
 ## Preconditions
 
 - **Released software only:** `@tinycloud/cli@1.2.2` (TC-834 `secrets request`/`wait` and short codes, from 1.2.0-beta.2), Secret Manager `/request` (TC-833, live since 2026-10-09), and OpenKey with TC-598 deployed. Tests 13 and 14 also need a second `TC_BIN` at `@tinycloud/cli@1.0.0-beta.23`.
+- **The skill** comes from the site, as owners get it: `curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - secrets --agent <client>` with the agent's home as `HOME`. Before merge, use the pull request's Pages preview URL instead; its installer installs that branch's skill.
 - **Operator variables:** `TC_BIN` (absolute path to the pinned CLI), `TC_OWNER_DID` (the harness test account, `did:pkh:eip155:1:0xA8763f2b67aa9C807d2277a698cb071e3D86204A`), one fresh `TC_HOME` and one fresh `TC_SECRETS_STATE` per sequence. Never point either at `~/.tinycloud` or the default state directory.
 - **Test secret:** the test account holds `TC_FWD_TOKEN`, a random canary written by a coordinator-only writer profile. The coordinator records its SHA-256 and writes `/tmp/tcs-fwd/check-token.py`, which reads `TC_FWD_TOKEN` from its environment and prints only `MATCH` or `NO_MATCH`. `TC_FWD_MISSING` must not exist.
 - **Approvals:** the coordinator approves as the test account with the virtual-passkey harness (`approve-delegate.mjs <url-file> <code-file> [uncheck-text]`). It never uses Sam's account.

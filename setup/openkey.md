@@ -1,5 +1,14 @@
 # Set up the standalone OpenKey CLI
 
+## For the owner
+
+- **What it does:** installs the standalone OpenKey CLI, `@openkey/cli@0.1.4`, globally with npm. Only workflows that run `openkey` commands themselves need it; none of the other pages on this site do.
+- **Paste into your agent:** `Set up the OpenKey CLI: https://agents.tinycloud.xyz/openkey`
+- **You approve:** nothing. Installing it doesn't sign in.
+- **Undo:** `npm uninstall --global @openkey/cli`
+
+## For the agent
+
 This optional reusable module installs and verifies the standalone `openkey` tool. Use it only when a calling workflow explicitly needs direct OpenKey CLI commands. It is not an application authorization step: installing or signing in with `openkey` does not grant another application's TinyCloud permissions, which remain the calling app's responsibility.
 
 ## Caller contract

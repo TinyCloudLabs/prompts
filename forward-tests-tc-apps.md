@@ -11,8 +11,9 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 
 ## Preconditions
 
-- **Setup link:** `https://agents.tinycloud.xyz/setup/tc-apps.md`. The site deploys from `main`, and the skill archive in [`setup/tc-apps.md`](setup/tc-apps.md) is `main`'s tarball; both require the tc-apps PR to be merged.
-  - **Before merge:** fetch the setup at `https://raw.githubusercontent.com/TinyCloudLabs/prompts/<commit>/setup/tc-apps.md` and, for this test only, replace its release archive URL with `https://github.com/TinyCloudLabs/prompts/archive/<commit>.tar.gz`, using the same commit SHA in both. Fetching setup from a feature branch alone does not change the archive it installs.
+- **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
+  - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
+  - **Check the install:** the setup prints `SKILL_INSTALLED tc-apps <version> <folder>`; `<version>` must be the `tc-apps` version in that site's `/skills/index.json`.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -35,7 +36,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 | Client | Command | Notes |
 |---|---|---|
 | Claude Code | `claude` | It asks whether to trust a new folder on first launch. In auto mode it asks nothing else. In manual mode it asks on first use for each kind of block, and every time for blocks that use a pipeline or write the state folder. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, and the skills installer writing `~/.agents/skills`. The state folder doesn't exist at launch; the install creates it. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, and the skill installer writing `~/.agents/skills`. The state folder doesn't exist at launch; the install creates it. |
 | OpenCode | `opencode -m opencode/big-pickle` | No questions. Don't launch it with `--yolo`. OpenCode loads skills when it starts, so restart it after conversation 1, as the setup tells the agent to say. `/new` alone doesn't pick up the newly installed skill. |
 
 ## Coordinator pre-flight (no owner needed)
@@ -118,7 +119,7 @@ This test proves that the owner never has to ask for the SQL index. The agent as
 - Claude Code's auto mode sometimes blocks the install as unsafe. The setup then has the agent show the block and ask; the owner replies "go ahead".
 - Codex's web tool sometimes fails to fetch the setup page ("Internal Error"). The agent falls back to `curl`.
 
-If OpenKey, the CLI, the node or the skills installer causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.
+If OpenKey, the CLI, the node or the skill installer causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.
 
 ## Cleanup
 

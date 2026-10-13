@@ -1,6 +1,13 @@
-# Set up TinyCloud prerequisites
+# Set up the TinyCloud CLI
 
-This reusable prerequisite module installs and verifies only the TinyCloud CLI and the CLI's core skill. App hosts, spaces, profiles, permission manifests, authorization and app behavior belong in the calling app guide.
+This module installs and verifies only the TinyCloud CLI (`tc`) and the CLI's core skill, `tc-cli`. App hosts, spaces, profiles, permission manifests, authorization and app behavior belong in the calling app guide.
+
+## For the owner
+
+- **What it does:** installs TinyCloud CLI 1.2.2 into `~/.local/share/tinycloud/cli`, makes `tc` run it when nothing else on your `PATH` is called `tc`, and installs the `tc-cli` skill for your agent.
+- **Paste into Claude Code, Codex or OpenCode:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. The other pages on this site run it for you when they need it.
+- **You approve:** nothing. It doesn't sign in or request any access.
+- **Undo:** see [Undo](#undo).
 
 ## Caller contract
 
@@ -10,11 +17,11 @@ Before starting, retain all of the following from the caller:
 - the selected client: `opencode`, `codex` or `claude-code`;
 - the calling app guide and its exact return heading.
 
-After the checks below pass, return directly to that heading and continue the original task in the same conversation. Do not ask the user to paste another prompt. If a pin conflict prevents completion, return the conflict to the caller instead of silently changing an existing installation.
+After the checks below pass, return directly to that heading and continue the original task in the same conversation. Do not ask the user to paste another prompt. If a pin conflict prevents completion, return the conflict to the caller instead of silently changing an existing installation. If the owner sent you this page directly, there is no calling guide: report the result to them when you finish.
 
 ## Requirements
 
-Use Node.js **22.20 or later** and npm. The `@tinycloud/cli` package supports Node 20 or later, but this handoff pins `skills@1.7.0`, so the combined prerequisite uses Node 22.20 or later.
+Use Node.js **22.20 or later** and npm, the same as the app guides that call this module. The `@tinycloud/cli` package alone supports Node 20 or later.
 
 Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `claude-code`. Do not apply app-specific OpenCode restrictions here.
 
@@ -74,13 +81,15 @@ On any `TC_CONFLICT`, change nothing else and return the conflict to the calling
 
 ## Install the core skill
 
-Inspect an existing `tc-cli/SKILL.md` before replacing it. With the pinned installer, the usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse an intact skill from `@tinycloud/cli@1.2.2`. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
+Inspect an existing `tc-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.2.2`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tc-cli` skill copied from an `@tinycloud/cli` npm package is a replaceable mismatch: its first block looks only for a global install. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
 
 If the skill is missing or is a replaceable mismatch, run:
 
 ```sh
-npx --yes skills@1.7.0 add https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.2.tgz --skill tc-cli --global --copy --agent CLIENT --yes
+curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
 ```
+
+The installer downloads the `tc-cli` skill from `agents.tinycloud.xyz` and checks every file against the site's `/skills/index.json`. It's the skill `@tinycloud/cli@1.2.2` ships, with two changes for this module: its first block finds the CLI at `TC_BIN` or in `~/.local/share/tinycloud/cli` before trying a global npm install, and its `INSTALL.md` points here. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.2.2 <folder>`; anything else means the install failed, so stop and report it.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
@@ -90,4 +99,6 @@ Verify that `tc --version` reports `1.2.2` (or the version of the owner's `TC_BI
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 
-To remove the CLI later, delete the `tc` link that `TC_LINKED` reported, if it still points into `~/.local/share/tinycloud/cli`, then delete that folder.
+## Undo
+
+Delete the `tc` link that `TC_LINKED` reported, if it still points into `~/.local/share/tinycloud/cli`, then delete that folder and the `tc-cli` skill folder (`~/.agents/skills/tc-cli` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-cli`). Removing them doesn't sign anything out or delete any data.

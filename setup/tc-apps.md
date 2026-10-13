@@ -1,4 +1,15 @@
-# Set up `tc-apps`
+# Personal records in TinyCloud (`tc-apps`)
+
+Your agent keeps your records, like weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Any agent on this computer, in any conversation, can find and read them.
+
+## For the owner
+
+- **What it does:** installs the TinyCloud CLI 1.2.2 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
+- **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps`
+- **You approve:** your agent shows you an OpenKey link and code. Check the code, sign in with your passkey and approve: it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records.
+- **Undo:** see [Undo](#undo).
+
+## For the agent
 
 The owner sent you this page with a request, for example "Log my weight: 80.5 kg today." This page installs the TinyCloud CLI and the `tc-apps` skill. Then you carry out the request with the skill, in this same conversation: don't ask the owner to send it again.
 
@@ -25,7 +36,8 @@ Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-
 ```sh
 mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}" "$HOME/.local/share/tc-apps" &&
 npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.2 &&
-npx --yes skills@1.7.0 add https://github.com/TinyCloudLabs/prompts/archive/refs/heads/main.tar.gz --skill tc-apps --agent <client> --global --copy --yes &&
+curl -fsSL https://agents.tinycloud.xyz/skills/install.js -o "$HOME/.local/share/tc-apps/install-skill.js" &&
+node "$HOME/.local/share/tc-apps/install-skill.js" apps --agent <client> &&
 printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" &&
 cat > "$HOME/.local/share/tc-apps/tc" <<'EOF' &&
 #!/bin/sh
@@ -49,7 +61,7 @@ chmod 755 "$HOME/.local/share/tc-apps/tc" && echo INSTALLED
 
 - **The first line** creates the CLI's profile store, this skill's state folder, and the CLI's folder, if they don't exist yet.
 - **The CLI** goes into a private folder that only this skill uses.
-- **The skill** is installed for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
+- **The skill** comes from `agents.tinycloud.xyz`: the installer, saved as `~/.local/share/tc-apps/install-skill.js`, checks every file against the site's `/skills/index.json` before it writes anything. It's installed for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode. The installer prints `SKILL_INSTALLED tc-apps <version> <folder>`.
 - **The last lines** write `~/.local/share/tc-apps/tc`, a short script that runs the CLI and quietly retries when TinyCloud drops a connection, and `cli-path` next to it, which names the CLI: `TC_BIN` if the owner set it, otherwise the one in `~/.local/share/tc-apps/cli`. The skill uses the script when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
 - **Each line runs only if the one before it worked.** The block ends by printing `INSTALLED`.
 - It takes about 30 s.
@@ -78,3 +90,14 @@ The first is for Claude Code, the second for Codex and OpenCode. Your client may
 Follow the skill now for the owner's request, from its §1.
 
 **OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
+
+## Undo
+
+For the owner. Each command clears a local session. Run them with `TC_HOME` and `TC_BIN` set as when you started the client: they use the same CLI as the skill, your `TC_BIN` if you set one, otherwise the setup's `~/.local/share/tc-apps/tc`. The approvals stay valid on TinyCloud until they expire, after 30 days.
+
+```sh
+"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data auth logout
+"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data-sql auth logout
+```
+
+To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
