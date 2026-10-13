@@ -41,10 +41,10 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 
 Skills written for these guides live in `skills/`. Skills owned by another repository stay authored there: the build downloads the exact release tarball named in `SKILLS` in `scripts/build-site.mjs` and refuses it unless its sha512 matches the pinned `integrity`, so every build, locally or on Cloudflare Pages, serves the same files. Nothing floats on a branch.
 
-Two released skills are served with small changes, listed as `changes` in `SKILLS` and as `changed` in `/skills/index.json`, because they assume a global npm install of the CLI while `/cli` installs it into `~/.local/share/tinycloud/cli`:
+Two released skills are served with small changes, set by `privateCli` and `changes` in `SKILLS` and listed as `changed` in `/skills/index.json`, because they assume a global npm install of the CLI while `/cli` installs it into `~/.local/share/tinycloud/cli`:
 
-- `tc-cli`: the first block of `SKILL.md` finds the CLI at `TC_BIN`, then `~/.local/share/tinycloud/cli`, then the global install; `INSTALL.md` is replaced by [`overrides/tc-cli/INSTALL.md`](overrides/tc-cli/INSTALL.md), which installs from this site instead of the npm tarball or the `beta` tag.
-- `courier`: the same first block in `SKILL.md`.
+- `tc-cli` and `courier`: every line in every file that picks the CLI with `TC="$(npm prefix --global)/bin/tc"` (or `TC_BIN=…`) tries `TC_BIN`, then `~/.local/share/tinycloud/cli`, then the global install. Today that's tc-cli's `SKILL.md`, `AUTH.md` and `REFERENCE.md`, and courier's `SKILL.md`. The build fails if any served skill file still picks the global install alone.
+- `tc-cli`: `INSTALL.md` is replaced by [`overrides/tc-cli/INSTALL.md`](overrides/tc-cli/INSTALL.md), which installs from this site instead of the npm tarball or the `beta` tag.
 
 The same fix belongs upstream in js-sdk (`packages/cli/skills/tc-cli`, `packages/courier/skills/courier`); once a release has it, drop the change here.
 
@@ -56,7 +56,7 @@ To install a skill without a guide:
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <short name> --agent <claude-code|codex|opencode>
 ```
 
-The installer checks every file against `/skills/index.json` before writing anything, then swaps in the skill's folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/<name>` for Claude Code, `~/.agents/skills/<name>` for Codex and OpenCode. It refuses a skill name that isn't one plain folder name and any file path that could leave the folder, keeps the old folder until the new one is in place, and puts it back if that fails. Its tests: `node --test scripts/install-skill.test.mjs`.
+The installer checks every file against `/skills/index.json` before writing anything, then swaps in the skill's folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/<name>` for Claude Code, `~/.agents/skills/<name>` for Codex and OpenCode. It refuses a skill name that isn't one plain folder name, any file path that could leave the folder, and any redirect, so every byte comes from the site it was served from. Installs of one skill take turns through a lock folder, `.<name>.lock`, broken only when its process has exited or it is older than any install takes. The old folder stays until the new one is in place and goes back if that fails; a later install restores it if the earlier one exited in between. Its tests: `node --test scripts/install-skill.test.mjs`.
 
 **Updating a package skill:** change its `tarball`, `integrity` (npm: `npm view <package>@<version> dist.integrity`; otherwise `sha512-` and the base64 SHA-512 of the file) and `version` in `SKILLS`, and update the guides that name that version. **Updating a skill in `skills/`:** bump its `metadata.version`.
 

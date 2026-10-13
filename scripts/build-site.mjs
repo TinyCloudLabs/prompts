@@ -49,11 +49,13 @@ const PAGES = [
 // `version` is used when SKILL.md has no metadata.version: the package's version.
 // `changes` adjusts a released file for this site: either [find, replace] pairs,
 // each of which must match exactly once, or a repository path whose file replaces it.
-// The released tc-cli and courier skills expect a global npm install of the
-// CLI; /cli installs it into ~/.local/share/tinycloud/cli instead.
-const FIND_TC =
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"   # where agents.tinycloud.xyz/cli installs it\n' +
-  '[ -x "$TC" ] || TC="$(npm prefix --global)/bin/tc"   # a global npm install';
+// `privateCli`: the released skill picks the CLI from a global npm install
+// (`X="$(npm prefix --global)/bin/tc"`), but /cli installs it into
+// ~/.local/share/tinycloud/cli. Every such line in every file of the skill then
+// tries TC_BIN, then that folder, then the global install.
+const PRIVATE_CLI = "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc";
+const GLOBAL_CLI = /\b(TC|TC_BIN)="\$\(npm prefix --global\)\/bin\/tc"/g;
+const usePrivateCli = (text) => text.replace(GLOBAL_CLI, (_, v) => `${v}="\${TC_BIN:-${PRIVATE_CLI}}"; [ -x "$${v}" ] || ${v}="$(npm prefix --global)/bin/tc"`);
 const SKILLS = [
   { short: "apps", dir: "skills/tc-apps" },
   { short: "publish", dir: "skills/tc-publish" },
@@ -64,10 +66,8 @@ const SKILLS = [
     tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.2.tgz",
     integrity: "sha512-lfORrJL1qnu+tw5vI5J1O/SKaazpJeZJUnwCSYJwHMOwATGNnGhk62s38Jq6Zj7vU+Xeg1xz7LJpN/Sc7IM5Bw==",
     dir: "package/skills/tc-cli",
-    changes: {
-      "SKILL.md": [['TC="$(npm prefix --global)/bin/tc"\n', `${FIND_TC}\n`]],
-      "INSTALL.md": "overrides/tc-cli/INSTALL.md",
-    },
+    privateCli: true,
+    changes: { "INSTALL.md": "overrides/tc-cli/INSTALL.md" },
   },
   {
     short: "courier",
@@ -75,12 +75,8 @@ const SKILLS = [
     tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.1.2.tgz",
     integrity: "sha512-jlh6FBPIs7OGAdo7zBdLgq7yP5LR7UBU/WtqvclBJNBa2u/rGIbuKg2Xh3NZZ2TcQDeGUEmfWq55wwsgdckiLg==",
     dir: "package/skills/courier",
-    changes: {
-      "SKILL.md": [
-        ["so call\nthe npm global bin when unsure:", "so call\nthe CLI by its path when unsure:"],
-        ['TC="$(npm prefix --global)/bin/tc"; "$TC" courier --help', `${FIND_TC}\n"$TC" courier --help`],
-      ],
-    },
+    privateCli: true,
+    changes: { "SKILL.md": [["so call\nthe npm global bin when unsure:", "so call\nthe CLI by its path when unsure:"]] },
   },
   {
     short: "chat",
@@ -188,6 +184,7 @@ async function loadSkill(skill) {
     files = walk(skill.dir).map((path) => [path.slice(skill.dir.length + 1), readFileSync(join(ROOT, path))]);
   }
   files.sort(([a], [b]) => (a < b ? -1 : 1));
+  const changed = new Set();
   for (const [path, change] of Object.entries(skill.changes || {})) {
     const i = files.findIndex(([p]) => p === path);
     if (i < 0) throw new Error(`${skill.short}: changes ${path}, which isn't in ${skill.tarball || skill.dir}`);
@@ -201,6 +198,18 @@ async function loadSkill(skill) {
       }
       files[i] = [path, Buffer.from(text)];
     }
+    changed.add(path);
+  }
+  if (skill.privateCli) {
+    for (const [i, [path, body]] of files.entries()) {
+      if (!/\.(md|txt|sh)$/.test(path)) continue;
+      const text = body.toString("utf8");
+      const fixed = usePrivateCli(text);
+      if (fixed !== text) {
+        files[i] = [path, Buffer.from(fixed)];
+        changed.add(path);
+      }
+    }
   }
   const main = files.find(([path]) => path === "SKILL.md");
   if (!main) throw new Error(`${skill.short}: no SKILL.md in ${skill.tarball || ""}${skill.dir}`);
@@ -212,6 +221,7 @@ async function loadSkill(skill) {
   if (!version) throw new Error(`${skill.short}: no metadata.version in SKILL.md and no configured version`);
   return {
     ...skill,
+    changed: [...changed].sort(),
     name: front.match(/^name:\s*(\S+)/m)?.[1] || posix.basename(skill.dir),
     version,
     title,
@@ -281,7 +291,7 @@ write(
         version: s.version,
         description: s.desc,
         source: s.tarball ? `${s.tarball}#${s.dir}` : `https://github.com/TinyCloudLabs/prompts/tree/main/${s.dir}`,
-        ...(s.changes ? { changed: Object.keys(s.changes) } : {}),
+        ...(s.changed.length ? { changed: s.changed } : {}),
         files: s.files.map((f) => ({ path: f.path, url: f.url, size: f.body.length, sha256: sha256(f.body) })),
       })),
     },
@@ -466,6 +476,18 @@ write(
   "404.html",
   `<!doctype html>\n<meta charset="utf-8">\n<title>Not found · TinyCloud</title>\n<p>Not found. Agents: see <a href="/setup">/setup</a> for every guide on this site.</p>\n`,
 );
+
+// Every served skill file that picks the CLI from the global npm install must
+// try TC_BIN and /cli's private install first.
+const FALLBACK = /\b(TC|TC_BIN)="\$\{TC_BIN:-\$HOME\/\.local\/share\/tinycloud\/cli\/node_modules\/\.bin\/tc\}"; \[ -x "\$\1" \] \|\| \1="\$\(npm prefix --global\)\/bin\/tc"/g;
+const globalOnly = skills.flatMap((s) =>
+  s.files.flatMap((f) => {
+    const text = f.body.toString("utf8");
+    const all = text.match(/npm prefix --global/g)?.length || 0;
+    return all === (text.match(FALLBACK)?.length || 0) ? [] : [f.url];
+  }),
+);
+if (globalOnly.length) throw new Error(`skill files that run the CLI from the global npm install only:\n  ${globalOnly.join("\n  ")}`);
 
 // Every link in a served Markdown file must reach a served file: relative
 // links, and absolute ones to this site. Code is skipped.
