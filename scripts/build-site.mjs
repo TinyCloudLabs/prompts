@@ -49,13 +49,27 @@ const PAGES = [
 // `version` is used when SKILL.md has no metadata.version: the package's version.
 // `changes` adjusts a released file for this site: either [find, replace] pairs,
 // each of which must match exactly once, or a repository path whose file replaces it.
-// `privateCli`: the released skill picks the CLI from a global npm install
-// (`X="$(npm prefix --global)/bin/tc"`), but /cli installs it into
-// ~/.local/share/tinycloud/cli. Every such line in every file of the skill then
-// tries TC_BIN, then that folder, then the global install.
-const PRIVATE_CLI = "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc";
-const GLOBAL_CLI = /\b(TC|TC_BIN)="\$\(npm prefix --global\)\/bin\/tc"/g;
-const usePrivateCli = (text) => text.replace(GLOBAL_CLI, (_, v) => `${v}="\${TC_BIN:-${PRIVATE_CLI}}"; [ -x "$${v}" ] || ${v}="$(npm prefix --global)/bin/tc"`);
+// `privateCli`: the released skill runs the CLI from a global npm install
+// (`TC="$(npm prefix --global)/bin/tc"`, or bare `tc`), but /cli installs it
+// into ~/.local/share/tinycloud/cli. In every Markdown file of the skill, each
+// such line becomes RESOLVER, `"$TC_BIN"` becomes `"$TC"`, and every command in
+// a shell code block runs as `"$TC"`. This is the text js-sdk adopts upstream
+// (TinyCloudLabs/js-sdk#522); drop it once a pinned release has it.
+const RESOLVER = [
+  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it',
+  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"   # else a global npm install',
+  '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
+].join("\n");
+const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
+// `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
+const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
+const usePrivateCli = (text) =>
+  text
+    .replace(/^([ \t]*)(?:TC|TC_BIN)="\$\(npm prefix --global\)\/bin\/tc"(?:; (.*))?$/gm, (_, indent, rest) =>
+      [...RESOLVER.split("\n"), ...(rest ? [rest] : [])].map((line) => indent + line).join("\n"),
+    )
+    .replaceAll('"$TC_BIN"', '"$TC"')
+    .replace(SHELL_BLOCK, (block) => block.replace(BARE_TC, '$1"$TC"'));
 const SKILLS = [
   { short: "apps", dir: "skills/tc-apps" },
   { short: "publish", dir: "skills/tc-publish" },
@@ -67,7 +81,19 @@ const SKILLS = [
     integrity: "sha512-lfORrJL1qnu+tw5vI5J1O/SKaazpJeZJUnwCSYJwHMOwATGNnGhk62s38Jq6Zj7vU+Xeg1xz7LJpN/Sc7IM5Bw==",
     dir: "package/skills/tc-cli",
     privateCli: true,
-    changes: { "INSTALL.md": "overrides/tc-cli/INSTALL.md" },
+    changes: {
+      "SKILL.md": [
+        ["Call the CLI by absolute path and check it first:", "Call the CLI by path and check it first; set `TC_BIN` to use a specific one:"],
+        ['Examples below write `tc`; substitute `"$TC"` when the name is ambiguous.', 'Commands below run the CLI as `"$TC"`, set by the block above; prose calls it `tc`.'],
+      ],
+      "REFERENCE.md": [
+        [
+          'Call the CLI by absolute path: `TC="$(npm prefix --global)/bin/tc"; "$TC" --version`.',
+          `Call the CLI by path, preferring the private install from https://agents.tinycloud.xyz/cli (set \`TC_BIN\` to use another one):\n\n\`\`\`bash\n${RESOLVER}\n"$TC" --version\n\`\`\``,
+        ],
+      ],
+      "INSTALL.md": "overrides/tc-cli/INSTALL.md",
+    },
   },
   {
     short: "courier",
@@ -76,7 +102,12 @@ const SKILLS = [
     integrity: "sha512-jlh6FBPIs7OGAdo7zBdLgq7yP5LR7UBU/WtqvclBJNBa2u/rGIbuKg2Xh3NZZ2TcQDeGUEmfWq55wwsgdckiLg==",
     dir: "package/skills/courier",
     privateCli: true,
-    changes: { "SKILL.md": [["so call\nthe npm global bin when unsure:", "so call\nthe CLI by its path when unsure:"]] },
+    changes: {
+      "SKILL.md": [
+        ["so call\nthe npm global bin when unsure:", "so call\nthe CLI by its path when unsure:"],
+        ["Examples below use `tc courier`.", 'Commands below run it as `"$TC" courier`, set by the block above; prose calls it `tc courier`.'],
+      ],
+    },
   },
   {
     short: "chat",
@@ -477,17 +508,19 @@ write(
   `<!doctype html>\n<meta charset="utf-8">\n<title>Not found · TinyCloud</title>\n<p>Not found. Agents: see <a href="/setup">/setup</a> for every guide on this site.</p>\n`,
 );
 
-// Every served skill file that picks the CLI from the global npm install must
-// try TC_BIN and /cli's private install first.
-const FALLBACK = /\b(TC|TC_BIN)="\$\{TC_BIN:-\$HOME\/\.local\/share\/tinycloud\/cli\/node_modules\/\.bin\/tc\}"; \[ -x "\$\1" \] \|\| \1="\$\(npm prefix --global\)\/bin\/tc"/g;
-const globalOnly = skills.flatMap((s) =>
-  s.files.flatMap((f) => {
-    const text = f.body.toString("utf8");
-    const all = text.match(/npm prefix --global/g)?.length || 0;
-    return all === (text.match(FALLBACK)?.length || 0) ? [] : [f.url];
-  }),
-);
-if (globalOnly.length) throw new Error(`skill files that run the CLI from the global npm install only:\n  ${globalOnly.join("\n  ")}`);
+// Served tc-cli and courier files run the CLI only through RESOLVER: no other
+// global npm lookup, and no bare `tc` command in a shell code block.
+const wrongCli = skills
+  .filter((s) => s.privateCli)
+  .flatMap((s) =>
+    s.files.flatMap((f) => {
+      const text = f.body.toString("utf8");
+      const lookups = text.split("npm prefix --global").length - 1;
+      const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
+      return lookups === text.split(RESOLVER).length - 1 && !bare ? [] : [f.url];
+    }),
+  );
+if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);
 
 // Every link in a served Markdown file must reach a served file: relative
 // links, and absolute ones to this site. Code is skipped.

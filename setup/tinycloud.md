@@ -89,7 +89,7 @@ If the skill is missing or is a replaceable mismatch, run:
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
 ```
 
-The installer downloads the `tc-cli` skill from `agents.tinycloud.xyz` and checks every file against the site's `/skills/index.json`. It's the skill `@tinycloud/cli@1.2.2` ships, with two changes for this module: wherever it picks the CLI (`SKILL.md`, `AUTH.md`, `REFERENCE.md`), it tries `TC_BIN`, then `~/.local/share/tinycloud/cli`, before a global npm install; and its `INSTALL.md` points here. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.2.2 <folder>`; anything else means the install failed, so stop and report it.
+The installer downloads the `tc-cli` skill from `agents.tinycloud.xyz` and checks every file against the site's `/skills/index.json`. It's the skill `@tinycloud/cli@1.2.2` ships, with two changes for this module: wherever it looks up the CLI (`SKILL.md`, `AUTH.md`, `REFERENCE.md`), it uses `TC_BIN` if set, else `~/.local/share/tinycloud/cli`, before a global npm install, and runs every command as `"$TC"`; and its `INSTALL.md` points here. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.2.2 <folder>`; anything else means the install failed, so stop and report it.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 

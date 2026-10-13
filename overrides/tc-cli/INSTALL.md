@@ -1,10 +1,10 @@
 # Install, update and remove the core skills
 
-This copy of the `tc-cli` skill comes from agents.tinycloud.xyz, which serves every TinyCloud skill and pins the CLI version they're tested with. Install, update and remove them as below, not from the npm package or its `beta` tag.
+agents.tinycloud.xyz serves every TinyCloud skill and pins the CLI version they're tested with. Install, update and remove the CLI and the `tc-cli` and `courier` skills from there.
 
 ## Install
 
-Follow https://agents.tinycloud.xyz/cli. It installs TinyCloud CLI 1.2.2 into `~/.local/share/tinycloud/cli`, makes `tc` run it when nothing else on `PATH` is called `tc`, and installs this skill. The skill's first block finds the CLI there; set `TC_BIN` to use another one.
+Follow https://agents.tinycloud.xyz/cli. It installs the pinned TinyCloud CLI into `~/.local/share/tinycloud/cli`, makes `tc` run it when nothing else on `PATH` is called `tc`, and installs this skill. Newer CLI releases also ship the same executable as `tinycloud`, an alternative name that takes identical arguments. The skill's first block finds the CLI there; set `TC_BIN` to use another one.
 
 To install this skill, or `courier` for `tc courier`, without the guide:
 
@@ -18,6 +18,9 @@ Use `--agent codex` or `--agent opencode` for those clients. Skills go into `${C
 ## Check
 
 ```bash
+TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it
+[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"   # else a global npm install
+[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }
 "$TC" --version
 ```
 
@@ -25,7 +28,7 @@ The installed `tc-cli/release.json` names the CLI range the skill describes. Che
 
 ## Update
 
-Run the install again. It installs the versions agents.tinycloud.xyz serves, which change only when the site's pins change; it never follows `latest` or `beta`.
+Run the install again. It installs the versions agents.tinycloud.xyz serves, which change only when the site's pins change; it never follows an npm dist-tag.
 
 ## Remove
 

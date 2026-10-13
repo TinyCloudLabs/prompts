@@ -43,10 +43,10 @@ Skills written for these guides live in `skills/`. Skills owned by another repos
 
 Two released skills are served with small changes, set by `privateCli` and `changes` in `SKILLS` and listed as `changed` in `/skills/index.json`, because they assume a global npm install of the CLI while `/cli` installs it into `~/.local/share/tinycloud/cli`:
 
-- `tc-cli` and `courier`: every line in every file that picks the CLI with `TC="$(npm prefix --global)/bin/tc"` (or `TC_BIN=…`) tries `TC_BIN`, then `~/.local/share/tinycloud/cli`, then the global install. Today that's tc-cli's `SKILL.md`, `AUTH.md` and `REFERENCE.md`, and courier's `SKILL.md`. The build fails if any served skill file still picks the global install alone.
+- `tc-cli` and `courier`: each CLI lookup (`TC="$(npm prefix --global)/bin/tc"` or `TC_BIN=…`) becomes a three-line resolver: `TC_BIN` if set (and nothing else), else `~/.local/share/tinycloud/cli`, else a global npm install, else it stops with `TC_NOT_FOUND`. Every command in their shell code blocks runs as `"$TC"`, never a bare `tc`. Today that touches tc-cli's `SKILL.md`, `AUTH.md` and `REFERENCE.md`, and courier's `SKILL.md`. The build fails if a served tc-cli or courier file looks up the CLI any other way or runs a bare `tc`.
 - `tc-cli`: `INSTALL.md` is replaced by [`overrides/tc-cli/INSTALL.md`](overrides/tc-cli/INSTALL.md), which installs from this site instead of the npm tarball or the `beta` tag.
 
-The same fix belongs upstream in js-sdk (`packages/cli/skills/tc-cli`, `packages/courier/skills/courier`); once a release has it, drop the change here.
+The served text is what js-sdk adopts upstream in [TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522), byte for byte, except where #522 also documents features CLI 1.2.2 doesn't have (the `tinycloud` executable name, `kv list --all`). Once a pinned release has it, drop the changes here.
 
 A skill's version is its `SKILL.md`'s `metadata.version`, or, for a package skill without one, the package version. Only the current version of each skill is published.
 
