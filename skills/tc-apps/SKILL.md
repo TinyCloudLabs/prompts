@@ -227,7 +227,7 @@ When talking to the owner, call it "a fast, searchable copy of your records". Ne
 
 Read `SQL.md` in full, from the folder you read this file from, when:
 - you ask for the fast copy as above, or the owner asks about it;
-- the owner sends you OpenKey's code after you asked, a long block of letters and digits that starts with `eyJ`, perhaps in a later conversation;
+- the owner sends you OpenKey's code after you asked, perhaps in a later conversation: a short code of eight letters and digits such as `ABCD-EFGH`, or the full code, a long block of letters and digits that starts with `eyJ`;
 - §3 showed the index (`present` or `expired`) and you write, move or delete a record;
 - §3 showed it `present` and a question needs more than about 40 records.
 
