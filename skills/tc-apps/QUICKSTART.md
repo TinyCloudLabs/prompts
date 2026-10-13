@@ -21,7 +21,7 @@ The agent follows [`setup/tc-apps.md`](../../setup/tc-apps.md), then carries on 
 3. It installs the skill for your user, so every project folder sees it: `~/.claude/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
 4. It reads the skill and signs you in, as below.
 
-Nothing to restart, and no shell profile to edit. Afterwards, any new conversation in any folder can use your apps without the link.
+No shell profile to edit, and nothing to restart except OpenCode, once (see below). Afterwards, any new conversation in any folder can use your apps without the link.
 
 | Client | Start | What to expect |
 |---|---|---|

@@ -202,11 +202,14 @@ An item's status changes (a todo is done, a goal is reached): write the record u
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
-"$TC_BIN" kv put '<new key>' --stdin --space default --json --profile agent-data <<'EOF'
+"$TC_BIN" kv put '<new key>' --stdin --space default --json --profile agent-data <<'EOF' &&
 <record>
 EOF
+"$TC_BIN" kv get '<new key>' --space default --json --profile agent-data &&
 "$TC_BIN" kv delete '<old key>' --space default --json --profile agent-data
 ```
+
+The old key is deleted only after the new record was written and read back. If the block stops before the delete, the old record is still there: report the error and don't delete it some other way.
 
 If an id shows up under two states, the later state in the kind's `states` wins; delete the other. Delete any other record only when the owner asks, with `kv delete` as above.
 
