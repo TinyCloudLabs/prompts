@@ -1,30 +1,39 @@
 # Use TinyChat with your agent
 
+## For the owner
+
+- **What it does:** your agent answers questions about the meetings TinyChat has already synced, such as recaps, follow-ups and what was said, citing the transcript. It installs the TinyCloud CLI and the `tinychat-retrieval` skill first.
+- **Paste into Claude Code, Codex or OpenCode:** `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat`
+- **You approve:** a TinyChat sign-in in your browser, with the account you use for TinyChat. It lets this computer read your TinyChat meeting list and transcripts, for 7 days. Then you paste the code the browser shows back into the conversation.
+- **Undo:** delete the skill folder, and if you signed in, log out. §6 below has both commands.
+
+## For the agent
+
 Use the user's existing TinyChat account and synced meetings from OpenCode, Codex or Claude Code. Do not reconnect sources, copy meetings, clone a repository or run an MCP server.
 
 Keep the user's original request and current client throughout setup. Setup is a prerequisite, not a replacement task. After setup becomes ready, continue the original request in this same conversation without asking the user to paste another prompt.
 
 ## 1. Complete shared TinyCloud prerequisites
 
-Follow [`setup/tinycloud.md`](../../setup/tinycloud.md) with the current client and record this guide's [install heading](#2-install-the-tinychat-retrieval-skill) as the return location. Reuse valid installations as that module directs. When it finishes, return here and continue immediately.
+Follow [the CLI setup module](../../setup/tinycloud.md) with the current client and record this guide's [install heading](#2-install-the-tinychat-retrieval-skill) as the return location. Reuse valid installations as that module directs. When it finishes, return here and continue immediately.
 
-The TinyChat retrieval skill runs the CLI as `tc` from the `PATH` and has no setting for another path, so it needs the module to end with `TC_READY` or `TC_LINKED`. If the module returns a `TC_CONFLICT`, stop here and tell the user what it found: TinyChat can't use the TinyCloud CLI on this machine until `tc` on their `PATH` runs the CLI the module installed at `TC_BIN`, and that is a change they make themselves. Don't change their `PATH` or another `tc` for them.
+The TinyChat retrieval skill served here runs `TC_BIN` if it's set, else the CLI the module installs in `~/.local/share/tinycloud/cli`, and only then `tc` from the `PATH`. So it works whatever `tc` on the `PATH` is: continue to §2 on `TC_READY`, `TC_LINKED` or any `TC_CONFLICT`. A `TC_CONFLICT` only means the module didn't link `tc`; mention it to the user in one line, and don't change their `PATH` or another `tc` for them. Stop only on `TC_INSTALL_FAILED`, as the module says.
 
 Do not run the separate OpenKey CLI setup. TinyChat does not invoke the standalone `openkey` binary, and an OpenKey CLI login does not grant TinyCloud app permissions.
 
 ## 2. Install the TinyChat retrieval skill
 
-The app pack is pinned to `tinychat-retrieval@0.1.1-onboarding.16`. Inspect an existing same-named skill before replacing it. Reuse an intact installation at the pinned version; do not overwrite an unrelated or locally modified skill. If an installed pack has another version or uncertain provenance, do not silently upgrade or downgrade it; return the conflict unless its replacement was explicitly approved.
+The app pack is pinned to `tinychat-retrieval@0.1.1-onboarding.16`, as served by `agents.tinycloud.xyz`. Inspect an existing same-named skill before replacing it. Reuse it only when its files match the `chat` entry in `https://agents.tinycloud.xyz/skills/index.json`. A copy of the same version installed from tinycloud.chat is a replaceable mismatch: its scripts run `tc` from the `PATH` only. Do not overwrite an unrelated or locally modified skill. If an installed pack has another version or uncertain provenance, do not silently upgrade or downgrade it; return the conflict unless its replacement was explicitly approved.
 
 For a missing or approved replaceable mismatched app pack, substitute the current client (`opencode`, `codex` or `claude-code`) for `CLIENT` and run this as a sequential foreground install:
 
 ```sh
-npx --yes skills@1.7.0 add https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz --skill tinychat-retrieval --global --copy --agent CLIENT --yes
+curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - chat --agent CLIENT
 ```
 
-The usual installed directory is `$HOME/.agents/skills/tinychat-retrieval` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Resolve it from the current terminal's `HOME` and `CLAUDE_CONFIG_DIR`. Load its `SKILL.md` once if it is not already loaded; do not search unrelated directories.
+The installer downloads the pack from `agents.tinycloud.xyz`, checks every file against the site's `/skills/index.json`, and prints `SKILL_INSTALLED tinychat-retrieval 0.1.1-onboarding.16 <folder>`. Anything else, including another version, means the install failed or doesn't match this guide: stop and report it. The usual installed directory is `$HOME/.agents/skills/tinychat-retrieval` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Resolve it from the current terminal's `HOME` and `CLAUDE_CONFIG_DIR`. Load its `SKILL.md` once if it is not already loaded; do not search unrelated directories.
 
-The public, commit-pinned source references are the [skill](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/SKILL.md), [setup recovery](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/references/setup.md), [meeting contract](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/references/meetings.md) and [session handoff](https://github.com/TinyCloudLabs/tinychat/blob/f67bf08417c8954fc0bab4379e99db13977f4d96/agent-skills/tinychat-retrieval/references/session-handoff.md).
+The published files are the [skill](https://agents.tinycloud.xyz/skills/chat.md), [setup recovery](https://agents.tinycloud.xyz/skills/chat/references/setup.md), [meeting contract](https://agents.tinycloud.xyz/skills/chat/references/meetings.md) and [session handoff](https://agents.tinycloud.xyz/skills/chat/references/session-handoff.md). They are the files of TinyChat's released `0.1.1-onboarding.16` pack, with one change, listed under `changed` in `index.json`: its scripts find the CLI through `TC_BIN` and `~/.local/share/tinycloud/cli` before the `PATH`.
 
 ## 3. Activate the TinyChat adapter where supported
 
@@ -91,12 +100,15 @@ On a later OpenCode visit, call `tinychat_setup` without arguments; other client
 
 For a local diagnostic export, call `tinychat_handoff` in the current conversation and report its absolute path. This does not authorize `tc share publish`, uploads, broader permissions or another sign-in. Follow the pinned session-handoff reference and exclude raw messages, meeting text, provider records, keys, signed responses and TUI input history.
 
-Versioned archives do not support automatic `skills update` tracking in installer `1.7.0`. Repeating the same identified install is idempotent; install a newly identified pack explicitly when this guide is revised.
+Repeating the same install is idempotent; install a newly identified pack explicitly when this guide is revised.
 
-To remove only the app skill, substitute the affected client for `CLIENT`:
+**Undo, for the owner.** Two steps:
 
-```sh
-npx --yes skills@1.7.0 remove tinychat-retrieval --global --agent CLIENT --yes
-```
+1. **Remove the skill:** delete its folder, `$HOME/.agents/skills/tinychat-retrieval` for Codex and OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Codex and OpenCode share `~/.agents/skills`, so removal there affects both.
+2. **Log out, if you signed in:** the TinyChat sign-in lasts 7 days. To end it on this computer sooner, run `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --profile tinychat-agent auth logout`. The profile is `tinychat-agent`, or the `profile` named in `~/.config/tinychat-retrieval/setup.json` if you set up again with a new profile. If you never signed in, the command reports `PROFILE_NOT_FOUND`; that's fine. The approval stays valid on TinyCloud until it expires.
 
-Codex and OpenCode share `~/.agents/skills` under this installer, so removal there affects discovery in both. For OpenCode, also remove the generated `tinychat-signin.js` loader from `$XDG_CONFIG_HOME/opencode/plugins` (or `$HOME/.config/opencode/plugins`) and restart the client. Do not remove the shared `tc-cli` prerequisite unless explicitly requested and no other app depends on it. Skill removal, profile logout and grant revocation are separate actions; preserve unrelated skills and configuration.
+Skill removal, logout and grant revocation are separate; neither step touches other skills or the shared `tc-cli` skill.
+
+> **OpenCode only:** also remove the generated `tinychat-signin.js` loader from `$XDG_CONFIG_HOME/opencode/plugins` (or `$HOME/.config/opencode/plugins`) and restart OpenCode.
+
+Agents: don't remove the shared `tc-cli` prerequisite unless explicitly requested and no other app depends on it; preserve unrelated skills and configuration.

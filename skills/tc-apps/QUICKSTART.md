@@ -13,9 +13,9 @@ It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later wi
 
 Add the setup link to your first request:
 
-> Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/setup/tc-apps.md
+> Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps
 
-The agent follows [`setup/tc-apps.md`](../../setup/tc-apps.md), then carries on with your request in the same conversation:
+The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
 2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tc`, a short script that runs this CLI and retries when TinyCloud drops a connection.
 3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
@@ -98,11 +98,11 @@ Good to know:
 - **Records:** profile `agent-data` can get, put, list and delete keys under `xyz.tinycloud.agent-data/` in your `default` space, and nothing else. Every OpenKey approval also lets it read which permissions it holds.
 - **Index:** profile `agent-data-sql` can read, write and change the schema of the SQL database `xyz.tinycloud.agent-data.index` in your `default` space, with the wider reach described above.
 - **Lifetime:** 30 days each, OpenKey's maximum. Afterwards the agent shows you a new link when it needs one.
-- **Stopping:** each command below clears the local session, with `TC_HOME` set as when you started the client. The approvals stay valid on TinyCloud until they expire.
+- **Stopping:** each command below clears the local session, with `TC_HOME` and `TC_BIN` set as when you started the client, so it uses the same CLI as the skill. The approvals stay valid on TinyCloud until they expire.
 
   ```sh
-  ~/.local/share/tc-apps/cli/node_modules/.bin/tc --profile agent-data auth logout
-  ~/.local/share/tc-apps/cli/node_modules/.bin/tc --profile agent-data-sql auth logout
+  "${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data auth logout
+  "${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data-sql auth logout
   ```
 
   To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the `tc-apps` skill folders.

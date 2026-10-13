@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.1"
+  version: "0.5.2"
 ---
 
 # Publish documents and HTML with `tc share`
@@ -49,10 +49,10 @@ umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STA
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
-"$TC_BIN" enable share --help | grep -q -- '--replace-session' \
+[ -n "$TC_BIN" ] && "$TC_BIN" enable share --help | grep -q -- '--replace-session' \
   && "$TC_BIN" auth login --help | grep -q -- '--expiry' \
   && echo CLI_OK || echo STALE
-"$TC_BIN" --version
+if [ -n "$TC_BIN" ]; then "$TC_BIN" --version; else echo "TC_BIN is not set"; fi
 echo "TC_HOME=$TC_HOME"
 ```
 

@@ -1,157 +1,452 @@
 #!/usr/bin/env node
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
-// Every repository file is copied verbatim at its repo path; index.html,
-// setup/index.html, setup/index.md, llms.txt, llms-full.txt, robots.txt,
-// sitemap.xml, _headers and the agent-skills index are generated from
-// whatever guides exist on the branch.
-// No dependencies. Run: node scripts/build-site.mjs
+// Public URLs are short and flat; the repository layout is only for authoring:
+// - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
+// - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
+//   installed, SKILL.md included;
+// - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
+//   relative links pointed at /skills/<short>/;
+// - /skills/index.json: each skill's name, version, description and files with
+//   sha256 checksums, which /skills/install.js checks before installing;
+// - _redirects: the earlier repository-path URLs, redirected to the short ones.
+// Other repository files are copied at their repository path. index.html,
+// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
+// agent-skills discovery index are generated.
+// No dependencies; fetches the pinned skill tarballs. Run: node scripts/build-site.mjs
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
+const SITE = "https://agents.tinycloud.xyz";
 // Absolute URLs point at production, except on Pages preview builds, where
-// they point at the preview so a branch's example prompts can be tried as-is.
+// they point at the preview so a branch's guides and installs can be tried as-is.
 const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
-const BASE = (process.env.SITE_URL || preview || "https://agents.tinycloud.xyz").replace(/\/$/, "");
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "functions", "node_modules", "scripts"]);
+const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
+const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "functions", "node_modules", "overrides", "README.md", "scripts", "skills"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
 
-// Abilities shown on the front page, in order. A card appears only when its
-// guide exists on this branch, so unmerged abilities never link to a 404.
+// Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
+const PAGES = [
+  { url: "setup", src: "setup/README.md" },
+  { url: "apps", src: "setup/tc-apps.md" },
+  { url: "chat", src: "apps/tinychat/setup.md" },
+  { url: "publish", src: "setup/publish.md", redirectFrom: ["share"] },
+  { url: "secrets", src: "setup/secrets.md" },
+  { url: "courier", src: "setup/courier.md" },
+  { url: "cli", src: "setup/tinycloud.md" },
+  { url: "openkey", src: "setup/openkey.md" },
+];
+
+// Every TinyCloud agent skill. Skills authored here are read from `dir`; the
+// others are taken from the exact release their owning repository published,
+// checked against its sha512 `integrity`, so every build serves the same files.
+// `version` is used when SKILL.md has no metadata.version: the package's version.
+// `changes` adjusts a released file for this site: either [find, replace] pairs,
+// each of which must match exactly once, or a repository path whose file replaces it.
+// `privateCli`: the released skill runs the CLI from a global npm install
+// (`TC="$(npm prefix --global)/bin/tc"`, or bare `tc`), but /cli installs it
+// into ~/.local/share/tinycloud/cli. In every Markdown file of the skill, each
+// such line becomes RESOLVER, `"$TC_BIN"` becomes `"$TC"`, and every command in
+// a shell code block runs as `"$TC"`. This is the text js-sdk adopts upstream
+// (TinyCloudLabs/js-sdk#522); drop it once a pinned release has it.
+const RESOLVER = [
+  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it',
+  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"   # else a global npm install',
+  '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
+].join("\n");
+const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
+// `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
+const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
+const usePrivateCli = (text) =>
+  text
+    .replace(/^([ \t]*)(?:TC|TC_BIN)="\$\(npm prefix --global\)\/bin\/tc"(?:; (.*))?$/gm, (_, indent, rest) =>
+      [...RESOLVER.split("\n"), ...(rest ? [rest] : [])].map((line) => indent + line).join("\n"),
+    )
+    .replaceAll('"$TC_BIN"', '"$TC"')
+    .replace(SHELL_BLOCK, (block) => block.replace(BARE_TC, '$1"$TC"'));
+const SKILLS = [
+  { short: "apps", dir: "skills/tc-apps" },
+  { short: "publish", dir: "skills/tc-publish" },
+  { short: "secrets", dir: "skills/tc-secrets" },
+  {
+    short: "cli",
+    version: "1.2.2",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.2.tgz",
+    integrity: "sha512-lfORrJL1qnu+tw5vI5J1O/SKaazpJeZJUnwCSYJwHMOwATGNnGhk62s38Jq6Zj7vU+Xeg1xz7LJpN/Sc7IM5Bw==",
+    dir: "package/skills/tc-cli",
+    privateCli: true,
+    changes: {
+      "SKILL.md": [
+        ["Call the CLI by absolute path and check it first:", "Call the CLI by path and check it first; set `TC_BIN` to use a specific one:"],
+        ['Examples below write `tc`; substitute `"$TC"` when the name is ambiguous.', 'Commands below run the CLI as `"$TC"`, set by the block above; prose calls it `tc`.'],
+      ],
+      "REFERENCE.md": [
+        [
+          'Call the CLI by absolute path: `TC="$(npm prefix --global)/bin/tc"; "$TC" --version`.',
+          `Call the CLI by path, preferring the private install from https://agents.tinycloud.xyz/cli (set \`TC_BIN\` to use another one):\n\n\`\`\`bash\n${RESOLVER}\n"$TC" --version\n\`\`\``,
+        ],
+      ],
+      "INSTALL.md": "overrides/tc-cli/INSTALL.md",
+    },
+  },
+  {
+    short: "courier",
+    version: "0.1.2",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.1.2.tgz",
+    integrity: "sha512-jlh6FBPIs7OGAdo7zBdLgq7yP5LR7UBU/WtqvclBJNBa2u/rGIbuKg2Xh3NZZ2TcQDeGUEmfWq55wwsgdckiLg==",
+    dir: "package/skills/courier",
+    privateCli: true,
+    changes: {
+      "SKILL.md": [
+        ["so call\nthe npm global bin when unsure:", "so call\nthe CLI by its path when unsure:"],
+        ["Examples below use `tc courier`.", 'Commands below run it as `"$TC" courier`, set by the block above; prose calls it `tc courier`.'],
+      ],
+    },
+  },
+  {
+    short: "chat",
+    tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz",
+    integrity: "sha512-uO016ryrnG0A1OR2d0xJs3jRPd+oPorb0oloRApnG5T28qReZZ35bteZgWqPhqf1Nme/rHuRX3qdmuhtsagV2A==",
+    dir: "package",
+    privateCli: true,
+    // The pack's scripts run `tc` from PATH. They now run TC_BIN if set, else
+    // the CLI /cli installs, else `tc` from PATH, as before.
+    changes: {
+      "lib/retrieval.mjs": [
+        ["import { constants, readFileSync } from 'node:fs';", "import { accessSync, constants, readFileSync } from 'node:fs';"],
+        ["import { tmpdir } from 'node:os';", "import { homedir, tmpdir } from 'node:os';"],
+        [
+          "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */\nexport function createTcRunner({ executable = 'tc',",
+          [
+            "/** The TinyCloud CLI to run: TC_BIN if set, else where agents.tinycloud.xyz/cli installs it, else `tc` on PATH. */",
+            "export function defaultTc() {",
+            "  if (process.env.TC_BIN) return process.env.TC_BIN;",
+            "  const installed = join(homedir(), '.local/share/tinycloud/cli/node_modules/.bin/tc');",
+            "  try { accessSync(installed, constants.X_OK); return installed; } catch { return 'tc'; }",
+            "}",
+            "",
+            "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */",
+            "export function createTcRunner({ executable = defaultTc(),",
+          ].join("\n"),
+        ],
+      ],
+      "lib/setup.mjs": [
+        ["import { createTcRunner } from './retrieval.mjs';", "import { createTcRunner, defaultTc } from './retrieval.mjs';"],
+        ["manifestPath, executable = 'tc' })", "manifestPath, executable = defaultTc() })"],
+      ],
+      "lib/login.mjs": [
+        ["import { spawn } from 'node:child_process';", "import { spawn } from 'node:child_process';\nimport { defaultTc } from './retrieval.mjs';"],
+        ["{ executable = 'tc', input }", "{ executable = defaultTc(), input }"],
+      ],
+      "scripts/retrieve.mjs": [
+        ["--tc PATH (otherwise resolves tc on PATH; never uses a shell)", "--tc PATH (otherwise TC_BIN, then ~/.local/share/tinycloud/cli, then tc on PATH; never uses a shell)"],
+      ],
+      "references/meetings.md": [
+        ["otherwise the helper resolves `tc` through PATH.", "otherwise the helper runs `TC_BIN` if set, else the CLI that agents.tinycloud.xyz/cli installs in `~/.local/share/tinycloud/cli`, else `tc` from PATH."],
+      ],
+    },
+  },
+  {
+    short: "mcp",
+    version: "0.5.2",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.2.tgz",
+    integrity: "sha512-h+Me7RFxaxf32ZBxczsj2fA1ERs0TgD4dDajYmZ/89pbwRv5zwuAiHGxtN2+HOtM3IIRu62fIgaui3+SdedX9Q==",
+    dir: "package/skills/tinycloud-delegated-secrets",
+  },
+];
+
+// Abilities shown on the front page, in order.
 const ABILITIES = [
   {
     title: "Personal records",
-    path: "setup/tc-apps.md",
+    url: "apps",
     text: "Log, track and look up anything you keep records of, like weight, workouts or todos. Your agent organises them into apps as you go.",
     prompt: "Log my weight: 80.5 kg today. Set it up with TinyCloud:",
   },
   {
     title: "Publish",
-    path: "skills/tc-publish/SKILL.md",
+    url: "publish",
     text: "Publish a document or web page and get back a link, either private to you or public.",
     prompt: "Publish this report and send me a private link. Use TinyCloud:",
   },
   {
     title: "Secrets",
-    path: "skills/tc-secrets/SKILL.md",
+    url: "secrets",
     text: "Use API keys you keep in TinyCloud Secrets. The value never appears in the conversation. If a key is missing, your agent sends you a link to add it.",
     prompt: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud:",
   },
   {
     title: "Meetings",
-    path: "apps/tinychat/setup.md",
+    url: "chat",
     text: "Ask about your TinyChat meetings: recaps, follow-ups and what was said.",
     prompt: "How did my last meeting go? Check TinyCloud:",
   },
 ];
 
-// Guides an agent can be pointed at, grouped for llms.txt. Anything matching
-// these patterns is listed automatically.
-const GROUPS = [
-  ["Entry guides", (p) => /^apps\/[^/]+\/setup\.md$/.test(p) || (/^setup\/[^/]+\.md$/.test(p) && !BLOCKS.has(p))],
-  ["Skills", (p) => /^skills\/[^/]+\/[^/]+\.md$/.test(p)],
-  ["Building blocks", (p) => BLOCKS.has(p)],
-];
-const BLOCKS = new Set(["setup/tinycloud.md", "setup/openkey.md"]);
-
-function walk(dir) {
-  return readdirSync(dir).flatMap((name) => {
-    if (SKIP.has(name) || UNPUBLISHED.test(name)) return [];
-    const full = join(dir, name);
-    return statSync(full).isDirectory() ? walk(full) : [relative(ROOT, full).split("\\").join("/")];
-  });
-}
-
-function describe(path) {
-  const text = readFileSync(join(ROOT, path), "utf8");
-  const front = text.match(/^---\n([\s\S]*?)\n---\n/);
-  const body = front ? text.slice(front[0].length) : text;
-  const title = (body.match(/^# (.+)$/m) || [, path])[1].replace(/`/g, "");
-  const fmDesc = front && front[1].match(/^description:\s*(.+)$/m);
-  let desc = fmDesc ? fmDesc[1].trim().replace(/^["']|["']$/g, "") : "";
-  if (!desc) {
-    const para = body.split(/\n\s*\n/).find((b) => b.trim() && !/^(#|```|[-*>|])/.test(b.trim()));
-    desc = para ? para.replace(/\s+/g, " ").trim() : "";
-  }
-  return { path, title, desc, text };
-}
-
+const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
 
+function walk(dir) {
+  return readdirSync(join(ROOT, dir)).flatMap((name) => {
+    const path = dir ? `${dir}/${name}` : name;
+    if ((!dir && SKIP.has(name)) || UNPUBLISHED.test(name)) return [];
+    return statSync(join(ROOT, path)).isDirectory() ? walk(path) : [path];
+  });
+}
+
+// Title and one-paragraph description of a Markdown document.
+function describe(text, fallbackTitle) {
+  const front = text.match(/^---\n([\s\S]*?)\n---\n/);
+  const body = front ? text.slice(front[0].length) : text;
+  const title = (body.match(/^# (.+)$/m) || [, fallbackTitle])[1].replace(/`/g, "");
+  const fmDesc = front && front[1].match(/^description:\s*(.+)$/m);
+  let desc = fmDesc ? fmDesc[1].trim().replace(/^["']|["']$/g, "") : "";
+  if (!desc) {
+    const para = body.split(/\n\s*\n/).find((b) => b.trim() && !/^(#|```|[-*>|<])/.test(b.trim()));
+    desc = para ? para.replace(/\s+/g, " ").trim() : "";
+  }
+  return { title, desc, front: front ? front[1] : "" };
+}
+
+// Regular files in a tar archive, by path.
+function untar(buf) {
+  const files = new Map();
+  let longName = null;
+  for (let off = 0; off + 512 <= buf.length; ) {
+    const header = buf.subarray(off, off + 512);
+    if (header.every((b) => b === 0)) break;
+    const str = (start, len) => header.subarray(start, start + len).toString("utf8").replace(/\0.*$/s, "");
+    const size = parseInt(str(124, 12).trim() || "0", 8);
+    const type = str(156, 1) || "0";
+    const data = buf.subarray(off + 512, off + 512 + size);
+    const prefix = str(345, 155);
+    const name = longName ?? (prefix ? `${prefix}/${str(0, 100)}` : str(0, 100));
+    longName = null;
+    if (type === "L") longName = data.toString("utf8").replace(/\0.*$/s, "");
+    else if (type === "x") longName = data.toString("utf8").match(/^\d+ path=(.*)$/m)?.[1] ?? null;
+    else if (type === "0" || type === "7") files.set(name, Buffer.from(data));
+    off += 512 + Math.ceil(size / 512) * 512;
+  }
+  return files;
+}
+
+async function loadSkill(skill) {
+  let files;
+  if (skill.tarball) {
+    const res = await fetch(skill.tarball);
+    if (!res.ok) throw new Error(`${skill.tarball}: HTTP ${res.status}`);
+    const tgz = Buffer.from(await res.arrayBuffer());
+    const integrity = "sha512-" + createHash("sha512").update(tgz).digest("base64");
+    if (integrity !== skill.integrity) throw new Error(`${skill.tarball}: integrity ${integrity}, expected ${skill.integrity}`);
+    files = [...untar(gunzipSync(tgz))]
+      .filter(([path]) => path.startsWith(`${skill.dir}/`))
+      .map(([path, body]) => [path.slice(skill.dir.length + 1), body]);
+  } else {
+    files = walk(skill.dir).map((path) => [path.slice(skill.dir.length + 1), readFileSync(join(ROOT, path))]);
+  }
+  files.sort(([a], [b]) => (a < b ? -1 : 1));
+  const changed = new Set();
+  for (const [path, change] of Object.entries(skill.changes || {})) {
+    const i = files.findIndex(([p]) => p === path);
+    if (i < 0) throw new Error(`${skill.short}: changes ${path}, which isn't in ${skill.tarball || skill.dir}`);
+    if (typeof change === "string") {
+      files[i] = [path, readFileSync(join(ROOT, change))];
+    } else {
+      let text = files[i][1].toString("utf8");
+      for (const [find, replace] of change) {
+        if (text.split(find).length !== 2) throw new Error(`${skill.short}: ${path} must contain ${JSON.stringify(find)} exactly once`);
+        text = text.replace(find, () => replace);
+      }
+      files[i] = [path, Buffer.from(text)];
+    }
+    changed.add(path);
+  }
+  if (skill.privateCli) {
+    for (const [i, [path, body]] of files.entries()) {
+      if (!/\.(md|txt|sh)$/.test(path)) continue;
+      const text = body.toString("utf8");
+      const fixed = usePrivateCli(text);
+      if (fixed !== text) {
+        files[i] = [path, Buffer.from(fixed)];
+        changed.add(path);
+      }
+    }
+  }
+  const main = files.find(([path]) => path === "SKILL.md");
+  if (!main) throw new Error(`${skill.short}: no SKILL.md in ${skill.tarball || ""}${skill.dir}`);
+  const text = main[1].toString("utf8");
+  const { title, desc, front } = describe(text, skill.short);
+  const fmVersion = front.match(/^metadata:\s*\n(?:[ \t]+.*\n)*?[ \t]+version:\s*["']?([^"'\n]+)["']?/m)?.[1];
+  if (fmVersion && skill.version && fmVersion !== skill.version) throw new Error(`${skill.short}: SKILL.md version ${fmVersion}, configured ${skill.version}`);
+  const version = fmVersion || skill.version;
+  if (!version) throw new Error(`${skill.short}: no metadata.version in SKILL.md and no configured version`);
+  return {
+    ...skill,
+    changed: [...changed].sort(),
+    name: front.match(/^name:\s*(\S+)/m)?.[1] || posix.basename(skill.dir),
+    version,
+    title,
+    desc,
+    // SKILL.md as /skills/<short>.md, one folder up from its companion files.
+    text: text.replace(/\]\((?![a-z][a-z0-9+.-]*:|#|\/)([^)\s]+)\)/gi, (_, target) => `](${skill.short}/${target})`),
+    files: files.map(([path, body]) => ({ path, body, url: `/skills/${skill.short}/${path}` })),
+  };
+}
+
+const skills = await Promise.all(SKILLS.map(loadSkill));
+const copied = walk("").filter((f) => !PAGES.some((p) => p.src === f));
+
+// Repository path → public path, for rewriting the guides' relative links.
+const route = new Map(copied.map((f) => [f, `/${f}`]));
+for (const p of PAGES) if (!route.has(p.src)) route.set(p.src, `/${p.url}`);
+for (const s of skills) if (!s.tarball) for (const f of s.files) route.set(`${s.dir}/${f.path}`, f.path === "SKILL.md" ? `/skills/${s.short}.md` : f.url);
+
+// A guide as published: relative links become absolute public URLs, and on a
+// preview every production URL points at the preview.
+function render(src) {
+  return readFileSync(join(ROOT, src), "utf8")
+    .replace(/\]\((?!https?:|mailto:|#)([^)\s#]+)(#[^)\s]*)?\)/g, (_, target, hash = "") => {
+      const to = route.get(posix.normalize(posix.join(posix.dirname(src), target)));
+      if (!to) throw new Error(`${src}: links to ${target}, which is not published`);
+      return `](${SITE}${to}${hash})`;
+    })
+    .replaceAll(SITE, BASE);
+}
+
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT);
-const files = walk(ROOT);
-for (const f of files) {
+const write = (path, content) => {
+  mkdirSync(dirname(join(OUT, path)), { recursive: true });
+  writeFileSync(join(OUT, path), content);
+};
+
+for (const f of copied) {
   mkdirSync(dirname(join(OUT, f)), { recursive: true });
   cpSync(join(ROOT, f), join(OUT, f));
 }
 
-const docs = files.filter((f) => f.endsWith(".md")).sort().map(describe);
-const grouped = GROUPS.map(([name, test]) => [name, docs.filter((d) => test(d.path))]);
-const listed = grouped.flatMap(([, ds]) => ds);
-const abilities = ABILITIES.filter((a) => existsSync(join(ROOT, a.path)));
+const pages = PAGES.map((p) => {
+  const text = render(p.src);
+  write(p.url, text);
+  return { ...p, text, ...describe(text, p.url) };
+});
+const page = (name) => pages.find((p) => p.url === name);
 
-// llms.txt (llmstxt.org format)
+for (const s of skills) {
+  for (const f of s.files) write(f.url, f.body);
+  write(`skills/${s.short}.md`, s.text);
+}
+const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
+const siteLine = `const SITE = "${SITE}";`;
+if (!installer.includes(siteLine)) throw new Error(`scripts/install-skill.js: no line ${siteLine}`);
+write("skills/install.js", installer.replace(siteLine, `const SITE = "${BASE}";`));
+
+write(
+  "skills/index.json",
+  JSON.stringify(
+    {
+      installer: "/skills/install.js",
+      skills: skills.map((s) => ({
+        name: s.name,
+        short: s.short,
+        version: s.version,
+        description: s.desc,
+        source: s.tarball ? `${s.tarball}#${s.dir}` : `https://github.com/TinyCloudLabs/prompts/tree/main/${s.dir}`,
+        ...(s.changed.length ? { changed: s.changed } : {}),
+        files: s.files.map((f) => ({ path: f.path, url: f.url, size: f.body.length, sha256: sha256(f.body) })),
+      })),
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
+// Agent Skills discovery index (agentskills.io discovery 0.2.0)
+write(
+  ".well-known/agent-skills/index.json",
+  JSON.stringify(
+    {
+      $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+      skills: skills.map((s) => ({
+        name: s.name,
+        type: "skill-md",
+        description: s.desc,
+        url: `/skills/${s.short}/SKILL.md`,
+        digest: "sha256:" + sha256(s.files.find((f) => f.path === "SKILL.md").body),
+      })),
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
+// Earlier URLs (repository paths) keep working as redirects.
+const redirects = [
+  "/setup/index.md /setup 301",
+  "/setup/index.html /setup 301",
+  "/README.md /setup 301",
+  ...PAGES.flatMap((p) => [`/${p.url}/ /${p.url} 301`, ...(p.redirectFrom || []).flatMap((from) => [`/${from} /${p.url} 301`, `/${from}/ /${p.url} 301`])]),
+  ...[...new Map(PAGES.map((p) => [p.src, p.url]))].map(([src, to]) => `/${src} /${to} 301`),
+  ...skills.filter((s) => s.name !== s.short).map((s) => `/skills/${s.name}/* /skills/${s.short}/:splat 301`),
+];
+write("_redirects", redirects.join("\n") + "\n");
+
+const listedPages = pages.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides and skills that give a coding agent (Claude Code, Codex, OpenCode) abilities backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. Every file is plain Markdown at a stable URL.",
+  "> Setup guides and skills that give a coding agent (Claude Code, Codex, OpenCode) abilities backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. Every file is plain Markdown at a short, stable URL.",
   "",
-  "Pick the entry guide or skill that matches the owner's request; entry guides install what they need and call the building blocks themselves. Guides need a shell, Node.js 22.20 or later and npm.",
+  `Start at ${url("setup")}: it lists every guide, what each does, and what the owner approves. Guides need a shell, Node.js 22.20 or later and npm.`,
   "",
   "## Abilities",
   "",
-  ...abilities.map((a) => `- [${a.title}](${url(a.path)}): ${a.text} Example prompt: "${a.prompt} ${url(a.path)}"`),
-  ...grouped.flatMap(([name, ds]) => (ds.length ? ["", `## ${name}`, "", ...ds.map((d) => `- [${d.title}](${url(d.path)}): ${d.desc}`)] : [])),
+  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${a.prompt} ${url(a.url)}"`),
+  "",
+  "## Guides",
+  "",
+  `- [${page("setup").title}](${url("setup")}): ${page("setup").desc}`,
+  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}`),
+  "",
+  "## Skills",
+  "",
+  ...skills.map((s) => `- [${s.name}](${url(`skills/${s.short}.md`)}): ${s.desc}`),
   "",
   "## Optional",
   "",
   `- [Full text](${url("llms-full.txt")}): every guide and skill above in one file.`,
-  `- [Source repository](https://github.com/TinyCloudLabs/prompts): the same files on GitHub.`,
+  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one with \`curl -fsSL ${url("skills/install.js")} | node - <short name> --agent <claude-code|codex|opencode>\`.`,
+  `- [Source repository](https://github.com/TinyCloudLabs/prompts): where the guides and TinyCloud's own skills are written.`,
   "",
 ].join("\n");
-writeFileSync(join(OUT, "llms.txt"), llms);
+write("llms.txt", llms);
 
-writeFileSync(
-  join(OUT, "llms-full.txt"),
+write(
+  "llms-full.txt",
   [`# TinyCloud agent abilities: full text`, "", `> Every guide and skill listed in ${url("llms.txt")}, concatenated.`, ""]
-    .concat(listed.map((d) => `\n---\nSource: ${url(d.path)}\n---\n\n${d.text.trimEnd()}\n`))
+    .concat(pages.map((p) => `\n---\nSource: ${url(p.url)}\n---\n\n${p.text.trimEnd()}\n`))
+    .concat(skills.map((s) => `\n---\nSource: ${url(`skills/${s.short}.md`)}\n---\n\n${s.text.trimEnd()}\n`))
     .join("\n"),
 );
 
-// Agent Skills discovery index (agentskills.io discovery 0.2.0)
-const skills = docs
-  .filter((d) => /^skills\/[^/]+\/SKILL\.md$/.test(d.path))
-  .map((d) => ({
-    name: d.path.split("/")[1],
-    type: "skill-md",
-    description: d.desc,
-    url: `/${d.path}`,
-    digest: "sha256:" + createHash("sha256").update(readFileSync(join(ROOT, d.path))).digest("hex"),
-  }));
-mkdirSync(join(OUT, ".well-known/agent-skills"), { recursive: true });
-writeFileSync(
-  join(OUT, ".well-known/agent-skills/index.json"),
-  JSON.stringify({ $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json", skills }, null, 2) + "\n",
-);
-
-const pages = ["", "setup/", "llms.txt", "llms-full.txt", ...listed.map((d) => d.path)];
-writeFileSync(
-  join(OUT, "sitemap.xml"),
+const sitemapPaths = ["", ...pages.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+write(
+  "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    pages.map((p) => `  <url><loc>${esc(url(p))}</loc></url>`).join("\n") +
+    sitemapPaths.map((p) => `  <url><loc>${esc(url(p))}</loc></url>`).join("\n") +
     "\n</urlset>\n",
 );
 
 const AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Google-Extended"];
-writeFileSync(
-  join(OUT, "robots.txt"),
+write(
+  "robots.txt",
   [
     "# These pages are written for AI agents. Fetch them freely.",
     ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /"]),
@@ -161,8 +456,8 @@ writeFileSync(
   ].join("\n"),
 );
 
-writeFileSync(
-  join(OUT, "_headers"),
+write(
+  "_headers",
   `/*
   Access-Control-Allow-Origin: *
   X-Content-Type-Options: nosniff
@@ -173,7 +468,9 @@ writeFileSync(
 
 /*.txt
   Content-Type: text/plain; charset=utf-8
-
+${PAGES.map((p) => p.url)
+  .map((name) => `\n/${name}\n  Content-Type: text/markdown; charset=utf-8\n`)
+  .join("")}
 /
   Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </sitemap.xml>; rel="sitemap"; type="application/xml"
 `,
@@ -189,13 +486,13 @@ const style = `  <style>
     footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
   </style>`;
 const card = (a) => `      <li>
-        <h3>${esc(a.title)}</h3>
+        <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
-        <p>Try: <code>${esc(`${a.prompt} ${url(a.path)}`)}</code></p>
+        <p>Try: <code>${esc(`${a.prompt} ${url(a.url)}`)}</code></p>
       </li>`;
 const desc = "Paste one line into your coding agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
-writeFileSync(
-  join(OUT, "index.html"),
+write(
+  "index.html",
   `<!doctype html>
 <html lang="en">
 <head>
@@ -211,6 +508,7 @@ ${style}
     <h1>Give your agent abilities</h1>
     <p>${esc(desc)}</p>
     <p>Works with agents that can run commands: Claude Code, Codex and OpenCode. Needs Node.js 22.20 or later.</p>
+    <p>Everything starts at <a href="/setup"><code>${esc(url("setup"))}</code></a>: what each ability does, what to paste, what you approve and how to undo it.</p>
 
     <h2>How it works</h2>
     <ol>
@@ -221,79 +519,66 @@ ${style}
 
     <h2>Abilities</h2>
     <ul class="abilities">
-${abilities.map(card).join("\n")}
-    </ul>
-
-    <h2>Building blocks</h2>
-    <p>These are for agents. The guides above call them, so you don't need to link them yourself.</p>
-    <ul>
-${docs.filter((d) => BLOCKS.has(d.path)).map((d) => `      <li><a href="/${d.path}">${esc(d.title)}</a> (<code>/${d.path}</code>)</li>`).join("\n")}
+${ABILITIES.map(card).join("\n")}
     </ul>
 
     <h2>All guides</h2>
     <ul>
-${listed.filter((d) => !BLOCKS.has(d.path)).map((d) => `      <li><a href="/${d.path}">${esc(d.title)}</a> (<code>/${d.path}</code>)</li>`).join("\n")}
+${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<code>/${p.url}</code>)</li>`).join("\n")}
+    </ul>
+
+    <h2>Skills</h2>
+    <p>The guides install these for you. Each links to its <code>SKILL.md</code>.</p>
+    <ul>
+${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
   </main>
-  <footer>Agents: start at <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
-</body>
-</html>
-`,
-);
-
-// /setup and /setup/: the entry guides and building blocks from GROUPS, one
-// line each, as HTML for people and Markdown for agents.
-const setupGroups = grouped.filter(([name, ds]) => ["Entry guides", "Building blocks"].includes(name) && ds.length);
-const oneLine = (d) => abilities.find((a) => a.path === d.path)?.text || (d.desc.match(/^.*?[.!?](?=\s|$)/) || [d.desc])[0];
-const setupDesc = "Setup guides to point a coding agent at, and the building blocks they call. Each guide installs what it needs, then carries on with the owner's request in the same conversation.";
-mkdirSync(join(OUT, "setup"), { recursive: true });
-writeFileSync(
-  join(OUT, "setup/index.md"),
-  [
-    "# TinyCloud setup guides",
-    "",
-    `> ${setupDesc}`,
-    ...setupGroups.flatMap(([name, ds]) => ["", `## ${name}`, "", ...ds.map((d) => `- [${d.title}](${url(d.path)}): ${oneLine(d)}`)]),
-    "",
-    `Every guide and skill on this site: ${url("llms.txt")}`,
-    "",
-  ].join("\n"),
-);
-writeFileSync(
-  join(OUT, "setup/index.html"),
-  `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Setup guides · TinyCloud</title>
-  <meta name="description" content="${esc(setupDesc)}">
-  <link rel="alternate" type="text/markdown" href="/setup/index.md" title="Markdown">
-  <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
-${style}
-</head>
-<body>
-  <main>
-    <h1>Setup guides</h1>
-    <p>${esc(setupDesc)}</p>
-${setupGroups
-  .map(([name, ds]) => `
-    <h2>${esc(name)}</h2>
-    <ul>
-${ds.map((d) => `      <li><a href="/${d.path}">${esc(d.title)}</a> (<code>/${d.path}</code>): ${esc(oneLine(d).replace(/`/g, ""))}</li>`).join("\n")}
-    </ul>`)
-  .join("\n")}
-  </main>
-  <footer><a href="/">All abilities</a>. Agents: this page as Markdown is <a href="/setup/index.md">/setup/index.md</a>; <a href="/llms.txt">/llms.txt</a> lists every guide and skill on this site.</footer>
+  <footer>Agents: start at <a href="/setup">/setup</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
 </body>
 </html>
 `,
 );
 
 // Without a 404 page, Pages serves index.html with 200 for missing paths.
-writeFileSync(
-  join(OUT, "404.html"),
-  `<!doctype html>\n<meta charset="utf-8">\n<title>Not found · TinyCloud</title>\n<p>Not found. Agents: see <a href="/llms.txt">/llms.txt</a> for every guide and skill on this site.</p>\n`,
+write(
+  "404.html",
+  `<!doctype html>\n<meta charset="utf-8">\n<title>Not found · TinyCloud</title>\n<p>Not found. Agents: see <a href="/setup">/setup</a> for every guide on this site.</p>\n`,
 );
 
-console.log(`built ${OUT}: ${files.length} files, ${listed.length} guides, ${skills.length} skills, ${abilities.length} abilities`);
+// Served files of `privateCli` skills run the CLI only through RESOLVER (in
+// Markdown) or defaultTc() (in scripts): no other global npm lookup, no bare
+// `tc` command in a shell code block, and no script that defaults to `tc`.
+const wrongCli = skills
+  .filter((s) => s.privateCli)
+  .flatMap((s) =>
+    s.files.flatMap((f) => {
+      const text = f.body.toString("utf8");
+      const lookups = text.split("npm prefix --global").length - 1;
+      const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
+      const scriptDefault = /\.m?js$/.test(f.path) && /\bexecutable\s*=\s*['"]tc['"]/.test(text);
+      return lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
+    }),
+  );
+if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);
+
+// Every link in a served Markdown file must reach a served file: relative
+// links, and absolute ones to this site. Code is skipped.
+const served = new Set(
+  readdirSync(OUT, { recursive: true })
+    .map((p) => p.split("\\").join("/"))
+    .filter((p) => statSync(join(OUT, p)).isFile())
+    .map((p) => `/${p}`),
+);
+const markdown = [...served].filter((p) => p.endsWith(".md") || PAGES.some((pg) => pg.url === p.slice(1)));
+const broken = markdown.flatMap((from) => {
+  const text = readFileSync(join(OUT, from), "utf8").replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+  return [...text.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)].flatMap(([, target]) => {
+    const site = [BASE, SITE].find((b) => target.startsWith(`${b}/`));
+    if (!site && (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#"))) return [];
+    const path = decodeURIComponent(new URL(site ? target.slice(site.length) : target, `http://site${from}`).pathname);
+    return served.has(path) || (path === "/" && served.has("/index.html")) ? [] : [`${from} → ${target}`];
+  });
+});
+if (broken.length) throw new Error(`links to paths this site doesn't serve:\n  ${broken.join("\n  ")}`);
+
+console.log(`built ${OUT}: ${pages.length} guides, ${skills.length} skills (${skills.map((s) => `${s.name} ${s.version}`).join(", ")}), ${copied.length} copied files`);
