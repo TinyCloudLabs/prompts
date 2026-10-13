@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Every repository file is copied verbatim at its repo path; index.html,
-// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
-// agent-skills index are generated from whatever guides exist on the branch.
+// setup/index.html, setup/index.md, llms.txt, llms-full.txt, robots.txt,
+// sitemap.xml, _headers and the agent-skills index are generated from
+// whatever guides exist on the branch.
 // No dependencies. Run: node scripts/build-site.mjs
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -17,6 +18,8 @@ const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || "https://agents.tinycloud.xyz").replace(/\/$/, "");
 const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "functions", "node_modules", "scripts"]);
+// Coordinator runbooks: kept in the repository, never published.
+const UNPUBLISHED = /^forward-tests.*\.md$/;
 
 // Abilities shown on the front page, in order. A card appears only when its
 // guide exists on this branch, so unmerged abilities never link to a 404.
@@ -58,7 +61,7 @@ const BLOCKS = new Set(["setup/tinycloud.md", "setup/openkey.md"]);
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
-    if (SKIP.has(name)) return [];
+    if (SKIP.has(name) || UNPUBLISHED.test(name)) return [];
     const full = join(dir, name);
     return statSync(full).isDirectory() ? walk(full) : [relative(ROOT, full).split("\\").join("/")];
   });
@@ -138,7 +141,7 @@ writeFileSync(
   JSON.stringify({ $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json", skills }, null, 2) + "\n",
 );
 
-const pages = ["", "llms.txt", "llms-full.txt", ...listed.map((d) => d.path)];
+const pages = ["", "setup/", "llms.txt", "llms-full.txt", ...listed.map((d) => d.path)];
 writeFileSync(
   join(OUT, "sitemap.xml"),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -176,6 +179,15 @@ writeFileSync(
 `,
 );
 
+const style = `  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 46rem; margin: 2.5rem auto; padding: 0 1.25rem; color: #1a1a1a; }
+    code { font: 0.9em ui-monospace, monospace; background: #f2f2f2; padding: 0.1em 0.3em; border-radius: 3px; overflow-wrap: anywhere; }
+    ul.abilities { list-style: none; padding: 0; }
+    ul.abilities li { border-top: 1px solid #ddd; padding: 0.25rem 0 0.75rem; }
+    h3 { margin-bottom: 0.25rem; }
+    a { color: #0b57d0; }
+    footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
+  </style>`;
 const card = (a) => `      <li>
         <h3>${esc(a.title)}</h3>
         <p>${esc(a.text)}</p>
@@ -192,15 +204,7 @@ writeFileSync(
   <title>Give your agent abilities · TinyCloud</title>
   <meta name="description" content="${esc(desc)}">
   <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
-  <style>
-    body { font: 16px/1.55 system-ui, sans-serif; max-width: 46rem; margin: 2.5rem auto; padding: 0 1.25rem; color: #1a1a1a; }
-    code { font: 0.9em ui-monospace, monospace; background: #f2f2f2; padding: 0.1em 0.3em; border-radius: 3px; overflow-wrap: anywhere; }
-    ul.abilities { list-style: none; padding: 0; }
-    ul.abilities li { border-top: 1px solid #ddd; padding: 0.25rem 0 0.75rem; }
-    h3 { margin-bottom: 0.25rem; }
-    a { color: #0b57d0; }
-    footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
-  </style>
+${style}
 </head>
 <body>
   <main>
@@ -232,6 +236,55 @@ ${listed.filter((d) => !BLOCKS.has(d.path)).map((d) => `      <li><a href="/${d.
     </ul>
   </main>
   <footer>Agents: start at <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
+</body>
+</html>
+`,
+);
+
+// /setup and /setup/: the entry guides and building blocks from GROUPS, one
+// line each, as HTML for people and Markdown for agents.
+const setupGroups = grouped.filter(([name, ds]) => ["Entry guides", "Building blocks"].includes(name) && ds.length);
+const oneLine = (d) => abilities.find((a) => a.path === d.path)?.text || (d.desc.match(/^.*?[.!?](?=\s|$)/) || [d.desc])[0];
+const setupDesc = "Setup guides to point a coding agent at, and the building blocks they call. Each guide installs what it needs, then carries on with the owner's request in the same conversation.";
+mkdirSync(join(OUT, "setup"), { recursive: true });
+writeFileSync(
+  join(OUT, "setup/index.md"),
+  [
+    "# TinyCloud setup guides",
+    "",
+    `> ${setupDesc}`,
+    ...setupGroups.flatMap(([name, ds]) => ["", `## ${name}`, "", ...ds.map((d) => `- [${d.title}](${url(d.path)}): ${oneLine(d)}`)]),
+    "",
+    `Every guide and skill on this site: ${url("llms.txt")}`,
+    "",
+  ].join("\n"),
+);
+writeFileSync(
+  join(OUT, "setup/index.html"),
+  `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Setup guides · TinyCloud</title>
+  <meta name="description" content="${esc(setupDesc)}">
+  <link rel="alternate" type="text/markdown" href="/setup/index.md" title="Markdown">
+  <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+${style}
+</head>
+<body>
+  <main>
+    <h1>Setup guides</h1>
+    <p>${esc(setupDesc)}</p>
+${setupGroups
+  .map(([name, ds]) => `
+    <h2>${esc(name)}</h2>
+    <ul>
+${ds.map((d) => `      <li><a href="/${d.path}">${esc(d.title)}</a> (<code>/${d.path}</code>): ${esc(oneLine(d).replace(/`/g, ""))}</li>`).join("\n")}
+    </ul>`)
+  .join("\n")}
+  </main>
+  <footer><a href="/">All abilities</a>. Agents: this page as Markdown is <a href="/setup/index.md">/setup/index.md</a>; <a href="/llms.txt">/llms.txt</a> lists every guide and skill on this site.</footer>
 </body>
 </html>
 `,

@@ -2,12 +2,12 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.18` (TC-540 device login and `enable share`, TC-556 owner-only links, TC-577 file names with spaces). Install an exact pin, never `@latest` (now `1.0.0`, which predates the TC-571 `--notify`, TC-548 and TC-550 fixes in the pin below). The skill's feature probe is authoritative: betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.18` (TC-540 device login and `enable share`, TC-556 owner-only links, TC-577 file names with spaces). Install the exact pin below, never `@latest`. The skill's feature probe is authoritative: betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.0.1-beta.2
+npm install --prefix <dir> @tinycloud/cli@1.2.1
 export TC_BIN=<dir>/node_modules/.bin/tc
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
