@@ -278,8 +278,10 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Right usage:**
   - No long `gh … --watch` or `gh run watch` sessions, for you or for your workers.
   - Poll at most every few minutes (5–10 min for a release or a CI wait) and stop as soon as you have the answer.
-  - Check the budget before a loop. `gh api rate_limit -q .resources.core` doesn't count against the limit. The GraphQL budget (used by `gh pr checks`/`gh pr view`) is separate: `.resources.graphql`.
-  - On a 403 or a "rate limit" error, back off: double the wait, or sleep until `reset`. Don't retry straight away.
+  - Check the budget before a loop with `gh api rate_limit -q .resources.core`. It doesn't count against the primary hourly limit, but it can count toward GitHub's secondary (abuse) limits, so check once per loop pass, not in a tight loop. The GraphQL budget (used by `gh pr checks` and `gh pr view`) is separate: `.resources.graphql`.
+  - On a 403 or 429, read the error before retrying:
+    - **A rate limit** ("rate limit" or "secondary rate limit" in the message, or `x-ratelimit-remaining: 0`): honour `Retry-After` if it's sent. Otherwise wait until `x-ratelimit-reset` (primary limit), or at least 60 s and doubling (secondary limit). Give up after a few attempts (for example 5) and report.
+    - **Anything else** (a permission or auth error): don't retry. It won't fix itself.
   - Prefer one call that returns everything (`gh run view <id> --json jobs,conclusion`) over several calls.
   - Put the poll interval and the backoff into every worker brief that waits on CI.
 - **Evidence:** Naomi's heads-up, 2026-10-14; `gh api rate_limit` showed core at 4124/5000 left with a reset at 23:51Z after the limit was hit.
