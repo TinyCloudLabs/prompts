@@ -228,7 +228,7 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Right usage:**
   - Give each consumer its own key-only profile (`tinycloud init --name factory-keys --key-only`) and request only that consumer's names. This is the safe default.
   - If you must widen an existing profile, the new scoped login's manifest has to list every name the current session reads plus the new ones, because a scoped login replaces the session.
-  - Take those names from the original manifest, which tc-secrets keeps in its state directory. `tinycloud auth caps` is not a full inventory: it shows only appended runtime delegations, not the base session's manifest permissions.
+  - Take those names from the manifest of the login that created the current session. tc-secrets writes it to `$STATE/manifest.json`, but the next consent run overwrites that file; if it's gone, ask the owner which names the profile must keep. `tinycloud auth caps` is not a full inventory: it shows only appended runtime delegations, not the base session's manifest permissions.
   - `tinycloud auth request` doesn't replace anything. Without `--grant` it writes a request artifact; with `--grant` it appends an additional delegation.
   - On Rocinante, `roci-board secret request` handles this with `--keep NAME` for each name the session already covers, and enforces it.
   - Never add `--replace-session` (an `auth login` flag) to get past `SESSION_IN_USE`; that drops the other consumers' access.
