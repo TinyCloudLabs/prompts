@@ -23,7 +23,7 @@ Agent shells may keep or drop variables, options and umask between calls. Every 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'   # the names this task needs, space-separated, e.g. 'ELEVENLABS_API_KEY'
 ```
@@ -61,7 +61,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/secrets or set TC_BIN"
@@ -89,7 +89,7 @@ This checks that the profile belongs to `TC_OWNER_DID`, then asks TinyCloud whic
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
 WAIT='<0 or 9m>'
@@ -193,7 +193,7 @@ After a CLI upgrade, a profile needs one normal command to finish a one-time upg
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 env -u TC_PRIVATE_KEY timeout 120 "$TC_BIN" --profile "$PROFILE" auth caps --json < /dev/null > /dev/null 2> "$STATE/caps.err" \
@@ -210,7 +210,7 @@ Run this for the `MISSING` and `NO_ACCESS` names from §2. The link names the se
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 ADD='<the MISSING and NO_ACCESS names, space-separated>'
 AGENT='<your agent name, e.g. Claude Code>'
@@ -246,6 +246,15 @@ rm -f "$STATE/request.json" "$STATE/request.err"
 - `REQUEST_FAILED <other code>` or `REQUEST_MISMATCH <why>` → don't send a link; tell the owner what was reported.
 - **(old CLI)** skip this block and use the `OLD_ADD_LINK` lines from §2.
 
+**Several secrets in one request.** Ask for every name the task needs in **one** request, so the owner approves once. `tc secrets request NAME1 NAME2 … --owner <did> --requester <label>` takes several names (`tc secrets request --help` shows `<name...>`) and prints one Secret Manager link with a repeated `name=` per secret:
+
+```sh
+"$TC_BIN" --profile "$PROFILE" secrets request OPENAI_API_KEY GITHUB_TOKEN --owner "$TC_OWNER_DID" --requester "Claude Code@host"
+# → https://secrets.tinycloud.xyz/request?owner=did:pkh:…&name=OPENAI_API_KEY&name=GITHUB_TOKEN&requester=…
+```
+
+The block above does this when `ADD` lists several names. Never send one link per name.
+
 ### 2c. Send the owner one message, then wait
 
 Compose **one** message from the template at the end, with the add link (if §2b ran) and the approval link (if §3b ran). Then:
@@ -257,12 +266,12 @@ Compose **one** message from the template at the end, with the add link (if §2b
 
 ## 3. Consent — only when §2 reports `NO_ACCESS`
 
-**3a. Create the profile if it doesn't exist.** `init` makes the new profile the default for every `tc` command without `--profile` on this machine, so always pass `--profile`.
+**3a. Create the profile if it doesn't exist.** `init` may make the new profile the default (tc 1.2.x leaves the default unchanged), so always pass `--profile`.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 rm -f "$STATE/context.err"
@@ -281,10 +290,22 @@ rm -f "$STATE/context.err"
 
 It also requires this profile's key, this profile's node, no callback and at most 30 days.
 
+**Several secrets in one request.** One manifest covers every name: one `tinycloud.kv` `get` entry per `vault/secrets/<NAME>`, plus a single decrypt entry on the default network and one `tinycloud.capabilities` `read`. Put the names the profile already reads in `NAMES` too: a new grant replaces the old one. For two names the manifest is:
+
+```json
+{"manifest_version": 1, "app_id": "xyz.tinycloud.agent-secrets", "name": "Agent secret reads", "space": "secrets", "permissions": [
+  {"service": "tinycloud.kv", "path": "vault/secrets/OPENAI_API_KEY", "actions": ["get"], "skipPrefix": true},
+  {"service": "tinycloud.kv", "path": "vault/secrets/GITHUB_TOKEN", "actions": ["get"], "skipPrefix": true},
+  {"service": "tinycloud.encryption", "path": "urn:tinycloud:encryption:<owner did>:default", "actions": ["decrypt"], "skipPrefix": true},
+  {"service": "tinycloud.capabilities", "path": "", "actions": ["read"], "skipPrefix": true}]}
+```
+
+The owner approves all of them with one link from `auth login --method openkey --manifest "$STATE/manifest.json" --paste …`, i.e. the block below with `NAMES='OPENAI_API_KEY GITHUB_TOKEN'`.
+
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
 
@@ -400,7 +421,7 @@ First put the code into `$STATE/code`, using exactly one of these:
 
   ```sh
   { set +x; } 2>/dev/null; set +e; umask 077
-  STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+  STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
   secret-bridge pipe OPENKEY_CODE -- sh -c 'umask 077; rm -f "$1"; cat > "$1"' sh "$STATE/code" && echo CODE_SAVED
   ```
 
@@ -410,7 +431,7 @@ First put the code into `$STATE/code`, using exactly one of these:
 
   ```sh
   { set +x; } 2>/dev/null; set +e; umask 077
-  STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+  STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
   rm -f "$STATE/code"
   cat > "$STATE/code" <<'CODE'
   <code exactly as the owner sent it>
@@ -423,7 +444,7 @@ Then finish the sign-in:
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 if ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null || [ ! -s "$STATE/manifest.json" ]; then echo NO_CODE
@@ -474,7 +495,7 @@ Read the value inside the one command that needs it. Each read takes a second or
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 rm -f "$STATE/use.err"
@@ -493,7 +514,7 @@ rm -f "$STATE/use.err"
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 rm -f "$STATE/use.err"
@@ -524,7 +545,7 @@ For example, for the current account:
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAME='<SECRET_NAME>'
 DEST='<absolute path the owner or tool needs>'
