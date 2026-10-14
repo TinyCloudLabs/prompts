@@ -39,15 +39,16 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 
 - **Date:** 2026-10-13
 - **What went wrong:**
-  - `tc init --name <p> --key-only` changed the machine's default profile in some runs (sitrep builder, 2026-10-13), displacing another app's default. With CLI 1.2.0-beta.8 it left the default unchanged (it stayed `meeting-digest`), contradicting tc-secrets §3a. Either way, commands without `--profile` ran against the wrong profile.
+  - `tc init --name <p> --key-only` changed the machine's default profile in some runs (sitrep builder, 2026-10-13), displacing another app's default. With CLI 1.2.0-beta.8 it left the default unchanged: `tc init --name factory-keys --key-only` kept `meeting-digest` as the default, contradicting tc-secrets §3a, and `--help` doesn't say either way. Commands without `--profile` then ran against the wrong profile, and other agents on the machine depend on that default.
   - A `doctor` run without `--profile` and with `TC_HOME` set to empty read another home and reported "skipped (no active session)" for a signed-in profile.
 - **Right usage:**
   - Name the profile on every command: `tinycloud --profile <p> …`.
-  - Set `TC_HOME` explicitly or not at all.
-  - Never rely on the default. If an `init` displaced another app's default, put it back with `tinycloud profile switch <name>`.
+  - Set `TC_HOME` explicitly or not at all. For tc-secrets, set `TC_SECRETS_PROFILE` and `TC_SECRETS_STATE` per command instead of switching the default.
+  - Never rely on the default. If a command might switch it, read `defaultProfile` before and after (`tinycloud profile list --json`) and put it back in the same command with `tinycloud profile switch <name>`.
 - **Evidence:**
   - Bobbie's worker fe113e54 (2026-10-13);
   - Alex (sitrep builder, 2026-10-13);
+  - Drummer (86645198, then 152677c6), TC-804, profile `factory-keys` (2026-10-12), and Amos's caution the same day;
   - Amos's 1.2.2-beta.5 release smoke;
   - prompts#23 (rewords §3a).
   - Related: TC-1078. The `PROFILE_DELETE_DEFAULT` hint names a non-existent `tc profile default`. Removing a profile's folder by hand instead of with `profile delete` leaves `defaultProfile` pointing at it; the `/publish` undo now says to remove the whole store.
@@ -216,3 +217,19 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Evidence:** Alex (sitrep CLI, 2026-10-14).
 - **Feeds:** tc-secrets (uses `TC_OWNER_DID`), tc-cli REFERENCE.md.
 - **Status:** partly folded; tc-secrets passes `TC_OWNER_DID`, tc-cli REFERENCE.md doesn't say it yet.
+
+## L16. A new grant replaces a live session: one key-only profile per consumer
+
+- **Date:** 2026-10-12
+- **What went wrong:**
+  - Running `tc --profile api-keys auth request` for one new secret name (`TYPESAFE_API_KEY`), on a profile whose live session already covered other names, was refused with `SESSION_IN_USE`.
+  - Granting only that name would have narrowed or replaced the session that other tools (universe, the video tools) use for `ELEVENLABS_API_KEY`.
+  - The agent couldn't see which names the session covered, so it couldn't safely widen the request either.
+- **Right usage:**
+  - Give each consumer its own key-only profile (`tinycloud init --name factory-keys --key-only`) and request only that consumer's names.
+  - To add names to a profile that already has a session, first list what it covers with `tinycloud --profile <p> auth caps` (CLI 1.2.3), then request every name it already reads plus the new ones: a new grant replaces the old.
+  - On Rocinante, `roci-board secret request` does this with `--keep NAME` for each name the session already covers, and enforces it.
+  - Never add `--replace-session` to get past `SESSION_IN_USE`; that drops the other consumers' access.
+- **Evidence:** TC-804; Drummer (86645198, then 152677c6), profile `factory-keys`.
+- **Feeds:** tc-secrets (§3, profile choice and grant-replaces-grant), tc-cli AUTH.md.
+- **Status:** partly folded; roci-board enforces `--keep`, prompts#23 (in review) adds "a new grant replaces the old" to tc-secrets, and the skills should still recommend one profile per consumer and `auth caps`.
