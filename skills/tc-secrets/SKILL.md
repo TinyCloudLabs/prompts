@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.2"
+  version: "0.5.3"
 ---
 
 # Read secrets from TinyCloud with `tc secrets`
@@ -566,9 +566,9 @@ Send **one** message. Fill in the placeholders, and keep only the paragraphs tha
 >
 > *(add link)* Add the missing ones here: <add link>. You enter each value on that page; names that are already in your vault show "Already in your vault". Never send a value to me.
 >
-> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 10 minutes: send it back to me here, or in the private input I opened.
+> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 10 minutes: send it back to me here.
 >
-> *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code, here or in the private input I opened.
+> *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code here.
 >
 > *(old CLI, add link)* Replace the add-link paragraph with: <NAMES> isn't in your TinyCloud Secrets yet. Open <OLD_ADD_LINK> to add it: Secret Manager opens with the name filled in, and you enter the value there. Never send the value to me. Tell me when it's saved and I'll continue.
 >
