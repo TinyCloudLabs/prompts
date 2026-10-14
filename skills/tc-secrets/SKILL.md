@@ -246,6 +246,15 @@ rm -f "$STATE/request.json" "$STATE/request.err"
 - `REQUEST_FAILED <other code>` or `REQUEST_MISMATCH <why>` → don't send a link; tell the owner what was reported.
 - **(old CLI)** skip this block and use the `OLD_ADD_LINK` lines from §2.
 
+**Several secrets in one request.** Ask for every name the task needs in **one** request, so the owner approves once. `tc secrets request NAME1 NAME2 … --owner <did> --requester <label>` takes several names (`tc secrets request --help` shows `<name...>`) and prints one Secret Manager link with a repeated `name=` per secret:
+
+```sh
+"$TC_BIN" --profile "$PROFILE" secrets request OPENAI_API_KEY GITHUB_TOKEN --owner "$TC_OWNER_DID" --requester "Claude Code@host"
+# → https://secrets.tinycloud.xyz/request?owner=did:pkh:…&name=OPENAI_API_KEY&name=GITHUB_TOKEN&requester=…
+```
+
+The block above does this when `ADD` lists several names. Never send one link per name.
+
 ### 2c. Send the owner one message, then wait
 
 Compose **one** message from the template at the end, with the add link (if §2b ran) and the approval link (if §3b ran). Then:
@@ -280,6 +289,18 @@ rm -f "$STATE/context.err"
 - the permission check (`tinycloud.capabilities/read`) that OpenKey requires.
 
 It also requires this profile's key, this profile's node, no callback and at most 30 days.
+
+**Several secrets in one request.** One manifest covers every name: one `tinycloud.kv` `get` entry per `vault/secrets/<NAME>`, plus a single decrypt entry on the default network and one `tinycloud.capabilities` `read`. Put the names the profile already reads in `NAMES` too: a new grant replaces the old one. For two names the manifest is:
+
+```json
+{"manifest_version": 1, "app_id": "xyz.tinycloud.agent-secrets", "name": "Agent secret reads", "space": "secrets", "permissions": [
+  {"service": "tinycloud.kv", "path": "vault/secrets/OPENAI_API_KEY", "actions": ["get"], "skipPrefix": true},
+  {"service": "tinycloud.kv", "path": "vault/secrets/GITHUB_TOKEN", "actions": ["get"], "skipPrefix": true},
+  {"service": "tinycloud.encryption", "path": "urn:tinycloud:encryption:<owner did>:default", "actions": ["decrypt"], "skipPrefix": true},
+  {"service": "tinycloud.capabilities", "path": "", "actions": ["read"], "skipPrefix": true}]}
+```
+
+The owner approves all of them with one link from `auth login --method openkey --manifest "$STATE/manifest.json" --paste …`, i.e. the block below with `NAMES='OPENAI_API_KEY GITHUB_TOKEN'`.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
