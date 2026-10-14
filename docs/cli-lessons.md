@@ -143,7 +143,7 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Date:** 2026-10-12
 - **What went wrong:** `tc auth status` reported `authenticated: true` on profile `tinychat-agent` 9 days after its session had expired. A real `tc sql query` then returned `AUTH_REQUIRED`.
 - **Right usage:**
-  - Check `tinycloud --profile <p> context --json`: session `state` is `missing`, `expired`, `unverified` or `present`, with `expiresAt`. Or make a real read.
+  - Check `tinycloud --profile <p> context --json`: session `state` is `missing`, `expired`, `unverified`, `unknown-expiry` or `present`, with `expiresAt` (null when the expiry can't be determined). This is local metadata (`access: "not-tested"`), not verified access; make a real read when access matters.
   - Since CLI 1.2.2, `auth status` reports the expired state too, but a real read remains the only proof that a capability works.
 - **Evidence:** TC-973 (js-sdk#508); Avasarala's transcript job (worker 6f350d25).
 - **Feeds:** tc-cli SKILL.md and AUTH.md, tinychat-retrieval.
@@ -152,12 +152,12 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 ## L10. Device login can't grant SQL or the secrets, account or applications spaces
 
 - **Date:** 2026-10-13
-- **What went wrong:** `tinycloud auth login --device --manifest M` for a manifest including `tinycloud.sql`, or the `secrets`, `account` or `applications` spaces, was refused (`SCOPE_REJECTED`). OpenKey's device flow refuses those by design.
+- **What went wrong:** `tinycloud auth login --device --manifest M` for a manifest including `tinycloud.sql`, or the `secrets`, `account` or `applications` spaces, was refused. The CLI rejects secrets-space and encryption scopes before contacting OpenKey (`DEVICE_AUTH_UNSUPPORTED_SCOPE`), and OpenKey's device flow refuses the rest (`SCOPE_REJECTED`) by design.
 - **Right usage (headless box):**
   1. Run the paste login once with stdin closed, which prints the approval URL: `tinycloud --profile <p> auth login --method openkey --paste --manifest M --expiry 30d --owner did:pkh:… < /dev/null`.
   2. The owner approves and sends back the short code.
   3. Redeem it with the same command and the code on stdin: `printf '%s\n' "$CODE" | tinycloud --profile <p> auth login --method openkey --paste --manifest M --expiry 30d --owner did:pkh:…`.
-  - The URL is stable for the same profile, key and manifest.
+  - The URL is stable when the profile, key, manifest and the other effective options (expiry, host, reason) are the same, so rerunning the identical command gives the same link.
 - **Evidence:** openkey `apps/api/src/services/device-authorization.ts` (allowed and refused scopes); Avasarala (profile `meeting-digest`, redeemed 2026-10-13); Alex (2026-10-14).
 - **Feeds:** tc-cli AUTH.md, tc-secrets (already uses paste), tc-apps SQL.md (already uses paste), tinychat-retrieval.
 - **Status:** partly folded; tc-secrets and tc-apps use paste, tc-cli AUTH.md should say which scopes need it.
@@ -166,9 +166,9 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 
 - **Date:** 2026-10-12
 - **What went wrong:** `tc kv list` dropped the node's `truncated` / `nextCursor` and had no paging flags, so agents couldn't tell a partial listing from a complete one. They cross-checked counts against the SQL catalog instead.
-- **Right usage:** on CLI 1.2.3+, use `tinycloud kv list --all`, or `--limit N` with `--cursor <nextCursor>`, and check `truncated: false`. A rejected cursor is `KV_LIST_CURSOR_INVALID` (exit 2, 1.2.4+).
-- **Evidence:** TC-982; js-sdk#514 (1.2.3) and #524 (1.2.4).
-- **Feeds:** tc-cli REFERENCE.md (updated), tc-apps and tinychat-retrieval listing code.
+- **Right usage:** on CLI 1.2.3+, use `tinycloud kv list --all`, or `--limit N` with `--cursor <nextCursor>`, and check `truncated: false`. A rejected cursor is `KV_LIST_CURSOR_INVALID` (exit 2).
+- **Evidence:** TC-982; js-sdk#514 and #524 (both in 1.2.3; #524 first shipped in 1.2.3-beta.4).
+- **Feeds:** tc-cli SKILL.md (paging guidance added in js-sdk#514), tc-apps and tinychat-retrieval listing code.
 - **Status:** folded into CLI 1.2.3 (js-sdk#514).
 
 ## L12. Skill packs that match the CLI version with a regex reject pre-releases
@@ -178,13 +178,17 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Right usage:** compare versions with a semver-aware check that accepts pre-release suffixes, or feature-probe (`--help` output) as tc-secrets and tc-publish do.
 - **Evidence:** tinychat #327; Avasarala's transcript job.
 - **Feeds:** tinychat-retrieval (fixed), any pack with a version check.
-- **Status:** folded into tinychat-retrieval (tinychat #327); audit other packs at the next fold.
+- **Status:** folded into tinychat-retrieval 0.1.1-onboarding.17 (tinychat #327); audit other packs at the next fold.
 
 ## L13. Check that a secret exists without reading it: `secrets wait --timeout 0`
 
 - **Date:** 2026-10-14
 - **What went wrong:** agents used `tc secrets list` to see whether a secret existed. It needs a list grant on `vault/secrets/`, which no agent profile has, so it returned `PERMISSION_DENIED` on 9 profiles.
-- **Right usage:** `tinycloud --profile <p> secrets wait NAME --timeout 0`. Exit 0 means present, exit 8 means pending (not there or not readable). It never decrypts.
+- **Right usage:** `tinycloud --profile <p> secrets wait NAME --timeout 0` on a signed-in profile. It never decrypts. Branch on the exit code:
+  - 0: the secret exists and this profile can read it (the KV read grant; decrypt is not tested).
+  - 8: pending, the secret isn't there yet. Send the add link and wait.
+  - 5: `PERMISSION_DENIED`, the secret may exist but this profile can't read it. Request consent; don't wait for it to be added.
+  - 3: `AUTH_REQUIRED`, no usable session.
 - **Evidence:** Alex, 2026-10-14; tc-secrets §2.
 - **Feeds:** tc-secrets (already uses it), tc-cli REFERENCE.md.
 - **Status:** partly folded; tc-secrets uses it, tc-cli REFERENCE.md doesn't point to it yet.
@@ -205,7 +209,10 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 
 - **Date:** 2026-10-14
 - **What went wrong:** on a key-only profile, `tc context --json` reports `ownerDid: null`, so requests that needed the owner failed or targeted nothing.
-- **Right usage:** pass `--owner did:pkh:eip155:1:<address>` explicitly to `secrets request`, `secrets wait` and `auth login` until the profile has signed in.
+- **Right usage:**
+  - Before the profile has signed in, pass `--owner did:pkh:eip155:1:<address>` to `secrets request` and `auth login`. `secrets request` works offline this way.
+  - `secrets wait` still needs a signed-in session: on an unsigned key-only profile it exits 3 (`AUTH_REQUIRED`) even with `--owner`. Run it only after sign-in, where `--owner` checks the profile's live identity against the expected owner.
+  - Keep pinning the owner explicitly (`TC_OWNER_DID`) rather than relying on the profile.
 - **Evidence:** Alex (sitrep CLI, 2026-10-14).
 - **Feeds:** tc-secrets (uses `TC_OWNER_DID`), tc-cli REFERENCE.md.
 - **Status:** partly folded; tc-secrets passes `TC_OWNER_DID`, tc-cli REFERENCE.md doesn't say it yet.
