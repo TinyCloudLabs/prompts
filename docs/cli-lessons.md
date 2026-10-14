@@ -39,15 +39,16 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 
 - **Date:** 2026-10-13
 - **What went wrong:**
-  - `tc init --name <p> --key-only` changed the machine's default profile in some runs (sitrep builder, 2026-10-13), displacing another app's default. With CLI 1.2.0-beta.8 it left the default unchanged (it stayed `meeting-digest`), contradicting tc-secrets §3a. Either way, commands without `--profile` ran against the wrong profile.
+  - `tc init --name <p> --key-only` changed the machine's default profile in some runs (sitrep builder, 2026-10-13), displacing another app's default. With CLI 1.2.0-beta.8 it left the default unchanged: `tc init --name factory-keys --key-only` kept `meeting-digest` as the default, contradicting tc-secrets §3a, and `--help` doesn't say either way. Commands without `--profile` then ran against the wrong profile, and other agents on the machine depend on that default.
   - A `doctor` run without `--profile` and with `TC_HOME` set to empty read another home and reported "skipped (no active session)" for a signed-in profile.
 - **Right usage:**
   - Name the profile on every command: `tinycloud --profile <p> …`.
-  - Set `TC_HOME` explicitly or not at all.
-  - Never rely on the default. If an `init` displaced another app's default, put it back with `tinycloud profile switch <name>`.
+  - Set `TC_HOME` explicitly or not at all. For tc-secrets, set `TC_SECRETS_PROFILE` and `TC_SECRETS_STATE` per command instead of switching the default.
+  - Never rely on the default. If a command might switch it, read `defaultProfile` before and after (`tinycloud profile list --json`) and put it back in the same command with `tinycloud profile switch <name>`.
 - **Evidence:**
   - Bobbie's worker fe113e54 (2026-10-13);
   - Alex (sitrep builder, 2026-10-13);
+  - Drummer (86645198, then 152677c6), TC-804, profile `factory-keys` (2026-10-12), and Amos's caution the same day;
   - Amos's 1.2.2-beta.5 release smoke;
   - prompts#23 (rewords §3a).
   - Related: TC-1078. The `PROFILE_DELETE_DEFAULT` hint names a non-existent `tc profile default`. Removing a profile's folder by hand instead of with `profile delete` leaves `defaultProfile` pointing at it; the `/publish` undo now says to remove the whole store.
@@ -216,3 +217,21 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Evidence:** Alex (sitrep CLI, 2026-10-14).
 - **Feeds:** tc-secrets (uses `TC_OWNER_DID`), tc-cli REFERENCE.md.
 - **Status:** partly folded; tc-secrets passes `TC_OWNER_DID`, tc-cli REFERENCE.md doesn't say it yet.
+
+## L16. A scoped login replaces a live session: one key-only profile per consumer
+
+- **Date:** 2026-10-12
+- **What went wrong:**
+  - To add one secret name (`TYPESAFE_API_KEY`) on the shared `api-keys` profile, whose live session already covered other names, the agent ran the tc-secrets consent step: a scoped login, `tc --profile api-keys auth login --method openkey --paste --manifest M`, with `M` naming only the new secret. Drummer reported the step as `auth request`.
+  - It was refused with `SESSION_IN_USE`: the new scoped session would have replaced the one that other tools (universe, the video tools) use for `ELEVENLABS_API_KEY`.
+  - The agent couldn't tell which names the live session covered, so it couldn't safely widen the manifest either.
+- **Right usage:**
+  - Give each consumer its own key-only profile (`tinycloud init --name factory-keys --key-only`) and request only that consumer's names. This is the safe default.
+  - If you must widen an existing profile, the new scoped login's manifest has to list every name the current session reads plus the new ones, because a scoped login replaces the session.
+  - Take those names from the manifest of the login that created the current session. tc-secrets writes it to `$STATE/manifest.json`, but the next consent run overwrites that file; if it's gone, ask the owner which names the profile must keep. `tinycloud auth caps` is not a full inventory: it shows only appended runtime delegations, not the base session's manifest permissions.
+  - `tinycloud auth request` doesn't replace anything. Without `--grant` it writes a request artifact; with `--grant` it appends an additional delegation.
+  - On Rocinante, `roci-board secret request` handles this with `--keep NAME` for each name the session already covers, and enforces it.
+  - Never add `--replace-session` (an `auth login` flag) to get past `SESSION_IN_USE`; that drops the other consumers' access.
+- **Evidence:** TC-804; Drummer (86645198, then 152677c6), profile `factory-keys`. The CLI 1.2.3 behaviour of `auth caps` and `auth request` was checked in the prompts#26 review.
+- **Feeds:** tc-secrets (§3, profile choice, and the scoped login replacing the session), tc-cli AUTH.md.
+- **Status:** partly folded; roci-board enforces `--keep`, and the skills should still recommend one profile per consumer and say a scoped login replaces the session.
