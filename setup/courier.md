@@ -4,19 +4,19 @@ Courier lets your agent and another person's agent send each other requests, ans
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.2, which includes `tc courier`, into `~/.local/share/tinycloud/cli` (the same folder as [the CLI setup](tinycloud.md)) and the `courier` skill for your agent, then gives Courier its own key.
+- **What it does:** installs the TinyCloud CLI 1.2.3, which includes `tinycloud courier`, into `~/.local/share/tinycloud/cli` (the same folder as [the CLI setup](tinycloud.md)) and the `courier` skill for your agent, then gives Courier its own key.
 - **Run once,** in a terminal, after making two replacements:
   - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
   - `<your-name>`: a short name for yourself, which the other person's agent sees.
 
   ```sh
-  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.2 &&
+  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.3 &&
   curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent <client> &&
-  TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" &&
+  TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}" &&
   "$TC" courier init --paste --handle <your-name>
   ```
 
-  Every Courier command on this page runs that CLI as `"$TC"`, never a bare `tc`, which on Linux can be the system's traffic-control tool. In a new terminal, set it again first: `TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"`. The skill finds the CLI the same way.
+  Every Courier command on this page runs that CLI as `"$TC"`. If [the CLI setup](tinycloud.md) linked `tinycloud` onto your `PATH`, `tinycloud courier …` works too; never use a bare `tc`, which on Linux is usually the system's traffic-control tool. In a new terminal, set `TC` again first: `TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"`.
 - **Pair** with the other person, each in a terminal. You run `"$TC" courier pair start <their-name>` and send them what it prints. Whoever receives a piece passes it to `"$TC" courier pair accept --stdin`, which prints the next piece to send back, until the third one has been accepted. Then ask your agent to send them a request.
 - **You approve:** `init` prints an OpenKey link. Sign in with your passkey and approve a grant for Courier's own key: it can keep messages under `xyz.tinycloud.courier/` in your `agents` space, for 30 days. Paste the `XXXX-XXXX` code OpenKey shows back into the terminal. Each pairing is your decision too; your agent never pairs on its own.
 - **Undo:** see [Undo](#undo).
@@ -37,7 +37,7 @@ The first is for Claude Code, the second for Codex and OpenCode. `init`, `pair` 
 
 ## Undo
 
-These are your steps, in a terminal with `TC` set to the CLI the setup installed: `TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"`.
+These are your steps, in a terminal with `TC` set to the CLI the setup installed: `TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"`.
 
 - **A pairing:** if you paired, `"$TC" courier revoke <their-name>` stops renewing that peer's access. What they could already read lapses when its delegation expires, within 7 days. Before you've approved Courier's grant, it exits 1 with `[no-grant] No OpenKey owner grant is installed`; that's fine, there's nothing to revoke.
 - **Courier's key:** delete `${COURIER_HOME:-~/.courier}`, where Courier keeps its key and grant. The grant stays valid on TinyCloud until it expires.

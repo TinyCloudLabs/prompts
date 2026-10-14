@@ -17,7 +17,7 @@ Keep the user's original request and current client throughout setup. Setup is a
 
 Follow [the CLI setup module](../../setup/tinycloud.md) with the current client and record this guide's [install heading](#2-install-the-tinychat-retrieval-skill) as the return location. Reuse valid installations as that module directs. When it finishes, return here and continue immediately.
 
-The TinyChat retrieval skill served here runs `TC_BIN` if it's set, else the CLI the module installs in `~/.local/share/tinycloud/cli`, and only then `tc` from the `PATH`. So it works whatever `tc` on the `PATH` is: continue to §2 on `TC_READY`, `TC_LINKED` or any `TC_CONFLICT`. A `TC_CONFLICT` only means the module didn't link `tc`; mention it to the user in one line, and don't change their `PATH` or another `tc` for them. Stop only on `TC_INSTALL_FAILED`, as the module says.
+The TinyChat retrieval skill served here runs `TC_BIN` if it's set, else the CLI the module installs in `~/.local/share/tinycloud/cli`, and only then `tc` from the `PATH`. So it works whatever `tc` or `tinycloud` on the `PATH` is: continue to §2 on any `TC_READY`, `TC_LINKED` or `TC_CONFLICT` line. A `TC_CONFLICT` only means the module didn't link that name; mention it to the user in one line, and don't change their `PATH` or another program for them. Stop only on `TC_INSTALL_FAILED`, as the module says.
 
 Do not run the separate OpenKey CLI setup. TinyChat does not invoke the standalone `openkey` binary, and an OpenKey CLI login does not grant TinyCloud app permissions.
 
@@ -69,7 +69,7 @@ In OpenCode, write the non-secret app configuration to a private temporary JSON 
 
 The adapter binds approval to this conversation and selected profile. It captures the accepted paste and sends it through private CLI stdin; never transcribe the code into a tool argument, command or file. Wait for the verified receipt. The local OpenCode TUI input history still retains the paste. A ready receipt proves local context, not meeting access.
 
-Under the hood, TinyChat uses the official `tc auth login --method openkey --manifest <TinyChat permission manifest> --expiry 7d` flow through its own adapter and transport. The installed app manifest requests capability metadata plus read access to the TinyChat meeting SQL catalog and connector KV bodies. Keep that authorization app-scoped and do not weaken the manifest. Do not substitute a standalone `openkey login`.
+Under the hood, TinyChat uses the official CLI's `auth login --method openkey --manifest <TinyChat permission manifest> --expiry 7d` flow through its own adapter and transport. The installed app manifest requests capability metadata plus read access to the TinyChat meeting SQL catalog and connector KV bodies. Keep that authorization app-scoped and do not weaken the manifest. Do not substitute a standalone `openkey login`.
 
 For Codex or Claude Code, set `PACK` to the known installed directory and use the private-file `prepare`, `authorize` and `login --code-file` workflow in the pinned setup reference. Never have the model reproduce an opaque response into a file.
 
@@ -98,14 +98,14 @@ Browsing uses `discover`, an explicit displayed 1-based meeting selection with `
 
 On a later OpenCode visit, call `tinychat_setup` without arguments; other clients run the installed helper's `prepare` without a config. Reuse valid context and authority. Use `--new-profile` only for an intentional account or deployment change, and never switch identities to work around a read failure.
 
-For a local diagnostic export, call `tinychat_handoff` in the current conversation and report its absolute path. This does not authorize `tc share publish`, uploads, broader permissions or another sign-in. Follow the pinned session-handoff reference and exclude raw messages, meeting text, provider records, keys, signed responses and TUI input history.
+For a local diagnostic export, call `tinychat_handoff` in the current conversation and report its absolute path. This does not authorize the CLI's `share publish`, uploads, broader permissions or another sign-in. Follow the pinned session-handoff reference and exclude raw messages, meeting text, provider records, keys, signed responses and TUI input history.
 
 Repeating the same install is idempotent; install a newly identified pack explicitly when this guide is revised.
 
 **Undo, for the owner.** Two steps:
 
 1. **Remove the skill:** delete its folder, `$HOME/.agents/skills/tinychat-retrieval` for Codex and OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Codex and OpenCode share `~/.agents/skills`, so removal there affects both.
-2. **Log out, if you signed in:** the TinyChat sign-in lasts 7 days. To end it on this computer sooner, run `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --profile tinychat-agent auth logout`. The profile is `tinychat-agent`, or the `profile` named in `~/.config/tinychat-retrieval/setup.json` if you set up again with a new profile. If you never signed in, the command reports `PROFILE_NOT_FOUND`; that's fine. The approval stays valid on TinyCloud until it expires.
+2. **Log out, if you signed in:** the TinyChat sign-in lasts 7 days. To end it on this computer sooner, run `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}" --profile tinychat-agent auth logout` (or `tinycloud --profile tinychat-agent auth logout` if [the CLI setup](../../setup/tinycloud.md) linked `tinycloud` onto your `PATH`). The profile is `tinychat-agent`, or the `profile` named in `~/.config/tinychat-retrieval/setup.json` if you set up again with a new profile. If you never signed in, the command reports `PROFILE_NOT_FOUND`; that's fine. The approval stays valid on TinyCloud until it expires.
 
 Skill removal, logout and grant revocation are separate; neither step touches other skills or the shared `tc-cli` skill.
 

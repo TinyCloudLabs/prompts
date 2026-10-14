@@ -45,7 +45,7 @@ You need a shell, Node.js 22.20 or later, and npm.
 
 ## Building blocks
 
-- [/cli](tinycloud.md): installs the TinyCloud CLI (`tc`) and its `tc-cli` skill. Nothing to approve. `/chat` runs it for you; the other pages install the CLI themselves.
+- [/cli](tinycloud.md): installs the TinyCloud CLI and its `tc-cli` skill, and makes the `tinycloud` command run it. Nothing to approve. `/chat` runs it for you; the other pages install the CLI themselves.
 - [/openkey](openkey.md): installs the standalone OpenKey CLI, for workflows that need it. No page here uses it. Nothing to approve.
 
 ## Skills
@@ -58,4 +58,4 @@ curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <skill> --age
 
 `<skill>` is `apps`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/apps.md`](https://agents.tinycloud.xyz/skills/apps.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
 
-`mcp` has no setup page: it's the skill that goes with the TinyCloud MCP server, `@tinycloud/mcp` 0.5.2, for agents that already run that server. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).
+`mcp` has no setup page: it's the skill that goes with the TinyCloud MCP server, `@tinycloud/mcp` 0.5.3, for agents that already run that server. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).

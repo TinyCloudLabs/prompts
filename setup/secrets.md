@@ -4,15 +4,15 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.2 into a folder of its own and the `tc-secrets` skill for your agent.
+- **What it does:** installs the TinyCloud CLI 1.2.3 into a folder of its own and the `tc-secrets` skill for your agent.
 - **Run once,** in a terminal, after making two replacements:
   - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
   - `<your DID>`: the account that owns the secrets, `did:pkh:eip155:1:<your address>`.
 
   ```sh
-  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.2 &&
+  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.3 &&
   curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - secrets --agent <client> &&
-  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc" TC_OWNER_DID=<your DID>
+  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud" TC_OWNER_DID=<your DID>
   ```
 
   Start your agent from that shell, or add the `export` line to your shell profile so every new shell has it. Then ask, for example: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud."
