@@ -384,7 +384,7 @@ rm -f "$STATE/login.err" "$STATE/context.json"
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than 1.0.0-beta.23.
 
-**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`, valid for **10 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. Keep it out of the conversation when you can.
+**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`, valid for **10 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. The owner sends it in your 1:1 channel; never repeat, quote or echo it anywhere else (not in replies, notes, logs or other tools).
 
 - **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB). Copying a code that long by hand can corrupt it, so prefer upgrading the CLI.
 
