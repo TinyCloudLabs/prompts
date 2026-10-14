@@ -4,15 +4,15 @@ Your agent publishes a document or web page from your computer to your TinyCloud
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.2 into a folder of its own and the `tc-publish` skill for your agent.
+- **What it does:** installs the TinyCloud CLI 1.2.3 into a folder of its own and the `tc-publish` skill for your agent.
 - **Run once,** in a terminal, after making two replacements:
   - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
   - `<your email>`: the address owner-only links go to, for example `you@example.com`.
 
   ```sh
-  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.2 &&
+  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.3 &&
   curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - publish --agent <client> &&
-  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc" TC_OWNER_EMAIL=<your email>
+  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud" TC_OWNER_EMAIL=<your email>
   ```
 
   Start your agent from that shell, or add the `export` line to your shell profile so every new shell has it. Then ask: "Publish this report and send me a private link."
@@ -31,7 +31,7 @@ cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md"
 cat "$HOME/.agents/skills/tc-publish/SKILL.md"
 ```
 
-The first is for Claude Code, the second for Codex and OpenCode. If neither exists, or the skill's §1 check stops because `TC_BIN` isn't set, don't install anything yourself: show the owner the block under "For the owner" and ask them to run it.
+The first is for Claude Code, the second for Codex and OpenCode. If neither exists, or the skill's §1 check prints `TC_NOT_FOUND`, don't install anything yourself: show the owner the block under "For the owner" and ask them to run it.
 
 ## Undo
 

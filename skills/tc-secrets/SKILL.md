@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.1"
+  version: "0.5.2"
 ---
 
 # Read secrets from TinyCloud with `tc secrets`
@@ -10,7 +10,7 @@ metadata:
 The owner stores secrets in TinyCloud Secrets (secrets.tinycloud.xyz). You read only the names they approved, through a CLI profile the owner authorizes with OpenKey. When a secret is missing, you send the owner a link where they add it themselves. You never see, ask for, or store a secret value in the conversation.
 
 Operator-set, never change or unset:
-- `TC_BIN`: absolute path to the TinyCloud CLI, `@tinycloud/cli` 1.2.0-beta.2 or later. `command -v tc` can resolve to `/usr/sbin/tc` (Linux traffic control).
+- `TC_BIN`: absolute path to the TinyCloud CLI, `@tinycloud/cli` 1.2.0-beta.2 or later. Optional: without it, every block's preamble uses `~/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`, where agents.tinycloud.xyz installs it, else `tinycloud` on the `PATH`. Never a bare `tc`: `command -v tc` can resolve to `/usr/sbin/tc` (Linux traffic control).
 - `TC_OWNER_DID`: the owner's `did:pkh:eip155:1:0x…`.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_SECRETS_PROFILE`: the profile name. Default `api-keys`.
@@ -22,6 +22,7 @@ Agent shells may keep or drop variables, options and umask between calls. Every 
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'   # the names this task needs, space-separated, e.g. 'ELEVENLABS_API_KEY'
@@ -59,23 +60,25 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
-if [ -x "$TC_BIN" ] && "$TC_BIN" secrets get --help 2>/dev/null | grep -q -- '--raw' \
+if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/secrets or set TC_BIN"
+elif [ -x "$TC_BIN" ] && "$TC_BIN" secrets get --help 2>/dev/null | grep -q -- '--raw' \
    && "$TC_BIN" auth login --help 2>/dev/null | grep -q -- '--owner'; then
   # Old CLIs answer `secrets wait --help` with the general `secrets` help, so check the options.
   if "$TC_BIN" secrets wait --help 2>/dev/null | grep -q -- '--timeout' \
      && "$TC_BIN" secrets request --help 2>/dev/null | grep -q -- '--requester'; then echo CLI_OK
   else echo CLI_LEGACY; fi
 else echo STALE; fi
-if [ -n "$TC_BIN" ]; then "$TC_BIN" --version; else echo "TC_BIN is not set"; fi
+[ -z "$TC_BIN" ] || "$TC_BIN" --version
 printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9a-fA-F]{40}$' && echo OWNER_OK || echo OWNER_UNSET
 ```
 
 - `CLI_OK` and `OWNER_OK` → continue with §2.
 - `CLI_LEGACY` → the CLI predates `secrets request` and `secrets wait`. Everything still works with the older steps marked **(old CLI)** below. Tell the operator once that the CLI should be upgraded to the pinned version.
-- `STALE` or `OWNER_UNSET` → stop and tell the owner. Never install anything yourself.
+- `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → stop and tell the owner. Never install anything yourself.
 
 If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tc` command.
 
@@ -85,6 +88,7 @@ This checks that the profile belongs to `TC_OWNER_DID`, then asks TinyCloud whic
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
@@ -188,6 +192,7 @@ After a CLI upgrade, a profile needs one normal command to finish a one-time upg
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -204,6 +209,7 @@ Run this for the `MISSING` and `NO_ACCESS` names from §2. The link names the se
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 ADD='<the MISSING and NO_ACCESS names, space-separated>'
@@ -255,6 +261,7 @@ Compose **one** message from the template at the end, with the add link (if §2b
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -276,6 +283,7 @@ It also requires this profile's key, this profile's node, no callback and at mos
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
@@ -414,6 +422,7 @@ Then finish the sign-in:
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -464,6 +473,7 @@ Read the value inside the one command that needs it. Each read takes a second or
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -482,6 +492,7 @@ rm -f "$STATE/use.err"
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -512,6 +523,7 @@ For example, for the current account:
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAME='<SECRET_NAME>'
