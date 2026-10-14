@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.2"
+  version: "0.5.3"
 ---
 
 # Read secrets from TinyCloud with `tc secrets`
@@ -384,29 +384,14 @@ rm -f "$STATE/login.err" "$STATE/context.json"
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than 1.0.0-beta.23.
 
-**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`, valid for **10 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. Keep it out of the conversation when you can.
+**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`, valid for **10 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. The owner sends it in your 1:1 channel; never repeat, quote or echo it anywhere else (not in replies, notes, logs or other tools).
 
-- **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB). Prefer the private input for it: copying a code that long by hand can corrupt it.
+- **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB). Copying a code that long by hand can corrupt it, so prefer upgrading the CLI.
 
-First put the code into `$STATE/code`, using exactly one of these:
+Ask the owner to send the code in your 1:1 channel, then put it into `$STATE/code` with exactly one of these. Don't use a separate secret-input tool for the code: Paseo's Secret Bridge is retired.
 
-- **The harness has a private input** that can pipe a value into a command, such as Paseo's Secret Bridge. Request it, wait for the owner to submit it, then write it with one call. For example, with Secret Bridge:
-
-  ```sh
-  secret-bridge request OPENKEY_CODE --reason "Paste the code OpenKey showed after you approved. It finishes the TinyCloud sign-in for this machine's <profile> profile."
-  ```
-
-  then, after the owner submits it:
-
-  ```sh
-  { set +x; } 2>/dev/null; set +e; umask 077
-  STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
-  secret-bridge pipe OPENKEY_CODE -- sh -c 'umask 077; rm -f "$1"; cat > "$1"' sh "$STATE/code" && echo CODE_SAVED
-  ```
-
-- **Otherwise** ask the owner to send the code in your 1:1 channel.
-  - If the harness exposes an existing, authorized log of this 1:1 conversation, extract the owner's code for this sign-in directly into a fresh 0600 `$STATE/code` in one command, with tracing disabled. Don't print the code or the log, don't put the code in a command-line argument, and don't make intermediate copies. Leave the harness's log untouched, and never create a log for this purpose.
-  - If not, paste it between the `CODE` markers exactly as received, in one tool call. Paste it exactly as sent; either case works.
+- If the harness exposes an existing, authorized log of this 1:1 conversation, extract the owner's code for this sign-in directly into a fresh 0600 `$STATE/code` in one command, with tracing disabled. Don't print the code or the log, don't put the code in a command-line argument, and don't make intermediate copies. Leave the harness's log untouched, and never create a log for this purpose.
+- If not, paste it between the `CODE` markers exactly as received, in one tool call. Paste it exactly as sent; either case works.
 
   ```sh
   { set +x; } 2>/dev/null; set +e; umask 077
@@ -581,9 +566,9 @@ Send **one** message. Fill in the placeholders, and keep only the paragraphs tha
 >
 > *(add link)* Add the missing ones here: <add link>. You enter each value on that page; names that are already in your vault show "Already in your vault". Never send a value to me.
 >
-> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 10 minutes: send it back to me here, or in the private input I opened.
+> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 10 minutes: send it back to me here.
 >
-> *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code, here or in the private input I opened.
+> *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code here.
 >
 > *(old CLI, add link)* Replace the add-link paragraph with: <NAMES> isn't in your TinyCloud Secrets yet. Open <OLD_ADD_LINK> to add it: Secret Manager opens with the name filled in, and you enter the value there. Never send the value to me. Tell me when it's saved and I'll continue.
 >

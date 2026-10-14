@@ -61,7 +61,7 @@ At `openkey.so/delegate`, the owner signs in with their passkey and picks their 
 
 Reads are limited to the named secrets. The decrypt permission covers the owner's default encryption network, which is not limited to those names. So the approval message says so: the profile can only fetch the named secrets, but it could decrypt anything encrypted to that network that it gets from elsewhere.
 
-After **Approve**, the page shows an 8-character code (for example `K7M2-Q9XA`), valid for 10 minutes. The CLI uses it to fetch the signed approval from OpenKey, and accepts it only if that approval names this machine's profile key, so the code is useless elsewhere. "Use full delegation code instead" shows the long code (7–10 KB of base64) that CLIs older than 1.1.0-beta.14 need. Either code still belongs in a private channel when one exists; harness private inputs (for example Paseo's Secret Bridge) keep it out of the transcript entirely.
+After **Approve**, the page shows an 8-character code (for example `K7M2-Q9XA`), valid for 10 minutes. The CLI uses it to fetch the signed approval from OpenKey, and accepts it only if that approval names this machine's profile key, so the code is useless elsewhere. "Use full delegation code instead" shows the long code (7–10 KB of base64) that CLIs older than 1.1.0-beta.14 need. Send the code to the agent in your 1:1 channel with it, not in a group. (Paseo's Secret Bridge is retired and is no longer a way to hand over codes.)
 
 ## Never let a value leak
 
