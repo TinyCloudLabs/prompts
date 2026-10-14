@@ -33,7 +33,7 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
   - Avasarala's transcript-job access notes (worker 6f350d25);
   - roci-board hints still use `$(npm prefix --global)/bin/tc` (planner 664677c0, 2026-10-14).
 - **Feeds:** `/cli`, `/chat`, tc-cli skill, courier skill, tinychat-retrieval (upstream), roci-board hints.
-- **Status:** partly folded; pages switched in prompts#19/#21, the js-sdk resolver ships in CLI 1.2.4, TC-1077 and the roci-board hints are open.
+- **Status:** partly folded; pages switched in prompts#19/#21, the js-sdk resolver shipped in CLI 1.2.4 (#526), and TC-1077 and the roci-board hints are open.
 
 ## L2. Always pass `--profile`; `init` may or may not change the default
 
@@ -64,7 +64,7 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Right usage:**
   - Collect every name first, then make **one** request: `tinycloud secrets request A B … --owner <did> --requester <label>`. That gives one Secret Manager link with a repeated `name=`.
   - The grant manifest lists every `vault/secrets/<NAME>` get, plus the names the profile already reads, because a new grant replaces the old one.
-  - On Rocinante, it's one `roci-board secret request` naming all of them.
+  - On Rocinante, it's one `roci-board secret request NAME [NAME…]` naming all of them.
   - Ask again only for names that come up later.
 - **Evidence:** Sam, 2026-10-14 (via Naomi); Alex (Better Stack, 2026-10-14); prompts#23 commit 57193b7.
 - **Feeds:** tc-secrets (§2–§3), roci-board secret request usage.
@@ -103,9 +103,9 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Right usage:**
   - On CLI 1.2.4+, the command answers `PERMISSION_DENIED` (exit 5) and prints the one grant command: `tinycloud --profile <p> auth request --grant --cap tinycloud.kv:account:spaces/:get,list`. Run it, then `space list`.
   - Generally, treat a 401 that names a capability as missing permission, not as a dead session, and don't sign in again.
-- **Evidence:** TC-1083; js-sdk#528 (1.2.4-beta); Clarissa's 1.2.4-beta.3 QA. The same pattern is still open for `delegation list` (TC-1115).
+- **Evidence:** TC-1083; js-sdk#528 (CLI 1.2.4); Clarissa's 1.2.4-beta.3 QA. The same pattern is still open for `delegation list` (TC-1115).
 - **Feeds:** tc-cli REFERENCE.md (updated in js-sdk#528), tc-cli SKILL.md.
-- **Status:** partly folded; the CLI fix ships in 1.2.4, and the consent change that would make it just work is pending Sam (TC-1083).
+- **Status:** partly folded; the CLI fix shipped in 1.2.4 (#528), and the consent change that would make it just work is pending Sam (TC-1083).
 
 ## L7. The tc-secrets preamble's `chmod 600 "$STATE"/*` breaks subdirectories
 
@@ -235,3 +235,38 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Evidence:** TC-804; Drummer (86645198, then 152677c6), profile `factory-keys`. The CLI 1.2.3 behaviour of `auth caps` and `auth request` was checked in the prompts#26 review.
 - **Feeds:** tc-secrets (§3, profile choice, and the scoped login replacing the session), tc-cli AUTH.md.
 - **Status:** partly folded; roci-board enforces `--keep`, and the skills should still recommend one profile per consumer and say a scoped login replaces the session.
+
+## L17. Post steer questions to Sam as proceeding asks; only real blockers wait (Rocinante board)
+
+- **Date:** 2026-10-14
+- **What went wrong:** a workflow omission, not a failed command. Agents that hit a non-obvious design or product choice either stopped and waited for an answer, or chose silently. Board answers also missed agents that had no worker label.
+- **Right usage:**
+  - Label yourself first, so answers reach you: `paseo agent update "$PASEO_AGENT_ID" --label rocinante.worker=<name>`. Use the same name as `--from`.
+  - **A choice you can make yourself:** post a *proceeding* ask with your default and a deadline, then keep working. If Sam hasn't answered by the deadline, go with the default.
+
+    ```sh
+    roci-board upsert ask --id <id> --from <name> --mode proceeding --default <optionId> --decide-by <30m|2h|tonight|ISO> \
+      --set title="…" --background "<60–400 characters, readable from zero>" --option <id>="<label>|<consequence>" …
+    ```
+
+  - **Work that truly can't go on without Sam:** post a *blocking* ask (`--mode blocking`). Name the TC issue it blocks, and move that issue to "Waiting for Human Feedback" when you post. Move it back when Sam answers.
+  - Check the card with `--dry-run` first.
+  - At a proceeding ask's point of no return, run `roci-board steer done <id> --from <name>`.
+  - Never pass `--force`.
+  - Pipe approval codes; never echo them.
+  - Limits: 3 open cards and 6 per hour per name.
+- **Evidence:** Sam's order via Naomi, 2026-10-14; `roci-board --help`.
+- **Feeds:** Rocinante agent conventions (not a public skill). The code-handling part matches tc-secrets §3c.
+- **Status:** open; a board convention, recorded so the CLI skills' "ask the owner" steps can point to it.
+
+## L18. Check npm before calling a release pending
+
+- **Date:** 2026-10-14
+- **What went wrong:** the CLI lead told Naomi the `space list` fix was "shipping in 1.2.4" after CLI 1.2.4 had already reached npm `latest` (06:39Z). By then 1.2.5 had also shipped (16:00Z), so the status report was stale.
+- **Right usage:**
+  - Before saying anything is pending or "shipping in X", read npm: `npm view @tinycloud/cli dist-tags` (and `npm view @tinycloud/cli@<v> gitHead` for which commit it came from).
+  - Check pending changesets on master (`.changeset/*.md`, excluding the README and config) to see whether anything still needs a cut.
+  - Report what npm says, not what you last heard.
+- **Evidence:** Holden's correction via Naomi, 2026-10-14; npm showed `@tinycloud/cli` latest 1.2.5 (gitHead 2157dc7a) and 1.2.4 (gitHead 6f3d93af).
+- **Feeds:** release-reporting habits for every agent that reports on TinyCloud releases (not a public skill).
+- **Status:** open.
