@@ -136,7 +136,7 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
   - Never use `secret-bridge`.
 - **Evidence:** Sam, 2026-10-14 (via Naomi); prompts#24 (tc-secrets 0.5.3); plan #87 rev 2.2 (planner 664677c0).
 - **Feeds:** tc-secrets, Courier setup, plan #87.
-- **Status:** partly folded; plan #87 rev 2.2 is done, prompts#24 is in review.
+- **Status:** folded into tc-secrets 0.5.3 (#24); plan #87 rev 2.2 also updated.
 
 ## L9. `auth status` is not proof of access
 
