@@ -45,7 +45,7 @@ If the TinyChat tools are not already loaded, run the following as the last, sep
 node "$HOME/.agents/skills/tinychat-retrieval/scripts/install-opencode.mjs" --activate
 ```
 
-The interruption while the adapter loads is expected. The same conversation resumes automatically; do not restart OpenCode or ask for an extra “continue.” Proceed only when `tinychat_setup` and `tinychat_authorize` are actually available. An installed loader alone is not proof of loaded capture. Stop on a classified activation error; never use standalone `setup.mjs authorize`, `setup.mjs login` or raw `tc auth login` as an OpenCode fallback.
+The interruption while the adapter loads is expected. The same conversation resumes automatically; do not restart OpenCode or ask for an extra “continue.” Proceed only when `tinychat_setup` and `tinychat_authorize` are actually available. An installed loader alone is not proof of loaded capture. Stop on a classified activation error; never use standalone `setup.mjs authorize`, `setup.mjs login` or a raw CLI `auth login` as an OpenCode fallback.
 
 The loaded adapter raises OpenCode's in-memory tool-output limits to at least 96 KiB and 2,000 lines for this session while preserving larger user values and leaving configuration files unchanged.
 
