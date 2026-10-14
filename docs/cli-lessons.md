@@ -1,116 +1,211 @@
 # TinyCloud CLI usage lessons
 
-Internal log of what agents got wrong or found slow when using the TinyCloud CLI (`tinycloud` / `tc`) and the skills built on it. The site does not publish this file; it feeds the skills and setup pages that do.
+Internal log of what agents got wrong or found slow when using the TinyCloud CLI (`tinycloud` / `tc`) and the skills built on it. The site build skips `docs/`, so this file is never published; it feeds the skills and setup pages that are.
 
 **Owner:** CLI experience lead (Naomi's team). Officers send new lessons to the owner, who adds them here.
 
-**Folding:** every so often the owner folds open lessons into the skills and pages they name. Each fold is one prompts PR, reviewed by Astra. The entries it covers then move to `folded into <skill> <version> (#PR)`. Lessons whose fix is in the CLI itself (js-sdk) say so and link the js-sdk PR.
+**Folding:** every so often the owner folds open lessons into the skills and pages they name. Each fold is one prompts PR, reviewed by Astra, and the entries it covers move to `folded into …`. Lessons fixed in the CLI itself (js-sdk) cite the js-sdk PR and the CLI version.
 
-**Entry format:** date; what went wrong or was slow, with the exact command and flags; the right usage; evidence (agent, TC issue, PR); what it feeds; status (`open`, `partly folded`, or `folded into <skill> <version> (#PR)`).
+**Entry format:**
+- **Date.**
+- **What went wrong:** the exact command and flags.
+- **Right usage.**
+- **Evidence:** agent, TC issue, PR.
+- **Feeds:** the skills and pages it belongs in.
+- **Status:** exactly one of `open`, `partly folded`, or `folded into <skill or CLI> <version> (#PR)`, optionally followed by `; ` and a short note.
 
 ---
 
 ## L1. `tc` can be Linux traffic control, not TinyCloud
 
 - **Date:** 2026-10-13
-- **What went wrong:** on stock Ubuntu, `/usr/sbin/tc` (iproute2) is on the `PATH`. Agents that ran `tc …`, or relayed a hint like ``Run `tc auth login` ``, ran the traffic-control tool instead. `/cli` correctly reported `TC_CONFLICT other` and skipped the link, but before prompts#21 `/chat` then dead-ended.
+- **What went wrong:**
+  - On stock Ubuntu, `/usr/sbin/tc` (iproute2) is on the `PATH`, so agents that ran `tc …`, or relayed a hint like ``Run `tc auth login` ``, ran the traffic-control tool.
+  - `/cli` correctly reported `TC_CONFLICT other` and skipped the link. `/chat` then dead-ended (Clarissa's prompts#19 QA, finding F1), until prompts#19 patched the served TinyChat pack to resolve `TC_BIN`, then the private install, and let `/chat` continue past `TC_CONFLICT`.
+  - Agents worked around it by calling the npm-installed binary by absolute path (e.g. `~/.nvm/…/bin/tc`) or setting `TC_BIN`.
 - **Right usage:**
   - Owners type `tinycloud` (CLI 1.2.3+ ships it next to `tc`).
   - Skills never run a bare `tc`. They resolve the CLI once: `TC_BIN`, else `~/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`, else `$(npm prefix --global)/bin/tinycloud`, else stop with `TC_NOT_FOUND`. Then they run `"$TC" …`.
 - **Evidence:**
-  - prompts#17 (O2), prompts#21 (setup pages switch to `tinycloud`);
-  - js-sdk#519 and #521 (alias, hints name the invoked bin), js-sdk#526 / TC-1085 (skill resolver runs `.bin/tinycloud`);
-  - TC-1077 (TinyChat's skill still falls back to `tc`; the site patches it);
-  - Clarissa's prompts#21 QA (strace: no `/usr/sbin/tc` exec).
-  - Open on the board: roci-board hints use `$(npm prefix --global)/bin/tc`, not the shared prefix (planner 664677c0, 2026-10-14).
+  - prompts#17 (O2), #19 (TinyChat pack patch, `/chat` continues on `TC_CONFLICT`), #21 (setup pages switch to `tinycloud`);
+  - js-sdk#519, #521 (alias; hints name the invoked bin), #526 / TC-1085 (skill resolver runs `.bin/tinycloud`);
+  - TC-1077 (TinyChat's own skill still falls back to `tc`);
+  - Avasarala's transcript-job access notes (worker 6f350d25);
+  - roci-board hints still use `$(npm prefix --global)/bin/tc` (planner 664677c0, 2026-10-14).
 - **Feeds:** `/cli`, `/chat`, tc-cli skill, courier skill, tinychat-retrieval (upstream), roci-board hints.
-- **Status:** partly folded. Setup pages switched in prompts#21. The js-sdk skill resolver ships in CLI 1.2.4; the site drops its tinychat patch after TC-1077.
+- **Status:** partly folded; pages switched in prompts#19/#21, the js-sdk resolver ships in CLI 1.2.4, TC-1077 and the roci-board hints are open.
 
-## L2. Always pass `--profile`; `init` may not change the default
+## L2. Always pass `--profile`; `init` may or may not change the default
 
 - **Date:** 2026-10-13
 - **What went wrong:**
-  - The tc-secrets skill (§3a) said `tc init --name <p> --key-only` makes the new profile the default. With CLI 1.2.0-beta.8 it did not (the default stayed `meeting-digest`), so later commands without `--profile` ran against the wrong profile.
-  - Separately, a `doctor` run without `--profile` (and with `TC_HOME` set to empty) read another home and reported "skipped (no active session)" for a profile that was signed in.
-- **Right usage:** name the profile on every command, as `tinycloud --profile <p> …`, and set `TC_HOME` explicitly or not at all. Never rely on `init` or `profile switch` to change what an unqualified command targets.
+  - `tc init --name <p> --key-only` changed the machine's default profile in some runs (sitrep builder, 2026-10-13), displacing another app's default. With CLI 1.2.0-beta.8 it left the default unchanged (it stayed `meeting-digest`), contradicting tc-secrets §3a. Either way, commands without `--profile` ran against the wrong profile.
+  - A `doctor` run without `--profile` and with `TC_HOME` set to empty read another home and reported "skipped (no active session)" for a signed-in profile.
+- **Right usage:**
+  - Name the profile on every command: `tinycloud --profile <p> …`.
+  - Set `TC_HOME` explicitly or not at all.
+  - Never rely on the default. If an `init` displaced another app's default, put it back with `tinycloud profile switch <name>`.
 - **Evidence:**
-  - Bobbie's worker fe113e54 (iron-proxy secrets sync, 2026-10-13);
-  - prompts#23 (open: rewords tc-secrets §3a);
-  - Amos's 1.2.2-beta.5 release smoke (doctor without `--profile`).
-  - Related CLI bugs: TC-1078 (the `PROFILE_DELETE_DEFAULT` hint names a non-existent `tc profile default`; deleting the only profile leaves `defaultProfile` dangling).
+  - Bobbie's worker fe113e54 (2026-10-13);
+  - Alex (sitrep builder, 2026-10-13);
+  - Amos's 1.2.2-beta.5 release smoke;
+  - prompts#23 (rewords §3a).
+  - Related: TC-1078. The `PROFILE_DELETE_DEFAULT` hint names a non-existent `tc profile default`. Removing a profile's folder by hand instead of with `profile delete` leaves `defaultProfile` pointing at it; the `/publish` undo now says to remove the whole store.
 - **Feeds:** tc-secrets (§3a), tc-cli SKILL.md, every skill's blocks.
-- **Status:** open (prompts#23 in review).
+- **Status:** open; prompts#23 in review.
 
 ## L3. Ask for several secrets in one request
 
 - **Date:** 2026-10-14
-- **What went wrong:** in Holden's logs-reader sitting, an agent opened one secret request (one board card) per secret name, so the owner had to approve the same kind of access several times.
-- **Right usage:** collect every name the task needs first, then make **one** request that names them all. With the skill, that's one manifest listing all the names, one approval link and one add link covering every `MISSING` / `NO_ACCESS` name. On Rocinante, it's one `roci-board secret request` that carries all the names. Ask again only for names that come up later.
-- **Evidence:** Sam, 2026-10-14 (via Naomi); Holden's logs-reader sitting.
-- **Feeds:** tc-secrets (§2–§3, make "all names in one request" explicit), roci-board secret request usage.
-- **Status:** open.
+- **What went wrong:**
+  - For two Better Stack keys, an agent ran two separate `tc secrets request <NAME> --owner <did> --requester <label>` calls, one per key, so the owner opened two links and approved twice.
+  - In Holden's logs-reader sitting, an agent opened one board card per secret name.
+- **Right usage:**
+  - Collect every name first, then make **one** request: `tinycloud secrets request A B … --owner <did> --requester <label>`. That gives one Secret Manager link with a repeated `name=`.
+  - The grant manifest lists every `vault/secrets/<NAME>` get, plus the names the profile already reads, because a new grant replaces the old one.
+  - On Rocinante, it's one `roci-board secret request` naming all of them.
+  - Ask again only for names that come up later.
+- **Evidence:** Sam, 2026-10-14 (via Naomi); Alex (Better Stack, 2026-10-14); prompts#23 commit 57193b7.
+- **Feeds:** tc-secrets (§2–§3), roci-board secret request usage.
+- **Status:** open; prompts#23 in review.
 
 ## L4. OpenKey codes expire in 10 minutes: redeem at once
 
 - **Date:** 2026-10-13
 - **What went wrong:** the 8-character code from OpenKey's approval page (paste login, tc-secrets §3c, tc-apps SQL, Courier init) is valid for 10 minutes. Agents that waited, or asked something else first, got `CODE_EXPIRED` / "Delegation code not found or expired" and had to start the approval again.
-- **Right usage:** redeem the code in the very next step after it arrives (`tinycloud --profile <p> auth login --paste … < "$STATE/code"`). If it has expired, ask for the full code ("Use full delegation code instead"), which doesn't expire after 10 minutes. Paste the code exactly as sent; OpenKey shows it in upper case, and either case works (js-sdk#523).
-- **Evidence:** tc-secrets §3c and tc-apps SQL.md (already warn); Clarissa's 1.2.2 QA; js-sdk#523 (upper-case codes).
+- **Right usage:**
+  - Redeem the code in the very next step after it arrives: `tinycloud --profile <p> auth login --paste … < "$STATE/code"`.
+  - If it has expired, ask for the full code ("Use full delegation code instead"), which doesn't expire after 10 minutes.
+  - Paste the code exactly as sent. OpenKey shows it in upper case, and either case works (js-sdk#523).
+- **Evidence:** tc-secrets §3c and tc-apps SQL.md (already warn); Clarissa's 1.2.2 QA; js-sdk#523.
 - **Feeds:** tc-secrets, tc-apps (SQL.md), courier, tc-cli AUTH.md.
-- **Status:** partly folded (tc-secrets and tc-apps say it; add to tc-cli AUTH.md and courier).
+- **Status:** partly folded; tc-secrets and tc-apps say it, tc-cli AUTH.md and courier don't yet.
 
-## L5. Read secrets with `secrets wait` / `secrets get --raw`; never print a value
+## L5. Read secrets with `secrets get --raw`; never print a value
 
 - **Date:** 2026-10-13
-- **What went wrong:** `tinycloud secrets get NAME` without `--raw` prints JSON containing the value, so it ends up in the transcript. Polling or asking the owner "is it saved yet?" wastes turns.
+- **What went wrong:** `tinycloud secrets get NAME` without `--raw` prints JSON containing the value, so it lands in the transcript. Polling or asking the owner "is it saved yet?" wastes turns.
 - **Right usage:**
-  - Check, then wait: `tinycloud --profile <p> secrets wait NAMES --timeout 0` classifies without decrypting, and `--timeout 9m` waits for the owner to add them.
-  - Use: capture with `secrets get NAME --raw` inside the one command that needs it, with stdin closed, and pass the value through the environment or stdin, never as an argument.
+  - Wait with `tinycloud --profile <p> secrets wait NAMES --timeout 9m`; the owner never has to say "saved".
+  - Use the value with `secrets get NAME --raw` inside the one command that needs it, with stdin closed.
+  - Pass the value through the environment or stdin, never as an argument.
 - **Evidence:** TC-835 (`secrets request` / `wait`); tc-secrets 0.4.0 (prompts#12) and 0.5.0 (prompts#13).
 - **Feeds:** tc-secrets, tc-cli REFERENCE.md.
-- **Status:** folded into tc-secrets 0.4.0 (#12) and 0.5.0 (#13).
+- **Status:** folded into tc-secrets 0.5.0 (#13).
 
 ## L6. `space list` needs `tinycloud.space/list`, which a plain owner sign-in lacks
 
 - **Date:** 2026-10-14
 - **What went wrong:**
   - After a plain `tinycloud auth login --method openkey`, `tinycloud space list` failed with `AUTH_REQUIRED` (exit 3, "not authenticated") while `doctor` said `Session: active`.
-  - The default owner session covers only the `default` space. Listing needs `tinycloud.space/list` or a read of the account-space registry.
+  - The default owner session covers only the `default` space. Listing needs `tinycloud.space/list`, or a read of the account-space registry.
 - **Right usage:**
-  - **CLI 1.2.4+:** the command answers `PERMISSION_DENIED` (exit 5) and prints the one grant command: `tinycloud --profile <p> auth request --grant --cap tinycloud.kv:account:spaces/:get,list`. Run it, then `space list`.
-  - **Generally:** treat a 401 that names a capability as missing permission, not a dead session; don't re-login.
-- **Evidence:** TC-1083, js-sdk#528 (in 1.2.4-beta); Clarissa's 1.2.4-beta.3 QA. Same pattern still open for `delegation list` (TC-1115).
-- **Feeds:** tc-cli REFERENCE.md (updated in #528), tc-cli SKILL.md.
-- **Status:** CLI fix in 1.2.4 (pending stable). The consent change that would make it just work is pending Sam (TC-1083 options A/B/C).
+  - On CLI 1.2.4+, the command answers `PERMISSION_DENIED` (exit 5) and prints the one grant command: `tinycloud --profile <p> auth request --grant --cap tinycloud.kv:account:spaces/:get,list`. Run it, then `space list`.
+  - Generally, treat a 401 that names a capability as missing permission, not as a dead session, and don't sign in again.
+- **Evidence:** TC-1083; js-sdk#528 (1.2.4-beta); Clarissa's 1.2.4-beta.3 QA. The same pattern is still open for `delegation list` (TC-1115).
+- **Feeds:** tc-cli REFERENCE.md (updated in js-sdk#528), tc-cli SKILL.md.
+- **Status:** partly folded; the CLI fix ships in 1.2.4, and the consent change that would make it just work is pending Sam (TC-1083).
 
 ## L7. The tc-secrets preamble's `chmod 600 "$STATE"/*` breaks subdirectories
 
 - **Date:** 2026-10-13
 - **What went wrong:**
   - Every tc-secrets 0.5.0 block started with `STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}" … chmod 600 "$STATE"/* 2>/dev/null`.
-  - The glob also matched subdirectories, which lost their execute bit. Five subdirectories in `~/.local/state/tc-secrets` (`default` and four agent-UUID dirs) became `drw-------` and nothing could enter them.
-  - There was no error because stderr went to `/dev/null`.
+  - The glob also matched subdirectories, which lost their execute bit. Five subdirectories in `~/.local/state/tc-secrets` (`default` and four agent-UUID dirs) became `drw-------`, and nothing could enter them. There was no error, because stderr went to `/dev/null`.
   - Two stale FIFOs from 2026-10-03 (`read.fifo`, `write.fifo`) in the same directory also blocked a naive read or grep.
 - **Right usage:**
   - Repair files only: `find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} +`.
-  - One-off recovery: `chmod 700` on the broken subdirectories. Remove a stale FIFO only after `fuser` shows nothing holds it.
-  - Generally, don't hide `chmod`/`rm` errors on globs that can match directories.
+  - Recover broken subdirectories once with `chmod 700`.
+  - Remove a stale FIFO only after `fuser` shows nothing holds it.
+  - Don't hide `chmod` or `rm` errors on globs that can match directories.
 - **Evidence:**
   - Bobbie's worker fe113e54 (iron-proxy secrets sync trial, 2026-10-13);
   - Bobbie's proposal (`.context/rocinante/officers/bobbie/proposals.md`), approved by Sam 2026-10-14 15:54Z;
   - Alex patched both installed copies and restored the directories;
-  - upstream fix: prompts#23.
+  - prompts#23.
 - **Feeds:** tc-secrets (every block's preamble); check tc-publish and tc-apps preambles for the same glob.
-- **Status:** open (prompts#23 in review; the next skill resync overwrites the local patch until it merges).
+- **Status:** open; prompts#23 in review, and until it merges the next skill resync overwrites the local patch.
 
 ## L8. Secret Bridge is retired; secrets go through the board
 
 - **Date:** 2026-10-14
 - **What went wrong:** the tc-secrets skill and plan #87 told agents to hand over OpenKey codes, and some secrets, through Paseo's Secret Bridge (`secret-bridge request` / `pipe`). Sam turned it off on 2026-10-14.
 - **Right usage:**
-  - **Secrets:** on Rocinante, request them with `roci-board secret request NAME … --from … --profile … --background … --why-now … --if-no-answer …`. The owner stores the value in TinyCloud Secrets and approves; then read it with `tinycloud --profile <p> secrets get NAME --raw`.
+  - **Secrets:** on Rocinante, run `roci-board secret request NAME … --from … --profile … --background … --why-now … --if-no-answer …`. The owner stores the value in TinyCloud Secrets and approves. Then read it with `tinycloud --profile <p> secrets get NAME --raw`.
   - **OpenKey codes:** they come back in the 1:1 channel, or on the board card the watcher relays.
-  - Never reach for `secret-bridge`.
-- **Evidence:** Sam 2026-10-14 (via Naomi); prompts#24 (tc-secrets 0.5.3); plan #87 rev 2.2 (planner 664677c0).
+  - Never use `secret-bridge`.
+- **Evidence:** Sam, 2026-10-14 (via Naomi); prompts#24 (tc-secrets 0.5.3); plan #87 rev 2.2 (planner 664677c0).
 - **Feeds:** tc-secrets, Courier setup, plan #87.
-- **Status:** folded into tc-secrets 0.5.3 (#24) and plan #87 rev 2.2.
+- **Status:** partly folded; plan #87 rev 2.2 is done, prompts#24 is in review.
+
+## L9. `auth status` is not proof of access
+
+- **Date:** 2026-10-12
+- **What went wrong:** `tc auth status` reported `authenticated: true` on profile `tinychat-agent` 9 days after its session had expired. A real `tc sql query` then returned `AUTH_REQUIRED`.
+- **Right usage:**
+  - Check `tinycloud --profile <p> context --json`: session `state` is `missing`, `expired`, `unverified` or `present`, with `expiresAt`. Or make a real read.
+  - Since CLI 1.2.2, `auth status` reports the expired state too, but a real read remains the only proof that a capability works.
+- **Evidence:** TC-973 (js-sdk#508); Avasarala's transcript job (worker 6f350d25).
+- **Feeds:** tc-cli SKILL.md and AUTH.md, tinychat-retrieval.
+- **Status:** folded into CLI 1.2.2 (js-sdk#508); the skills should still say "check `context --json` or read".
+
+## L10. Device login can't grant SQL or the secrets, account or applications spaces
+
+- **Date:** 2026-10-13
+- **What went wrong:** `tinycloud auth login --device --manifest M` for a manifest including `tinycloud.sql`, or the `secrets`, `account` or `applications` spaces, was refused (`SCOPE_REJECTED`). OpenKey's device flow refuses those by design.
+- **Right usage (headless box):**
+  1. Run the paste login once with stdin closed, which prints the approval URL: `tinycloud --profile <p> auth login --method openkey --paste --manifest M --expiry 30d --owner did:pkh:… < /dev/null`.
+  2. The owner approves and sends back the short code.
+  3. Redeem it with the same command and the code on stdin: `printf '%s\n' "$CODE" | tinycloud --profile <p> auth login --method openkey --paste --manifest M --expiry 30d --owner did:pkh:…`.
+  - The URL is stable for the same profile, key and manifest.
+- **Evidence:** openkey `apps/api/src/services/device-authorization.ts` (allowed and refused scopes); Avasarala (profile `meeting-digest`, redeemed 2026-10-13); Alex (2026-10-14).
+- **Feeds:** tc-cli AUTH.md, tc-secrets (already uses paste), tc-apps SQL.md (already uses paste), tinychat-retrieval.
+- **Status:** partly folded; tc-secrets and tc-apps use paste, tc-cli AUTH.md should say which scopes need it.
+
+## L11. `kv list` couldn't prove a listing was complete
+
+- **Date:** 2026-10-12
+- **What went wrong:** `tc kv list` dropped the node's `truncated` / `nextCursor` and had no paging flags, so agents couldn't tell a partial listing from a complete one. They cross-checked counts against the SQL catalog instead.
+- **Right usage:** on CLI 1.2.3+, use `tinycloud kv list --all`, or `--limit N` with `--cursor <nextCursor>`, and check `truncated: false`. A rejected cursor is `KV_LIST_CURSOR_INVALID` (exit 2, 1.2.4+).
+- **Evidence:** TC-982; js-sdk#514 (1.2.3) and #524 (1.2.4).
+- **Feeds:** tc-cli REFERENCE.md (updated), tc-apps and tinychat-retrieval listing code.
+- **Status:** folded into CLI 1.2.3 (js-sdk#514).
+
+## L12. Skill packs that match the CLI version with a regex reject pre-releases
+
+- **Date:** 2026-10-13
+- **What went wrong:** tinychat-retrieval's version check rejected `1.2.0-beta.8` as `CLI_VERSION`, because its regex only accepted `X.Y.Z`.
+- **Right usage:** compare versions with a semver-aware check that accepts pre-release suffixes, or feature-probe (`--help` output) as tc-secrets and tc-publish do.
+- **Evidence:** tinychat #327; Avasarala's transcript job.
+- **Feeds:** tinychat-retrieval (fixed), any pack with a version check.
+- **Status:** folded into tinychat-retrieval (tinychat #327); audit other packs at the next fold.
+
+## L13. Check that a secret exists without reading it: `secrets wait --timeout 0`
+
+- **Date:** 2026-10-14
+- **What went wrong:** agents used `tc secrets list` to see whether a secret existed. It needs a list grant on `vault/secrets/`, which no agent profile has, so it returned `PERMISSION_DENIED` on 9 profiles.
+- **Right usage:** `tinycloud --profile <p> secrets wait NAME --timeout 0`. Exit 0 means present, exit 8 means pending (not there or not readable). It never decrypts.
+- **Evidence:** Alex, 2026-10-14; tc-secrets §2.
+- **Feeds:** tc-secrets (already uses it), tc-cli REFERENCE.md.
+- **Status:** partly folded; tc-secrets uses it, tc-cli REFERENCE.md doesn't point to it yet.
+
+## L14. `auth logout` is local only
+
+- **Date:** 2026-10-14
+- **What went wrong:** agents treated `tc auth logout` as ending access. It clears only the local session; delegations and grants on the node stay valid until they expire.
+- **Right usage:**
+  - Request short lifetimes (`--expiry`) for temporary access.
+  - To end access now, run `tinycloud delegation revoke <cid>` (needs owner authority).
+  - Undo steps should say this.
+- **Evidence:** Alex, 2026-10-14; `tinycloud auth logout --help`.
+- **Feeds:** setup-page undo sections (`/apps`, `/secrets`, `/publish`, `/chat`), tc-cli AUTH.md.
+- **Status:** open.
+
+## L15. A key-only profile doesn't know its owner: pass `--owner`
+
+- **Date:** 2026-10-14
+- **What went wrong:** on a key-only profile, `tc context --json` reports `ownerDid: null`, so requests that needed the owner failed or targeted nothing.
+- **Right usage:** pass `--owner did:pkh:eip155:1:<address>` explicitly to `secrets request`, `secrets wait` and `auth login` until the profile has signed in.
+- **Evidence:** Alex (sitrep CLI, 2026-10-14).
+- **Feeds:** tc-secrets (uses `TC_OWNER_DID`), tc-cli REFERENCE.md.
+- **Status:** partly folded; tc-secrets passes `TC_OWNER_DID`, tc-cli REFERENCE.md doesn't say it yet.
