@@ -270,3 +270,18 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Evidence:** Holden's correction via Naomi, 2026-10-14; npm showed `@tinycloud/cli` latest 1.2.5 (gitHead 2157dc7a) and 1.2.4 (gitHead 6f3d93af).
 - **Feeds:** release-reporting habits for every agent that reports on TinyCloud releases (not a public skill).
 - **Status:** open.
+
+## L19. The gh account is shared: poll GitHub every few minutes, never in tight watch loops
+
+- **Date:** 2026-10-14
+- **What went wrong:** the shared `samgbafa` gh account hit the GitHub API rate limit. Many agents ran `gh run watch`, `gh pr checks --watch`, or shell loops calling `gh pr checks` every 60 s for up to an hour. The CLI lead's own CI-wait loops were among them.
+- **Right usage:**
+  - No long `gh … --watch` or `gh run watch` sessions, for you or for your workers.
+  - Poll at most every few minutes (5–10 min for a release or a CI wait) and stop as soon as you have the answer.
+  - Check the budget before a loop. `gh api rate_limit -q .resources.core` doesn't count against the limit. The GraphQL budget (used by `gh pr checks`/`gh pr view`) is separate: `.resources.graphql`.
+  - On a 403 or a "rate limit" error, back off: double the wait, or sleep until `reset`. Don't retry straight away.
+  - Prefer one call that returns everything (`gh run view <id> --json jobs,conclusion`) over several calls.
+  - Put the poll interval and the backoff into every worker brief that waits on CI.
+- **Evidence:** Naomi's heads-up, 2026-10-14; `gh api rate_limit` showed core at 4124/5000 left with a reset at 23:51Z after the limit was hit.
+- **Feeds:** CI-waiting habits for every agent on the shared account (not a public skill); worker briefs.
+- **Status:** open.
