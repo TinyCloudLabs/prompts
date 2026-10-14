@@ -218,18 +218,20 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Feeds:** tc-secrets (uses `TC_OWNER_DID`), tc-cli REFERENCE.md.
 - **Status:** partly folded; tc-secrets passes `TC_OWNER_DID`, tc-cli REFERENCE.md doesn't say it yet.
 
-## L16. A new grant replaces a live session: one key-only profile per consumer
+## L16. A scoped login replaces a live session: one key-only profile per consumer
 
 - **Date:** 2026-10-12
 - **What went wrong:**
-  - Running `tc --profile api-keys auth request` for one new secret name (`TYPESAFE_API_KEY`), on a profile whose live session already covered other names, was refused with `SESSION_IN_USE`.
-  - Granting only that name would have narrowed or replaced the session that other tools (universe, the video tools) use for `ELEVENLABS_API_KEY`.
-  - The agent couldn't see which names the session covered, so it couldn't safely widen the request either.
+  - To add one secret name (`TYPESAFE_API_KEY`) on the shared `api-keys` profile, whose live session already covered other names, the agent ran the tc-secrets consent step: a scoped login, `tc --profile api-keys auth login --method openkey --paste --manifest M`, with `M` naming only the new secret. Drummer reported the step as `auth request`.
+  - It was refused with `SESSION_IN_USE`: the new scoped session would have replaced the one that other tools (universe, the video tools) use for `ELEVENLABS_API_KEY`.
+  - The agent couldn't tell which names the live session covered, so it couldn't safely widen the manifest either.
 - **Right usage:**
-  - Give each consumer its own key-only profile (`tinycloud init --name factory-keys --key-only`) and request only that consumer's names.
-  - To add names to a profile that already has a session, first list what it covers with `tinycloud --profile <p> auth caps` (CLI 1.2.3), then request every name it already reads plus the new ones: a new grant replaces the old.
-  - On Rocinante, `roci-board secret request` does this with `--keep NAME` for each name the session already covers, and enforces it.
-  - Never add `--replace-session` to get past `SESSION_IN_USE`; that drops the other consumers' access.
-- **Evidence:** TC-804; Drummer (86645198, then 152677c6), profile `factory-keys`.
-- **Feeds:** tc-secrets (§3, profile choice and grant-replaces-grant), tc-cli AUTH.md.
-- **Status:** partly folded; roci-board enforces `--keep`, prompts#23 (in review) adds "a new grant replaces the old" to tc-secrets, and the skills should still recommend one profile per consumer and `auth caps`.
+  - Give each consumer its own key-only profile (`tinycloud init --name factory-keys --key-only`) and request only that consumer's names. This is the safe default.
+  - If you must widen an existing profile, the new scoped login's manifest has to list every name the current session reads plus the new ones, because a scoped login replaces the session.
+  - Take those names from the original manifest, which tc-secrets keeps in its state directory. `tinycloud auth caps` is not a full inventory: it shows only appended runtime delegations, not the base session's manifest permissions.
+  - `tinycloud auth request` doesn't replace anything. Without `--grant` it writes a request artifact; with `--grant` it appends an additional delegation.
+  - On Rocinante, `roci-board secret request` handles this with `--keep NAME` for each name the session already covers, and enforces it.
+  - Never add `--replace-session` (an `auth login` flag) to get past `SESSION_IN_USE`; that drops the other consumers' access.
+- **Evidence:** TC-804; Drummer (86645198, then 152677c6), profile `factory-keys`. The CLI 1.2.3 behaviour of `auth caps` and `auth request` was checked in the prompts#26 review.
+- **Feeds:** tc-secrets (§3, profile choice, and the scoped login replacing the session), tc-cli AUTH.md.
+- **Status:** partly folded; roci-board enforces `--keep`, and the skills should still recommend one profile per consumer and say a scoped login replaces the session.
