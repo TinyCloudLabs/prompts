@@ -11,7 +11,7 @@ Publish a file from the owner's TinyCloud space and return a link. The agent hol
 
 Requires `@tinycloud/cli` **1.0.0-beta.18 or newer** (TC-540 device login with `--manifest` and `enable share`; TC-556 owner-only links; TC-577 file names with spaces and storage-quota errors). The §1 feature probe is authoritative — trust it over the version string. It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
 
-Operator-set, never change or unset: `TC_BIN` (absolute path to `tc`; `command -v tc` can resolve to `/usr/sbin/tc`), `TC_HOME` (CLI profile store), `TC_OWNER_EMAIL` (owner's address for owner-only links) and `TC_PUBLISH_STATE` (this skill's state directory; defaults to `$HOME/.local/state/tc-publish`, set it when several agents share one `$HOME`).
+Operator-set, never change or unset: `TC_BIN` (absolute path to the CLI; optional: without it, every block's preamble uses `~/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`, where agents.tinycloud.xyz installs it, else `tinycloud` on the `PATH`, never a bare `tc`, which can be `/usr/sbin/tc`), `TC_HOME` (CLI profile store), `TC_OWNER_EMAIL` (owner's address for owner-only links) and `TC_PUBLISH_STATE` (this skill's state directory; defaults to `$HOME/.local/state/tc-publish`, set it when several agents share one `$HOME`).
 
 ## Shell preamble — required
 
@@ -19,6 +19,7 @@ Agent shells lose variables and umask between calls. **Start every shell call wi
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 ```
@@ -46,17 +47,19 @@ Address owner-only links with `--to "email:$TC_OWNER_EMAIL"`. If `$TC_OWNER_EMAI
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
-[ -n "$TC_BIN" ] && "$TC_BIN" enable share --help | grep -q -- '--replace-session' \
-  && "$TC_BIN" auth login --help | grep -q -- '--expiry' \
-  && echo CLI_OK || echo STALE
-if [ -n "$TC_BIN" ]; then "$TC_BIN" --version; else echo "TC_BIN is not set"; fi
+if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/publish or set TC_BIN"
+elif "$TC_BIN" enable share --help | grep -q -- '--replace-session' \
+  && "$TC_BIN" auth login --help | grep -q -- '--expiry'; then echo CLI_OK
+else echo STALE; fi
+[ -z "$TC_BIN" ] || "$TC_BIN" --version
 echo "TC_HOME=$TC_HOME"
 ```
 
-If `TC_BIN` is empty or the probe prints `STALE`, stop and tell the owner. Never install anything yourself.
+If the block prints `TC_NOT_FOUND` or `STALE`, stop and tell the owner. Never install anything yourself.
 
 ## 2. Consent — only when there is no live session
 
@@ -64,6 +67,7 @@ Check the profile and session first:
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -90,6 +94,7 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 rm -f "$LOG" "$STATE/waiter.pid"
@@ -114,6 +119,7 @@ echo "waiter script: $STATE/waiter.sh"
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -128,6 +134,7 @@ echo STARTED
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 for i in $(seq 30); do grep -qE '^(Approve on your phone:|TC_EXIT=)|"code"' "$LOG" 2>/dev/null && break; sleep 1; done
@@ -143,6 +150,7 @@ grep -E '^(Approve on your phone:|  Or open|  Waiting for approval until|TC_EXIT
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 for i in $(seq 9); do grep -q '^TC_EXIT=' "$LOG" 2>/dev/null && break; sleep 10; done
@@ -158,6 +166,7 @@ Read the status structurally — the log may contain pretty-printed JSON:
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 python3 - "$LOG" <<'PY'
@@ -212,6 +221,7 @@ Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner 
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -238,6 +248,7 @@ fi
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -265,6 +276,7 @@ On `PUBLISH_FAILED`, stop and use the errors table. `INVITE_NOT_SENT` (exit 9, o
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -286,6 +298,7 @@ fi
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -320,6 +333,7 @@ PY
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -335,6 +349,7 @@ for s in json.load(sys.stdin)["shares"]:
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 id='<public share id you recorded>'
@@ -349,6 +364,7 @@ rm -f "$STATE/last-url"
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 id='<owner-only share id you recorded>'
@@ -376,6 +392,7 @@ If you passed `--notify`, add: "TinyCloud also emailed `<recipient email>` an in
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 python3 - "$STATE/last-url" "<summary line without the URL>" <<'PY' \
@@ -391,6 +408,7 @@ PY
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 cat "$STATE/last-url"
@@ -400,6 +418,7 @@ cat "$STATE/last-url"
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
@@ -456,6 +475,7 @@ Before publishing HTML, check that it is self-contained. Any `src`, `href` or CS
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 FILE='<absolute path of the file>'
 

@@ -88,20 +88,28 @@ const SKILLS = [
     integrity: "sha512-uO016ryrnG0A1OR2d0xJs3jRPd+oPorb0oloRApnG5T28qReZZ35bteZgWqPhqf1Nme/rHuRX3qdmuhtsagV2A==",
     dir: "package",
     checkCli: true,
-    // The pack's scripts run `tc` from PATH. They now run TC_BIN if set, else
-    // the CLI /cli installs, else `tc` from PATH, as before.
+    // The pack's scripts run `tc` from PATH, which on Linux is often the
+    // traffic-control tool. They now run TC_BIN if set (nothing else), else the
+    // `tinycloud` that agents.tinycloud.xyz/cli installs, else `tinycloud` on
+    // PATH; with none of them, CLI_UNAVAILABLE says to run /cli. Never `tc`.
     changes: {
       "lib/retrieval.mjs": [
         ["import { constants, readFileSync } from 'node:fs';", "import { accessSync, constants, readFileSync } from 'node:fs';"],
         ["import { tmpdir } from 'node:os';", "import { homedir, tmpdir } from 'node:os';"],
         [
+          "CLI_UNAVAILABLE: 'TinyCloud CLI was not found. Install the supported release or supply --tc.',",
+          "CLI_UNAVAILABLE: 'TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN.',",
+        ],
+        [
           "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */\nexport function createTcRunner({ executable = 'tc',",
           [
-            "/** The TinyCloud CLI to run: TC_BIN if set, else where agents.tinycloud.xyz/cli installs it, else `tc` on PATH. */",
+            "/** The TinyCloud CLI to run: TC_BIN if set, else the `tinycloud` agents.tinycloud.xyz/cli installs, else `tinycloud` on PATH. Never `tc`. */",
             "export function defaultTc() {",
             "  if (process.env.TC_BIN) return process.env.TC_BIN;",
-            "  const installed = join(homedir(), '.local/share/tinycloud/cli/node_modules/.bin/tc');",
-            "  try { accessSync(installed, constants.X_OK); return installed; } catch { return 'tc'; }",
+            "  const installed = join(homedir(), '.local/share/tinycloud/cli/node_modules/.bin/tinycloud');",
+            "  const onPath = (process.env.PATH || '').split(':').filter(isAbsolute).map(dir => join(dir, 'tinycloud'));",
+            "  for (const candidate of [installed, ...onPath]) { try { accessSync(candidate, constants.X_OK); return candidate; } catch { /* next */ } }",
+            "  return installed; // Missing: running it fails with ENOENT, reported as CLI_UNAVAILABLE.",
             "}",
             "",
             "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */",
@@ -115,13 +123,14 @@ const SKILLS = [
       ],
       "lib/login.mjs": [
         ["import { spawn } from 'node:child_process';", "import { spawn } from 'node:child_process';\nimport { defaultTc } from './retrieval.mjs';"],
+        ["CLI_UNAVAILABLE: 'TinyCloud CLI could not be started.',", "CLI_UNAVAILABLE: 'TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN.',"],
         ["{ executable = 'tc', input }", "{ executable = defaultTc(), input }"],
       ],
       "scripts/retrieve.mjs": [
-        ["--tc PATH (otherwise resolves tc on PATH; never uses a shell)", "--tc PATH (otherwise TC_BIN, then ~/.local/share/tinycloud/cli, then tc on PATH; never uses a shell)"],
+        ["--tc PATH (otherwise resolves tc on PATH; never uses a shell)", "--tc PATH (otherwise TC_BIN, then ~/.local/share/tinycloud/cli's tinycloud, then tinycloud on PATH; never tc, never a shell)"],
       ],
       "references/meetings.md": [
-        ["otherwise the helper resolves `tc` through PATH.", "otherwise the helper runs `TC_BIN` if set, else the CLI that agents.tinycloud.xyz/cli installs in `~/.local/share/tinycloud/cli`, else `tc` from PATH."],
+        ["otherwise the helper resolves `tc` through PATH.", "otherwise the helper runs `TC_BIN` if set, else the `tinycloud` that https://agents.tinycloud.xyz/cli installs in `~/.local/share/tinycloud/cli`, else `tinycloud` on the PATH, and never `tc`. With none of them it stops with `CLI_UNAVAILABLE`."],
       ],
     },
   },
@@ -509,7 +518,9 @@ write(
 
 // Served files of `checkCli` skills run the CLI only through RESOLVER (in
 // Markdown) or defaultTc() (in scripts): no other global npm lookup, no bare
-// `tc` command in a shell code block, and no script that defaults to `tc`.
+// `tc` command in a shell code block, and no script that runs `tc`: as a
+// default executable, as the program it spawns, or as a value it returns.
+const SCRIPT_TC = /\bexecutable\s*=\s*['"]tc['"]|\b(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)\(\s*['"]tc\b|\breturn\s+['"]tc['"]/;
 const wrongCli = skills
   .filter((s) => s.checkCli)
   .flatMap((s) =>
@@ -517,7 +528,7 @@ const wrongCli = skills
       const text = f.body.toString("utf8");
       const lookups = text.split("npm prefix --global").length - 1;
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
-      const scriptDefault = /\.m?js$/.test(f.path) && /\bexecutable\s*=\s*['"]tc['"]/.test(text);
+      const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
       return lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
     }),
   );

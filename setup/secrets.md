@@ -31,7 +31,7 @@ cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/SKILL.md"
 cat "$HOME/.agents/skills/tc-secrets/SKILL.md"
 ```
 
-The first is for Claude Code, the second for Codex and OpenCode. If neither exists, or the skill's §1 check stops because `TC_BIN` or `TC_OWNER_DID` isn't set, don't install anything yourself: show the owner the block under "For the owner" and ask them to run it.
+The first is for Claude Code, the second for Codex and OpenCode. If neither exists, or the skill's §1 check prints `TC_NOT_FOUND` or `OWNER_UNSET`, don't install anything yourself: show the owner the block under "For the owner" and ask them to run it.
 
 ## Undo
 

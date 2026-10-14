@@ -33,8 +33,8 @@ The CLI goes into a folder of its own, `~/.local/share/tinycloud/cli`, and is no
 The skills on this site run the CLI as `TC_BIN` if set, else from `~/.local/share/tinycloud/cli`, so they need neither name on the `PATH`. The block makes the names work for the owner's own terminal, where it safely can:
 
 - **`tinycloud`**, the name the pages tell the owner to type, and **`tc`**: each is linked to the CLI in the first of `~/.local/bin` and npm's global `bin` folder that is on the `PATH`, is writable and has nothing by that name yet.
-- It never replaces or shadows another program. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is.
-- One exception: earlier versions of this guide installed the CLI globally with npm. When the `tc` the `PATH` selects is that global TinyCloud CLI itself (same real path as npm's global `bin/tc`, inside npm's global `@tinycloud/cli`), the block upgrades it in place to the pin, which also gives it the `tinycloud` name.
+- It never replaces or shadows another program. A name counts as taken when `command -v` finds it, whatever it does when run; it counts as TinyCloud's only when its real path is the CLI's. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is.
+- One exception: earlier versions of this guide installed the CLI globally with npm. When the `tc` the `PATH` selects is that global TinyCloud CLI itself (same real path as npm's global `bin/tc`, inside npm's global `@tinycloud/cli`), the block upgrades it in place to the pin, which also gives it the `tinycloud` name. It skips that upgrade when another program already has the name `tinycloud`, so the new global `tinycloud` can't shadow it.
 
 Run this as one sequential foreground shell call, exactly as written:
 
@@ -48,34 +48,39 @@ WANT=$("$TC_BIN" --version 2>/dev/null)
 G=$(npm prefix --global 2>/dev/null)
 # ~/.local/bin may be on the PATH (as many shell profiles add it) before it exists.
 case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
-OLD=$(tc --version 2>/dev/null)
+OLD_TC=$(command -v tc); OLD_TINY=$(command -v tinycloud)
 if [ -z "$WANT" ] || { [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$WANT" != 1.2.3 ]; }; then
   echo "TC_INSTALL_FAILED $TC_BIN"
-elif [ "$WANT" = 1.2.3 ] && [ "$OLD" != 1.2.3 ] && [ -n "$G" ] && printf '%s\n' "$OLD" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+' &&
-  node -e 'const f = require("fs"), [sel, bin, pkg] = process.argv.slice(1).map((p) => f.realpathSync(p)); process.exit(sel === bin && sel.startsWith(pkg + "/") ? 0 : 1)' \
-    "$(command -v tc)" "$G/bin/tc" "$G/lib/node_modules/@tinycloud/cli" 2>/dev/null &&
+elif [ "$WANT" = 1.2.3 ] && [ -n "$G" ] && [ -n "$OLD_TC" ] && [ "$("$OLD_TC" --version 2>/dev/null)" != 1.2.3 ] &&
+  node -e 'const f = require("fs"), r = (p) => { try { return f.realpathSync(p) } catch { return "" } }, a = process.argv.slice(1), [sel, bin, pkg, tiny] = a.map(r);
+    process.exit(sel && sel === bin && sel.startsWith(pkg + "/") && (!a[3] || tiny.includes("/node_modules/@tinycloud/cli/")) ? 0 : 1)' \
+    "$OLD_TC" "$G/bin/tc" "$G/lib/node_modules/@tinycloud/cli" "$OLD_TINY" &&
   ! npm install --global --no-audit --no-fund @tinycloud/cli@1.2.3; then
   echo "TC_INSTALL_FAILED global"
 else
   for NAME in tinycloud tc; do
     # The CLI's own `tinycloud` executable, next to TC_BIN, if it has one.
     TARGET=$TC_BIN; [ "$NAME" = tinycloud ] && [ -x "$(dirname "$TC_BIN")/tinycloud" ] && TARGET="$(dirname "$TC_BIN")/tinycloud"
-    HAVE=$("$NAME" --version 2>/dev/null); HAVE_EXIT=$?
-    case "$HAVE" in [0-9]*.[0-9]*) ;; *) HAVE=other ;; esac
+    FOUND=$(command -v "$NAME")
     DIR=
     for D in "$HOME/.local/bin" ${G:+"$G/bin"}; do
       case ":$PATH:" in *":$D:"*) [ -z "$DIR" ] && [ -w "$D" ] && [ ! -e "$D/$NAME" ] && [ ! -L "$D/$NAME" ] && DIR=$D ;; esac
     done
-    if [ "$HAVE" = "$WANT" ]; then
-      echo "TC_READY $WANT $NAME"
-    elif [ "$HAVE_EXIT" -ne 127 ]; then
-      echo "TC_CONFLICT $NAME $HAVE"
-    elif [ -z "$DIR" ]; then
-      echo "TC_CONFLICT $NAME no-path"
-    elif ln -s "$TARGET" "$DIR/$NAME" && [ "$("$NAME" --version 2>/dev/null)" = "$WANT" ]; then
-      echo "TC_LINKED $WANT $DIR/$NAME"
+    if [ -z "$FOUND" ]; then
+      if [ -z "$DIR" ]; then
+        echo "TC_CONFLICT $NAME no-path"
+      elif ln -s "$TARGET" "$DIR/$NAME" && [ "$("$NAME" --version 2>/dev/null)" = "$WANT" ]; then
+        echo "TC_LINKED $WANT $DIR/$NAME"
+      else
+        echo "TC_CONFLICT $NAME link"
+      fi
+    # Taken: TinyCloud's CLI only if its real path is the target or inside a @tinycloud/cli package.
+    elif node -e 'const f = require("fs"), r = (p) => { try { return f.realpathSync(p) } catch { return "" } }, [found, target] = process.argv.slice(1).map(r);
+      process.exit(found && (found === target || found.includes("/node_modules/@tinycloud/cli/")) ? 0 : 1)' "$FOUND" "$TARGET"; then
+      HAVE=$("$FOUND" --version 2>/dev/null)
+      if [ "$HAVE" = "$WANT" ]; then echo "TC_READY $WANT $NAME"; else echo "TC_CONFLICT $NAME ${HAVE:-unknown}"; fi
     else
-      echo "TC_CONFLICT $NAME link"
+      echo "TC_CONFLICT $NAME other"
     fi
   done
 fi
@@ -85,9 +90,10 @@ It prints one line for `tinycloud`, then one for `tc`:
 
 - `TC_READY 1.2.3 <name>` → that name already runs the pinned CLI, including a global TinyCloud CLI from an earlier version of this guide, which the block has just upgraded in place.
 - `TC_LINKED 1.2.3 <link>` → the block linked that name to the pinned CLI.
-- `TC_CONFLICT <name> other` → something else has that name, usually the Linux traffic-control tool for `tc`. It was left alone.
-- `TC_CONFLICT <name> <version>` → that name runs a TinyCloud CLI at another version, but not npm's global copy, so the block left it alone.
-- `TC_CONFLICT <name> no-path` or `TC_CONFLICT <name> link` → nothing has that name, but neither `~/.local/bin` nor npm's global `bin` folder is on the `PATH` and writable, or the link couldn't be made.
+- `TC_CONFLICT <name> other` → another program has that name (`command -v` finds it), usually the Linux traffic-control tool for `tc`. It was left alone, whatever it does when run.
+- `TC_CONFLICT <name> <version>` (or `unknown`) → that name runs a TinyCloud CLI at another version, but not npm's global copy, so the block left it alone. `TC_CONFLICT tc <version>` together with `TC_CONFLICT tinycloud other` means the block left an earlier global TinyCloud CLI as it was, because upgrading it would have shadowed the other `tinycloud`.
+- `TC_CONFLICT <name> no-path` → nothing has that name, but neither `~/.local/bin` nor npm's global `bin` folder is on the `PATH` and writable. For `tinycloud`, tell the owner, in these words: "To use the `tinycloud` command, add this line to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`): `export PATH="$HOME/.local/bin:$PATH"`. Then open a new terminal, start your agent from it, and ask it to run https://agents.tinycloud.xyz/cli again." The rerun creates `~/.local/bin` and links `tinycloud` there; it still leaves any other `tc` alone.
+- `TC_CONFLICT <name> link` → nothing has that name, but the link couldn't be made.
 - `TC_INSTALL_FAILED` (a single line) → the npm install failed (`global`: upgrading the earlier global CLI failed), or the owner's `TC_BIN` doesn't run. Stop and report the error. Don't retry with other options or `sudo`.
 
 On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: continue with the skill below. A `TC_CONFLICT` changes nothing else; mention it to the owner in one line. If `tinycloud` isn't `TC_READY` or `TC_LINKED`, tell the owner they can run the CLI by its path, `TC_BIN`, or put a link to it on their `PATH` themselves; don't do that for them.
