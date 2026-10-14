@@ -64,7 +64,7 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Right usage:**
   - Collect every name first, then make **one** request: `tinycloud secrets request A B … --owner <did> --requester <label>`. That gives one Secret Manager link with a repeated `name=`.
   - The grant manifest lists every `vault/secrets/<NAME>` get, plus the names the profile already reads, because a new grant replaces the old one.
-  - On Rocinante, it's one `roci-board secret request` naming all of them.
+  - On Rocinante, it's one `roci-board secret request NAME [NAME…]` naming all of them.
   - Ask again only for names that come up later.
 - **Evidence:** Sam, 2026-10-14 (via Naomi); Alex (Better Stack, 2026-10-14); prompts#23 commit 57193b7.
 - **Feeds:** tc-secrets (§2–§3), roci-board secret request usage.
@@ -235,3 +235,26 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Evidence:** TC-804; Drummer (86645198, then 152677c6), profile `factory-keys`. The CLI 1.2.3 behaviour of `auth caps` and `auth request` was checked in the prompts#26 review.
 - **Feeds:** tc-secrets (§3, profile choice, and the scoped login replacing the session), tc-cli AUTH.md.
 - **Status:** partly folded; roci-board enforces `--keep`, and the skills should still recommend one profile per consumer and say a scoped login replaces the session.
+
+## L17. Ask Sam with a proceeding steer question, not a blocking stop (Rocinante board)
+
+- **Date:** 2026-10-14
+- **What went wrong:** agents that hit a non-obvious design or product choice either stopped and waited for an answer, or chose silently. Board answers also missed agents that had no worker label.
+- **Right usage:**
+  - Label yourself first, so answers reach you: `paseo agent update "$PASEO_AGENT_ID" --label rocinante.worker=<name>`. Use the same name as `--from`.
+  - Post your default and a deadline, then keep working:
+
+    ```sh
+    roci-board upsert ask --id <id> --from <name> --mode proceeding --default <optionId> --decide-by <30m|2h|tonight|ISO> \
+      --set title="…" --background "<60+ chars, readable from zero>" --option <id>="<label>|<consequence>" …
+    ```
+
+  - Check the card with `--dry-run` first.
+  - At the point of no return, run `roci-board steer done <id> --from <name>`.
+  - Name the TC issue a card blocks, and move that issue to "Waiting for Human Feedback" when you post. Move it back when Sam answers.
+  - Never pass `--force`.
+  - Pipe approval codes; never echo them.
+  - Limits: 3 open cards and 6 per hour per name.
+- **Evidence:** Sam's order via Naomi, 2026-10-14; `roci-board --help`.
+- **Feeds:** Rocinante agent conventions (not a public skill). The code-handling part matches tc-secrets §3c.
+- **Status:** open; it's a board convention, recorded here so the CLI skills' "ask the owner" steps can point to it.
