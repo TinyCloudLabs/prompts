@@ -35,6 +35,7 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 const PAGES = [
   { url: "setup", src: "setup/README.md" },
+  { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "publish", src: "setup/publish.md", redirectFrom: ["share"] },
@@ -173,6 +174,15 @@ const ABILITIES = [
 ];
 
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
+// The setup guide pins the parser the agent installs. A stale pin would serve
+// a different executable than the one the guide tells agents to trust.
+const envHelperHash = sha256(readFileSync(join(ROOT, "scripts/agent-env.mjs")));
+const envGuide = readFileSync(join(ROOT, "setup/agent.md"), "utf8");
+const envPins = [...envGuide.matchAll(/'([a-f0-9]{64})'/g)].map((match) => match[1]);
+if (envPins.length !== 2 || envPins.some((pin) => pin !== envHelperHash)) {
+  throw new Error("setup/agent.md agent-env.mjs pin differs from served helper");
+}
+
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
 
@@ -303,6 +313,7 @@ for (const f of copied) {
   mkdirSync(dirname(join(OUT, f)), { recursive: true });
   cpSync(join(ROOT, f), join(OUT, f));
 }
+write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
 
 const pages = PAGES.map((p) => {
   const text = render(p.src);

@@ -4,7 +4,7 @@ Give your coding agent (Claude Code, Codex or OpenCode) abilities that keep your
 
 You need a shell, Node.js 22.20 or later, and npm.
 
-**Agents:** the owner sent you this page, maybe with a request. Pick the page below that matches the request and follow it now, in this conversation. If they only asked you to set up TinyCloud, follow [the CLI page](tinycloud.md).
+**Agents:** the owner sent you this page, maybe with a request. Pick the action below and follow its page now, in this conversation. [One shared setup entry](agent.md) installs the pinned CLI and only that action's skill; if the owner only asked for the CLI, follow [its module](tinycloud.md).
 
 ## Personal records: [/apps](tc-apps.md)
 
@@ -25,27 +25,28 @@ You need a shell, Node.js 22.20 or later, and npm.
 `/share` redirects here.
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link: private to you by default, or public when you ask.
-- **Run once:** the setup block on [the page](publish.md), then ask your agent "Publish this report and send me a private link."
-- **You approve:** an OpenKey request, on your phone or computer, that lets the agent publish files to your TinyCloud and manage their links, for up to 30 days.
-- **Undo:** ask your agent to revoke a link; every link also expires on its own. [The page](publish.md#undo) has the commands that end the agent's access and remove its key.
+- **Paste into your agent:** `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
+- **You approve:** a separate OpenKey request for standing read/write access to your share folders (not just this report), for up to 30 days. Setup alone grants nothing.
+- **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Secrets: [/secrets](secrets.md)
 
 - **What it does:** your agent uses API keys you keep in TinyCloud Secrets without the value ever appearing in the conversation. If a key is missing, it sends you a link to add it.
-- **Run once:** the setup block on [the page](secrets.md), then ask your agent "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud."
-- **You approve:** an OpenKey request that names each secret the agent may read, for up to 30 days.
-- **Undo:** one `auth logout` command on [the page](secrets.md#undo) stops the agent reading them.
+- **Paste into your agent:** `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets`
+- **You approve:** Secret Manager add if missing, then a separate OpenKey grant naming the secret plus network-wide decrypt authority. Setup grants nothing.
+- **Undo:** `auth logout` is local only; [the page](secrets.md#undo) explains the distinction.
 
 ## Agent-to-agent threads: [/courier](courier.md)
 
 - **What it does:** your agent and a colleague's agent send each other requests and answers over TinyCloud, inside rules you set.
-- **Run once:** the setup block on [the page](courier.md), then pair with the other person.
-- **You approve:** an OpenKey request for Courier's own key to keep messages under `xyz.tinycloud.courier/` in your `agents` space, for 30 days, and each pairing.
-- **Undo:** `"$TC" courier revoke <their-name>` ends a pairing, with `TC` set to the CLI the setup installed; [the page](courier.md#undo) has the exact commands.
+- **Paste into your agent:** `Set up Courier for this task: https://agents.tinycloud.xyz/courier`
+- **You approve:** a separate OpenKey grant for Courier's own key to keep messages and state in your `agents` space, for 30 days, and each pairing.
+- **Undo:** `courier revoke` currently removes local peer state; older access lasts to expiry. [The page](courier.md#undo) explains the limits.
 
 ## Building blocks
 
-- [/cli](tinycloud.md): installs the TinyCloud CLI and its `tc-cli` skill, and makes the `tinycloud` command run it. Nothing to approve. `/chat` runs it for you; the other pages install the CLI themselves.
+- [/agent](agent.md): one setup entry for Secrets, publish/share and Courier. Installs one skill for the task, never a grant.
+- [/cli](tinycloud.md): installs the CLI and core skill into a private prefix. Does not grant access.
 - [/openkey](openkey.md): installs the standalone OpenKey CLI, for workflows that need it. No page here uses it. Nothing to approve.
 
 ## Skills

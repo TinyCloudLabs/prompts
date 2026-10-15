@@ -4,41 +4,21 @@ Your agent publishes a document or web page from your computer to your TinyCloud
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.3 into a folder of its own and the `tc-publish` skill for your agent.
-- **Run once,** in a terminal, after making two replacements:
-  - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
-  - `<your email>`: the address owner-only links go to, for example `you@example.com`.
-
-  ```sh
-  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.3 &&
-  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - publish --agent <client> &&
-  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud" TC_OWNER_EMAIL=<your email>
-  ```
-
-  Start your agent from that shell, or add the `export` line to your shell profile so every new shell has it. Then ask: "Publish this report and send me a private link."
-- **You approve:** the first time, the agent sends you an OpenKey link and a code. On your phone or computer, check the code, sign in with your passkey and approve. It lets the agent publish files to your TinyCloud and manage their links, for up to 30 days; you can pick a shorter time on the same page.
-- **Undo:** see [Undo](#undo).
+- **Paste into Claude Code, Codex or OpenCode:** `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
+- Your agent follows [the shared setup](agent.md): it installs or reuses the pinned CLI, records your email as a non-secret owner default, installs only the `tc-publish` skill and continues this request. It asks for your email if it is unknown; it never switches to a public link as a fallback.
+- **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant.
+- **Undo:** the receipt must distinguish revoking a share from clearing the agent's local login. A public link cannot be recalled until issuer-key revocation is available; after key rotation, older links may last until expiry.
 
 ## For the agent
 
-If the owner sent you this page with a request, read the skill in full and follow it:
-
-```sh
-cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md"
-```
-
-```sh
-cat "$HOME/.agents/skills/tc-publish/SKILL.md"
-```
-
-The first is for Claude Code, the second for Codex and OpenCode. If neither exists, or the skill's §1 check prints `TC_NOT_FOUND`, don't install anything yourself: show the owner the block under "For the owner" and ask them to run it.
+Keep the owner's request, read [setup/agent.md](agent.md), select **publish/share** and follow its steps. Install only `tc-publish`. Then read its installed `SKILL.md` and continue the original task from §1 in this conversation. Missing CLI or owner email is `NEEDS_SETUP`; don't publish publicly to bypass it.
 
 ## Undo
 
-These are your steps, run in a terminal with `TC_BIN` set as in the setup block. If you also set `TC_HOME` for the agent, set it here too; the setup block doesn't, so by default the agent's profiles are in `~/.tinycloud`. Use the profile name you gave the agent instead of `publisher`, if you named one.
+These are owner steps. Use the private CLI from `~/.local/share/tinycloud/cli/node_modules/.bin/tinycloud` (or your own `TC_BIN`) and the profile that published the link. `TC_HOME` is a home root; by default profiles are in `~/.tinycloud`.
 
-- **A link:** ask your agent to revoke it. Every link also expires on its own: owner-only links after 7 days and public links after 24 hours, unless you asked for another time.
-- **The agent's access:** if you approved the agent, `"$TC_BIN" --profile publisher auth logout` clears its session on this computer. The approval stays valid on TinyCloud until it expires. If the agent never created the profile, this reports `PROFILE_NOT_FOUND`, which is fine.
+- **A link:** owner-only links can be revoked by the issuing profile while it retains its key. Public links cannot currently be recalled before expiry; they usually expire after 24 hours, unless you requested another time. Local login cleanup is not link revocation.
+- **Local session:** `"$TC_BIN" --profile publisher auth logout` clears its copy on this computer but not the live owner grant. If the agent never created the profile, `PROFILE_NOT_FOUND` is expected.
 - **The agent's key:** the first time it runs, the agent creates a local profile, `publisher`, holding a key that your approval is for. It never deletes profiles itself. Remove it with `"$TC_BIN" profile delete publisher`; this succeeds even if the profile was never created. If it reports `PROFILE_DELETE_DEFAULT`, `publisher` is the default profile:
   - if you have another (`"$TC_BIN" profile list`), make that the default with `"$TC_BIN" profile switch <other>` and delete again;
   - if `publisher` is your only profile, delete the whole profile store, `${TC_HOME:-$HOME}/.tinycloud`. Deleting just the profile's folder would leave `publisher` named as the default.

@@ -4,36 +4,14 @@ Courier lets your agent and another person's agent send each other requests, ans
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.3, which includes `tinycloud courier`, into `~/.local/share/tinycloud/cli` (the same folder as [the CLI setup](tinycloud.md)) and the `courier` skill for your agent, then gives Courier its own key.
-- **Run once,** in a terminal, after making two replacements:
-  - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
-  - `<your-name>`: a short name for yourself, which the other person's agent sees.
-
-  ```sh
-  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.3 &&
-  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent <client> &&
-  TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}" &&
-  "$TC" courier init --paste --handle <your-name>
-  ```
-
-  Every Courier command on this page runs that CLI as `"$TC"`. If [the CLI setup](tinycloud.md) linked `tinycloud` onto your `PATH`, `tinycloud courier …` works too; never use a bare `tc`, which on Linux is usually the system's traffic-control tool. In a new terminal, set `TC` again first: `TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"`.
-- **Pair** with the other person, each in a terminal. You run `"$TC" courier pair start <their-name>` and send them what it prints. Whoever receives a piece passes it to `"$TC" courier pair accept --stdin`, which prints the next piece to send back, until the third one has been accepted. Then ask your agent to send them a request.
-- **You approve:** `init` prints an OpenKey link. Sign in with your passkey and approve a grant for Courier's own key: it can keep messages under `xyz.tinycloud.courier/` in your `agents` space, for 30 days. Paste the `XXXX-XXXX` code OpenKey shows back into the terminal. Each pairing is your decision too; your agent never pairs on its own.
-- **Undo:** see [Undo](#undo).
+- **Paste into Claude Code, Codex or OpenCode:** `Set up Courier for this task: https://agents.tinycloud.xyz/courier`
+- Your agent follows [the shared setup](agent.md): it installs or reuses the pinned CLI and installs only the Courier skill, then continues the original request. Setup creates no Courier key or grant.
+- **You approve:** Courier `init` separately in OpenKey. Its grant covers Courier message and state paths and hooks, not unrelated secrets. Pairing with a peer is another decision; until the agent-pairing changes ship, follow the skill's current owner-run pairing instructions. Two agents with the same owner cannot pair yet (TC-1248).
+- **Undo:** deleting local state is not grant revocation; peer access currently expires unless real peer revoke ships (TC-1247).
 
 ## For the agent
 
-If the owner sent you this page, read the skill in full and follow it:
-
-```sh
-cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md"
-```
-
-```sh
-cat "$HOME/.agents/skills/courier/SKILL.md"
-```
-
-The first is for Claude Code, the second for Codex and OpenCode. `init`, `pair` and `revoke` are the owner's steps: if Courier isn't set up yet, show the owner the block under "For the owner" and ask them to run it.
+Keep the request, read [setup/agent.md](agent.md), select **Courier** and follow its steps. Install only `courier`, read the installed `SKILL.md`, and continue the task in this conversation. Follow the shipped skill's current init and pairing limits; this setup page does not authorize agent-side pairing, renewals, or revocation.
 
 ## Undo
 

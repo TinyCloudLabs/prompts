@@ -4,38 +4,18 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.3 into a folder of its own and the `tc-secrets` skill for your agent.
-- **Run once,** in a terminal, after making two replacements:
-  - `<client>`: the agent you use, `claude-code`, `codex` or `opencode`.
-  - `<your DID>`: the account that owns the secrets, `did:pkh:eip155:1:<your address>`.
-
-  ```sh
-  npm install --prefix "$HOME/.local/share/tinycloud/cli" --no-audit --no-fund @tinycloud/cli@1.2.3 &&
-  curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - secrets --agent <client> &&
-  export TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud" TC_OWNER_DID=<your DID>
-  ```
-
-  Start your agent from that shell, or add the `export` line to your shell profile so every new shell has it. Then ask, for example: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud."
-- **You approve:** the agent sends you one message. It has a link to add each missing secret, and, when it needs access, an OpenKey link. On OpenKey, sign in with your passkey and check the request: it names each secret the agent may read and decrypt, and lasts up to 30 days. Approve, then send the agent the short code OpenKey shows.
-- **Undo:** see [Undo](#undo).
+- **Paste into Claude Code, Codex or OpenCode:** `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets`
+- Your agent follows [the shared setup](agent.md) for this task: it installs the pinned CLI into the shared private prefix, records your account DID as a non-secret owner default, installs the Secrets skill, then continues the same request. If it doesn't know the DID of your Secrets account, give it the address shown in Secret Manager; do not send it an API key.
+- **You approve:** a Secret Manager `/request` link if a name is missing and a separate OpenKey request when the agent needs read access. The current read grant includes network-wide decrypt authority, not only the named secret. Check the exact items; you may decline any item. Return only the short OpenKey code in the 1:1 channel, never a value.
+- **Undo:** `auth logout` clears only the agent's local session. Its grant remains valid until expiry or owner revocation; a provider key already read may require rotation.
 
 ## For the agent
 
-If the owner sent you this page with a request, read the skill in full and follow it:
-
-```sh
-cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/SKILL.md"
-```
-
-```sh
-cat "$HOME/.agents/skills/tc-secrets/SKILL.md"
-```
-
-The first is for Claude Code, the second for Codex and OpenCode. If neither exists, or the skill's §1 check prints `TC_NOT_FOUND` or `OWNER_UNSET`, don't install anything yourself: show the owner the block under "For the owner" and ask them to run it.
+Keep the owner's request, read [setup/agent.md](agent.md), select **Secrets** and follow its steps. Install only `tc-secrets`; choose a role-and-purpose-specific `TC_SECRETS_PROFILE` rather than silently sharing `api-keys`. Once setup is ready, read the installed skill's `SKILL.md` and continue the original task from §1 in this conversation. Missing CLI or owner DID is `NEEDS_SETUP`, not a reason to request a value in chat or a broad grant.
 
 ## Undo
 
-- **The agent's access:** if you approved the agent, `"$TC_BIN" --profile "${TC_SECRETS_PROFILE:-api-keys}" auth logout` clears the session the skill uses on this computer, so it can't read any secret. Run it with `TC_BIN`, `TC_HOME` and `TC_SECRETS_PROFILE` set as for the agent. The approval stays valid on TinyCloud until it expires. `PROFILE_NOT_FOUND` means the agent never got as far as signing in; that's fine.
+- **Local session:** if you approved the agent, `"$TC_BIN" --profile "$TC_SECRETS_PROFILE" auth logout` clears that profile's session on this computer. Set `TC_BIN` to your private CLI path (or read it with `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN`), and use the actual role-specific `TC_SECRETS_PROFILE`. This does **not** revoke the grant or erase a value already read; the grant lasts until expiry or owner revocation. `PROFILE_NOT_FOUND` means this profile never signed in.
 - **The agent's key:** the skill creates a local profile, `${TC_SECRETS_PROFILE:-api-keys}`, holding a key that your approval is for. It never deletes profiles itself. Optional: remove it with `"$TC_BIN" profile delete "${TC_SECRETS_PROFILE:-api-keys}"`; this succeeds even if the profile was never created. If it reports `PROFILE_DELETE_DEFAULT`, that profile is the default:
   - if you have another (`"$TC_BIN" profile list`), make that the default with `"$TC_BIN" profile switch <other>` and delete again;
   - if it's your only profile, delete the whole profile store, `${TC_HOME:-$HOME}/.tinycloud`. Deleting just the profile's folder would leave it named as the default.
