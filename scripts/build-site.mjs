@@ -35,6 +35,7 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 const PAGES = [
   { url: "setup", src: "setup/README.md" },
+  { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "publish", src: "setup/publish.md", redirectFrom: ["share"] },
@@ -54,10 +55,22 @@ const PAGES = [
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// RESOLVER is the text js-sdk ships from @tinycloud/cli 1.2.3 (TinyCloudLabs/js-sdk#522).
-const RESOLVER = [
+// The released CLI and Courier skills contain this exact resolver. Replace it
+// in every published Markdown file, including the core skill's reference pages.
+const UPSTREAM_RESOLVER = [
   'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it',
   '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"   # else a global npm install',
+  '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
+].join("\n");
+const RESOLVER = [
+  '{ set +x; } 2>/dev/null; umask 077',
+  'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
+  '[ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }',
+  'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
+  '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
+  'fi',
+  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"',
+  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
@@ -173,6 +186,15 @@ const ABILITIES = [
 ];
 
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
+// The setup guide pins the parser the agent installs. A stale pin would serve
+// a different executable than the one the guide tells agents to trust.
+const envHelperHash = sha256(readFileSync(join(ROOT, "scripts/agent-env.mjs")));
+const envGuide = readFileSync(join(ROOT, "setup/agent.md"), "utf8");
+const envPins = [...envGuide.matchAll(/(?:const pin = )"([a-f0-9]{64})"/g)].map((match) => match[1]);
+if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
+  throw new Error("setup/agent.md agent-env.mjs pin differs from served helper");
+}
+
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
 
@@ -251,6 +273,15 @@ async function loadSkill(skill) {
     }
     changed.add(path);
   }
+  if (skill.short === "cli" || skill.short === "courier") {
+    files = files.map(([path, body]) => {
+      if (!path.endsWith(".md")) return [path, body];
+      const text = body.toString("utf8");
+      if (!text.includes(UPSTREAM_RESOLVER)) return [path, body];
+      changed.add(path);
+      return [path, Buffer.from(text.replaceAll(UPSTREAM_RESOLVER, RESOLVER))];
+    });
+  }
   const main = files.find(([path]) => path === "SKILL.md");
   if (!main) throw new Error(`${skill.short}: no SKILL.md in ${skill.tarball || ""}${skill.dir}`);
   const text = main[1].toString("utf8");
@@ -303,6 +334,7 @@ for (const f of copied) {
   mkdirSync(dirname(join(OUT, f)), { recursive: true });
   cpSync(join(ROOT, f), join(OUT, f));
 }
+write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
 
 const pages = PAGES.map((p) => {
   const text = render(p.src);
@@ -517,10 +549,9 @@ write(
   `<!doctype html>\n<meta charset="utf-8">\n<title>Not found · TinyCloud</title>\n<p>Not found. Agents: see <a href="/setup">/setup</a> for every guide on this site.</p>\n`,
 );
 
-// Served files of `checkCli` skills run the CLI only through RESOLVER (in
-// Markdown) or defaultTc() (in scripts): no other global npm lookup, no bare
-// `tc` command in a shell code block, and no script that runs `tc`: as a
-// default executable, as the program it spawns, or as a value it returns.
+// Every released CLI/Courier Markdown block has the persisted-selection
+// resolver; no upstream process/private/global-only resolver may survive.
+// Other checked skills use their own explicit CLI selection.
 const SCRIPT_TC = /\bexecutable\s*=\s*['"]tc['"]|\b(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)\(\s*['"]tc\b|\breturn\s+['"]tc['"]/;
 const wrongCli = skills
   .filter((s) => s.checkCli)
@@ -528,9 +559,10 @@ const wrongCli = skills
     s.files.flatMap((f) => {
       const text = f.body.toString("utf8");
       const lookups = text.split("npm prefix --global").length - 1;
+      const upstream = text.includes(UPSTREAM_RESOLVER);
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
       const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
-      return lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
+      return !upstream && lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
     }),
   );
 if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);

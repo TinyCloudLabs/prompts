@@ -30,11 +30,10 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 The CLI goes into a folder of its own, `~/.local/share/tinycloud/cli`, and is not installed globally. `TC_BIN` is its absolute path; if the owner already set `TC_BIN`, that CLI is used instead and nothing is installed.
 
-The skills on this site run the CLI as `TC_BIN` if set, else from `~/.local/share/tinycloud/cli`, so they need neither name on the `PATH`. The block makes the names work for the owner's own terminal, where it safely can:
+The site's skills run the CLI as process `TC_BIN` if set, else read the saved `TC_BIN` through the data-only helper installed by [/agent](agent.md), then use `~/.local/share/tinycloud/cli` before a global npm CLI. They need neither name on the `PATH`. The block makes the names work for the owner's own terminal, where it safely can:
 
-- **`tinycloud`**, the name the pages tell the owner to type, and **`tc`**: each is linked to the CLI in the first of `~/.local/bin` and npm's global `bin` folder that is on the `PATH`, is writable and has nothing by that name yet.
-- It never replaces or shadows another program. A name counts as taken when `command -v` finds it, whatever it does when run; it counts as TinyCloud's only when its real path is the CLI's. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is.
-- One exception: earlier versions of this guide installed the CLI globally with npm. When the `tc` the `PATH` selects is that global TinyCloud CLI itself (same real path as npm's global `bin/tc`, inside npm's global `@tinycloud/cli`), the block upgrades it in place to the pin, which also gives it the `tinycloud` name. It skips that upgrade when another program already has the name `tinycloud`, so the new global `tinycloud` can't shadow it.
+- **`tinycloud`**, the name the pages tell the owner to type, and **`tc`**: each is linked in `~/.local/bin` only if that directory is already on the `PATH`, writable and has nothing by that name yet.
+- It never replaces or shadows another program. A name counts as taken when `command -v` finds it, whatever it does when run; it counts as TinyCloud's only when its real path is the CLI's. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is. Existing global CLIs are left untouched.
 
 Run this as one sequential foreground shell call, exactly as written:
 
@@ -45,25 +44,18 @@ if [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$("$TC_BIN" --version 2
   mkdir -p "$CLI_DIR" && npm install --prefix "$CLI_DIR" --no-audit --no-fund @tinycloud/cli@1.2.3
 fi
 WANT=$("$TC_BIN" --version 2>/dev/null)
-G=$(npm prefix --global 2>/dev/null)
+# A private prefix only. Never install or link into npm's global bin.
 # ~/.local/bin may be on the PATH (as many shell profiles add it) before it exists.
 case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
-OLD_TC=$(command -v tc); OLD_TINY=$(command -v tinycloud)
 if [ -z "$WANT" ] || { [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$WANT" != 1.2.3 ]; }; then
   echo "TC_INSTALL_FAILED $TC_BIN"
-elif [ "$WANT" = 1.2.3 ] && [ -n "$G" ] && [ -n "$OLD_TC" ] && [ "$("$OLD_TC" --version 2>/dev/null)" != 1.2.3 ] &&
-  node -e 'const f = require("fs"), r = (p) => { try { return f.realpathSync(p) } catch { return "" } }, a = process.argv.slice(1), [sel, bin, pkg, tiny] = a.map(r);
-    process.exit(sel && sel === bin && sel.startsWith(pkg + "/") && (!a[3] || tiny.includes("/node_modules/@tinycloud/cli/")) ? 0 : 1)' \
-    "$OLD_TC" "$G/bin/tc" "$G/lib/node_modules/@tinycloud/cli" "$OLD_TINY" &&
-  ! npm install --global --no-audit --no-fund @tinycloud/cli@1.2.3; then
-  echo "TC_INSTALL_FAILED global"
 else
   for NAME in tinycloud tc; do
     # The CLI's own `tinycloud` executable, next to TC_BIN, if it has one.
     TARGET=$TC_BIN; [ "$NAME" = tinycloud ] && [ -x "$(dirname "$TC_BIN")/tinycloud" ] && TARGET="$(dirname "$TC_BIN")/tinycloud"
     FOUND=$(command -v "$NAME")
     DIR=
-    for D in "$HOME/.local/bin" ${G:+"$G/bin"}; do
+    for D in "$HOME/.local/bin"; do
       case ":$PATH:" in *":$D:"*) [ -z "$DIR" ] && [ -w "$D" ] && [ ! -e "$D/$NAME" ] && [ ! -L "$D/$NAME" ] && DIR=$D ;; esac
     done
     if [ -z "$FOUND" ]; then
@@ -88,13 +80,13 @@ fi
 
 It prints one line for `tinycloud`, then one for `tc`:
 
-- `TC_READY 1.2.3 <name>` → that name already runs the pinned CLI, including a global TinyCloud CLI from an earlier version of this guide, which the block has just upgraded in place.
+- `TC_READY 1.2.3 <name>` → that name already runs the pinned CLI.
 - `TC_LINKED 1.2.3 <link>` → the block linked that name to the pinned CLI.
 - `TC_CONFLICT <name> other` → another program has that name (`command -v` finds it), usually the Linux traffic-control tool for `tc`. It was left alone, whatever it does when run.
-- `TC_CONFLICT <name> <version>` (or `unknown`) → that name runs a TinyCloud CLI at another version, but not npm's global copy, so the block left it alone. `TC_CONFLICT tc <version>` together with `TC_CONFLICT tinycloud other` means the block left an earlier global TinyCloud CLI as it was, because upgrading it would have shadowed the other `tinycloud`.
-- `TC_CONFLICT <name> no-path` → nothing has that name, but neither `~/.local/bin` nor npm's global `bin` folder is on the `PATH` and writable. For `tinycloud`, tell the owner, in these words: "To use the `tinycloud` command, add this line to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`): `export PATH="$HOME/.local/bin:$PATH"`. Then open a new terminal, start your agent from it, and ask it to run https://agents.tinycloud.xyz/cli again." The rerun creates `~/.local/bin` and links `tinycloud` there; it still leaves any other `tc` alone.
+- `TC_CONFLICT <name> <version>` (or `unknown`) → that name runs another TinyCloud CLI version; the block left it alone.
+- `TC_CONFLICT <name> no-path` → nothing has that name, but `~/.local/bin` is not on the `PATH` and writable. For `tinycloud`, tell the owner, in these words: "To use the `tinycloud` command, add this line to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`): `export PATH="$HOME/.local/bin:$PATH"`. Then open a new terminal, start your agent from it, and ask it to run https://agents.tinycloud.xyz/cli again." The rerun creates `~/.local/bin` and links `tinycloud` there; it still leaves any other `tc` alone.
 - `TC_CONFLICT <name> link` → nothing has that name, but the link couldn't be made.
-- `TC_INSTALL_FAILED` (a single line) → the npm install failed (`global`: upgrading the earlier global CLI failed), or the owner's `TC_BIN` doesn't run. Stop and report the error. Don't retry with other options or `sudo`.
+- `TC_INSTALL_FAILED` → the npm install failed or the owner's `TC_BIN` doesn't run. Stop and report the error. Don't retry with other options or `sudo`.
 
 On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: continue with the skill below. A `TC_CONFLICT` changes nothing else; mention it to the owner in one line. If `tinycloud` isn't `TC_READY` or `TC_LINKED`, tell the owner they can run the CLI by its path, `TC_BIN`, or put a link to it on their `PATH` themselves; don't do that for them.
 
@@ -108,7 +100,7 @@ If the skill is missing or is a replaceable mismatch, run:
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
 ```
 
-The installer downloads the `tc-cli` skill that `@tinycloud/cli@1.2.3` ships, unchanged, from `agents.tinycloud.xyz`, and checks every file against the site's `/skills/index.json`. Wherever the skill looks up the CLI, it uses `TC_BIN` if set, else `~/.local/share/tinycloud/cli`, before a global npm install. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.2.3 <folder>`; anything else means the install failed, so stop and report it.
+The installer downloads the `tc-cli` skill from `@tinycloud/cli@1.2.3` with this site's pinned resolver overlay and checks every served file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection via the `/agent` helper, then the private installation before global npm. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.2.3 <folder>`; anything else means the install failed, so stop and report it.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 

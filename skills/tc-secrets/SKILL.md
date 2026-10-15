@@ -2,16 +2,16 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.3"
+  version: "0.5.4"
 ---
 
 # Read secrets from TinyCloud with `tc secrets`
 
 The owner stores secrets in TinyCloud Secrets (secrets.tinycloud.xyz). You read only the names they approved, through a CLI profile the owner authorizes with OpenKey. When a secret is missing, you send the owner a link where they add it themselves. You never see, ask for, or store a secret value in the conversation.
 
-Operator-set, never change or unset:
-- `TC_BIN`: absolute path to the TinyCloud CLI, `@tinycloud/cli` 1.2.0-beta.2 or later. Optional: without it, every block's preamble uses `~/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`, where agents.tinycloud.xyz installs it, else `tinycloud` on the `PATH`. Never a bare `tc`: `command -v tc` can resolve to `/usr/sbin/tc` (Linux traffic control).
-- `TC_OWNER_DID`: the owner's `did:pkh:eip155:1:0x…`.
+Owner defaults may come from `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host). The preamble reads it as data through the pinned `agent-env.mjs` installed by [setup/agent.md](https://agents.tinycloud.xyz/agent); process variables win. The file may contain only `TC_BIN`, `TC_OWNER_DID` and `TC_OWNER_EMAIL`. Never source it as shell code.
+- `TC_BIN`: absolute path to the TinyCloud CLI; otherwise use the shared private installation or `tinycloud` on `PATH`, never bare `tc`.
+- `TC_OWNER_DID`: the owner's `did:pkh:eip155:1:0x…`. Ask for it in setup if missing.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_SECRETS_PROFILE`: the profile name. Default `api-keys`.
 - `TC_SECRETS_STATE`: this skill's state directory. Default `$HOME/.local/state/tc-secrets`.
@@ -22,7 +22,12 @@ Agent shells may keep or drop variables, options and umask between calls. Every 
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'   # the names this task needs, space-separated, e.g. 'ELEVENLABS_API_KEY'
@@ -60,7 +65,12 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -78,7 +88,7 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 
 - `CLI_OK` and `OWNER_OK` → continue with §2.
 - `CLI_LEGACY` → the CLI predates `secrets request` and `secrets wait`. Everything still works with the older steps marked **(old CLI)** below. Tell the operator once that the CLI should be upgraded to the pinned version.
-- `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → stop and tell the owner. Never install anything yourself.
+- `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/agent for the pinned private install or the owner's non-secret DID, then return to this same task. Do not ask for a secret value or start a broad grant.
 
 If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tc` command.
 
@@ -88,7 +98,12 @@ This checks that the profile belongs to `TC_OWNER_DID`, then asks TinyCloud whic
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
@@ -192,7 +207,12 @@ After a CLI upgrade, a profile needs one normal command to finish a one-time upg
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -209,7 +229,12 @@ Run this for the `MISSING` and `NO_ACCESS` names from §2. The link names the se
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 ADD='<the MISSING and NO_ACCESS names, space-separated>'
@@ -261,7 +286,12 @@ Compose **one** message from the template at the end, with the add link (if §2b
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
@@ -283,7 +313,12 @@ It also requires this profile's key, this profile's node, no callback and at mos
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
