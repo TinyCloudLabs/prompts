@@ -287,3 +287,17 @@ Internal log of what agents got wrong or found slow when using the TinyCloud CLI
 - **Evidence:** Naomi's heads-up, 2026-10-14; `gh api rate_limit` showed core at 4124/5000 left with a reset at 23:51Z after the limit was hit.
 - **Feeds:** CI-waiting habits for every agent on the shared account (not a public skill); worker briefs.
 - **Status:** open.
+
+## L20. Check the host slot before heavy local jobs (lightning-node-1)
+
+- **Date:** 2026-10-15
+- **What went wrong:** a workflow gap, not a failed command. Heavy local jobs (test suites, builds, Docker, benchmarks) ran while someone else was taking exclusive measurements on the shared host, which could distort the incident and benchmark numbers.
+- **Right usage:**
+  - Before any heavy local job, run `host-slot check --owner <name>`. Exit 0 means go ahead; exit 3 means someone holds the slot exclusively, and it prints who and why.
+  - On exit 3, either wait with `host-slot wait --owner <name>` (the default timeout is 1 h, after which it exits 3), or ask the holder.
+  - For your own exclusive window, run `host-slot claim --owner <name> --purpose "<what, TC-id>" --until 2h`. Run `host-slot release --owner <name>` as soon as you're done. Never release someone else's slot (`--force`).
+  - Light commands don't need the slot: single CLI calls, `gh`, git, docs builds.
+  - Put this in every brief for a worker that runs local builds or tests. Docker also needs Clarissa's all-clear (host notes, "Docker etiquette").
+- **Evidence:** Alex's host rule via Naomi, 2026-10-15; `host-slot check --owner cli-lead` returned exit 3 with Miller holding it ("TC-1176 exclusive incident run"); the usage header in `~/.local/bin/host-slot`.
+- **Feeds:** worker briefs on Rocinante (not a public skill); `.context/rocinante/host-notes.md`.
+- **Status:** open.
