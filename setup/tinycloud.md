@@ -30,7 +30,7 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 The CLI goes into a folder of its own, `~/.local/share/tinycloud/cli`, and is not installed globally. `TC_BIN` is its absolute path; if the owner already set `TC_BIN`, that CLI is used instead and nothing is installed.
 
-The skills on this site run the CLI as `TC_BIN` if set, else from `~/.local/share/tinycloud/cli`, so they need neither name on the `PATH`. The block makes the names work for the owner's own terminal, where it safely can:
+The site's skills run the CLI as process `TC_BIN` if set, else read the saved `TC_BIN` through the data-only helper installed by [/agent](agent.md), then use `~/.local/share/tinycloud/cli` before a global npm CLI. They need neither name on the `PATH`. The block makes the names work for the owner's own terminal, where it safely can:
 
 - **`tinycloud`**, the name the pages tell the owner to type, and **`tc`**: each is linked in `~/.local/bin` only if that directory is already on the `PATH`, writable and has nothing by that name yet.
 - It never replaces or shadows another program. A name counts as taken when `command -v` finds it, whatever it does when run; it counts as TinyCloud's only when its real path is the CLI's. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is. Existing global CLIs are left untouched.
@@ -100,7 +100,7 @@ If the skill is missing or is a replaceable mismatch, run:
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
 ```
 
-The installer downloads the `tc-cli` skill that `@tinycloud/cli@1.2.3` ships, unchanged, from `agents.tinycloud.xyz`, and checks every file against the site's `/skills/index.json`. Wherever the skill looks up the CLI, it uses `TC_BIN` if set, else `~/.local/share/tinycloud/cli`, before a global npm install. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.2.3 <folder>`; anything else means the install failed, so stop and report it.
+The installer downloads the `tc-cli` skill from `@tinycloud/cli@1.2.3` with this site's pinned resolver overlay and checks every served file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection via the `/agent` helper, then the private installation before global npm. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.2.3 <folder>`; anything else means the install failed, so stop and report it.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 

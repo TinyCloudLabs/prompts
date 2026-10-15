@@ -11,11 +11,11 @@ Courier lets your agent and another person's agent send each other requests, ans
 
 ## For the agent
 
-Keep the request, read [setup/agent.md](agent.md), select **Courier** and follow its steps. Install only `courier`, read the installed `SKILL.md`, and continue the task in this conversation. Follow the shipped skill's current init and pairing limits; this setup page does not authorize agent-side pairing, renewals, or revocation.
+Keep the request, read [setup/agent.md](agent.md), select **Courier** and follow its steps. Install only `courier`, read the installed `SKILL.md`, and continue the task in this conversation. Its first shell block reads the saved CLI selection with the data-only `/agent` helper when process `TC_BIN` is absent; keep `TC_AGENT_ENV` set on multi-owner hosts. Follow the shipped skill's current init and pairing limits; this setup page does not authorize agent-side pairing, renewals, or revocation.
 
 ## Undo
 
-These are your steps, in a terminal with `TC` set to the CLI the setup installed: `TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"`.
+These are your steps. In a terminal, run the installed Courier skill's **Run Courier** preamble to select `TC` (process `TC_BIN` first, then the saved data-only selection). Do not fall back to a different global CLI when a selection was saved.
 
 - **A pairing:** if you paired, `"$TC" courier revoke <their-name>` stops renewing that peer's access. What they could already read lapses when its delegation expires, within 7 days. Before you've approved Courier's grant, it exits 1 with `[no-grant] No OpenKey owner grant is installed`, or with `[no-profile] Missing profile.json` if `init` never got that far; both are fine, there's nothing to revoke.
 - **Courier's key:** delete `${COURIER_HOME:-~/.courier}`, where Courier keeps its key and grant: `rm -rf "${COURIER_HOME:-$HOME/.courier}"`. This works whatever the revoke step printed. The grant stays valid on TinyCloud until it expires.
