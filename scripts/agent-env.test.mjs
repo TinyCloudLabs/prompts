@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
@@ -9,7 +9,7 @@ const script = new URL("./agent-env.mjs", import.meta.url).pathname;
 const homes = [];
 const owner = "did:pkh:eip155:1:0xd559CCd9EB87c530A9a349262669386dE93cf412";
 const fresh = () => {
-  const home = mkdtempSync(join(tmpdir(), "tc-agent-env-"));
+  const home = mkdtempSync(join(realpathSync(tmpdir()), "tc-agent-env-"));
   homes.push(home);
   return home;
 };
@@ -124,7 +124,7 @@ test("directory replacement during activation stays anchored to the opened direc
     const original = fs.renameSync;
     let swapped = false;
     fs.renameSync = (from, to) => {
-      if (!swapped && to.endsWith("/agent.env")) {
+      if (!swapped && (to === "agent.env" || to.endsWith("/agent.env"))) {
         swapped = true;
         original(${JSON.stringify(selected)}, ${JSON.stringify(moved)});
         fs.symlinkSync(${JSON.stringify(target)}, ${JSON.stringify(selected)});

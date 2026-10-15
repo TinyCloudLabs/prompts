@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { randomBytes } from "node:crypto";
-import { closeSync, constants, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 
 const keys = ["TC_BIN", "TC_OWNER_DID", "TC_OWNER_EMAIL"];
@@ -20,39 +20,39 @@ if (!isAbsolute(file) || parts.some((part) => part === "." || part === "..") || 
   process.exit(2);
 }
 const filename = parts.pop();
-const { O_RDONLY, O_WRONLY, O_CREAT, O_EXCL, O_DIRECTORY, O_NOFOLLOW } = constants;
-// /dev/fd paths keep each child lookup, mkdir, and rename anchored to an open
-// directory, even if its original pathname is renamed during the operation.
-const child = (fd, name) => `/dev/fd/${fd}/${name}`;
+const { O_RDONLY, O_WRONLY, O_CREAT, O_EXCL, O_NOFOLLOW } = constants;
+// cwd pins the selected directory across rename and cleanup on macOS and Linux.
+// A same-UID actor can race the initial check/chdir; it already controls this
+// user's home. Once chdir succeeds, later pathname swaps cannot redirect writes.
 function parent(create) {
-  let fd = openSync("/", O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
-  try {
-    for (const part of parts) {
-      const path = child(fd, part);
-      if (create) {
-        try { mkdirSync(path, { mode: 0o700 }); }
-        catch (error) { if (error.code !== "EEXIST") throw error; }
-      }
-      const next = openSync(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
-      closeSync(fd);
-      fd = next;
-    }
+  let path = "/";
+  for (const part of parts) {
+    path = join(path, part);
     if (create) {
-      const stat = fstatSync(fd);
-      if (stat.uid !== process.getuid() || (stat.mode & 0o777) !== 0o700) throw new Error("AGENT_ENV_UNSAFE_DIR");
+      try { mkdirSync(path, { mode: 0o700 }); }
+      catch (error) { if (error.code !== "EEXIST") throw error; }
     }
-    return fd;
-  } catch (error) {
-    closeSync(fd);
-    if (!create && error.code === "ENOENT") return null;
-    throw error;
+    let stat;
+    try { stat = lstatSync(path); }
+    catch (error) { if (!create && error.code === "ENOENT") return false; throw error; }
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("AGENT_ENV_UNSAFE_DIR");
   }
+  const before = lstatSync(path);
+  process.chdir(path);
+  const after = lstatSync(path);
+  const opened = statSync(".");
+  if (after.isSymbolicLink() || after.dev !== before.dev || after.ino !== before.ino ||
+    opened.dev !== before.dev || opened.ino !== before.ino) throw new Error("AGENT_ENV_UNSAFE_DIR");
+  if (create && (opened.uid !== process.getuid() || (opened.mode & 0o777) !== 0o700)) {
+    throw new Error("AGENT_ENV_UNSAFE_DIR");
+  }
+  return true;
 }
-function current(fd) {
-  if (fd === null) return { text: "", stat: null };
+function current(found) {
+  if (!found) return { text: "", stat: null };
   let opened;
   try {
-    opened = openSync(child(fd, filename), O_RDONLY | O_NOFOLLOW);
+    opened = openSync(filename, O_RDONLY | O_NOFOLLOW);
   } catch (error) {
     if (error.code === "ENOENT") return { text: "", stat: null };
     throw error;
@@ -65,9 +65,9 @@ function current(fd) {
     closeSync(opened);
   }
 }
-function save(fd, values, previous) {
-  const destination = child(fd, filename);
-  const temp = child(fd, `.agent-env.${randomBytes(12).toString("hex")}.tmp`);
+function save(values, previous) {
+  const destination = filename;
+  const temp = `.agent-env.${randomBytes(12).toString("hex")}.tmp`;
   try {
     const opened = openSync(temp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600);
     try {
@@ -92,10 +92,9 @@ if (!keys.includes(key)) {
   console.error("AGENT_ENV_INVALID_KEY");
   process.exit(2);
 }
-let fd = null;
 try {
-  fd = parent(action === "set");
-  const { text, stat } = current(fd);
+  const found = parent(action === "set");
+  const { text, stat } = current(found);
   const values = {};
   for (const [index, line] of text.split("\n").entries()) {
     if (!line || line.startsWith("#")) continue;
@@ -116,7 +115,7 @@ try {
     } else console.log(selected);
   } else if (action === "set" && valid(key, value)) {
     values[key] = value;
-    save(fd, values, stat);
+    save(values, stat);
   } else {
     console.error("AGENT_ENV_INVALID_VALUE");
     process.exitCode = 2;
@@ -126,6 +125,4 @@ try {
   // callers use exit 1 only to fall back to a CLI when no selection was saved.
   console.error("AGENT_ENV_UNSAFE_PATH");
   process.exitCode = 2;
-} finally {
-  if (fd !== null) closeSync(fd);
 }

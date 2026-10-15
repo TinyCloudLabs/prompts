@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,7 @@ import { after, before, test } from "node:test";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const helper = join(root, "scripts/agent-env.mjs");
 const homes = [];
-const home = () => { const dir = mkdtempSync(join(tmpdir(), "tc-agent-setup-")); homes.push(dir); return dir; };
+const home = () => { const dir = mkdtempSync(join(realpathSync(tmpdir()), "tc-agent-setup-")); homes.push(dir); return dir; };
 const shell = (script, env) => spawnSync("sh", ["-c", script], { encoding: "utf8", env: { PATH: process.env.PATH, ...env } });
 const block = (text, heading, language = "sh") => {
   const section = text.split(heading)[1];
@@ -26,7 +26,7 @@ const helperInstall = () => {
   const pinned = guide.match(/[a-f0-9]{64}/)?.[0];
   assert.ok(pinned);
   return block(guide, "### 2. Non-secret owner defaults")
-    .replaceAll("https://agents.tinycloud.xyz/agent-env.mjs", `file://${helper}`)
+    .replaceAll("https://agents.tinycloud.xyz/agent-env.mjs", `data:application/javascript;base64,${readFileSync(helper).toString("base64")}`)
     .replaceAll(pinned, digest);
 };
 after(() => { for (const dir of homes) rmSync(dir, { recursive: true, force: true }); });
@@ -66,24 +66,67 @@ test("published helper install refuses a linked directory or installed helper", 
   assert.equal(readFileSync(sentinel, "utf8"), "unrelated\n");
 });
 
-test("directory replacement during helper download cannot activate into its target", () => {
+test("checksum failure leaves no helper or temporary download", () => {
   const dir = home();
   const config = join(dir, ".config/tinycloud");
-  const target = join(dir, "unrelated");
-  const bin = join(dir, "bin");
-  mkdirSync(config, { recursive: true, mode: 0o700 });
-  mkdirSync(target, { mode: 0o700 });
-  mkdirSync(bin);
-  executable(join(bin, "curl"), `
-mv "$HOME/.config/tinycloud" "$HOME/.config/tinycloud-old"
-ln -s "$HOME/unrelated" "$HOME/.config/tinycloud"
-while [ "$1" != "-o" ]; do shift; done
-cp "$SOURCE_HELPER" "$2"`);
-  const result = shell(helperInstall(), { HOME: dir, SOURCE_HELPER: helper, PATH: `${bin}:${process.env.PATH}` });
+  const invalid = helperInstall().replace(
+    `data:application/javascript;base64,${readFileSync(helper).toString("base64")}`,
+    "data:text/plain;base64,d3Jvbmc=",
+  );
+  const result = shell(invalid, { HOME: dir });
   assert.notEqual(result.status, 0);
-  assert.equal(existsSync(join(target, "agent-env.mjs")), false);
-  assert.equal(existsSync(join(target, "agent-env.mjs.download")), false);
+  assert.equal(existsSync(join(config, "agent-env.mjs")), false);
+  noDownloadResidue(config);
 });
+
+const noDownloadResidue = (config) => {
+  assert.deepEqual(readdirSync(config).filter((name) => name.startsWith(".agent-env.")), []);
+};
+
+for (const scenario of ["parent-link", "destination-link", "moved-temp-parent", "failed-moved-parent"]) {
+  test(`relative rename handles ${scenario} at activation`, () => {
+    const dir = home();
+    const config = join(dir, ".config");
+    const destination = join(config, "tinycloud");
+    const target = join(dir, "unrelated");
+    mkdirSync(destination, { recursive: true, mode: 0o700 });
+    mkdirSync(target, { mode: 0o700 });
+    const marker = join(dir, "late-rename-fired");
+    const hook = join(dir, "late-rename.cjs");
+    writeFileSync(hook, `
+      const fs = require("node:fs");
+      const { syncBuiltinESMExports } = require("node:module");
+      const original = fs.renameSync;
+      let fired = false;
+      fs.renameSync = (from, to) => {
+        if (!fired && to === "../agent-env.mjs") {
+          fired = true;
+          fs.writeFileSync(${JSON.stringify(marker)}, "fired");
+          ${scenario === "parent-link"
+            ? `original(${JSON.stringify(destination)}, ${JSON.stringify(join(dir, "moved"))}); fs.symlinkSync(${JSON.stringify(target)}, ${JSON.stringify(destination)});`
+            : scenario === "destination-link"
+              ? `fs.symlinkSync(${JSON.stringify(target)}, ${JSON.stringify(join(destination, "agent-env.mjs"))});`
+              : `original(${JSON.stringify(config)}, ${JSON.stringify(join(dir, "moved-config"))}); fs.mkdirSync(${JSON.stringify(destination)}, {recursive: true, mode: 0o700}); ${scenario === "failed-moved-parent" ? 'throw Error("injected rename failure");' : ""}`}
+        }
+        return original(from, to);
+      };
+      syncBuiltinESMExports();
+    `);
+    const result = shell(helperInstall(), { HOME: dir, NODE_OPTIONS: `--require=${hook}` });
+    assert.equal(existsSync(marker), true, "activation hook was not exercised");
+    if (scenario === "destination-link") {
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(statSync(join(destination, "agent-env.mjs")).isFile(), true);
+    } else assert.notEqual(result.status, 0);
+    assert.equal(existsSync(join(target, "agent-env.mjs")), false);
+    assert.equal(existsSync(join(target, "helper")), false);
+    if (scenario === "parent-link") {
+      assert.equal(existsSync(join(dir, "moved/agent-env.mjs")), false);
+      noDownloadResidue(join(dir, "moved"));
+    } else if (scenario === "moved-temp-parent" || scenario === "failed-moved-parent") noDownloadResidue(join(dir, "moved-config/tinycloud"));
+    else noDownloadResidue(destination);
+  });
+}
 
 test("CLI setup respects an operator binary without replacing a conflicting tc", () => {
   const dir = home();

@@ -14,34 +14,80 @@ Follow [the shared CLI setup](tinycloud.md) with its caller contract, then retur
 
 The file `~/.config/tinycloud/agent.env` holds only `TC_BIN`, `TC_OWNER_DID` and `TC_OWNER_EMAIL`. It is **data**, not shell code. Every skill call reads it through a fixed allowlist parser; process variables take precedence. `TC_AGENT_ENV` selects a different file on a multi-owner host. Role profiles and state directories are not shared defaults. `TC_HOME` is the *home root* to which the CLI appends `.tinycloud`.
 
-Install the parser from this page's pinned site build once. Preview builds rewrite the URL in the block to their own host. Do not replace an existing different file without the operator's consent. A private random download directory and exclusive hard-link activation keep existing files untouched; the hash is checked in the site build.
+Install the parser from this page's pinned site build once. Preview builds rewrite the URL in the block to their own host. Do not replace an existing different file without the operator's consent. The download stays in a private temporary directory under the target directory; activation is an atomic rename of the exact file name, not `ln`'s directory-target behavior.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
-D="$HOME/.config/tinycloud"; H="$D/agent-env.mjs"
-[ ! -L "$HOME" ] && [ ! -L "$HOME/.config" ] && [ ! -L "$D" ] || { echo AGENT_ENV_HELPER_CONFLICT; exit 1; }
-mkdir -p -m 700 "$D" || exit 1
-safe_dir() {
-  node -e 'const fs=require("node:fs"), p=require("node:path"); let d=process.argv[1];
-    if(!p.isAbsolute(d)) process.exit(1);
-    for(let x=d;x!=="/";x=p.dirname(x)) { const s=fs.lstatSync(x); if(!s.isDirectory()||s.isSymbolicLink()) process.exit(1); }
-    const s=fs.lstatSync(d); if(s.uid!==process.getuid()||(s.mode&0o777)!==0o700) process.exit(1)' "$D"
+node --input-type=module - <<'NODE' || exit 1
+import { createHash } from "node:crypto";
+import { closeSync, constants, fchmodSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { basename, isAbsolute, join } from "node:path";
+
+const dir = join(process.env.HOME, ".config/tinycloud");
+const source = "https://agents.tinycloud.xyz/agent-env.mjs";
+const pin = "4be2b3c239d0a790dfe94619a220d77e187312c21c60cde5b003ab71499d0fae";
+const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const safeLocation = (saved) => {
+  const now = lstatSync(dir);
+  if (!now.isDirectory() || now.isSymbolicLink() || now.dev !== saved.dev || now.ino !== saved.ino) throw Error("changed directory");
+};
+try {
+  if (!isAbsolute(dir)) throw Error("relative home");
+  let parent = "/";
+  for (const part of dir.split("/").filter(Boolean)) {
+    parent = join(parent, part);
+    try { mkdirSync(parent, { mode: 0o700 }); }
+    catch (error) { if (error.code !== "EEXIST") throw error; }
+    const stat = lstatSync(parent);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error("linked directory");
+  }
+  const mode = lstatSync(dir);
+  if (mode.uid !== process.getuid() || (mode.mode & 0o777) !== 0o700) throw Error("unsafe directory");
+  // cwd pins the directory for relative rename and cleanup on macOS and Linux.
+  // A same-UID actor swapping a parent before chdir retains full user access (P3).
+  process.chdir(dir);
+  const saved = statSync(".");
+  let existing;
+  try { existing = openSync("agent-env.mjs", constants.O_RDONLY | constants.O_NOFOLLOW); }
+  catch (error) { if (error.code !== "ENOENT") throw error; }
+  if (existing !== undefined) {
+    try {
+      const stat = fstatSync(existing);
+      if (!stat.isFile() || stat.uid !== process.getuid() || (stat.mode & 0o777) !== 0o600 ||
+        hash(readFileSync(existing)) !== pin) throw Error("different helper");
+    } finally { closeSync(existing); }
+  } else {
+    const temp = basename(mkdtempSync(".agent-env."));
+    process.chdir(temp);
+    let activated = false;
+    try {
+      const response = await fetch(source);
+      if (!response.ok) throw Error("download failed");
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (hash(bytes) !== pin) throw Error("checksum mismatch");
+      const fd = openSync("helper", constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+      try { fchmodSync(fd, 0o600); writeFileSync(fd, bytes); }
+      finally { closeSync(fd); }
+      // rename(2) replaces a late symlink entry itself, never its directory target.
+      renameSync("helper", "../agent-env.mjs");
+      activated = true;
+      safeLocation(saved);
+    } catch (error) {
+      if (activated) unlinkSync("../agent-env.mjs");
+      throw error;
+    } finally {
+      try { unlinkSync("helper"); } catch (error) { if (error.code !== "ENOENT") throw error; }
+      process.chdir("..");
+      rmdirSync(temp);
+    }
+  }
+  safeLocation(saved);
+} catch {
+  console.error("AGENT_ENV_HELPER_CONFLICT");
+  process.exitCode = 1;
 }
-safe_dir || { echo AGENT_ENV_HELPER_CONFLICT; exit 1; }
-if [ ! -e "$H" ] && [ ! -L "$H" ]; then
-  T=$(mktemp -d "$HOME/.config/.agent-env.XXXXXXXX") || exit 1
-  trap 'rm -rf "$T"' EXIT
-  curl -fsSL https://agents.tinycloud.xyz/agent-env.mjs -o "$T/helper" || exit 1
-  printf '%s  %s\n' '33ad2876d81a504a02c9cac0496faa30180c6814b783f7f97ec1706f62da996e' "$T/helper" | sha256sum -c - >/dev/null || exit 1
-  safe_dir || { echo AGENT_ENV_HELPER_CONFLICT; exit 1; }
-  chmod 600 "$T/helper" && ln "$T/helper" "$H" || { echo AGENT_ENV_HELPER_CONFLICT; exit 1; }
-fi
-safe_dir && node -e 'const f=require("node:fs"), c=require("node:crypto"); const [p,want]=process.argv.slice(1);
-  const fd=f.openSync(p,f.constants.O_RDONLY|f.constants.O_NOFOLLOW);
-  try { const s=f.fstatSync(fd); if(!s.isFile()||s.uid!==process.getuid()||(s.mode&0o777)!==0o600||
-    c.createHash("sha256").update(f.readFileSync(fd)).digest("hex")!==want) process.exit(1); }
-  finally { f.closeSync(fd); }' "$H" '33ad2876d81a504a02c9cac0496faa30180c6814b783f7f97ec1706f62da996e' || { echo AGENT_ENV_HELPER_CONFLICT; exit 1; }
-node "$H" set TC_BIN "${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
+NODE
+node "$HOME/.config/tinycloud/agent-env.mjs" set TC_BIN "${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 ```
 
 Check only the field needed for this task before asking: `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_DID` for Secrets, or `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_EMAIL` for publish. Exit 1 means absent; exit 2 means invalid. Do not read the entire file.
