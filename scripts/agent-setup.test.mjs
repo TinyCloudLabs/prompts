@@ -45,6 +45,32 @@ test("published helper install does not follow a predictable download symlink", 
   assert.equal(statSync(join(config, "agent-env.mjs")).mode & 0o777, 0o600);
 });
 
+test("temporary helper directory is 0700 while the download is in flight", () => {
+  const dir = home();
+  const marker = join(dir, "temp-mode");
+  const hook = join(dir, "temp-mode.cjs");
+  writeFileSync(hook, `
+    const fs = require("node:fs");
+    const { syncBuiltinESMExports } = require("node:module");
+    const original = fs.mkdtempSync;
+    fs.mkdtempSync = (prefix, options) => {
+      const temp = original(prefix, options);
+      if (prefix === ".agent-env.") {
+        const stat = fs.statSync(temp);
+        fs.writeFileSync(${JSON.stringify(marker)}, JSON.stringify({
+          directory: stat.isDirectory(), mode: stat.mode & 0o777,
+        }));
+      }
+      return temp;
+    };
+    syncBuiltinESMExports();
+  `);
+  const result = shell(helperInstall(), { HOME: dir, NODE_OPTIONS: `--require=${hook}` });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(readFileSync(marker, "utf8")), { directory: true, mode: 0o700 });
+  noDownloadResidue(join(dir, ".config/tinycloud"));
+});
+
 test("published helper install refuses a linked directory or installed helper", () => {
   const dir = home();
   const target = join(dir, "other");
@@ -180,5 +206,12 @@ for (const name of ["courier", "cli"]) {
     });
     assert.notEqual(linked.status, 0);
     assert.doesNotMatch(linked.stdout, /GLOBAL_1\.2\.1/);
+    const overriddenLinked = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
+      HOME: dir, TC_AGENT_ENV: join(dir, "linked-owner/agent.env"), TC_BIN: override,
+      PATH: `${bin}:${process.env.PATH}`,
+    });
+    assert.equal(overriddenLinked.status, 0, overriddenLinked.stderr);
+    assert.match(overriddenLinked.stdout, name === "courier" ? /COURIER_OVERRIDE_1\.2\.4/ : /OVERRIDE_1\.2\.4/);
+    assert.doesNotMatch(overriddenLinked.stdout, /GLOBAL_1\.2\.1/);
   });
 }
