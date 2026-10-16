@@ -77,7 +77,15 @@ const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
 const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
 const SKILLS = [
-  { short: "apps", dir: "skills/tc-apps" },
+  {
+    short: "apps", dir: "skills/tc-apps",
+    // Recursive loading below includes and hashes these optional, non-executable
+    // helpers alongside the skill. Fail rather than ship a broken relative import.
+    requiredFiles: [
+      "DIAGNOSTICS.md", "tc-wrapper.sh",
+      "diagnostics/contract.mjs", "diagnostics/opencode-v1.mjs", "diagnostics/opencode-config.mjs",
+    ],
+  },
   { short: "publish", dir: "skills/tc-publish" },
   { short: "secrets", dir: "skills/tc-secrets" },
   {
@@ -255,6 +263,9 @@ async function loadSkill(skill) {
       .map(([path, body]) => [path.slice(skill.dir.length + 1), body]);
   } else {
     files = walk(skill.dir).map((path) => [path.slice(skill.dir.length + 1), readFileSync(join(ROOT, path))]);
+  }
+  for (const path of skill.requiredFiles || []) {
+    if (!files.some(([name]) => name === path)) throw new Error(`${skill.short}: missing required pack file ${path}`);
   }
   files.sort(([a], [b]) => (a < b ? -1 : 1));
   const changed = new Set();
