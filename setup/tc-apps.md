@@ -8,6 +8,7 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 - **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps`
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
 - **You approve:** your agent shows you an OpenKey link and code. Check the code, sign in with your passkey and approve: it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records.
+- **Optional diagnostics:** default off and separate from record access. Setup installs helper files but does not activate them, inspect conversations or enable capture. See [Optional diagnostics and explicit updates](#optional-diagnostics-and-explicit-updates) only if you want that separate feature.
 - **Undo:** see [Undo](#undo).
 
 ## Use it in Claude (web, iOS, Android)
@@ -82,6 +83,34 @@ Follow the skill now for the owner's request, from its §1.
 
 **OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
 
+## Optional diagnostics and explicit updates
+
+This section is **not** part of ordinary setup or a record request. Baseline setup remains pinned to CLI 1.2.3; the skill's 1.2.2 business-command minimum does not imply diagnostics support. No published diagnostics-capable CLI version is claimed here. Before use, review the exact selected build/package and run its literal path with `diagnostics --help` and `diagnostics run --help`; it must provide the documented controls and scoped `--role`. If absent, keep ordinary records working and leave diagnostics off. Do not silently replace `TC_BIN`, rewrite `cli-path`, or upgrade the private CLI. A released CLI/package with its worker assets, packaging checks and synthetic acceptance is a separate release gate.
+
+The installed [DIAGNOSTICS.md](https://agents.tinycloud.xyz/skills/apps/DIAGNOSTICS.md) describes metadata controls, explicit selected detail, launcher/manual fallback and the optional OpenCode **1.18.31** source/fixture contract. Installed-client loading and actual executor propagation remain separately authorized acceptance, not a consequence of installing this pack. Claude Code and Codex have no automatic hooks; OpenCode v2 is unsupported.
+
+**Updating an already installed skill:** after explicit permission, use the reviewed site's installer as in §2, without the `npm install` or `cli-path` lines. It prints the installed folder and checks the site's per-file hashes, including `DIAGNOSTICS.md` and all three `diagnostics/*.mjs` helpers. Keep that directory together. The installer writes files; it does **not** mark arbitrary helpers executable or activate client configuration. Invoke the generator with Node, not as a shell program:
+
+```sh
+SKILL='/absolute/installed/tc-apps'
+node "$SKILL/diagnostics/opencode-config.mjs" --print-module
+```
+
+This only prints a proposed module. Follow DIAGNOSTICS.md to review, stage and separately copy an entry to the actual executing OpenCode server; do not change a shared/remote server or a client trust/environment policy implicitly. It requires no package installation.
+
+**Update the separately copied wrapper explicitly:** installing a new skill does not change `~/.local/share/tc-apps/tc`. After reviewing the installed `tc-wrapper.sh` and obtaining permission to replace that setup-owned copy, run:
+
+```sh
+SKILL='/absolute/installed/tc-apps'
+cp "$SKILL/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" &&
+chmod 755 "$HOME/.local/share/tc-apps/tc" &&
+cmp "$SKILL/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc"
+```
+
+Use the actual folder printed by the installer, not the placeholder. This preserves `cli-path` and does not enable capture. An operator-set `TC_BIN` bypasses that wrapper; do not change it silently. Wrapper diagnostics require the selected CLI's wrapper contract as well as this copy. With baseline/unsupported CLI builds, keep diagnostics off and ordinary record commands unchanged.
+
+Whole-client launch is attribution-only (`diagnostics run -- <client>`). Apply `--scope tc-apps` and optional `--role` only to one explicitly selected normal tc-apps command/block, never a whole client/login shell/shared server. Scope is not enablement or permission to inspect conversations.
+
 ## Undo
 
 For the owner. Run these in a terminal where `TC_BIN` and `TC_HOME` have the values you started the client with, or are unset if you never set them: `TC_BIN` picks the CLI (otherwise the setup's `~/.local/share/tc-apps/tc`), and the CLI reads `TC_HOME` to find its profiles.
@@ -94,3 +123,5 @@ If you signed in, each command clears one local session. The approvals stay vali
 ```
 
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
+
+Ordinary Undo does **not** disable or delete diagnostics. If you separately enabled them, first use the diagnostics-capable CLI and the same diagnostic root to disable capture; then preview and explicitly confirm any selected history deletion in DIAGNOSTICS.md. Remove only the plugin entry you separately added, if any, from the executing server's configuration and arrange its separately authorized reload. Keep the helper directory until that entry is removed. Diagnostic history lives separately from profiles/state; retained evidence still expires, and external exports require their own deletion. Do not delete records or revoke record grants as a substitute for diagnostic cleanup.

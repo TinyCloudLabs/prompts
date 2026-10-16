@@ -36,6 +36,18 @@ Optional variables, set before you start the client:
 - `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
 - `TC_BIN`: the absolute path to another `tc`, CLI 1.2.2 or later. The skill then uses it instead of its own folder.
 
+## Optional private diagnostics
+
+Nothing in ordinary setup turns diagnostics on. The setup still installs the baseline CLI 1.2.3; neither that pin nor the skill's CLI 1.2.2 minimum establishes diagnostics support. A separately reviewed build must expose the commands in [DIAGNOSTICS.md](DIAGNOSTICS.md), and published availability is a release gate, not an assumed version upgrade.
+
+Diagnostics record bounded operation metadata, not your messages, terminal, record values, keys, SQL or secrets. You explicitly enable metadata for tc-apps, and can pause, resume, disable, review, export or delete selected evidence. Selected visible intent/claims/feedback are a separate, optional, owner-selected content tier with a seven-day maximum and encrypted storage excluded from backups; metadata lasts at most 30 days and quotas can remove it sooner.
+
+Launching a whole client with `diagnostics run -- <client>` adds attribution only. Only an explicitly selected normal tc-apps shell block may use `--scope tc-apps` and an optional fixed `--role`; a shared client/server environment must never be scoped. Nested selected blocks preserve valid run/workflow links, not a claim that every command belongs to the same owner task. Missing linkage stays unknown.
+
+Claude Code and Codex use the explicit launcher/manual-selection fallback; no automatic hooks are shipped. The optional OpenCode v1 plugin targets executing server **1.18.31**, exercised through loopback fixtures, not certified through an installed-client session. OpenCode v2 is unsupported. Installing helper files does not activate a plugin; the guide gives Node invocation and separately authorized configuration steps.
+
+Updating the installed skill does not update the separately copied runtime wrapper. Follow the [setup's explicit optional update](https://agents.tinycloud.xyz/apps#optional-diagnostics-and-explicit-updates) only after review; it does not replace the baseline CLI or enable capture.
+
 ## What you see at sign-in
 
 1. You ask, for example "Log my weight: 80.5 kg today." The agent checks your sign-in, then starts one.
@@ -106,6 +118,8 @@ Good to know:
   ```
 
   To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the `tc-apps` skill folders.
+
+  This is ordinary setup Undo, not diagnostic deletion. Before removing an optional diagnostics-capable CLI, follow [DIAGNOSTICS.md](DIAGNOSTICS.md) to disable capture, decide separately which retained evidence to delete, and remove any separately installed plugin entry. External copies cannot be recalled by local deletion. Record sign-ins and diagnostic controls are independent.
 
 ## Why it works this way
 
