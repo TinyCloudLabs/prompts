@@ -92,7 +92,7 @@ What the recipient does: opens the link; for `email:`/`domain:` links they prove
 "$TC_BIN" --profile "$PROFILE" share show "$id"      # afterwards reports "revoked": true
 ```
 
-Report honestly what revoke did. `share revoke` is for shares this profile created. `--ancestor` revokes the owner delegation ancestry; don't pass it unprompted. Copies a recipient already downloaded can't be recalled ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)). **Known conflict:** the CLI reference says bearer links are revocable; the `tc-publish` skill and [/publish](publish.md#undo) say public links can't be revoked. After a revoke of a public link, confirm with `share receive` on the link (`SHARE_REVOKED`) before telling the owner it's closed; if it still opens, say so.
+Report honestly what revoke did. `share revoke` is for shares this profile created. `--ancestor` revokes the owner delegation ancestry; don't pass it unprompted. Copies a recipient already downloaded can't be recalled ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)). After a revoke of a public link, confirm with `share receive` on the link (`SHARE_REVOKED`) before telling the owner it's closed; if it still opens, say so.
 
 ### 6. Report
 
