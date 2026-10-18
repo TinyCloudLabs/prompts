@@ -72,7 +72,7 @@ Run through the skill's §3 blocks, which wrap exactly these commands. Shape of 
 - `--json` prints redacted metadata with `metadata.shareId`; the link is not in it. Get the link as the skill does: `"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link`. Never combine `--reveal-link` with `--json`.
 - Everything after `#` in a link is the credential. Follow the skill's handling contract for storing and delivering it. Never retype or chunk a link.
 - Edit access for an addressed recipient: add `--action read edit`; it takes a list, so put it last, after the file and the other flags. Only use it when the owner asks and only with an addressed `--to`; the Markdown editor is the share viewer's. Don't use `--action` with `anyone`; that combination isn't evidenced.
-- To email an invitation to an exact-email recipient, add `--notify`; for a domain, `--notify --notify-to <mailbox at that domain>` ([options](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)). Only when the owner asks. The recipient's viewer sends its own code either way.
+- Send the link to the recipient yourself (chat, email, wherever you talk). When they open it, the viewer emails them a one-time code to prove the address is theirs.
 
 What the recipient does: opens the link; for `email:`/`domain:` links they prove the address with a code the viewer emails them. A bearer link opens without signing in.
 
