@@ -1,6 +1,6 @@
 # Share an artifact with TinyCloud
 
-Your agent publishes a document or web page from your computer to your own TinyCloud and gives you a link. You decide who can open it: anyone with the link, one email address, or everyone at a domain. Every share expires, and your agent can revoke it.
+Your agent publishes a document or web page from your computer to your own TinyCloud and gives you a link. You decide who can open it: anyone with the link, one email address, or everyone at a domain. Your agent can revoke it any time.
 
 ## For the owner
 
