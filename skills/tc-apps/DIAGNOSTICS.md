@@ -1,20 +1,46 @@
-# Optional private diagnostics and client attribution
+# Team-preview private diagnostics and client attribution
 
 Diagnostics are separate from your records and default off. Installing this skill does **not** enable capture, activate hooks, modify client configuration, grant access, or install a client. The optional helpers in `diagnostics/` run with Node (20 or newer); they do not need executable permissions or extra packages. Keep that whole directory together. Use a diagnostics-capable `tc` build: baseline tc-apps CLI compatibility alone does not establish diagnostics support. Check the selected literal CLI path with `diagnostics --help` before using these commands.
 
-The baseline setup still pins CLI 1.2.3 and the skill requires business commands from 1.2.2+. Neither is a diagnostics release claim. Check `"$TC_BIN" diagnostics --help` and `"$TC_BIN" diagnostics run --help` on the reviewed literal path; the latter must expose `--scope` and `--role`. If unavailable, use normal records without diagnostics. Do not silently install a different CLI or rewrite operator paths. Publication of a compatible CLI and its worker assets, package/install checks and separately authorized synthetic client acceptance remain release gates.
+The baseline setup still pins CLI 1.2.3 and the skill requires business commands from 1.2.2+. Neither is a diagnostics release claim. This synthetic-only, metadata-only alpha uses exactly `@tinycloud/telemetry-preview@0.1.0-alpha.0`, not a normal SDK release or installer upgrade. Its target is Node **22.23.2**, Linux x64 glibc. These instructions do not claim npm publication or hosted deployment has succeeded. Real-record capture and optional plugins remain off.
+
+## Preview checkpoint and explicit selection
+
+After explicit installation authorization, install privately alongside the normal CLI with the exact command below; if the exact version is unavailable, stop rather than substitute a tag or archive. Do not use a global install or change PATH, the normal wrapper, `cli-path`, client configuration or installed skill. Updates require a separately reviewed exact version.
+
+The installed package's `identity.json` records the source/build and guidance checkpoint. Match it to the reviewed candidate and require tc-apps **0.1.6** `SKILL.md` plus `SQL.md` and regenerated embedded MCP rules, with exact hashes. Bundled guidance lives at `guidance/skills/tc-apps/`; use that copy, not a mutable website. OpenCode context schema 1 / adapter revision 1 targets **1.18.31**; Claude **2.1.289** and Codex **0.160.0** have launcher-only support. These are source-contract targets, not real-client acceptance claims. Optional plugins remain **off**.
+
+Use private shell variables for the distinct `tc-apps-alpha` and `tc-apps-alpha-mcp` executables:
+
+```sh
+umask 077
+TC_ALPHA_DIR="$HOME/.local/share/tc-apps-alpha/0.1.0-alpha.0"
+mkdir -p "$TC_ALPHA_DIR"
+npm install --prefix "$TC_ALPHA_DIR" --ignore-scripts --save-exact @tinycloud/telemetry-preview@0.1.0-alpha.0
+TC_PREVIEW_BIN="$TC_ALPHA_DIR/node_modules/.bin/tc-apps-alpha"
+TC_PREVIEW_MCP="$TC_ALPHA_DIR/node_modules/.bin/tc-apps-alpha-mcp"
+"$TC_PREVIEW_BIN" --alpha-identity
+cat "$TC_ALPHA_DIR/node_modules/@tinycloud/telemetry-preview/identity.json"
+"$TC_PREVIEW_BIN" diagnostics --help
+"$TC_PREVIEW_BIN" diagnostics run --help
+"$TC_PREVIEW_BIN" diagnostics status --json
+```
+
+Help must expose `--scope` and `--role`; capability checks alone do not prove package identity. Match `--alpha-identity` and the installed `identity.json` to the reviewed checkpoint. Preserve operator-set `TC_BIN`, `TC_HOME`, `TC_APPS_STATE`, `TC_DIAGNOSTICS_HOME`, every XDG override, profile, delegation and grant. Never export a replacement `TC_BIN`. Select the alpha executable explicitly only in the separately approved synthetic invocation; a launcher does not redirect business commands inside its child. If a selected block still names the ordinary executable, it stays ordinary and is not proof of alpha capture.
+
+Before enabling, retain the participant's known-good normal executable/routing and a working alpha disable path using the same diagnostic-root environment. On failure, disable with the retained alpha control if available, stop the selected alpha process and resume the retained ordinary route; fallback must work even when controls fail. Never replay unknown-outcome writes. Disable is not deletion: use the selected deletion controls below, maintain expiry while writers are stopped, and account for backups/external exports.
 
 ## Working without adapters
 
-Keep the normal SKILL.md/SQL.md blocks unchanged unless you explicitly select one for diagnostics. Set `TC_BIN` below to the same absolute, reviewed executable path you normally use, not a PATH lookup. The commands below are explicit actions, not instructions to run them automatically.
+Keep normal SKILL.md/SQL.md blocks unchanged. For a short synthetic task, use an already authorized disposable fixture: read a synthetic record, or write then read back one synthetic record only if explicitly requested. Do not touch real records or broaden grants. Explicitly select the alpha executable for those calls, enable metadata only for the task, wrap each approved block as below, inspect status/review, then disable. Never replay a write whose outcome is unknown. These are separate synthetic actions, not automatic record-request steps.
 
-- Inspect policy: `"$TC_BIN" diagnostics status --json`.
-- Opt in to metadata: `"$TC_BIN" diagnostics enable --scope tc-apps`.
-- Pause/resume: `"$TC_BIN" diagnostics pause` / `"$TC_BIN" diagnostics resume`.
-- Stop future capture: `"$TC_BIN" diagnostics disable`. Disable/pause do not delete retained evidence.
-- Attribution-only whole-client launch: `"$TC_BIN" diagnostics run -- /absolute/path/to/claude` (or the reviewed `codex` / `opencode` executable). This creates a new run and clears inherited activity scope, role and wrapper state; it does not record the client's terminal, arguments, messages or tools and does not enable capture. It may retain validated enclosing turn/task/workflow links; a shared run never proves a shared owner task. An already-running OpenCode server does not inherit a new TUI's environment.
-- An explicitly selected tc-apps block only: `"$TC_BIN" diagnostics run --scope tc-apps -- /bin/sh /absolute/path/to/selected-tc-apps-block.sh`. The file contains exactly the already selected normal skill commands, retaining literal TC_BIN/STATE paths and approvals. **Never** apply `--scope tc-apps` to a whole client, login shell, shared server, or unrelated batch. The child marker cannot modify its parent environment. Nested selected blocks retain validated run/turn/task/workflow links and adapter provenance, generating a run or workflow only when absent; they do not invent task IDs or client lifecycle events.
-- Optional role for that selected block: `"$TC_BIN" diagnostics run --scope tc-apps --role verification -- /bin/sh /absolute/path/to/selected-readback-block.sh`. Use only `catalog`, `record`, `verification`, `copy`, `approval` or `context`, following the local hints in SKILL.md/SQL.md. `--role` without `--scope tc-apps` is rejected. A nested block needs its own explicit hint; do not assume it inherits the outer role. Omit a hint for mixed work; do not split or rewrite normal business blocks to obtain one.
+- Inspect policy: `"$TC_PREVIEW_BIN" diagnostics status --json`.
+- Opt in to metadata: `"$TC_PREVIEW_BIN" diagnostics enable --scope tc-apps`.
+- Pause/resume: `"$TC_PREVIEW_BIN" diagnostics pause` / `"$TC_PREVIEW_BIN" diagnostics resume`.
+- Stop future capture: `"$TC_PREVIEW_BIN" diagnostics disable`. Disable/pause do not delete retained evidence.
+- Attribution-only whole-client launch: `"$TC_PREVIEW_BIN" diagnostics run -- /absolute/path/to/claude` (or the reviewed `codex` / `opencode` executable). This creates a new run and clears inherited activity scope, role and wrapper state; it does not record the client's terminal, arguments, messages or tools and does not enable capture. It may retain validated enclosing turn/task/workflow links; a shared run never proves a shared owner task. An already-running OpenCode server does not inherit a new TUI's environment.
+- An explicitly selected tc-apps block only: `"$TC_PREVIEW_BIN" diagnostics run --scope tc-apps -- /bin/sh /absolute/path/to/selected-tc-apps-block.sh`. Retain normal state paths, approvals and business semantics; explicitly select the reviewed preview executable only for the approved preview calls. **Never** apply `--scope tc-apps` to a whole client, login shell, shared server, or unrelated batch. The child marker cannot modify its parent environment. Nested selected blocks retain validated run/turn/task/workflow links and adapter provenance, generating a run or workflow only when absent; they do not invent task IDs or client lifecycle events.
+- Optional role for that selected block: `"$TC_PREVIEW_BIN" diagnostics run --scope tc-apps --role verification -- /bin/sh /absolute/path/to/selected-readback-block.sh`. Use only `catalog`, `record`, `verification`, `copy`, `approval` or `context`, following the local hints in SKILL.md/SQL.md. `--role` without `--scope tc-apps` is rejected. A nested block needs its own explicit hint; do not assume it inherits the outer role. Omit a hint for mixed work; do not split or rewrite normal business blocks to obtain one.
 
 Without a selected-block marker, ordinary KV/SQL calls can admit source metadata only after validating the tc-apps KV root or exact SQL database. Unscoped auth/context/init/help/version and unrecognized early errors are not captured. Missing/stripped context is supported: independent source events remain useful and **task linkage is unknown**. Never infer a task from timing, profile, working directory, record `by`, session idle, or a shared run.
 
@@ -33,13 +59,15 @@ Capture is best effort, not an audit trail. The producer queue is bounded to 128
 Create a private selection JSON file (private parent directory, mode 0600), containing the actual diagnostic UUIDs you explicitly selected, for example `{"invocation_ids":["<selected invocation UUID>"]}` or `{"event_ids":["<selected event UUID>"]}`. These are diagnostic IDs, never native client IDs or record keys. To discover evidence for a known selected block, use a bounded exact UTC interval such as `{"from":"2026-10-16T10:00:00.000Z","until":"2026-10-16T10:01:00.000Z"}` and inspect the review; a time selection is discovery, **not** proof of task correlation. Replace the example dates with the explicitly authorized interval, then narrow to the returned diagnostic IDs.
 
 ```sh
-"$TC_BIN" diagnostics review --selection /absolute/private/selection.json --json
-"$TC_BIN" diagnostics export --selection /absolute/private/selection.json --out /absolute/private/export --expires-at '<future UTC timestamp>' --external
-"$TC_BIN" diagnostics delete --selection /absolute/private/selection.json
-"$TC_BIN" diagnostics delete --selection /absolute/private/selection.json --confirm
+"$TC_PREVIEW_BIN" diagnostics review --selection /absolute/private/selection.json --json
+"$TC_PREVIEW_BIN" diagnostics export --selection /absolute/private/selection.json --out /absolute/private/export --expires-at '<future UTC timestamp>' --external
+"$TC_PREVIEW_BIN" diagnostics delete --selection /absolute/private/selection.json
+"$TC_PREVIEW_BIN" diagnostics delete --selection /absolute/private/selection.json --confirm
 ```
 
 The first delete is a preview. Export to an outside destination needs explicit `--external`: source expiry/deletion cannot recall that copy. A managed export goes to a new UUID-named directory directly under the diagnostic root's `exports/`, without `--external`; it remains subject to quota, expiry and selected deletion. Exports require an expiry no later than the retained evidence's expiry. Empty selectors are not delete/export-all authority. For explicitly authorized all-history deletion use `{"all":true}` and confirm with either `--pause-after` or `--keep-enabled`. Normal setup Undo does not delete diagnostic history. Local `review` is the history interface; there is no local `history` command.
+
+**Outside this metadata-only preview:** selected-detail intake, case comparison and content-linked reproduction below document implementation capabilities, not authorized team actions. Do not enable detail policy, collect passages, or ingest transcripts for this rollout.
 
 Manual linkage does not require a hook. After selecting the actual source event IDs, an owner can separately authorize selected visible intent/final claims/feedback via `diagnostics select --manifest /absolute/private/case.json`. This is optional content intake, not automatic transcript access. It requires encrypted storage excluded from backups, explicit `enable --scope tc-apps --detail-policy encrypted-excluded-backups`, and a reviewed manifest with this shape (replace every illustrative value):
 
@@ -69,9 +97,9 @@ To review that selected content, use a new private selection such as `{"case_ids
 ### Import, compare and reviewed synthetic reproduction
 
 ```sh
-"$TC_BIN" diagnostics import /absolute/private/transferred-bundle
-"$TC_BIN" diagnostics review --selection /absolute/private/imported-selection.json --json
-"$TC_BIN" diagnostics compare --left /absolute/private/left-selection.json --right /absolute/private/right-selection.json
+"$TC_PREVIEW_BIN" diagnostics import /absolute/private/transferred-bundle
+"$TC_PREVIEW_BIN" diagnostics review --selection /absolute/private/imported-selection.json --json
+"$TC_PREVIEW_BIN" diagnostics compare --left /absolute/private/left-selection.json --right /absolute/private/right-selection.json
 ```
 
 Import reads only a selected private bundle, never a profile or conversation history; it does not execute files or reset expiry. Review the returned import/trust/conflict information, then select the imported source/event/case UUIDs explicitly. Transfer checksums detect changed bytes, not authenticity. Imports remain assertions. Comparison requires selected cases with matching `equivalence` fields: `fixture_id`, `fixture_revision`, `task_class` (`record_write_readback`, `record_read`, `record_move` or `copy_check`) and `cache_state` (`cold`, `warm` or `unknown`). Do not label arbitrary tasks equivalent just because their timings look similar. Missing evidence, unknown attribution and incomparable work remain limitations; do not add overlapping durations into a claimed wall time or estimate absent tokens/cost.
@@ -95,7 +123,7 @@ node --input-type=module -e 'import { readFileSync } from "node:fs"; import { di
 Copy the resulting revision into the reviewed case's `equivalence.fixture_revision` before `diagnostics select`. This does not install a package or execute the reproduction.
 
 ```sh
-"$TC_BIN" diagnostics bundle --case '<selected case UUID>' --fixture /absolute/private/fixture.json --out /absolute/private/reproduction --expires-at '<future UTC timestamp within retained evidence expiry>' --external
+"$TC_PREVIEW_BIN" diagnostics bundle --case '<selected case UUID>' --fixture /absolute/private/fixture.json --out /absolute/private/reproduction --expires-at '<future UTC timestamp within retained evidence expiry>' --external
 ```
 
 Read the generated `instructions.txt`, manifest and fixture before separately authorizing execution. The fixed runner requires Node 20+ and a compatible installed `@tinycloud/operations` exposing `diagnostics-reproduction` in the bundle's package-resolution ancestry; nothing is installed automatically. From that reviewed bundle directory, `node reproduce.mjs --reviewed-synthetic` runs real tc-apps write and independent read operations against isolated synthetic storage, not production. Never execute arbitrary imported scripts. This reproduces the reviewed input/units mismatch, not autonomous client reasoning or a proven product defect. Do not broaden it into production replay.
@@ -118,6 +146,8 @@ No Claude hook is shipped. The documented ENV_FILE interface requires appending 
 Use the attribution-only launcher and selected-block commands above instead. They pass a bounded environment value directly to a child, preserve business streams and exit/signal behavior, and never write CLAUDE_ENV_FILE. Automatic session/tool/turn linkage remains unsupported. This follows the diagnostic fail-open requirement rather than depending on client timeouts or weakening filesystem checks.
 
 ### OpenCode v1: activate at the actual executor only
+
+**Outside this preview:** do not install or activate this optional plugin. The following contract reference requires separate authorization and actual executing-client acceptance; it is not a preview onboarding step.
 
 Generate a reviewable local entry module with an installed Node runtime (20+; ordinary setup's Node 22.20+ also works). The skill installer does not make arbitrary helpers executable:
 

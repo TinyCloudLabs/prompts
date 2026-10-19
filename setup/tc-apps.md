@@ -85,9 +85,11 @@ Follow the skill now for the owner's request, from its §1.
 
 ## Optional diagnostics and explicit updates
 
-This section is **not** part of ordinary setup or a record request. Baseline setup remains pinned to CLI 1.2.3; the skill's 1.2.2 business-command minimum does not imply diagnostics support. No published diagnostics-capable CLI version is claimed here. Before use, review the exact selected build/package and run its literal path with `diagnostics --help` and `diagnostics run --help`; it must provide the documented controls and scoped `--role`. If absent, keep ordinary records working and leave diagnostics off. Do not silently replace `TC_BIN`, rewrite `cli-path`, or upgrade the private CLI. A released CLI/package with its worker assets, packaging checks and synthetic acceptance is a separate release gate.
+This section is **not** part of ordinary setup or a record request. Baseline setup remains pinned to CLI 1.2.3; the skill's 1.2.2 business-command minimum does not imply diagnostics support. The synthetic-only, metadata-only alpha is exactly `@tinycloud/telemetry-preview@0.1.0-alpha.0`, targeting Node 22.23.2 on Linux x64 glibc. Follow the private side-by-side `npm install --ignore-scripts --save-exact` instructions in [DIAGNOSTICS.md](https://agents.tinycloud.xyz/skills/apps/DIAGNOSTICS.md); use only its distinct `tc-apps-alpha` / `tc-apps-alpha-mcp` executables, never a global install or normal SDK tag change. No publication or hosted deployment success is claimed. Do not replace `TC_BIN`, rewrite `cli-path`, change PATH/client defaults, or alter `TC_HOME`, `TC_APPS_STATE`, `TC_DIAGNOSTICS_HOME`, XDG overrides, profiles, grants or delegations.
 
-The installed [DIAGNOSTICS.md](https://agents.tinycloud.xyz/skills/apps/DIAGNOSTICS.md) describes metadata controls, explicit selected detail, launcher/manual fallback and the optional OpenCode **1.18.31** source/fixture contract. Installed-client loading and actual executor propagation remain separately authorized acceptance, not a consequence of installing this pack. Claude Code and Codex have no automatic hooks; OpenCode v2 is unsupported.
+After installation, check `--alpha-identity` and `node_modules/@tinycloud/telemetry-preview/identity.json` against the reviewed checkpoint. Use the package's `guidance/skills/tc-apps/DIAGNOSTICS.md`, with the exact 0.1.6 `SKILL.md`/`SQL.md` pairing, for status, explicit per-block synthetic capture, disable/delete and independent normal-path fallback. Never replay unknown-outcome writes. Real-record capture, selected detail and optional plugins remain off. Hosted image/host acceptance is separate and unproven, not a prerequisite for npm publication.
+
+The ordinary explicit skill/wrapper update reference below is **not preview onboarding**. Leave the installed skill and wrapper unchanged when trying a side-by-side preview.
 
 **Updating an already installed skill:** after explicit permission, use the reviewed site's installer as in §2, without the `npm install` or `cli-path` lines. It prints the installed folder and checks the site's per-file hashes, including `DIAGNOSTICS.md` and all three `diagnostics/*.mjs` helpers. Keep that directory together. The installer writes files; it does **not** mark arbitrary helpers executable or activate client configuration. Invoke the generator with Node, not as a shell program:
 
@@ -96,7 +98,7 @@ SKILL='/absolute/installed/tc-apps'
 node "$SKILL/diagnostics/opencode-config.mjs" --print-module
 ```
 
-This only prints a proposed module. Follow DIAGNOSTICS.md to review, stage and separately copy an entry to the actual executing OpenCode server; do not change a shared/remote server or a client trust/environment policy implicitly. It requires no package installation.
+This only prints a proposed module. Optional plugin activation is outside this preview; do not copy an entry or change an executing server's configuration during preview onboarding. Any later plugin use needs separate authorization and actual-client acceptance.
 
 **Update the separately copied wrapper explicitly:** installing a new skill does not change `~/.local/share/tc-apps/tc`. After reviewing the installed `tc-wrapper.sh` and obtaining permission to replace that setup-owned copy, run:
 
