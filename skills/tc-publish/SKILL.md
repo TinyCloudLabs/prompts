@@ -449,7 +449,7 @@ id='<owner-only share id you recorded>'
 
 Afterwards `share show "$id"` reports `"revoked": true`.
 
-**Public (bearer) links cannot be revoked today.** On production, `share revoke <bearer shareId>` exits 2 with `INVALID_ARGUMENT` "share operation failed", and the link still opens (TC-545). Do not attempt it; tell the owner the link stays live until it expires.
+**Public (bearer) links can be revoked too.** Revoke any share with `tc share revoke <id>`; after that the link stops opening (`SHARE_REVOKED`). Copies already downloaded can't be recalled, and the stored file stays in the owner's space until deleted.
 
 ## 6. Deliver and report
 
@@ -457,7 +457,7 @@ Report with the template for the link type — fill in the placeholders, keep th
 
 > **Owner-only:** Published `<file>` as an owner-only link. Only `<recipient email>` can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
 
-> **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>` and cannot be revoked before then. Verified: hash match. `<URL>`
+> **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>`, and I can revoke it any time before then. Verified: hash match. `<URL>`
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
@@ -515,7 +515,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On CLI `1.0.0-beta.17` a file name with spaces also gives this — see §3 **File names**, not §2 |
 | `SESSION_LIFETIME_EXCEEDED` | 2 | `--expires` beyond the session → shorten it or renew consent; under 60 s → lengthen it |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
-| `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. Also what `share revoke` returns for a public share today ("share operation failed"; the link stays live) |
+| `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. |
 | `SESSION_IN_USE` | 2 | Live session would narrow — ask the owner; never `--replace-session` unprompted |
 | `CLAIM_REQUIRED` | 6 | Expected on `receive` of an owner-only link — use `inspect` |
 | `UNSUPPORTED_LINK` | 2 | `inspect` on a public link — verify by `receive` + hash instead |

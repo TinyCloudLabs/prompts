@@ -22,12 +22,17 @@ You need a shell, Node.js 22.20 or later, and npm.
 
 ## Publish and share: [/publish](publish.md)
 
-`/share` redirects here.
-
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link: private to you by default, or public when you ask.
 - **Paste into your agent:** `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
 - **You approve:** a separate OpenKey request for standing read/write access to your share folders (not just this report), for up to 30 days. Setup alone grants nothing.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
+
+## Share an artifact: [/share](share.md)
+
+- **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. You choose who can open it: anyone with the link, one email address, or everyone at a domain. Every share expires, and your agent can revoke it.
+- **Paste into your agent:** `Share this with TinyCloud, and ask me who should be able to open it: https://agents.tinycloud.xyz/share`
+- **You approve:** the same OpenKey request as [/publish](publish.md): standing publish access to your share folders, for up to 30 days. Setup alone grants nothing.
+- **Undo:** same as [/publish](publish.md#undo).
 
 ## Secrets: [/secrets](secrets.md)
 
