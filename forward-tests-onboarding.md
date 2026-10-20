@@ -28,9 +28,9 @@ Identical in every client, pasted as one message into a new conversation. Don't 
 
 | ID | Prompt | Source |
 |---|---|---|
-| **O** | `Set up TinyCloud for me and save my first record: https://agents.tinycloud.xyz/start` | Candidate onboarding prompt (F-68). `/start` routes by client. |
+| **O** | `Set up TinyCloud for me and save my first record. This installs the TinyCloud tool and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/start` | Candidate onboarding prompt (F-68). `/start` routes by client. The second sentence is the owner's consent for Claude Code's auto mode (TC-1607). |
 | **S** | `I want to understand how to use https://agents.tinycloud.xyz/apps` | The 16 Oct opener. |
-| **T1** | `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps` | "Try:" on `/`: Personal records. |
+| **T1** | `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs the TinyCloud tool and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps` | "Try:" on `/`: Personal records. |
 | **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" on `/`: Publish. |
 | **T3** | `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets` | "Try:" on `/`: Secrets. |
 | **T4** | `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat` | "Try:" on `/`: Meetings. |

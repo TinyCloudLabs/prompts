@@ -5,7 +5,8 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 ## For the owner
 
 - **What it does:** installs the TinyCloud CLI 1.2.3 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
-- **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps`
+- **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs the TinyCloud tool and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
+  - **Claude Code auto mode:** the sentence about what is saved is what its safety check looks for. If it still blocks a step, see [If Claude Code still blocks it](https://agents.tinycloud.xyz/start#claude-code-blocked).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
 - **You approve:** your agent shows you an OpenKey link and code. Check the code, sign in with your passkey and approve: it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records.
 - **Undo:** see [Undo](#undo).
@@ -61,7 +62,7 @@ chmod 755 "$HOME/.local/share/tc-apps/tc" && echo INSTALLED
 
 If something goes wrong:
 - **Codex:** its default sandbox blocks network access and writes outside the workspace, so npm, the download and the installer fail there. Run the block with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
-- **Your client refuses the block,** for example Claude Code's auto mode with "Unauthorized Persistence". Show the owner the block, say that it installs the TinyCloud CLI and this skill for their user, and ask them to allow it. Run it again only once they agree.
+- **Your client refuses the block or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence" or "Code from External". Show the owner the block, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/start#claude-code-blocked> and wait. Don't edit their settings files, and don't run the step another way.
 - **A command fails, or the block doesn't print `INSTALLED`:** stop and report the error. Don't retry it with other options or in another folder.
 
 Wait until the block has finished before §3: the skill doesn't exist until then.

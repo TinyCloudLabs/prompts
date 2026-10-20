@@ -164,7 +164,7 @@ const ABILITIES = [
     title: "Personal records",
     url: "apps",
     text: "Log, track and look up anything you keep records of, like weight, workouts or todos. Your agent organises them into apps as you go.",
-    prompt: "Log my weight: 80.5 kg today. Set it up with TinyCloud:",
+    prompt: "Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs the TinyCloud tool and saves a 30-day sign-in (a key and session in ~/.tinycloud):",
   },
   {
     title: "Publish",
@@ -583,7 +583,7 @@ const broken = markdown.flatMap((from) => {
     const site = [BASE, SITE].find((b) => target.startsWith(`${b}/`));
     if (!site && (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#"))) return [];
     const path = decodeURIComponent(new URL(site ? target.slice(site.length) : target, `http://site${from}`).pathname);
-    return served.has(path) || (path === "/" && served.has("/index.html")) ? [] : [`${from} → ${target}`];
+    return served.has(path) || served.has(`${path}.html`) || (path === "/" && served.has("/index.html")) ? [] : [`${from} → ${target}`];
   });
 });
 if (broken.length) throw new Error(`links to paths this site doesn't serve:\n  ${broken.join("\n  ")}`);
