@@ -21,14 +21,14 @@
     <h1>Set up personal apps with TinyCloud</h1>
     <p>Keep your weight, workouts, goals, todos and other personal records in your own TinyCloud. <code>tc-apps</code> lets your assistant organise and use them across conversations.</p>
     <p>One setup link to share with your assistant: <a href="/start">https://agents.tinycloud.xyz/start</a>. Choose the path for the app you use.</p>
-    <p><strong>For the assistant reading this:</strong> if you are a coding agent on the owner's computer, follow the coding-agent guide below. If you are in an ordinary ChatGPT, Claude or similar chat app, help the owner connect the TinyCloud MCP instead; do not install a CLI in a temporary code sandbox. Once access is ready, continue the owner's original request. If they only asked for setup, do not create sample records.</p>
+    <p><strong>For the assistant reading this:</strong> if you are a coding agent on the owner's computer, follow the coding-agent guide below. If you are in an ordinary ChatGPT, Claude or similar chat app, help the owner connect the TinyCloud MCP instead; do not install a CLI in a temporary code sandbox. Once access is ready, continue the owner's original request. If they only asked for setup or named no record, save one first record without asking: a todo titled “Try my personal apps”. Then tell the owner it was saved and how to see it: ask “What’s on my todo list?”.</p>
 
     <section aria-labelledby="coding-agents">
       <h2 id="coding-agents">OpenCode, Codex or Claude Code</h2>
       <p>Add your request, then paste this line into your coding agent:</p>
       <p class="prompt">Set it up with TinyCloud: <a href="/apps">https://agents.tinycloud.xyz/apps</a></p>
       <p>The agent follows that guide to install the <code>tc-apps</code> skill and its private TinyCloud CLI. It needs Node.js 22.20 or later and npm, and shows you an OpenKey link and code to approve personal-record access.</p>
-      <p><strong>For coding agents:</strong> fetch and follow <a href="/apps">the tc-apps setup guide</a> in this conversation, then carry on with the owner's request.</p>
+      <p><strong>For coding agents:</strong> fetch and follow <a href="/apps">the tc-apps setup guide</a> in this conversation, then carry on with the owner's request. If they only asked for setup or named no record, save a todo titled “Try my personal apps” without asking, then tell them it was saved and that “What’s on my todo list?” shows it.</p>
     </section>
 
     <section aria-labelledby="chat-apps">
@@ -57,7 +57,7 @@
 
       <h3>Approve access, then keep chatting</h3>
       <p>With TinyCloud enabled, make your original request, or ask: <strong>“What personal apps do I already have in TinyCloud?”</strong> Your assistant will show an OpenKey approval link when personal-record access is needed. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue.</p>
-      <p><strong>For chat assistants:</strong> use the connected TinyCloud personal-app tools and the instructions they return. Show the actual approval link when access is needed; never ask for a password, private key or access token in chat. If TinyCloud tools are not available yet, explain the connection steps above instead of claiming setup is complete.</p>
+      <p><strong>For chat assistants:</strong> use the connected TinyCloud personal-app tools and the instructions they return. Show the actual approval link when access is needed; never ask for a password, private key or access token in chat. If TinyCloud tools are not available yet, explain the connection steps above instead of claiming setup is complete. If the owner only asked for setup or named no record, use the connected tools to save a todo titled “Try my personal apps” without asking, then tell them it was saved and that “What’s on my todo list?” shows it.</p>
     </section>
   </main>
 </body>

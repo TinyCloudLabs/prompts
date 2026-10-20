@@ -28,7 +28,7 @@ Identical in every client, pasted as one message into a new conversation. Don't 
 
 | ID | Prompt | Source |
 |---|---|---|
-| **O** | `Set up TinyCloud for me and save my first record: https://agents.tinycloud.xyz/start` | Candidate onboarding prompt (F-68). `/start` routes by client. |
+| **O** | `Set up TinyCloud for me and save a todo, 'Try my personal apps': https://agents.tinycloud.xyz/start` | Candidate onboarding prompt (F-68). `/start` routes by client. |
 | **S** | `I want to understand how to use https://agents.tinycloud.xyz/apps` | The 16 Oct opener. |
 | **T1** | `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps` | "Try:" on `/`: Personal records. |
 | **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" on `/`: Publish. |
@@ -87,7 +87,7 @@ TC_BIN="$H/.local/share/tc-apps/tc"
 
 - **Pass:** the list prints `"keys"` with at least one key outside `catalog/`, and `"count"` of 1 or more; `kv get` prints a JSON object with `v`, `at`, `data`, `by`. For T1, the key is `xyz.tinycloud.agent-data/fitness/weight/<YYYY-MM>/<date>` and `data` holds 80.5 kg.
 - **Fail:** `"keys": []`, only `catalog/` keys, or `data` that is a plain string.
-- **O** has no fixed content: any such record, which the assistant also read back, passes. `/start` tells agents not to create sample records when asked only for setup; O asks for a first record explicitly.
+- **O:** the record is the todo "Try my personal apps": key `xyz.tinycloud.agent-data/todos/todo/open/<date>-try-my-personal-apps`, `data` holds that title. The assistant must also have read it back, and must not have asked what to save. `/start` makes the same todo the default when asked only for setup or no record is named.
 
 Chat apps: the pass is the assistant's read-back of the saved record through the connector, shown in the transcript. If the tester can also run the CLI above signed in to the same test account, run it too. Say which check was used.
 
