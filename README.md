@@ -8,7 +8,6 @@ The site's URLs are short and flat. The repository layout below is only for auth
 
 | URL | What it is | Source |
 | --- | --- | --- |
-| `/start` | One setup prompt for coding agents and chat apps; instructions live at `/apps` | [`start.html`](start.html) |
 | `/setup` | The entry point: every ability, what to paste, what the owner approves, how to undo it | [`setup/README.md`](setup/README.md) |
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
@@ -25,8 +24,6 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/skills/install.js` | The installer the guides run | [`scripts/install-skill.js`](scripts/install-skill.js) |
 
 The earlier URLs, the repository paths such as `/setup/tc-apps.md`, `/apps/tinychat/setup.md` and `/skills/tc-apps/SKILL.md`, redirect to these, and so does each page's URL with a trailing slash (`/apps/` → `/apps`). The site also generates `/` (for people), `/llms.txt`, `/llms-full.txt`, the sitemap and `/.well-known/agent-skills/index.json`. This README isn't published; `/README.md` redirects to `/setup`.
-
-The standalone `/start` page is copied from `start.html` and uses Cloudflare Pages' extensionless HTML routing. It stays out of `PAGES`. Keep it to one prompt, explicitly naming ChatGPT/Claude, the hosted MCP URL and OpenKey OAuth separately from the coding-agent install. Full installation, chat-app connection and troubleshooting instructions belong in `/apps`.
 
 Guides link to each other and to skill files by relative repository path; the build rewrites those links to the public URLs. The build then fails if any link in a served Markdown file, relative or to this site, doesn't reach a file the site serves.
 

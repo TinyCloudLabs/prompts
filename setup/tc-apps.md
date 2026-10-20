@@ -17,28 +17,6 @@ Add `https://mcp.tinycloud.xyz/mcp` as a custom connector in Claude, sign in, an
 
 To avoid approving each record-writing tool call, go to **Settings → Connectors → TinyCloud**, find `tinycloud_apps_write`, and choose **Always allow**. This does not replace the OpenKey access approval.
 
-## Use it in ChatGPT and other chat apps
-
-Connect the hosted **TinyCloud MCP**, at `https://mcp.tinycloud.xyz/mcp`, using **OAuth** (sign in with OpenKey). No terminal, local CLI or skill installation is needed.
-
-### ChatGPT — set up and use on the web
-
-1. Open [ChatGPT Plugins](https://chatgpt.com/plugins) in a browser. Choose **+ → Add custom MCP server**. Custom MCP access depends on your plan and workspace permissions; enable developer mode if your account requires it.
-2. Name it **TinyCloud**, describe it as **Personal records in TinyCloud**, and enter the remote MCP server URL above. Choose **OAuth**, review the warning, then select **Create as a plugin** and sign in with OpenKey when prompted.
-3. Install the resulting plugin. Start a conversation, type **@** and select TinyCloud before making your request.
-
-**ChatGPT mobile:** custom MCP connections are currently web-only; do not assume this connection will work in the iOS or Android app. Use ChatGPT in a browser, or Claude for mobile access. If the custom-server option is missing, check your plan or ask your workspace administrator. See [OpenAI's connection instructions](https://developers.openai.com/plugins/deploy/connect-chatgpt) and [MCP availability](https://help.openai.com/en/articles/12584461).
-
-### Other chat apps
-
-If your app supports remote MCP with OAuth, add the same server URL and sign in with OpenKey. Mobile support depends on the app. A chat app without custom remote MCP support cannot connect just by reading this page.
-
-### Approve access, then keep chatting
-
-With TinyCloud enabled, make your original request, or ask: **“What personal apps do I already have in TinyCloud?”** Your assistant will show an OpenKey approval link when personal-record access is needed. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue.
-
-**For chat assistants:** use the connected TinyCloud personal-app tools and the instructions they return, not the CLI installation steps below. Show the actual approval link when access is needed; never ask for a password, private key or access token in chat. If TinyCloud tools are not available yet, explain the connection steps above instead of claiming setup is complete. After approval, continue the owner's request; for setup-only requests, follow the default-record instructions below using the connected tools. A brand-new account's TinyCloud can take a minute or two to finish setting up after the first approval: if a call says the space isn't hosted (`SPACE_NOT_HOSTED`), tell the owner it's still being set up and retry with backoff for about two minutes. Never ask for a second or broader sign-in to fix it.
-
 ## For the agent
 
 The owner sent you this page with a request, for example "Log my weight: 80.5 kg today." This page installs the TinyCloud CLI and the `tc-apps` skill. Then you carry out the request with the skill, in this same conversation: don't ask the owner to send it again.
