@@ -5,7 +5,7 @@ The test proves one thing: **the same prompt, pasted into a fresh conversation i
 ## Read first
 
 - **Prompt O has never been run in any client.** Its result is unknown.
-- **The chat-app path through `/start` has not been verified in ChatGPT.** Nobody has yet connected the hosted MCP there.
+- **The chat-app path has not been verified in ChatGPT.** Nobody has yet connected the hosted MCP there.
 - **ChatGPT Free and Plus may not allow custom MCP connectors.** OpenAI documents custom-server writes only for Business, Enterprise and Edu. A "fail" on those plans may be the plan, not the page. Record exactly what the app offers.
 - The baseline run has not happened. Chat apps are expected to fail at page reading until TC-1361 ships; record that, don't fix it here.
 
@@ -28,7 +28,7 @@ Identical in every client, pasted as one message into a new conversation. Don't 
 
 | ID | Prompt | Source |
 |---|---|---|
-| **O** | `Set up TinyCloud for me and save my first record. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/start` | Candidate onboarding prompt (F-68). `/start` routes by client. The second sentence is the owner's consent for Claude Code's auto mode (TC-1607): its rules ask the user to name the external sources and what is saved. |
+| **O** | `Set up TinyCloud for me and save my first record. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps` | Candidate onboarding prompt (F-68), now using `/apps` after the separate landing page was removed. The second sentence is the owner's consent for Claude Code's auto mode (TC-1607): its rules ask the user to name the external sources and what is saved. |
 | **S** | `I want to understand how to use https://agents.tinycloud.xyz/apps` | The 16 Oct opener. |
 | **T1** | `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps` | "Try:" on `/`: Personal records. |
 | **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" on `/`: Publish. |
@@ -42,7 +42,7 @@ The `T` lines are the `ABILITIES` prompts in `scripts/build-site.mjs` on `main`.
 ## Preconditions
 
 **Coding agents:** follow [`forward-tests-tc-apps.md`](forward-tests-tc-apps.md) (stock home `$H`, clean `PATH`, launch command, logins, rate limit, new-conversation commands). That file wins on conflict. Differences here:
-- **Setup link:** `https://agents.tinycloud.xyz/start` for **O**, the URL in the prompt for the others. Before merge, use the pull request's Cloudflare Pages preview (`https://<hash>.tinycloud-agents.pages.dev/...`).
+- **Setup link:** `https://agents.tinycloud.xyz/apps` for **O**, the URL in the prompt for the others. Before merge, use the pull request's Cloudflare Pages preview (`https://<hash>.tinycloud-agents.pages.dev/...`).
 - **`TC_HOME`:** one fresh scratch directory per client sequence, never `~/.tinycloud`. Not the shared `$SHARED` store of the tc-apps runbook.
 - **Fresh state:** **O** and **T1** start from a fresh `$H` and `TC_HOME` each time, because installation is what they test. **S**, **T2**, **T3**, **T4** reuse the home, in a new conversation.
 - **Rate limit:** 5 OpenKey device sign-in starts per 10 minutes per network, shared by every sequence on the machine. Log start times; don't loop.
