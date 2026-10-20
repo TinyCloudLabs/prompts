@@ -164,7 +164,7 @@ const ABILITIES = [
     title: "Personal records",
     url: "apps",
     text: "Log, track and look up anything you keep records of, like weight, workouts or todos. Your agent organises them into apps as you go.",
-    prompt: "Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz, and saves a 30-day sign-in (a key and session in ~/.tinycloud):",
+    prompt: "Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud):",
   },
   {
     title: "Publish",
