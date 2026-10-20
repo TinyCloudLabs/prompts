@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them.
 metadata:
-  version: "0.1.7"
+  version: "0.1.8"
 ---
 
 # Personal apps in TinyCloud
@@ -105,7 +105,7 @@ TC_BIN='<TC_BIN>'; umask 077
 - The first line must be `1.2.2` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.2.2 or newer.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
-- `SPACE_NOT_HOSTED` → stop and tell the owner that their TinyCloud `default` space isn't set up. Don't try to fix it.
+- `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun the same command after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or broader sign-in, `--replace-session` or `tc space host`.
 - The last line is the fast copy's state (§7). Carry on whatever it says:
   - `"state": "present"` → the fast copy is signed in.
   - `"state": "expired"` → it exists, but needs a new approval.
@@ -247,6 +247,6 @@ The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `DEVICE_AUTH_DENIED` → the owner declined. Stop.
 - `DEVICE_AUTH_RATE_LIMITED` → too many sign-ins from this network. Tell the owner to ask again in 10 minutes.
 - `OPENKEY_OWNER_MISMATCH` → they approved with a different account or key than this profile's. Ask them to use the same one as before, and run §4 again when they're ready.
-- `SPACE_NOT_HOSTED` → stop and tell the owner that their TinyCloud `default` space isn't set up. Don't try to fix it.
+- `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun the same command after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or broader sign-in, `--replace-session` or `tc space host`.
 - `SESSION_IN_USE` → ask the owner. Never pass `--replace-session`.
 - Anything else → report the code.
