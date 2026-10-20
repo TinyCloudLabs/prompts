@@ -44,13 +44,21 @@ The CLI publishes **files**, not folders. A directory fails with `MAX_BYTES_EXCE
 | Markdown document | `report.md` | Formatted page: headings, lists, tables, Mermaid |
 | Text, JSON, image | the file | Shown in the browser |
 | HTML page | one self-contained `.html` file | **See the HTML note below.** |
-| JSX app | not supported | There is no JSX renderer; don't publish `.jsx` and call it an app. |
+| JSX component | `App.jsx` or `App.tsx` with a default export (**see Artifacts below**) | Shown as source text with a Download action today; the viewer has no JSX renderer yet. Don't promise a rendered app. |
 
-Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`, `json`, `css`, `js`, otherwise `application/octet-stream`. Override with `--media-type` for one file. File names must be one safe path segment; names with spaces are stored under a safe name.
+Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`, `json`, `css`, `js`, otherwise `application/octet-stream`. The CLI release after 1.3.0-beta.30 also maps `jsx` to `text/jsx` and `tsx` to `text/tsx`; on any earlier CLI, pass `--media-type text/jsx` (or `text/tsx`). Override with `--media-type` for one file. File names must be one safe path segment; names with spaces are stored under a safe name.
 
-**HTML note.** Before publishing HTML, run the skill's self-contained check: external `src`, `href`, CSS `url()` and network calls don't load in the viewer. Tell the owner what to expect: the skill says a public HTML link renders in a sandboxed frame and an owner-only one downloads. The share viewer currently sends `text/html` to "download". If you can't confirm what the recipient sees, say that: "the page may open as a download". Don't promise a rendered site.
+**HTML note.** Before publishing HTML, run the skill's self-contained check: external `src`, `href`, CSS `url()` and network calls don't load in the viewer. Tell the owner what to expect: a public (anyone-with-link) HTML link renders in a sandboxed frame and an owner-only or other addressed one downloads. If you can't confirm what the recipient sees, say that: "the page may open as a download". Don't promise a rendered site.
 
 **Several files.** Only for an addressed target (not `anyone`): `--prefix` with several file paths publishes them under one prefix. Each name must be a flat file name; nested folders can't be expressed. The viewer's full-site HTML mode needs a folder containing `index.html` chosen in the web composer, and nothing here confirms a CLI `--prefix` share triggers it. Don't tell the owner their site will render.
+
+**Artifacts (pages and small apps).** A Markdown file, one self-contained HTML file, or one JSX component is an artifact: a file the recipient opens in the viewer, not a folder. HTML renders for anyone-with-link shares only; an addressed (`email:`, `domain:`, `did:`) HTML file downloads. JSX is meant to follow the same rule, but the viewer does not render it yet, so today a JSX file is shown as source text with a Download action for every link type. So when the owner wants a page that opens in the browser, say that, and ask whether anyone-with-link is acceptable; if the owner wants it private, use an addressed link and say it will download.
+
+- **JSX (for when the viewer's JSX renderer is live):** `export default function App() { … }` in one file. The planned imports are `react`, `react-dom/client`, `lucide-react`, `recharts`, `d3` and `mermaid`, plus Tailwind classes. There will be no network in the sandbox, so embed the data. Until the renderer ships, publish a self-contained HTML page when the owner wants something that opens in the browser.
+- **TinyCloud style tokens** are planned for artifacts so they can follow light and dark: `var(--tc-color-page|surface|text|text-muted|border|accent|on-accent|link)`, `var(--tc-space-1…7)`, `var(--tc-radius-sm|md|lg)`, `var(--tc-font-sans|mono)`. A viewer that doesn't provide them ignores them, so always write a fallback value, for example `var(--tc-color-text, #1a1c21)`.
+- **Pin a version:** `--artifact new` stores the file as write-once version 1 and pins the link to it; a later publish of changed content with `--artifact <id>` (the `artifactId` in the JSON) makes version 2 with its own link, and the earlier link keeps showing version 1 (identical bytes to a bearer link return the same version). Needs CLI 1.3.0-beta.10 or newer, not the 1.2.3 this site pins; check with `"$TC_BIN" share publish --help | grep -q -- --artifact`. A profile approved on an older CLI must go through the skill's §2 consent again to add the `artifacts/` scope. A pinned share is read-only: `--action edit` is refused with `--artifact`.
+- **Revoke:** `share revoke <id>` closes the link. Copies already opened or downloaded can't be recalled.
+- Never put secrets or tokens in an artifact: everyone who holds the link can read its source.
 
 ### 3. Publish, with an expiry
 
@@ -71,7 +79,7 @@ Run through the skill's §3 blocks, which wrap exactly these commands. Shape of 
 
 - `--json` prints redacted metadata with `metadata.shareId`; the link is not in it. Get the link as the skill does: `"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link`. Never combine `--reveal-link` with `--json`.
 - Everything after `#` in a link is the credential. Follow the skill's handling contract for storing and delivering it. Never retype or chunk a link.
-- Edit access for an addressed recipient: add `--action read edit`; it takes a list, so put it last, after the file and the other flags. Only use it when the owner asks and only with an addressed `--to`; the Markdown editor is the share viewer's. Don't use `--action` with `anyone`; that combination isn't evidenced.
+- Edit access for an addressed recipient: add `--action read edit`; it takes a list, so put it last, after the file and the other flags. Only use it when the owner asks and only with an addressed `--to`; the Markdown editor is the share viewer's. Never pass `--action edit` with `anyone`: the CLI release after 1.3.0-beta.30 refuses it (`INVALID_ARGUMENT`, exit 2: a link only reads), and earlier CLIs publish a read-only link without saying so.
 - Send the link to the recipient yourself (chat, email, wherever you talk). When they open it, the viewer emails them a one-time code to prove the address is theirs.
 
 What the recipient does: opens the link; for `email:`/`domain:` links they prove the address with a code the viewer emails them. A bearer link opens without signing in.
