@@ -36,36 +36,71 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or `1.2.3` → the CLI is ready: leave out the whole `npm install` line in §2, and run the rest of §2 as written.
-- Anything else, such as `No such file or directory` → run §2 as written.
+- The last line prints a path (the owner set `TC_BIN`) or `1.2.3` → the CLI is ready: skip step 2 of §2, and run the other steps as written.
+- Anything else, such as `No such file or directory` → run all the steps of §2.
 
 ## 2. Install
 
-Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run:
+Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written. Nothing downloaded is run: the skill's files are fetched as plain files, checked against a checksum list and copied. Stop at the first step that fails.
+
+**Step 1. Folders.** The CLI's profile store, this skill's state folder, and a download folder.
 
 ```sh
-mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}" "$HOME/.local/share/tc-apps" &&
-npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.3 &&
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js -o "$HOME/.local/share/tc-apps/install-skill.js" &&
-D=$(node "$HOME/.local/share/tc-apps/install-skill.js" apps --agent <client>) && echo "$D" &&
-printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" &&
-cp "${D#SKILL_INSTALLED * * }/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" &&
-chmod 755 "$HOME/.local/share/tc-apps/tc" && echo INSTALLED
+mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}" "$HOME/.local/share/tc-apps/skill"
 ```
 
-- **The first line** creates the CLI's profile store, this skill's state folder, and the CLI's folder, if they don't exist yet.
-- **The CLI** goes into a private folder that only this skill uses.
-- **The skill** comes from this site: the installer, saved as `~/.local/share/tc-apps/install-skill.js`, checks every file against the site's `/skills/index.json` before it writes anything. It's installed for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode. The installer prints `SKILL_INSTALLED tc-apps <version> <folder>`.
-- **The last lines** write `cli-path`, which names the CLI (`TC_BIN` if the owner set it, otherwise the one in `~/.local/share/tc-apps/cli`), and copy the skill's `tc-wrapper.sh` to `~/.local/share/tc-apps/tc`: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. The skill uses the script when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
-- **Each line runs only if the one before it worked.** The block ends by printing `INSTALLED`.
-- It takes about 30 s.
+**Step 2. The CLI,** unless §1 said it is ready. It goes into a private folder that only this skill uses.
+
+```sh
+npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.3
+```
+
+**Step 3. Download the skill's files** and their checksum list from this site. They are plain files, none of them run.
+
+```sh
+cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud.xyz/skills/apps/{SHA256SUMS,SKILL.md,QUICKSTART.md,SQL.md,tc-wrapper.sh}"
+```
+
+**Step 4. Check them.** Every file must print `OK`, one for each of the four. Anything else: stop.
+
+```sh
+cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 256 -c SHA256SUMS; }
+```
+
+**Step 5. Put the skill where your client looks for skills,** for your user, so every project folder sees it. Use the block for your client.
+
+Claude Code:
+
+```sh
+mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp "$HOME/.local/share/tc-apps/skill/"*.md "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
+```
+
+Codex and OpenCode:
+
+```sh
+mkdir -p "$HOME/.agents/skills/tc-apps" && cp "$HOME/.local/share/tc-apps/skill/"*.md "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.agents/skills/tc-apps/"
+```
+
+**Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tc` is the skill's `tc-wrapper.sh`: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
+
+```sh
+printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" && chmod 755 "$HOME/.local/share/tc-apps/tc"
+```
+
+**Step 7. Check the CLI runs.** It prints `1.2.3`, or the version of the owner's `TC_BIN`.
+
+```sh
+"$HOME/.local/share/tc-apps/tc" --version
+```
+
+It takes about 30 s, almost all of it step 2.
 
 If something goes wrong:
-- **Codex:** its default sandbox blocks network access and writes outside the workspace, so npm, the download and the installer fail there. Run the block with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
-- **Your client refuses the block or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence" or "Code from External". Show the owner the block, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/start#claude-code-blocked> and wait. Don't edit their settings files, and don't run the step another way.
-- **A command fails, or the block doesn't print `INSTALLED`:** stop and report the error. Don't retry it with other options or in another folder.
+- **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 2 to 7 fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
+- **Your client refuses a step or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence", "Code from External" or "Instruction Poisoning". Show the owner the step, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/start#claude-code-blocked> and wait. Don't edit their settings files, and don't run the step another way.
+- **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder.
 
-Wait until the block has finished before §3: the skill doesn't exist until then.
+Wait until step 7 has printed its version before §3: the skill doesn't exist until then.
 
 ## 3. Carry on with the skill
 

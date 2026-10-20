@@ -346,6 +346,7 @@ const page = (name) => pages.find((p) => p.url === name);
 
 for (const s of skills) {
   for (const f of s.files) write(f.url, f.body);
+  write(`skills/${s.short}/SHA256SUMS`, s.files.map((f) => `${sha256(f.body)}  ${f.path}\n`).join(""));
   write(`skills/${s.short}.md`, s.text);
 }
 const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
