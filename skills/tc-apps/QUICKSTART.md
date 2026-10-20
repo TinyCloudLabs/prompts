@@ -13,7 +13,7 @@ It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later wi
 
 Add the setup link to your first request:
 
-> Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps
+> Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
@@ -25,7 +25,7 @@ No shell profile to edit, and nothing to restart except OpenCode, once (see belo
 
 | Client | Start | What to expect |
 |---|---|---|
-| Claude Code | `claude` | Auto mode asks nothing, except that its safety check sometimes blocks the install. The agent then shows you the install block and asks; reply "go ahead". Manual mode asks on first use for the setup page, the check, the install and each kind of skill block; choose "Yes, and don't ask again" where it's offered. Blocks that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
+| Claude Code | `claude` | Auto mode asks nothing when the pasted line names what the setup installs and saves, as above. Its safety check doesn't decide the same way every time and can still block the install or the sign-in. The agent then shows you the block and asks; reply "go ahead", or allow it in your settings: [If Claude Code still blocks it](https://agents.tinycloud.xyz/start#claude-code-blocked). Manual mode asks on first use for the setup page, the check, the install and each kind of skill block; choose "Yes, and don't ask again" where it's offered. Blocks that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
 | Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/.tinycloud --add-dir ~/.local/state/tc-apps` | One approval, for the install. The CLI needs the network, and it writes the profile store and the state folder, both outside the project. With `TC_HOME` or `TC_APPS_STATE` set, pass `$TC_HOME/.tinycloud` and `$TC_APPS_STATE` instead. Folders under your home don't need to exist yet: the setup creates them. A missing `--add-dir` folder under `/tmp`, though, stops Codex's sandbox from starting, so create it first. |
 | OpenCode | `opencode` | No questions. After the first setup, restart OpenCode once, as the agent will tell you: it loads skills only when it starts. Claude Code and Codex don't need a restart. |
 

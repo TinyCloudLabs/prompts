@@ -38,6 +38,8 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep
 
 Don't open the link yourself, and run 1a only once per approval.
 
+If Claude Code's auto mode refuses 1a or 1b, show the owner <https://agents.tinycloud.xyz/start#claude-code-blocked> and wait for their reply. Don't edit their settings files, and don't run the step another way.
+
 **1b. Finish with the owner's code.** Paste it between the `CODE` lines exactly as they sent it, in one tool call. Paste it exactly as sent; either case works.
 
 ```sh
