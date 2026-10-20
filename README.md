@@ -20,6 +20,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/openkey` | Building block: the standalone OpenKey CLI | [`setup/openkey.md`](setup/openkey.md) |
 | `/skills/<skill>.md` | A skill's `SKILL.md` to read, for `apps`, `chat`, `publish`, `secrets`, `courier`, `cli` and `mcp`; its relative links point into `/skills/<skill>/` | see [Skills](#skills) |
 | `/skills/<skill>/<file>` | The skill's files exactly as installed, `SKILL.md` included | |
+| `/skills/<skill>/SHA256SUMS` | The sha256 of each of the skill's files, in `sha256sum -c` format, the same values as `index.json`; the `/apps` setup checks its downloads against it | generated |
 | `/skills/index.json` | Every skill's name, short name, version, description, source, changed files, and files with sha256 checksums | generated |
 | `/skills/install.js` | The installer the guides run | [`scripts/install-skill.js`](scripts/install-skill.js) |
 

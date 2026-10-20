@@ -346,6 +346,7 @@ const page = (name) => pages.find((p) => p.url === name);
 
 for (const s of skills) {
   for (const f of s.files) write(f.url, f.body);
+  write(`skills/${s.short}/SHA256SUMS`, s.files.map((f) => `${sha256(f.body)}  ${f.path}\n`).join(""));
   write(`skills/${s.short}.md`, s.text);
 }
 const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
@@ -372,6 +373,27 @@ write(
     2,
   ) + "\n",
 );
+
+// The /apps setup downloads the skill's files by name, checks them against SHA256SUMS and copies them
+// by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
+const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
+const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
+const curlLine = appsGuide.match(/curl -fsSL -O "[^"\n]*\/skills\/apps\/\{([^}\n]+)\}"/);
+if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
+const fetched = curlLine[1].split(",");
+if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
+  throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
+}
+const copies = [...appsGuide.matchAll(/ cp ((?:[\w.-]+ )+)"[^"\n]*\/tc-apps\/"/g)];
+if (copies.length !== 2 || copies.some(([, names]) => JSON.stringify(names.trim().split(" ").sort()) !== JSON.stringify(appsFiles))) {
+  throw new Error(`setup/tc-apps.md step 5 must copy exactly ${appsFiles}, in both the Claude Code and the Codex/OpenCode block`);
+}
+const servedIndex = JSON.parse(readFileSync(join(OUT, "skills/index.json"), "utf8"));
+for (const s of servedIndex.skills) {
+  const sums = readFileSync(join(OUT, `skills/${s.short}/SHA256SUMS`), "utf8").trimEnd().split("\n");
+  const want = s.files.map((f) => `${f.sha256}  ${f.path}`);
+  if (JSON.stringify(sums) !== JSON.stringify(want)) throw new Error(`skills/${s.short}/SHA256SUMS differs from the sha256 entries in skills/index.json`);
+}
 
 // Agent Skills discovery index (agentskills.io discovery 0.2.0)
 write(

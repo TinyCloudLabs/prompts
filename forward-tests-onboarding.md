@@ -111,7 +111,7 @@ A row passes only if every line for its client holds.
 - A chat app that cannot read the page fails here as **fail: page not read** until TC-1361 ships.
 
 **Coding agents**
-- Prints `SKILL_INSTALLED <skill> <version> <folder>` with `<version>` matching the site's `/skills/index.json`.
+- **O, S, T1 (the `/apps` setup):** §2 step 4 prints `OK` for the four skill files and step 7 prints the CLI version. **T2, T3, T4:** the installer prints `SKILL_INSTALLED <skill> <version> <folder>`. In both cases the version matches the site's `/skills/index.json`.
 - Shows the OpenKey link and code in its own output.
 - **O, S, T1:** record saved per Checking a record (S: explains the route, and with no record named saves the default todo, rather than silently installing).
 - **T2:** an owner-only link, not a public one.
