@@ -36,6 +36,18 @@ Optional variables, set before you start the client:
 - `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
 - `TC_BIN`: the absolute path to another `tc`, CLI 1.2.2 or later. The skill then uses it instead of its own folder.
 
+## Optional private diagnostics
+
+Nothing in ordinary setup turns diagnostics on. Setup still installs baseline CLI 1.2.3; neither that pin nor the skill's CLI 1.2.2 minimum establishes diagnostics support. The synthetic-only alpha is exactly `@tinycloud/telemetry-preview@0.1.0-alpha.0`, targeting Node 22.23.2 on Linux x64 glibc. Follow [DIAGNOSTICS.md](DIAGNOSTICS.md) for private side-by-side `npm install --ignore-scripts --save-exact`, never global installation or PATH changes. Explicitly select `tc-apps-alpha` / `tc-apps-alpha-mcp`; inspect `--alpha-identity` and the installed package's `identity.json`. This is not a publication or deployment claim. Preserve `TC_BIN`, `TC_HOME`, `TC_APPS_STATE`, `TC_DIAGNOSTICS_HOME`, XDG overrides, profiles, grants, delegations and normal routing.
+
+The alpha records bounded operation metadata, not messages, terminal streams, record values, keys, SQL or secrets. Keep real-record capture off. For a separately approved short synthetic task, inspect status, enable metadata, explicitly wrap each selected block, read a disposable synthetic record (or write/read back only if requested), review, then disable. Never replay an unknown-outcome write. Retain the normal executable as independent fallback. Delete selected history only with explicit authorization: disable is not deletion, retention is at most 30 days, and quotas can remove evidence sooner. Selected detail and optional plugins remain off.
+
+Launching a whole client with `diagnostics run -- <client>` adds attribution only. Only an explicitly selected normal tc-apps shell block may use `--scope tc-apps` and an optional fixed `--role`; a shared client/server environment must never be scoped. Nested selected blocks preserve valid run/workflow links, not a claim that every command belongs to the same owner task. Missing linkage stays unknown.
+
+Claude Code and Codex use the explicit launcher; no automatic hooks are shipped. OpenCode v1's optional adapter targets executing server **1.18.31**, but plugins remain off for this alpha. Installed-client acceptance is not implied by loopback fixtures, and OpenCode v2 is unsupported.
+
+Updating the installed skill does not update the separately copied runtime wrapper. The [setup's explicit optional update](https://agents.tinycloud.xyz/apps#optional-diagnostics-and-explicit-updates) is ordinary maintenance after review, **not alpha onboarding**. Keep the normal skill and wrapper unchanged; use the package's `guidance/skills/tc-apps/` and exact 0.1.6 `SKILL.md`/`SQL.md` checkpoint. Separate hosted image/host acceptance remains unproven and is not a prerequisite for npm publication.
+
 ## What you see at sign-in
 
 1. You ask, for example "Log my weight: 80.5 kg today." The agent checks your sign-in, then starts one.
@@ -106,6 +118,8 @@ Good to know:
   ```
 
   To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the `tc-apps` skill folders.
+
+  This is ordinary setup Undo, not diagnostic deletion. Before removing an optional diagnostics-capable CLI, follow [DIAGNOSTICS.md](DIAGNOSTICS.md) to disable capture, decide separately which retained evidence to delete, and remove any separately installed plugin entry. External copies cannot be recalled by local deletion. Record sign-ins and diagnostic controls are independent.
 
 ## Why it works this way
 

@@ -8,6 +8,7 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 - **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps`
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
 - **You approve:** your agent shows you an OpenKey link and code. Check the code, sign in with your passkey and approve: it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records.
+- **Optional diagnostics:** default off and separate from record access. Setup installs helper files but does not activate them, inspect conversations or enable capture. See [Optional diagnostics and explicit updates](#optional-diagnostics-and-explicit-updates) only if you want that separate feature.
 - **Undo:** see [Undo](#undo).
 
 ## Use it in Claude (web, iOS, Android)
@@ -82,6 +83,36 @@ Follow the skill now for the owner's request, from its §1.
 
 **OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
 
+## Optional diagnostics and explicit updates
+
+This section is **not** part of ordinary setup or a record request. Baseline setup remains pinned to CLI 1.2.3; the skill's 1.2.2 business-command minimum does not imply diagnostics support. The synthetic-only, metadata-only alpha is exactly `@tinycloud/telemetry-preview@0.1.0-alpha.0`, targeting Node 22.23.2 on Linux x64 glibc. Follow the private side-by-side `npm install --ignore-scripts --save-exact` instructions in [DIAGNOSTICS.md](https://agents.tinycloud.xyz/skills/apps/DIAGNOSTICS.md); use only its distinct `tc-apps-alpha` / `tc-apps-alpha-mcp` executables, never a global install or normal SDK tag change. No publication or hosted deployment success is claimed. Do not replace `TC_BIN`, rewrite `cli-path`, change PATH/client defaults, or alter `TC_HOME`, `TC_APPS_STATE`, `TC_DIAGNOSTICS_HOME`, XDG overrides, profiles, grants or delegations.
+
+After installation, check `--alpha-identity` and `node_modules/@tinycloud/telemetry-preview/identity.json` against the reviewed checkpoint. Use the package's `guidance/skills/tc-apps/DIAGNOSTICS.md`, with the exact 0.1.6 `SKILL.md`/`SQL.md` pairing, for status, explicit per-block synthetic capture, disable/delete and independent normal-path fallback. Never replay unknown-outcome writes. Real-record capture, selected detail and optional plugins remain off. Hosted image/host acceptance is separate and unproven, not a prerequisite for npm publication.
+
+The ordinary explicit skill/wrapper update reference below is **not preview onboarding**. Leave the installed skill and wrapper unchanged when trying a side-by-side preview.
+
+**Updating an already installed skill:** after explicit permission, use the reviewed site's installer as in §2, without the `npm install` or `cli-path` lines. It prints the installed folder and checks the site's per-file hashes, including `DIAGNOSTICS.md` and all three `diagnostics/*.mjs` helpers. Keep that directory together. The installer writes files; it does **not** mark arbitrary helpers executable or activate client configuration. Invoke the generator with Node, not as a shell program:
+
+```sh
+SKILL='/absolute/installed/tc-apps'
+node "$SKILL/diagnostics/opencode-config.mjs" --print-module
+```
+
+This only prints a proposed module. Optional plugin activation is outside this preview; do not copy an entry or change an executing server's configuration during preview onboarding. Any later plugin use needs separate authorization and actual-client acceptance.
+
+**Update the separately copied wrapper explicitly:** installing a new skill does not change `~/.local/share/tc-apps/tc`. After reviewing the installed `tc-wrapper.sh` and obtaining permission to replace that setup-owned copy, run:
+
+```sh
+SKILL='/absolute/installed/tc-apps'
+cp "$SKILL/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" &&
+chmod 755 "$HOME/.local/share/tc-apps/tc" &&
+cmp "$SKILL/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc"
+```
+
+Use the actual folder printed by the installer, not the placeholder. This preserves `cli-path` and does not enable capture. An operator-set `TC_BIN` bypasses that wrapper; do not change it silently. Wrapper diagnostics require the selected CLI's wrapper contract as well as this copy. With baseline/unsupported CLI builds, keep diagnostics off and ordinary record commands unchanged.
+
+Whole-client launch is attribution-only (`diagnostics run -- <client>`). Apply `--scope tc-apps` and optional `--role` only to one explicitly selected normal tc-apps command/block, never a whole client/login shell/shared server. Scope is not enablement or permission to inspect conversations.
+
 ## Undo
 
 For the owner. Run these in a terminal where `TC_BIN` and `TC_HOME` have the values you started the client with, or are unset if you never set them: `TC_BIN` picks the CLI (otherwise the setup's `~/.local/share/tc-apps/tc`), and the CLI reads `TC_HOME` to find its profiles.
@@ -94,3 +125,5 @@ If you signed in, each command clears one local session. The approvals stay vali
 ```
 
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
+
+Ordinary Undo does **not** disable or delete diagnostics. If you separately enabled them, first use the diagnostics-capable CLI and the same diagnostic root to disable capture; then preview and explicitly confirm any selected history deletion in DIAGNOSTICS.md. Remove only the plugin entry you separately added, if any, from the executing server's configuration and arrange its separately authorized reload. Keep the helper directory until that entry is removed. Diagnostic history lives separately from profiles/state; retained evidence still expires, and external exports require their own deletion. Do not delete records or revoke record grants as a substitute for diagnostic cleanup.
