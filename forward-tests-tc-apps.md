@@ -116,7 +116,7 @@ This test proves that the owner never has to ask for the SQL index. The agent as
 - The SQL grant reaches every SQL database in `default` (`tinycloud-node` names databases by their last path segment). The owner accepted this. The skill always passes the exact `--db`.
 - Parallel SQL writes to one database can fail or half-apply, so the skill writes SQL one block at a time.
 - On a machine that also has TinyChat's global `tc-cli` skill, Codex and OpenCode may load it for the word "TinyCloud".
-- Claude Code's auto mode can still block a step of the install, or the sign-in, as unsafe (TC-1607). The setup then has the agent show the step and ask; the owner replies "go ahead". The install is separate plain steps, with no downloaded script run, to make that less likely.
+- Claude Code's auto mode can still block a step of the install, or the sign-in, as unsafe (TC-1607). The setup then has the agent show the step and ask; the owner replies "go ahead". The install is separate plain steps with no downloaded installer, to make that less likely. The `tc` helper is still a script from the skill that runs later, and the checksums only catch a corrupted download.
 - Codex's web tool sometimes fails to fetch the setup page ("Internal Error"). The agent falls back to `curl`.
 
 If OpenKey, the CLI, the node or the skill installer causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.
