@@ -112,7 +112,7 @@ This test proves that the owner never has to ask for the SQL index. The agent as
 ## Known rough edges
 
 - The device link is valid for 10 minutes. After that the CLI exits with `DEVICE_AUTH_EXPIRED`, and the agent tells the owner instead of starting another.
-- A new account may not have its `default` space hosted. Sign-in then succeeds, and §3 fails with `SPACE_NOT_HOSTED`; the agent stops.
+- A new account's `default` space is hosted in the background after sign-in, so §3 can fail with `SPACE_NOT_HOSTED` for a while. The agent tells the owner it's still being set up, retries with backoff for about 2 minutes, and never asks for a second or broader sign-in (TC-1608).
 - The SQL grant reaches every SQL database in `default` (`tinycloud-node` names databases by their last path segment). The owner accepted this. The skill always passes the exact `--db`.
 - Parallel SQL writes to one database can fail or half-apply, so the skill writes SQL one block at a time.
 - On a machine that also has TinyChat's global `tc-cli` skill, Codex and OpenCode may load it for the word "TinyCloud".
