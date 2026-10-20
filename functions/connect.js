@@ -21,6 +21,8 @@ export async function onRequest({ request, env, next }) {
     : await next();
   const out = new Response(request.method === "HEAD" ? null : res.body, res);
   if (res.ok) out.headers.set("Content-Type", `${markdown ? "text/markdown" : "text/html"}; charset=utf-8`);
+  // Cloudflare email obfuscation otherwise rewrites package@version in install commands.
+  out.headers.append("Cache-Control", "no-transform");
   out.headers.set("Link", '</connect>; rel="canonical", </connect.md>; rel="alternate"; type="text/markdown"');
   out.headers.append("Vary", "Accept");
   return out;

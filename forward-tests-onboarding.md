@@ -17,6 +17,7 @@ Keep the `/apps` prompts and results below as the baseline. Separately paste **`
 
 Apply the existing client-specific approval and first-record checks. The new page must deliver the complete chat-app and coding-agent instructions in its first successful fetch, whether the client receives HTML or explicitly requests Markdown. A plain request must get readable HTML, not raw Markdown. Record page retrieval, route selection, approval and record read-back separately; local browser rendering is not evidence that ChatGPT or Claude retrieved the page.
 
+After deployment, fetch HTML from the production hostname without executing JavaScript and verify that its installation commands match the Markdown version. `/connect` must include `Cache-Control: no-transform`: the custom domain's Cloudflare email obfuscation otherwise rewrites npm's `package@version` syntax, even when the `pages.dev` preview is correct.
 
 ## Routing being tested
 

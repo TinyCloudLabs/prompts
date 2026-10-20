@@ -36,6 +36,7 @@ The build combines `setup/connect.md` with the owner and coding-agent sections o
 
 `functions/connect.js` returns HTML for ordinary requests, including `Accept: */*`. An explicit, nonzero `text/markdown` preference at least as high as HTML returns Markdown at the **same `/connect` URL**, with `Vary: Accept`. It respects HTML wildcard preferences and never infers the client from User-Agent. `/connect.md` is also available as a machine-readable alternate; owners do not need to choose it.
 
+The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Without it, the production zone's Cloudflare email obfuscation mistakes `cli@1.2.5` for an email address and corrupts the installation command for readers that do not run JavaScript. This opt-out affects `/connect` only; neither `/apps` nor zone-wide settings are changed. Verify the production HTML bytes, not just the `pages.dev` preview.
 
 ## Skills
 
