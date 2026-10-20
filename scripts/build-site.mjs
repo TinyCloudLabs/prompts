@@ -56,13 +56,15 @@ const PAGES = [
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released CLI and Courier skills contain this exact resolver. Replace it
+// The released CLI and Courier skills contain one of these exact resolvers (courier 0.1.3 and
+// CLI 1.2.3 end in `tc`; CLI 1.2.4 and later end in `tinycloud`). Replace it
 // in every published Markdown file, including the core skill's reference pages.
-const UPSTREAM_RESOLVER = [
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"   # else a global npm install',
+const upstreamResolver = (bin) => [
+  `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
+  `[ -n "\${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/${bin}"   # else a global npm install`,
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+const UPSTREAM_RESOLVERS = [upstreamResolver("tc"), upstreamResolver("tinycloud")];
 const RESOLVER = [
   '{ set +x; } 2>/dev/null; umask 077',
   'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
@@ -83,9 +85,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.2.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.3.tgz",
-    integrity: "sha512-bKcFuqjxKkq8XLR1xfZ0wKBOTwvMBJovKoWOgQHcYEFy5/Ssg5h38FjeNNlDwzLJb+IUbqdfyFxtcbkuXSQtIA==",
+    version: "1.2.5",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.5.tgz",
+    integrity: "sha512-eREbT3aPuedCIRqKpWgf6QwkK/MVPALg1N/u0IRAXwTBVVxoqW3cco216FBKeHVdI/TlX3au7HFfVr9wOMA8Ig==",
     dir: "package/skills/tc-cli",
     checkCli: true,
   },
@@ -278,9 +280,9 @@ async function loadSkill(skill) {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
       const text = body.toString("utf8");
-      if (!text.includes(UPSTREAM_RESOLVER)) return [path, body];
+      if (!UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) return [path, body];
       changed.add(path);
-      return [path, Buffer.from(text.replaceAll(UPSTREAM_RESOLVER, RESOLVER))];
+      return [path, Buffer.from(UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text))];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -582,7 +584,7 @@ const wrongCli = skills
     s.files.flatMap((f) => {
       const text = f.body.toString("utf8");
       const lookups = text.split("npm prefix --global").length - 1;
-      const upstream = text.includes(UPSTREAM_RESOLVER);
+      const upstream = UPSTREAM_RESOLVERS.some((resolver) => text.includes(resolver));
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
       const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
       return !upstream && lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];

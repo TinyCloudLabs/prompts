@@ -4,7 +4,7 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.3 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
+- **What it does:** installs the TinyCloud CLI 1.2.5 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
 - **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
   - **Claude Code auto mode:** its safety check asks you to name where the installed code comes from and what is saved, which that second sentence does. If it still blocks a step, see [If Claude Code still blocks it](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
@@ -21,7 +21,7 @@ To avoid approving each record-writing tool call, go to **Settings → Connector
 
 The owner sent you this page with a request, for example "Log my weight: 80.5 kg today." This page installs the TinyCloud CLI and the `tc-apps` skill. Then you carry out the request with the skill, in this same conversation: don't ask the owner to send it again.
 
-If the owner only asked for setup or named no record, save one default record without asking, after sign-in is approved (skill §4) and not before: app `todos`, kind `todo`, key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, value `{"v":1,"at":<NOW>,"data":{"title":"Try my personal apps"},"by":<client>}`. If the `todos` app or its `todo` kind doesn't exist yet, write their catalog records first (skill §2 rule 2): `xyz.tinycloud.agent-data/catalog/todos` = `{"app":"todos","title":"Todos","about":"Things to do.","created":"<TODAY>","by":<client>}` and `xyz.tinycloud.agent-data/catalog/todos/todo` = `{"app":"todos","kind":"todo","about":"One record per thing to do.","shape":"item","states":["open","done"],"v":1,"fields":{"title":"text: what to do"}}`. Write commands are in skill §6. Get that key and its done twin `xyz.tinycloud.agent-data/todos/todo/done/try-my-personal-apps` first (skill §5), and skip saving if either exists, so a todo the owner already ticked off isn't saved again. Afterwards tell the owner the key, that “What’s on my todo list?” shows it, and that you'll delete it on request (the skill's `kv delete`, §6).
+If the owner only asked for setup or named no record, save one default record without asking, after sign-in is approved (skill §4) and not before: app `todos`, kind `todo`, key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, value `{"v":1,"at":"<UTC>","data":{"title":"Try my personal apps"},"by":<client>}`, where `<UTC>` is the clock's time from `date -u +%FT%TZ` (skill §1; run it again if it is more than 5 minutes old), never an estimate. If the `todos` app or its `todo` kind doesn't exist yet, write their catalog records first (skill §2 rule 2): `xyz.tinycloud.agent-data/catalog/todos` = `{"app":"todos","title":"Todos","about":"Things to do.","created":"<TODAY>","by":<client>}` and `xyz.tinycloud.agent-data/catalog/todos/todo` = `{"app":"todos","kind":"todo","about":"One record per thing to do.","shape":"item","states":["open","done"],"v":1,"fields":{"title":"text: what to do"}}`. Write commands are in skill §6. Get that key and its done twin `xyz.tinycloud.agent-data/todos/todo/done/try-my-personal-apps` first (skill §5), and skip saving if either exists, so a todo the owner already ticked off isn't saved again. Afterwards tell the owner the key, that “What’s on my todo list?” shows it, and that you'll delete it on request (the skill's `kv delete`, §6).
 
 Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode`.
 
@@ -36,7 +36,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or `1.2.3` → the CLI is ready: skip step 2 of §2, and run the other steps as written.
+- The last line prints a path (the owner set `TC_BIN`) or `1.2.5` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as an older `1.2.3` from an earlier setup, means run all the steps of §2: step 2 upgrades it in place.
 - Anything else, such as `No such file or directory` → run all the steps of §2.
 
 ## 2. Install
@@ -52,7 +52,7 @@ mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/st
 **Step 2. The CLI,** unless §1 said it is ready. It goes into a private folder that only this skill uses.
 
 ```sh
-npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.3
+npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.5
 ```
 
 **Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files; only `tc-wrapper.sh` is a script, and step 6 installs it.
@@ -87,7 +87,7 @@ cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps"
 printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" && chmod 755 "$HOME/.local/share/tc-apps/tc"
 ```
 
-**Step 7. Check the CLI runs.** It prints `1.2.3`, or the version of the owner's `TC_BIN`.
+**Step 7. Check the CLI runs.** It prints `1.2.5`, or the version of the owner's `TC_BIN`.
 
 ```sh
 "$HOME/.local/share/tc-apps/tc" --version
