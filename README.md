@@ -36,8 +36,8 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tc-apps` | `apps` | [`skills/tc-apps`](skills/tc-apps), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
-| `tc-cli` | `cli` | `skills/tc-cli` in the npm package [`@tinycloud/cli@1.2.3`](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.3) (js-sdk), unchanged |
-| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.1.3`](https://www.npmjs.com/package/@tinycloud/courier/v/0.1.3) (js-sdk), unchanged; `@tinycloud/cli@1.2.3` ships the same files |
+| `tc-cli` | `cli` | `skills/tc-cli` in the npm package [`@tinycloud/cli@1.2.5`](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.5) (js-sdk), unchanged |
+| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.1.3`](https://www.npmjs.com/package/@tinycloud/courier/v/0.1.3) (js-sdk), unchanged; `@tinycloud/cli@1.2.5` ships the same files |
 | `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.16`](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz), with the changes below |
 | `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.5.3`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.5.3) (js-sdk), unchanged |
 
@@ -45,7 +45,7 @@ Skills written for these guides live in `skills/`. Skills owned by another repos
 
 The owner-facing pages call the CLI `tinycloud`, the name `@tinycloud/cli` 1.2.3 added next to `tc`: on Linux, `/usr/sbin/tc` is the system's traffic-control tool, and `tinycloud` doesn't clash with anything. [`/cli`](setup/tinycloud.md) links `tinycloud` onto the owner's `PATH`, and `tc` too where nothing else has that name. The skills themselves don't need either name on the `PATH`: they run the CLI as `TC_BIN` if set, else from `~/.local/share/tinycloud/cli`.
 
-Every skill whose `SKILLS` entry has `checkCli` must run the CLI that way. For tc-cli, courier and tinychat-retrieval, the build fails if a served file looks up the CLI other than through the three-line resolver tc-cli 1.2.3 ships (`TC_BIN` if set, else `~/.local/share/tinycloud/cli`, else a global npm install), has a bare `tc` command in a shell block, or has a script that runs `tc` (as a default executable, a spawned program or a returned value). tc-cli 1.2.3 and courier 0.1.3 pass as released ([TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522)). The skills written here (`tc-publish`, `tc-secrets`) resolve `TC_BIN` in each block's preamble the same way, preferring the `tinycloud` executable.
+Every skill whose `SKILLS` entry has `checkCli` must run the CLI that way. For tc-cli, courier and tinychat-retrieval, the build fails if a served file looks up the CLI other than through the three-line resolver that tc-cli and courier ship (`TC_BIN` if set, else `~/.local/share/tinycloud/cli`, else a global npm install; the released lines end in `tc` up to tc-cli 1.2.3 and courier 0.1.3, and in `tinycloud` from tc-cli 1.2.4), has a bare `tc` command in a shell block, or has a script that runs `tc` (as a default executable, a spawned program or a returned value). tc-cli 1.2.5 and courier 0.1.3 pass as released ([TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522)). The skills written here (`tc-publish`, `tc-secrets`) resolve `TC_BIN` in each block's preamble the same way, preferring the `tinycloud` executable.
 
 One released skill is served with changes, listed as `changes` in `SKILLS` and as `changed` in `/skills/index.json`: `tinychat-retrieval`'s scripts run `TC_BIN` if set, else the `tinycloud` in `~/.local/share/tinycloud/cli`, else `tinycloud` on the `PATH`, never `tc`; with none of them they fail with `CLI_UNAVAILABLE` ("TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN"). That's `defaultTc()` in `lib/retrieval.mjs`, used by `lib/setup.mjs` and `lib/login.mjs`; `scripts/retrieve.mjs --help` and `references/meetings.md` say so. TinyChat's pack needs the same change upstream (TC-1077); once a pinned release has it, drop the changes here.
 
@@ -65,7 +65,7 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@1.2.3` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.3) |
+| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@1.2.5` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.5) |
 | TinyChat retrieval pack | `0.1.1-onboarding.16` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
 

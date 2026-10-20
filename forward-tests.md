@@ -4,7 +4,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 ## Preconditions
 
-- **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.2.3`. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
+- **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.2.5`. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
 - **The skill** comes from the site, as owners get it: `curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - publish --agent <client>` with the agent's home as `HOME`. Before merge, use the pull request's Pages preview URL instead; its installer installs that branch's skill.
 - `TC_BIN` = the absolute path to that executable, exported into the agent's environment. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent must never change or unset them.
 - **One `TC_HOME` and one `TC_PUBLISH_STATE` per agent/model sequence**, both exported — fresh scratch directories per sequence, never `~/.tinycloud` or the default `~/.local/state/tc-publish`. Reuse them across Tests 1–6 of that sequence. Separate state directories let sequences run in parallel on one machine without sharing a waiter log or link file.
