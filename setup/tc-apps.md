@@ -18,7 +18,9 @@ To avoid approving each record-writing tool call, go to **Settings → Connector
 
 ## For the agent
 
-The owner sent you this page with a request, for example "Log my weight: 80.5 kg today." This page installs the TinyCloud CLI and the `tc-apps` skill. Then you carry out the request with the skill, in this same conversation: don't ask the owner to send it again. If the owner only asked for setup or named no record, save a todo titled “Try my personal apps” without asking, then tell them it was saved and that “What’s on my todo list?” shows it.
+The owner sent you this page with a request, for example "Log my weight: 80.5 kg today." This page installs the TinyCloud CLI and the `tc-apps` skill. Then you carry out the request with the skill, in this same conversation: don't ask the owner to send it again.
+
+If the owner only asked for setup or named no record, save one default record without asking, after sign-in is approved (skill §4) and not before: app `todos`, kind `todo`, key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, value `{"v":1,"at":<NOW>,"data":{"title":"Try my personal apps"},"by":<client>}`. Shapes and the catalog records that come first are in the skill's §2 and §6. Get that key first (skill §5) and skip saving if it exists. Afterwards tell the owner the key, that “What’s on my todo list?” shows it, and that you'll delete it on request (the skill's `kv delete`, §6).
 
 Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode`.
 
