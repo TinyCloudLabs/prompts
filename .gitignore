@@ -1,2 +1,4 @@
 /.smithers/
 _site/
+node_modules/
+.wrangler/
