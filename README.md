@@ -10,7 +10,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | --- | --- | --- |
 | `/setup` | The entry point: every ability, what to paste, what the owner approves, how to undo it | [`setup/README.md`](setup/README.md) |
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
-| `/connect` | One link for ChatGPT, Claude and coding agents: complete HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md), with local instructions included from [`setup/tc-apps.md`](setup/tc-apps.md) |
+| `/connect` | One link for ChatGPT, Claude and coding agents: HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); coding agents follow the unchanged [`/apps` guide](setup/tc-apps.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
 | `/share` | Share an artifact (`tc-publish`): choose who can open it, set an expiry, revoke | [`setup/share.md`](setup/share.md) |
@@ -30,13 +30,13 @@ Guides link to each other and to skill files by relative repository path; the bu
 
 ### One-link personal-record setup
 
-Share `Set up TinyCloud using https://agents.tinycloud.xyz/connect` in any supported client. Chat apps receive the hosted MCP URL, OAuth and client-specific connection steps; local coding agents receive the complete CLI and skill instructions in the same document. The original `/apps` source, output and Markdown response remain unchanged.
+Share `Set up TinyCloud using https://agents.tinycloud.xyz/connect` in any supported client. Chat apps receive the hosted MCP URL, OAuth and client-specific connection steps. Local coding agents are told to fetch and follow `/apps` in full for the owner's original request, without asking the owner for another URL. The original `/apps` source, output and Markdown response remain unchanged.
 
-The build combines `setup/connect.md` with the owner and coding-agent sections of `setup/tc-apps.md`, then generates both `connect.html` and `connect.md` from that text. Do not copy the installation commands into the new guide. Marked renders the HTML at build time with heading IDs; the page needs no JavaScript and every step is visible without another fetch.
+The build generates `connect.html` and `connect.md` from the same entry-page text. It shares only the setup-only record recipe with chat apps; it does not embed, reword or relink the coding-agent installation guide. `/apps` remains the sole authority for that workflow. Marked renders the HTML at build time with heading IDs, without JavaScript. The additional coding-agent fetch is intentional: preserve the tested guide rather than maintain a modified copy. This preserves instructions, not a guarantee of identical model decisions.
 
 `functions/connect.js` returns HTML for ordinary requests, including `Accept: */*`. An explicit, nonzero `text/markdown` preference at least as high as HTML returns Markdown at the **same `/connect` URL**, with `Vary: Accept`. It respects HTML wildcard preferences and never infers the client from User-Agent. `/connect.md` is also available as a machine-readable alternate; owners do not need to choose it.
 
-The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Without it, the production zone's Cloudflare email obfuscation mistakes `cli@1.2.5` for an email address and corrupts the installation command for readers that do not run JavaScript. This opt-out affects `/connect` only; neither `/apps` nor zone-wide settings are changed. Verify the production HTML bytes, not just the `pages.dev` preview.
+The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Cloudflare email obfuscation can mistake `package@version` for an email address and rewrite guide text for readers that do not run JavaScript. This opt-out affects `/connect` only; neither `/apps` nor zone-wide settings are changed. Verify the production HTML bytes, not just the `pages.dev` preview.
 
 ## Skills
 
@@ -94,7 +94,7 @@ The site is deployed from `main` through Cloudflare Pages (project `tinycloud-ag
 
 Run `npm ci --ignore-scripts --no-audit --no-fund`, then `npm run build` locally. The lockfile pins the build-time Markdown renderer and heading-link extension. CI installs those dependencies before its existing checks; Cloudflare Pages installs package dependencies automatically before its build command. Neither the package manifests nor `node_modules` are published.
 
-Preview the actual Pages Functions with `wrangler pages dev _site --compatibility-date 2026-08-18`. Check `/connect` in a browser and with `curl -H 'Accept: text/markdown'`; both must contain the MCP connection steps and the local installation commands. Check that `/apps` is still raw Markdown and byte-identical to the baseline. A local page/HTTP check does not prove ChatGPT retrieval or an authenticated MCP connection; those require the client checks in [`forward-tests-onboarding.md`](forward-tests-onboarding.md).
+Preview the actual Pages Functions with `wrangler pages dev _site --compatibility-date 2026-08-18`. Check `/connect` in a browser and with `curl -H 'Accept: text/markdown'`; both must contain the MCP connection steps and the coding-agent handoff to `/apps`. Follow that link and check that `/apps` is still raw Markdown and byte-identical to the baseline. A local page/HTTP check does not prove an agent followed the handoff or completed authorization; those require the client checks in [`forward-tests-onboarding.md`](forward-tests-onboarding.md).
 
 
 ## Snapshot provenance

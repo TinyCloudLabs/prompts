@@ -2,8 +2,8 @@
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Public URLs are short and flat; the repository layout is only for authoring:
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
-// - /connect: the complete chat-app and coding-agent guide as HTML by default,
-//   or Markdown via Accept: text/markdown; /connect.md is the same guide.
+// - /connect: chat-app setup and a handoff to the unchanged /apps coding guide,
+//   as HTML by default or Markdown via Accept; /connect.md is the same entry page.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
@@ -348,20 +348,13 @@ write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
 const pages = PAGES.map((p) => {
   let text = render(p.src);
   if (p.url === "connect") {
-    // Reuse the existing local setup without changing /apps or duplicating its commands.
-    const apps = render("setup/tc-apps.md");
-    const owner = apps.indexOf("## For the owner\n");
-    const claude = apps.indexOf("## Use it in Claude");
-    const agent = apps.indexOf("## For the agent\n");
-    const marker = "<!-- coding-agent-setup -->";
-    if (owner < 0 || claude <= owner || agent <= claude || text.split(marker).length !== 2) {
-      throw new Error("connect: expected the /apps owner and agent sections and one coding-agent-setup marker");
+    // Chat apps share the first-record recipe; coding agents fetch /apps unchanged.
+    const recipe = render("setup/tc-apps.md").match(/^If the owner only asked for setup or named no record,[^\n]+$/m)?.[0];
+    const marker = "<!-- setup-only-record -->";
+    if (!recipe || text.split(marker).length !== 2) {
+      throw new Error("connect: expected the /apps setup-only record recipe and one setup-only-record marker");
     }
-    const coding = (apps.slice(owner, claude) + apps.slice(agent))
-      .replace(/^## /gm, "### ")
-      .replace("### For the agent\n", "### For coding agents\n")
-      .replaceAll(`${BASE}/apps`, `${BASE}/connect`);
-    text = text.replace(marker, () => coding);
+    text = text.replace(marker, () => recipe);
   }
   write(p.html ? `${p.url}.md` : p.url, text);
   return { ...p, text, ...describe(text, p.url) };

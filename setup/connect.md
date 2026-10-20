@@ -6,9 +6,17 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 > Set up TinyCloud using https://agents.tinycloud.xyz/connect
 
-**For the assistant:** use the route for the environment you are running in. ChatGPT, Claude chat and other chat apps use the hosted MCP connector; do not install a CLI in a chat app's temporary code sandbox. Claude Code, Codex and OpenCode running on the owner's computer use the CLI and skill instructions below. Keep the owner's original request and continue it in this conversation. Do not ask the owner to choose a different link or file format.
+**For the assistant:** keep the owner's original request and continue it in this conversation. Use the route for the environment you are running in. Do not ask the owner to choose a different link or file format.
 
-Jump to [ChatGPT](#chatgpt), [Claude](#claude), [other chat apps](#other-chat-apps), or [coding agents](#coding-agents).
+## Coding agents
+
+**Claude Code, Codex and OpenCode on the owner's computer:** fetch and read the [original coding-agent setup guide](tc-apps.md) in full, then follow it exactly for the owner's original request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
+
+The original guide is the authority for all prerequisites, installation commands, permissions, sign-in, first-record behavior, troubleshooting and cleanup. This page does not replace or modify any of those instructions. Do not reconstruct the setup from a summary or use the chat-app MCP instructions below for this route.
+
+**ChatGPT, Claude chat and other chat apps:** use the instructions below instead. Do not run the coding-agent setup in a chat app's temporary code sandbox.
+
+Jump to [ChatGPT](#chatgpt), [Claude](#claude), or [other chat apps](#other-chat-apps).
 
 ## ChatGPT
 
@@ -45,14 +53,14 @@ If the app has no custom remote MCP support, reading this page cannot add that c
 
 With TinyCloud enabled, make your original request, or ask: **“What personal apps do I already have in TinyCloud?”** The assistant will show the actual OpenKey connect or personal-record access link returned by a TinyCloud tool. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue.
 
-**For chat assistants:** use the connected TinyCloud personal-app tools and the instructions they return. If the tools are not available yet, give the relevant connection steps above; do not claim setup is complete. Never ask the owner to paste a password, private key, access token, delegation or approval code into chat. For setup-only requests, follow the default-record recipe in [For coding agents](#for-coding-agents) below, but perform the reads and writes through the connected tools, not the CLI. Read the saved record back before reporting success.
+**For chat assistants:** use the connected TinyCloud personal-app tools and the instructions they return. If the tools are not available yet, give the relevant connection steps above; do not claim setup is complete. Never ask the owner to paste a password, private key, access token, delegation or approval code into chat. For setup-only requests, follow the [default-record recipe](#setup-only-requests-in-chat-apps) below, but perform the reads and writes through the connected tools, not the CLI. Read the saved record back before reporting success.
 
 A brand-new account's storage can take a minute or two to finish setting up after the first approval. If a tool reports `SPACE_NOT_HOSTED`, tell the owner it is still being set up and retry with backoff for about two minutes. Do not ask for another or broader sign-in to fix it.
 
-To disconnect a chat app, remove or disconnect TinyCloud in that app's plugin or connector settings. Disconnecting does not delete your stored records. Local CLI cleanup is described under [Undo](#undo) below.
+To disconnect a chat app, remove or disconnect TinyCloud in that app's plugin or connector settings. Disconnecting does not delete your stored records. Local CLI cleanup remains in the original [coding-agent guide's Undo section](tc-apps.md#undo).
 
-## Coding agents
+### Setup-only requests in chat apps
 
-**Claude Code, Codex and OpenCode on the owner's computer:** use the following CLI and skill setup, not the chat-app connector steps. All installation instructions are included here; no second setup-page fetch is required. Install only after the owner's client permits the operation, and complete the OpenKey approval before writing records.
+This record recipe is shared with the original guide. For chat apps, use the connected tools rather than its CLI or skill-command references.
 
-<!-- coding-agent-setup -->
+<!-- setup-only-record -->
