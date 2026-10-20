@@ -6,7 +6,7 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 > Set up TinyCloud using https://agents.tinycloud.xyz/connect
 
-**For the assistant:** keep the owner's original request and continue it in this conversation. Use the route for the environment you are running in. Do not ask the owner to choose a different link or file format.
+**For the assistant:** keep the owner's original request and continue it in this conversation. Use the route for the environment you are running in. In a chat app, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format.
 
 ## Coding agents
 
@@ -20,15 +20,14 @@ Jump to [ChatGPT](#chatgpt), [Claude](#claude), or [other chat apps](#other-chat
 
 ## ChatGPT
 
-Connect the hosted **TinyCloud MCP** at **`https://mcp.tinycloud.xyz/mcp`**, with **OAuth** authentication through OpenKey. You do not need a terminal, npm package or local skill. A custom MCP connection does not require TinyCloud to appear in ChatGPT's app directory.
+**For ChatGPT assistants:** if TinyCloud tools are not available yet, reply with only the four numbered steps below, in at most 120 words. No introduction, images, feature menu, plan or price caveats, extra sections, or closing questions. Do not send the owner back to this page to find the instructions. If the tools are already available, use them to continue the original request instead of repeating setup.
 
-1. In a browser, open [ChatGPT Plugins](https://chatgpt.com/plugins). Select **+ → Add custom MCP server**.
-2. Enter **TinyCloud** as the name and **Personal records in TinyCloud** as the description. Enter **`https://mcp.tinycloud.xyz/mcp`** as the server URL, including `/mcp`.
-3. Choose **OAuth**, review the risk warning, then select **Create as a plugin**. Sign in with OpenKey when prompted.
-4. Install the resulting plugin. Start a conversation, type **@**, select **TinyCloud**, and make your original request.
-5. Follow [Approve access and continue](#approve-access-and-continue) below.
+1. In a browser, open [ChatGPT Plugins](https://chatgpt.com/plugins) → **+ → Add custom MCP server**.
+2. Enter **Name:** TinyCloud; **Description:** Personal records in TinyCloud; **Server URL:** `https://mcp.tinycloud.xyz/mcp`; **Authentication:** OAuth.
+3. Review the warning, select **Create as a plugin**, sign in with OpenKey, and install it.
+4. In a conversation, type **@**, select **TinyCloud**, and make your original request. For setup only, ask: **“What personal apps do I already have in TinyCloud?”**
 
-Custom MCP access depends on your plan and workspace permissions. Enable developer mode if your account requires it. If the custom-server option is missing, check your plan or ask your workspace administrator; do not claim that TinyCloud cannot connect merely because it is not listed. Set up and use this connection on the web; do not assume custom MCP connections work in ChatGPT's mobile apps. See [OpenAI's connection instructions](https://developers.openai.com/plugins/deploy/connect-chatgpt) and [MCP availability](https://help.openai.com/en/articles/12584461).
+**Troubleshooting only after a reported or observed blocker:** do not infer that an account cannot connect from its plan name, generic availability documentation, or TinyCloud's absence from the app directory. Do not run an eligibility preflight or recommend an upgrade or developer mode speculatively. A successful connection takes precedence over a contrary documentation assumption. If the option is missing or an action is rejected, address that specific UI state or error briefly; ask one targeted question only if needed to choose the next action. Once enabled, follow [Approve access and continue](#approve-access-and-continue) when the tools request approval, not as an extra initial setup section.
 
 ## Claude
 

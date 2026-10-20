@@ -5,8 +5,8 @@ The test proves one thing: **the same prompt, pasted into a fresh conversation i
 ## Read first
 
 - **Prompt O has never been run in any client.** Its result is unknown.
-- **The chat-app path has not been verified in ChatGPT.** Nobody has yet connected the hosted MCP there.
-- **ChatGPT Free and Plus may not allow custom MCP connectors.** OpenAI documents custom-server writes only for Business, Enterprise and Edu. A "fail" on those plans may be the plan, not the page. Record exactly what the app offers.
+- **Owner-reported ChatGPT connection success:** on 2026-10-20, the owner connected successfully after ChatGPT warned that their Free account might not support it. Accept that connection result; it is not a full zero-account write/read-back acceptance run.
+- **Do not infer a plan gate.** Record what the actual account UI and tools allow. Generic documentation gaps or plan names do not justify an upfront warning, refusal, or upgrade recommendation.
 - The baseline run has not happened. Chat apps are expected to fail at page reading until TC-1361 ships; record that, don't fix it here.
 
 Coding-agent rows are run by QA with test accounts. Chat-app rows need a person with ChatGPT and Claude accounts (QA has none). Run the baseline against production before TC-1361 and TC-1364 land, then post the filled tables as a comment on TC-1278.
@@ -18,6 +18,30 @@ Keep the `/apps` prompts and results below as the baseline. Separately paste **`
 Apply the existing client-specific approval and first-record checks. Chat apps must receive the complete MCP connection instructions in their first successful fetch. Coding agents must fetch the unchanged `/apps` guide from the handoff link and follow it in full for the original request, without asking the owner to paste another URL or reconstructing the installation from a summary. Both HTML and Markdown versions of `/connect` give the same handoff; format preference must not select a different setup workflow. A plain request must get readable HTML, not raw Markdown. Record both page retrievals, route selection, approval and record read-back separately; local browser rendering is not evidence that a coding agent followed the handoff or that ChatGPT or Claude retrieved the page.
 
 After deployment, fetch HTML from the production hostname without executing JavaScript and compare it to the generated HTML. Follow the coding-agent link and confirm that `/apps` still matches its pre-change Markdown bytes. `/connect` must include `Cache-Control: no-transform` to prevent the custom domain's Cloudflare features from rewriting guide text, even when the `pages.dev` preview is correct.
+
+### ChatGPT response regressions
+
+Run these as fresh conversations against the candidate `/connect`, without coaching the assistant on brevity or supplying the page text. These cases verify the response, separately from OAuth and record-saving acceptance.
+
+| Input / state | Required behavior |
+| --- | --- |
+| Bare `https://agents.tinycloud.xyz/connect` link | Treat it as setup in ChatGPT, not a request to choose between explanation, setup, security or troubleshooting. |
+| `Set it up with ChatGPT` after the link | At most 120 words, four numbered steps: direct Plugins link; name, description, exact `/mcp` URL and OAuth; create/OpenKey/install; select `@TinyCloud` and resume or use the setup-only example. No introduction, images, plan/price caveats, extra sections or closing questions. |
+| Same request with `I'm on Free` or `I'm on Plus` | Same direct setup steps, not an inferred restriction, entitlement promise, eligibility question or upgrade recommendation. |
+| Generic availability documentation conflicts with a reported successful connection | Accept the connection result and continue; do not repeat installation or insist the account cannot connect. Do not infer that record writes have already succeeded. |
+| `I can't see Add custom MCP server` | Troubleshoot the actual missing option; do not invent its cause. Ask one targeted UI/workspace question only if needed for the next action. |
+| Actual workspace-policy or write-permission error | Explain that specific blocker and the supported next action, without hiding it or generalizing it to all accounts on the same plan. |
+| TinyCloud tools already available | Continue the original request through the tools; handle returned approvals when needed, rather than repeating installation. |
+
+Record the fetched format, actual reply, word count and pass/fail per case. A local model smoke is not a live ChatGPT acceptance pass.
+
+**Local verification, 2026-10-20 — not a live ChatGPT acceptance pass:**
+
+- `npm run build` passed. The actual Wrangler Pages preview served HTML and negotiated Markdown at `/connect`; `/connect.md` matched the negotiated response. `Vary: Accept` and `Cache-Control: no-transform` were preserved.
+- Browser inspection at 1100px and 390px widths showed the four-step list and direct Plugins link without horizontal overflow. The served `/apps` bytes retained SHA-256 `1d90b7199e18b3d9f8cdaccb1be9232d7f7c5b7d6151f07a060bd6a8b9f15121`.
+- Fresh-model completions using the served Markdown passed bare-link, setup-followup, Free, Plus and concrete-todo setup cases. Bare-link and Free cases also passed using the served HTML. All seven initial replies had four steps, 60–70 whitespace-delimited words, the required connection details and no speculative plan gate; the concrete-todo reply preserved the requested todo.
+- Three further Markdown response smokes handled a missing option with a targeted menu question, respected a reported administrator-policy block, and accepted reported connection success without reinstallation.
+- Already-enabled tool execution, live ChatGPT fetching/behavior, OAuth and record writes were not exercised. No production deployment was performed. Browser tabs and the local preview were closed.
 
 ## Routing being tested
 
@@ -114,7 +138,7 @@ A row passes only if every line for its client holds.
 - Names `https://mcp.tinycloud.xyz/mcp` and **OAuth**.
 - Gives that app's own steps (see Routing).
 - Never asks for shell commands, a CLI install or a code sandbox.
-- ChatGPT Free and Plus: says plainly that plan access is unverified instead of promising it.
+- ChatGPT: concise, steps-first setup per the regression cases above. Plan names and documentation uncertainty must not become a preflight warning; troubleshoot only an observed or reported blocker.
 - Where the connector can be added: the real OpenKey approval link is shown, and a record is saved (see Checking a record). Graded only where the connector can be added.
 - A chat app that cannot read the page fails here as **fail: page not read** until TC-1361 ships.
 
