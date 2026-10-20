@@ -2,6 +2,8 @@
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Public URLs are short and flat; the repository layout is only for authoring:
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
+// - /connect: the complete chat-app and coding-agent guide as HTML by default,
+//   or Markdown via Accept: text/markdown; /connect.md is the same guide.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
@@ -12,12 +14,14 @@
 // Other repository files are copied at their repository path. index.html,
 // llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
 // agent-skills discovery index are generated.
-// No dependencies; fetches the pinned skill tarballs. Run: node scripts/build-site.mjs
+// Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
+import { Marked } from "marked";
+import { gfmHeadingId } from "marked-gfm-heading-id";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
@@ -28,15 +32,17 @@ const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
 // docs/: internal notes, kept in the repository, never published.
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "docs", "functions", "node_modules", "README.md", "scripts", "skills"]);
+const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
 
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
+// `html` adds a rendered page and a Markdown alternate, both from the same text.
 const PAGES = [
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
+  { url: "connect", src: "setup/connect.md", html: true },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "publish", src: "setup/publish.md" },
   { url: "share", src: "setup/share.md" },
@@ -340,8 +346,24 @@ for (const f of copied) {
 write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
 
 const pages = PAGES.map((p) => {
-  const text = render(p.src);
-  write(p.url, text);
+  let text = render(p.src);
+  if (p.url === "connect") {
+    // Reuse the existing local setup without changing /apps or duplicating its commands.
+    const apps = render("setup/tc-apps.md");
+    const owner = apps.indexOf("## For the owner\n");
+    const claude = apps.indexOf("## Use it in Claude");
+    const agent = apps.indexOf("## For the agent\n");
+    const marker = "<!-- coding-agent-setup -->";
+    if (owner < 0 || claude <= owner || agent <= claude || text.split(marker).length !== 2) {
+      throw new Error("connect: expected the /apps owner and agent sections and one coding-agent-setup marker");
+    }
+    const coding = (apps.slice(owner, claude) + apps.slice(agent))
+      .replace(/^## /gm, "### ")
+      .replace("### For the agent\n", "### For coding agents\n")
+      .replaceAll(`${BASE}/apps`, `${BASE}/connect`);
+    text = text.replace(marker, () => coding);
+  }
+  write(p.html ? `${p.url}.md` : p.url, text);
   return { ...p, text, ...describe(text, p.url) };
 });
 const page = (name) => pages.find((p) => p.url === name);
@@ -431,9 +453,9 @@ const listedPages = pages.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides and skills that give a coding agent (Claude Code, Codex, OpenCode) abilities backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. Every file is plain Markdown at a short, stable URL.",
+  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /connect serves HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("setup")}: it lists every guide, what each does, and what the owner approves. Guides need a shell, Node.js 22.20 or later and npm.`,
+  `Start at ${url("connect")} for personal records in ChatGPT, Claude or a coding agent. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
   "",
   "## Abilities",
   "",
@@ -497,7 +519,7 @@ write(
 
 /*.txt
   Content-Type: text/plain; charset=utf-8
-${PAGES.map((p) => p.url)
+${PAGES.filter((p) => !p.html).map((p) => p.url)
   .map((name) => `\n/${name}\n  Content-Type: text/markdown; charset=utf-8\n`)
   .join("")}
 /
@@ -514,6 +536,38 @@ const style = `  <style>
     a { color: #0b57d0; }
     footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
   </style>`;
+const connect = page("connect");
+const markdownRenderer = new Marked(gfmHeadingId());
+write(
+  "connect.html",
+  `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${esc(connect.title)} · TinyCloud</title>
+  <meta name="description" content="${esc(connect.desc)}">
+  <link rel="canonical" href="${esc(url("connect"))}">
+  <link rel="alternate" type="text/markdown" href="/connect.md">
+${style}
+  <style>
+    h2 { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; }
+    h3 { margin-top: 1.75rem; }
+    pre { background: #f2f2f2; padding: 1rem; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre code { padding: 0; }
+    blockquote { margin: 1rem 0; padding: 0.25rem 1rem; border-left: 3px solid #0b57d0; background: #f2f2f2; overflow-wrap: anywhere; }
+    li { margin: 0.4rem 0; }
+  </style>
+</head>
+<body>
+  <main>
+${markdownRenderer.parse(connect.text)}
+  </main>
+</body>
+</html>
+`,
+);
+
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>

@@ -11,6 +11,13 @@ The test proves one thing: **the same prompt, pasted into a fresh conversation i
 
 Coding-agent rows are run by QA with test accounts. Chat-app rows need a person with ChatGPT and Claude accounts (QA has none). Run the baseline against production before TC-1361 and TC-1364 land, then post the filled tables as a comment on TC-1278.
 
+## New universal entry candidate: `/connect`
+
+Keep the `/apps` prompts and results below as the baseline. Separately paste **`Set up TinyCloud using https://agents.tinycloud.xyz/connect`** into each fresh chat-app and coding-agent conversation, using the branch's Pages preview host before deployment. Use exactly the same prompt and URL for every client; do not supply a `.md` suffix or coach the assistant to pick a format.
+
+Apply the existing client-specific approval and first-record checks. The new page must deliver the complete chat-app and coding-agent instructions in its first successful fetch, whether the client receives HTML or explicitly requests Markdown. A plain request must get readable HTML, not raw Markdown. Record page retrieval, route selection, approval and record read-back separately; local browser rendering is not evidence that ChatGPT or Claude retrieved the page.
+
+
 ## Routing being tested
 
 From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for keys, tokens, delegations or codes in chat.

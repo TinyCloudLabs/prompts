@@ -10,6 +10,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | --- | --- | --- |
 | `/setup` | The entry point: every ability, what to paste, what the owner approves, how to undo it | [`setup/README.md`](setup/README.md) |
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
+| `/connect` | One link for ChatGPT, Claude and coding agents: complete HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md), with local instructions included from [`setup/tc-apps.md`](setup/tc-apps.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
 | `/share` | Share an artifact (`tc-publish`): choose who can open it, set an expiry, revoke | [`setup/share.md`](setup/share.md) |
@@ -26,6 +27,15 @@ The site's URLs are short and flat. The repository layout below is only for auth
 The earlier URLs, the repository paths such as `/setup/tc-apps.md`, `/apps/tinychat/setup.md` and `/skills/tc-apps/SKILL.md`, redirect to these, and so does each page's URL with a trailing slash (`/apps/` → `/apps`). The site also generates `/` (for people), `/llms.txt`, `/llms-full.txt`, the sitemap and `/.well-known/agent-skills/index.json`. This README isn't published; `/README.md` redirects to `/setup`.
 
 Guides link to each other and to skill files by relative repository path; the build rewrites those links to the public URLs. The build then fails if any link in a served Markdown file, relative or to this site, doesn't reach a file the site serves.
+
+### One-link personal-record setup
+
+Share `Set up TinyCloud using https://agents.tinycloud.xyz/connect` in any supported client. Chat apps receive the hosted MCP URL, OAuth and client-specific connection steps; local coding agents receive the complete CLI and skill instructions in the same document. The original `/apps` source, output and Markdown response remain unchanged.
+
+The build combines `setup/connect.md` with the owner and coding-agent sections of `setup/tc-apps.md`, then generates both `connect.html` and `connect.md` from that text. Do not copy the installation commands into the new guide. Marked renders the HTML at build time with heading IDs; the page needs no JavaScript and every step is visible without another fetch.
+
+`functions/connect.js` returns HTML for ordinary requests, including `Accept: */*`. An explicit, nonzero `text/markdown` preference at least as high as HTML returns Markdown at the **same `/connect` URL**, with `Vary: Accept`. It respects HTML wildcard preferences and never infers the client from User-Agent. `/connect.md` is also available as a machine-readable alternate; owners do not need to choose it.
+
 
 ## Skills
 
@@ -80,6 +90,11 @@ The owning repositories remain authoritative for executable code and their skill
 ## Source and deployment boundary
 
 The site is deployed from `main` through Cloudflare Pages (project `tinycloud-agents`), which runs `node scripts/build-site.mjs` and serves `_site/`. `functions/` holds the Pages Functions. Other branches get preview builds, where every `https://agents.tinycloud.xyz` URL in the guides, and the installer's own site, point at the preview, so a branch's guides install that branch's skills. TinyChat's own production entry point at `https://tinycloud.chat/agents/setup.md` and its versioned app pack are separate and unchanged.
+
+Run `npm ci --ignore-scripts --no-audit --no-fund`, then `npm run build` locally. The lockfile pins the build-time Markdown renderer and heading-link extension. CI installs those dependencies before its existing checks; Cloudflare Pages installs package dependencies automatically before its build command. Neither the package manifests nor `node_modules` are published.
+
+Preview the actual Pages Functions with `wrangler pages dev _site --compatibility-date 2026-08-18`. Check `/connect` in a browser and with `curl -H 'Accept: text/markdown'`; both must contain the MCP connection steps and the local installation commands. Check that `/apps` is still raw Markdown and byte-identical to the baseline. A local page/HTTP check does not prove ChatGPT retrieval or an authenticated MCP connection; those require the client checks in [`forward-tests-onboarding.md`](forward-tests-onboarding.md).
+
 
 ## Snapshot provenance
 
