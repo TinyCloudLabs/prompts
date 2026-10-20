@@ -60,7 +60,7 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
   - Use the time the owner gave. A part of the day counts as a time: morning `0800`, afternoon `1500`, evening or tonight `2000`.
   - With no time at all, use `<NOW>`'s time for today, and `1200` for another day.
   - If that key exists, add `-2`, `-3`.
-- Item kind: the creation date and a slug of the item: `2026-10-06-renew-passport`.
+- Item kind: the creation date and a slug of the item: `2026-10-06-renew-passport`. The onboarding default `todos/todo/open/try-my-personal-apps` uses a fixed id so it stays unique across reruns.
 - `<YYYY-MM>` is the month of a log id's date.
 
 **A record** is one line of JSON: `{"v":1,"at":"2026-10-06T18:30+02:00","data":{"exercise":"bench press","sets":3,"reps":8,"kg":60},"by":"claude-code"}`.
