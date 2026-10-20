@@ -1,205 +1,147 @@
 # Onboarding forward-test runbook
 
-The test proves one thing: **the same prompt, pasted into a fresh conversation in any client, gets the person to the route that client supports, and from there to a first saved record.** It is how we iterate on the onboarding prompts with evidence (TC-1363, step 4 of TC-1278). The routing it grades against is the routing spec in TC-1278.
+The test proves one thing: **the same prompt, pasted into a fresh conversation in any client, reaches the route that client supports, and from there a first saved record.** It is how we iterate on the onboarding prompts (TC-1363, step 4 of TC-1278).
 
-**Status of this runbook:** the baseline run has not happened. It is out of scope for the pull request that adds this file.
-- **Coding-agent rows** (Claude Code, Codex, OpenCode): run by Clarissa (QA) with her test accounts.
-- **Chat-app rows** (ChatGPT Free and Plus, Claude Free and Pro): need a person with these accounts. QA has none. Sam or Hunter runs them.
+## Read first
 
-Run the baseline against production before TC-1361 (agent pages readable by chat assistants) and TC-1364 (landing page and prompts) land. Chat apps are expected to fail at page reading until TC-1361 ships; record that, don't fix it here. Post the filled tables as a comment on TC-1278.
+- **Prompt O has never been run in any client.** Its result is unknown.
+- **The chat-app path through `/start` has not been verified in ChatGPT.** Nobody has yet connected the hosted MCP there.
+- **ChatGPT Free and Plus may not allow custom MCP connectors.** OpenAI documents custom-server writes only for Business, Enterprise and Edu. A "fail" on those plans may be the plan, not the page. Record exactly what the app offers.
+- The baseline run has not happened. Chat apps are expected to fail at page reading until TC-1361 ships; record that, don't fix it here.
+
+Coding-agent rows are run by QA with test accounts. Chat-app rows need a person with ChatGPT and Claude accounts (QA has none). Run the baseline against production before TC-1361 and TC-1364 land, then post the filled tables as a comment on TC-1278.
+
+## Routing being tested
+
+From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for keys, tokens, delegations or codes in chat.
+
+- **Chat apps (ChatGPT web, Claude web, Desktop, mobile):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
+  - ChatGPT: Plugins → Add → Add custom MCP server, web only.
+  - Claude: Connectors → Add custom connector, on web or Desktop; it then works on mobile.
+- **Coding agents with a shell (Claude Code, Codex, OpenCode):** CLI + skill, the install flow from `/apps` unchanged. Codex asks for a sandbox escalation; OpenCode needs a restart.
+- **Other MCP clients (Cursor, VS Code, Gemini CLI):** hosted URL with OAuth if remote MCP is supported, else local stdio. Not tested here.
+- **Neither shell nor connectors:** say so in one line and point the person to the hosted route.
 
 ## Prompts
 
-Identical in every client, typed or pasted as one message into a new conversation. Don't add words, don't fix typos, don't paste the setup page yourself.
+Identical in every client, pasted as one message into a new conversation. Don't add words, fix typos, or paste the setup page yourself.
 
 | ID | Prompt | Source |
 |---|---|---|
-| **O** | `Set up TinyCloud for me and save my first record: https://agents.tinycloud.xyz/start` | Candidate onboarding prompt (F-68). `/start` already routes by client: coding agents to the `/apps` guide, chat apps to the hosted MCP. |
+| **O** | `Set up TinyCloud for me and save my first record: https://agents.tinycloud.xyz/start` | Candidate onboarding prompt (F-68). `/start` routes by client. |
 | **S** | `I want to understand how to use https://agents.tinycloud.xyz/apps` | The 16 Oct opener. |
-| **T1** | `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps` | "Try:" line on `/`: Personal records. |
-| **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" line on `/`: Publish. |
-| **T3** | `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets` | "Try:" line on `/`: Secrets. |
-| **T4** | `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat` | "Try:" line on `/`: Meetings. |
+| **T1** | `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps` | "Try:" on `/`: Personal records. |
+| **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" on `/`: Publish. |
+| **T3** | `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets` | "Try:" on `/`: Secrets. |
+| **T4** | `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat` | "Try:" on `/`: Meetings. |
 
-The `T` lines are the `ABILITIES` prompts in `scripts/build-site.mjs` on `main`, each followed by its page URL, exactly as `/` renders them. If that list changes, update this table before the next run; the runbook tests what `/` shows.
+The `T` lines are the `ABILITIES` prompts in `scripts/build-site.mjs` on `main`. If that list changes, update this table before the next run.
 
-**Fixtures.** T2 and T3 name a report and a script. Attach or paste a synthetic one (a few lines of invented text); never a real document. T4 needs a TinyChat account with at least one meeting; without one, grade only whether the assistant starts the right sign-in and says so honestly.
+**Fixtures.** T2 and T3 name a report and a script: use a few lines of invented text, never a real document. T4 needs a TinyChat account with at least one meeting; without one, grade only whether the assistant starts the right sign-in and says so honestly.
 
-## Clients
+## Preconditions
 
-| Client | Accounts | Who runs it | Notes |
-|---|---|---|---|
-| ChatGPT web | Free, Plus | **Needs a person with these accounts (Sam or Hunter).** | Fresh chat each prompt. Web only: custom MCP is not available in the mobile apps. OpenAI documents custom-server writes for Business, Enterprise and Edu; Free and Plus are unverified, so record exactly what the app offers. |
-| Claude web | Free, Pro | **Needs a person with these accounts (Sam or Hunter).** | Fresh chat each prompt. Connectors are added on web or Desktop and then work on mobile. |
-| Claude Code | Test account | Clarissa (QA) | Coding-agent preconditions below. |
-| Codex | Test account | Clarissa (QA) | Coding-agent preconditions below. |
-| OpenCode | Test account | Clarissa (QA) | Coding-agent preconditions below. |
+**Coding agents:** follow [`forward-tests-tc-apps.md`](forward-tests-tc-apps.md) (stock home `$H`, clean `PATH`, launch command, logins, rate limit, new-conversation commands). That file wins on conflict. Differences here:
+- **Setup link:** `https://agents.tinycloud.xyz/start` for **O**, the URL in the prompt for the others. Before merge, use the pull request's Cloudflare Pages preview (`https://<hash>.tinycloud-agents.pages.dev/...`).
+- **`TC_HOME`:** one fresh scratch directory per client sequence, never `~/.tinycloud`. Not the shared `$SHARED` store of the tc-apps runbook.
+- **Fresh state:** **O** and **T1** start from a fresh `$H` and `TC_HOME` each time, because installation is what they test. **S**, **T2**, **T3**, **T4** reuse the home, in a new conversation.
+- **Rate limit:** 5 OpenKey device sign-in starts per 10 minutes per network, shared by every sequence on the machine. Log start times; don't loop.
 
-## Preconditions: chat apps
+**Chat apps:**
+- A fresh conversation per prompt, with no memory, custom instructions, projects, files or TinyCloud connectors. Disconnect any connector from an earlier run first.
+- A throwaway or test OpenKey sign-in. Remove any added connector after the run.
+- Record the app version or plan, the date, and whether browsing or search was on.
+- Web only for ChatGPT (custom MCP is not in its mobile apps).
 
-- A fresh conversation per prompt, with no memory, custom instructions, projects, files or connectors that mention TinyCloud. Disconnect any TinyCloud connector from an earlier run first.
-- Use a throwaway or test OpenKey sign-in. If a connector is added, remove it after the run.
-- Record the app version or plan shown in settings, the date, and whether web browsing or search was on.
-- Never paste keys, tokens, delegations or approval codes into the chat. A code or link shown by the product stays in the product.
+**All clients:** never paste keys, tokens, delegations or approval codes into the chat. A code or link shown by the product stays there.
 
-## Preconditions: coding agents
+### Which `tc` is which
 
-Reused from [`forward-tests-tc-apps.md`](forward-tests-tc-apps.md); that runbook is the source if the two differ.
+Three things get called `tc` or `tinycloud`. Don't mix them up.
 
-- **Setup link:** `https://agents.tinycloud.xyz/start` for **O**, and the URL inside each prompt for the others. The site deploys from `main`. Before merge, use the pull request's Cloudflare Pages preview instead (`https://<hash>.tinycloud-agents.pages.dev/...`).
-- **A stock home per client, `$H`.** A new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test. Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach. The skill folder in the home (`~/.claude/skills` or `~/.agents/skills`) must not hold a TinyCloud skill yet. The coordinator's own `~/.tinycloud` is never touched.
-- **`TC_HOME`:** one fresh scratch directory per client sequence, exported, never `~/.tinycloud`. Create `$TC_HOME/.tinycloud` with mode 700 before the first launch. Don't set `TC_BIN`, `TC_APPS_STATE` or any other operator variable: the point is the stock path.
-- **`PATH`:** the system folders plus a folder of links to the three clients. The only `tc` on it is Linux's `/usr/sbin/tc`. The page calls the CLI `tinycloud`.
-- **Logins:** log each client in once in the new home before the test. Codex: `codex login --device-auth`. Claude Code: its first-run screens, with `DISABLE_AUTOUPDATER=1`. OpenCode's free `opencode/big-pickle` model needs no login.
-- **New conversations:** Claude Code `/clear`, Codex `/new`, OpenCode `/new`, or restart the client. OpenCode loads skills at start, so restart it after the install, as the page tells the agent to say.
-- **Global `tc`:** run `tc --version` from a plain shell before and after; it must not change.
-- **Rate limit:** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every sequence on the machine. Log start times and don't loop. A run through prompt **O** or **T1** needs one start per fresh `TC_HOME`.
-- **Test account:** the tester approves each OpenKey request on a throwaway account the tester controls, never a personal one. Records go to that account's `default` space under `xyz.tinycloud.agent-data/`.
-- **Launch** each client in tmux from its project folder through a clean shell:
+| What | How to find it | Expected |
+|---|---|---|
+| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tc" --version` | The version in the table's "CLI version installed" cell, currently `1.2.3` (the version `/apps` installs). |
+| **System `tc`** (Linux traffic control, in the clean-shell `PATH`) | `/usr/sbin/tc -V` | A line starting `tc utility, iproute2`. This is not TinyCloud. |
+| **Global TinyCloud CLI**, if the machine has one (npm global, `command -v tinycloud` or `command -v tc` outside the clean shell) | From a plain shell, not the test shell: `command -v tc; tc --version` | Any version; it must be **identical before and after** the run. The test must not touch it. |
 
-  ```sh
-  env -i HOME="$H" USER="$USER" LOGNAME="$USER" SHELL=/bin/bash LANG=C.UTF-8 TERM=xterm-256color PATH="$STOCK_PATH" TC_HOME="$TC_HOME" bash -i
-  ```
-
-  Then run the client's command from the table in `forward-tests-tc-apps.md` (Claude Code `claude`; Codex with `workspace-write`, network access and the `--add-dir` entries; OpenCode `opencode -m opencode/big-pickle`, never `--yolo`).
+The page calls the CLI `tinycloud`; the skill's wrapper is named `tc`. Always call the wrapper by its full path as above, never `command -v tc`.
 
 ## How to run
 
-1. For each client row, start a fresh conversation, paste one prompt, and let the assistant run. Do the OpenKey approval yourself when it shows a link; that is expected.
-2. Don't coach. If the assistant stops and asks a question the page should have answered, answer minimally ("continue") and note that it needed help.
-3. Next prompt: new conversation. Coding agents: new conversation in the same home for **S**, **T2**, **T3** and **T4** (the skill is already installed); **O** and **T1** start from a fresh `$H` and `TC_HOME` each time, because installation is what they test.
-4. Fill one row per client and prompt in the tables below. Keep notes to what happened, quoting at most one short line of assistant text. No codes, links with codes, tokens, emails or names.
+1. For each client, start a fresh conversation, paste one prompt, let the assistant run. Do the OpenKey approval yourself when it shows a link; that is expected.
+2. Don't coach. If the assistant stops on a question the page should have answered, say "continue" and note it needed help.
+3. One row per client and prompt in the tables below. Notes: what happened, at most one short quoted line. No codes, links with codes, tokens, emails or names.
+
+## Checking a record
+
+"Record saved" is true only if the tester sees the record, not only the assistant's claim. Records land under **`xyz.tinycloud.agent-data/` in the account's `default` space**. Catalog entries (`xyz.tinycloud.agent-data/catalog/...`) are not records.
+
+Coding agents, from the client's `$H` and `TC_HOME`:
+
+```sh
+TC_BIN="$H/.local/share/tc-apps/tc"
+"$TC_BIN" kv list --prefix xyz.tinycloud.agent-data/ --space default --json --profile agent-data
+"$TC_BIN" kv get '<key from the list>' --space default --json --profile agent-data
+```
+
+- **Pass:** the list prints `"keys"` with at least one key outside `catalog/`, and `"count"` of 1 or more; `kv get` prints a JSON object with `v`, `at`, `data`, `by`. For T1, the key is `xyz.tinycloud.agent-data/fitness/weight/<YYYY-MM>/<date>` and `data` holds 80.5 kg.
+- **Fail:** `"keys": []`, only `catalog/` keys, or `data` that is a plain string.
+- **O** has no fixed content: any such record, which the assistant also read back, passes. `/start` tells agents not to create sample records when asked only for setup; O asks for a first record explicitly.
+
+Chat apps: the pass is the assistant's read-back of the saved record through the connector, shown in the transcript. If the tester can also run the CLI above signed in to the same test account, run it too. Say which check was used.
+
+Command source: `kv list` and `kv get` are the commands in `skills/tc-apps/SKILL.md` (§§ on catalog and reading records).
 
 ## Pass criteria
 
-From TC-1363 and the routing spec in TC-1278. A row passes only if every line for its client holds.
+A row passes only if every line for its client holds.
 
 **Every client**
-- The assistant reads the page named in the prompt (or says plainly that it could not, and what it did instead) and takes **that client's route** from the routing spec.
-- It never asks for keys, tokens, delegations or codes in the conversation.
-- It states unsupported routes honestly rather than guessing.
+- Reads the page named in the prompt, or says plainly it could not and what it did instead; takes **that client's route**.
+- Never asks for keys, tokens, delegations or codes in the conversation.
+- States unsupported routes honestly rather than guessing.
 
-**Chat apps (ChatGPT, Claude)** — route: hosted MCP
-- Names `https://mcp.tinycloud.xyz/mcp` (with `/mcp`) and **OAuth** (sign in with OpenKey).
-- Gives that app's own steps: ChatGPT, Plugins → Add custom MCP server, on web; Claude, Connectors → Add custom connector.
-- For ChatGPT Free and Plus, says plainly that custom-server access depends on plan and is unverified, instead of promising it.
-- **Never asks the person to run shell commands**, install a CLI, or use a code sandbox.
-- If TinyCloud is already connected (a later step, after the person adds it), the first saved record exists and the assistant shows the real OpenKey approval link for the connect step. That second half is graded only where the connector can be added.
-- Until TC-1361 ships, a chat app that cannot read the page fails the first line; record that as **fail: page not read**.
+**Chat apps**
+- Names `https://mcp.tinycloud.xyz/mcp` and **OAuth**.
+- Gives that app's own steps (see Routing).
+- Never asks for shell commands, a CLI install or a code sandbox.
+- ChatGPT Free and Plus: says plainly that plan access is unverified instead of promising it.
+- Where the connector can be added: the real OpenKey approval link is shown, and a record is saved (see Checking a record). Graded only where the connector can be added.
+- A chat app that cannot read the page fails here as **fail: page not read** until TC-1361 ships.
 
-**Coding agents (Claude Code, Codex, OpenCode)** — route: CLI + skill
-- Completes the install from the page: `SKILL_INSTALLED <skill> <version> <folder>` where `<version>` matches the site's `/skills/index.json`.
-- Shows the OpenKey link and code for the person to approve, in its own output.
-- Completes the request itself:
-  - **O, S, T1:** a record (weight 80.5 kg for T1, a first record for O) is saved and read back. For **S**, the assistant explains the route and offers to log a first record, rather than silently installing.
-  - **T2:** a private (owner-only) link is delivered, not a public one.
-  - **T3:** the voiceover is made with the key used without it appearing in the conversation; or, with no key stored, the assistant sends a link to add it.
-  - **T4:** the meeting is answered, or the TinyChat sign-in is started and explained honestly.
-- Client notes honoured: Codex asks for a sandbox escalation for the install; OpenCode says to restart.
-- The global `tc` is unchanged, and no `~/.tinycloud` is touched.
+**Coding agents**
+- Prints `SKILL_INSTALLED <skill> <version> <folder>` with `<version>` matching the site's `/skills/index.json`.
+- Shows the OpenKey link and code in its own output.
+- **O, S, T1:** record saved per Checking a record (S: explains the route and offers a first record, rather than silently installing).
+- **T2:** an owner-only link, not a public one.
+- **T3:** the key is used without appearing in the transcript; with no key stored, a link to add one.
+- **T4:** the meeting is answered, or the TinyChat sign-in is started and explained honestly.
+- Client notes honoured; the global CLI is unchanged and no `~/.tinycloud` is touched.
 
 **Automatic fail, any client**
-- A secret, token, delegation, or code appears anywhere in the transcript outside the product's own approval step.
+- A secret, token, delegation or code appears in the transcript outside the product's own approval step.
 - A chat app tells the person to run commands, or says the MCP is "local stdio only" after reading a page that names the hosted URL.
-- A coding agent runs the hosted route, or a public publish for T2, without being asked.
+- A coding agent takes the hosted route, or publishes publicly for T2, without being asked.
 
 ## Results
 
-Fill in, then post as one comment on TC-1278. One table per client; one row per prompt. Result is `Pass`, `Fail` or `Not run`; Route is what the assistant actually took (`hosted MCP`, `CLI + skill`, `none`, `other: ...`).
+Post as one comment on TC-1278: one copy of the table per client below, one row per prompt O, S, T1, T2, T3, T4. Leave blank until run. Yes/No cells are what the tester observed; blank means not run.
 
-Header for every table: date, runner, app or client version, model or plan. Leave blank until run.
+**Chat apps** — clients: ChatGPT web Free, ChatGPT web Plus, Claude web Free, Claude web Pro.
+Header: Client | Date | Runner | App version/plan | Browsing on.
 
-### ChatGPT web, Free
-
-Date: | Runner: | Version/plan: | Browsing on: |
-
-| Prompt | Page read | Route | Names MCP URL and OAuth | App steps right | Ran shell commands | Result | Notes |
+| Prompt | Page read | Names MCP URL | Gave app's own steps | Asked for shell | Connector added | Record saved | Evidence / notes |
 |---|---|---|---|---|---|---|---|
-| O | | | | | | | |
-| S | | | | | | | |
-| T1 | | | | | | | |
-| T2 | | | | | | | |
-| T3 | | | | | | | |
-| T4 | | | | | | | |
 
-### ChatGPT web, Plus
+**Coding agents** — clients: Claude Code, Codex, OpenCode.
+Header: Client | Date | Runner | Client version | Model | CLI version installed | OpenKey starts used.
 
-Date: | Runner: | Version/plan: | Browsing on: |
+| Prompt | Page read | Install line printed | Approval shown | Record saved | Evidence / notes |
+|---|---|---|---|---|---|
 
-| Prompt | Page read | Route | Names MCP URL and OAuth | App steps right | Ran shell commands | Result | Notes |
-|---|---|---|---|---|---|---|---|
-| O | | | | | | | |
-| S | | | | | | | |
-| T1 | | | | | | | |
-| T2 | | | | | | | |
-| T3 | | | | | | | |
-| T4 | | | | | | | |
-
-### Claude web, Free
-
-Date: | Runner: | Version/plan: | Web search on: |
-
-| Prompt | Page read | Route | Names MCP URL and OAuth | App steps right | Ran shell commands | Result | Notes |
-|---|---|---|---|---|---|---|---|
-| O | | | | | | | |
-| S | | | | | | | |
-| T1 | | | | | | | |
-| T2 | | | | | | | |
-| T3 | | | | | | | |
-| T4 | | | | | | | |
-
-### Claude web, Pro
-
-Date: | Runner: | Version/plan: | Web search on: |
-
-| Prompt | Page read | Route | Names MCP URL and OAuth | App steps right | Ran shell commands | Result | Notes |
-|---|---|---|---|---|---|---|---|
-| O | | | | | | | |
-| S | | | | | | | |
-| T1 | | | | | | | |
-| T2 | | | | | | | |
-| T3 | | | | | | | |
-| T4 | | | | | | | |
-
-### Claude Code
-
-Date: | Runner: | Client version: | Model: | CLI version installed: | OpenKey starts used:
-
-| Prompt | Page read | Route | Install line printed | Approval shown | Request completed | Result | Notes |
-|---|---|---|---|---|---|---|---|
-| O | | | | | | | |
-| S | | | | | | | |
-| T1 | | | | | | | |
-| T2 | | | | | | | |
-| T3 | | | | | | | |
-| T4 | | | | | | | |
-
-### Codex
-
-Date: | Runner: | Client version: | Model: | CLI version installed: | OpenKey starts used:
-
-| Prompt | Page read | Route | Install line printed | Approval shown | Request completed | Result | Notes |
-|---|---|---|---|---|---|---|---|
-| O | | | | | | | |
-| S | | | | | | | |
-| T1 | | | | | | | |
-| T2 | | | | | | | |
-| T3 | | | | | | | |
-| T4 | | | | | | | |
-
-### OpenCode
-
-Date: | Runner: | Client version: | Model: | CLI version installed: | OpenKey starts used:
-
-| Prompt | Page read | Route | Install line printed | Approval shown | Request completed | Result | Notes |
-|---|---|---|---|---|---|---|---|
-| O | | | | | | | |
-| S | | | | | | | |
-| T1 | | | | | | | |
-| T2 | | | | | | | |
-| T3 | | | | | | | |
-| T4 | | | | | | | |
+Evidence names what was seen: for T1, O and S the key listed; for T2 the link kind (private or public); for T3 whether the key appeared in the transcript; for T4 the answer or the sign-in started.
 
 ## Cleanup
 
-Remove any TinyCloud connector or plugin added in a chat app. For coding agents, run the undo steps on the page for each skill installed, log out the throwaway profile, and delete the scratch `$H` and `$TC_HOME`. The records saved to the test account's space are test data and stay unless the account owner asks otherwise.
+Remove any TinyCloud connector or plugin added in a chat app. For coding agents, run the page's undo steps for each skill installed, log out the throwaway profile, and delete the scratch `$H` and `$TC_HOME`. Records saved to the test account's space are test data and stay unless the account owner asks otherwise.
