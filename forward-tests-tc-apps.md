@@ -13,7 +13,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** the setup prints `SKILL_INSTALLED tc-apps <version> <folder>`; `<version>` must be the `tc-apps` version in that site's `/skills/index.json`.
+  - **Check the install:** §2 step 4 prints `OK` for the four files, step 7 prints `1.2.3`, and `metadata.version` in the installed `SKILL.md` (`grep version <skill folder>/SKILL.md`) is the `tc-apps` version in that site's `/skills/index.json`.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -36,7 +36,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 | Client | Command | Notes |
 |---|---|---|
 | Claude Code | `claude` | It asks whether to trust a new folder on first launch. In auto mode it asks nothing else. In manual mode it asks on first use for each kind of block, and every time for blocks that use a pipeline or write the state folder. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, and the skill installer writing `~/.agents/skills`. The state folder doesn't exist at launch; the install creates it. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, the download, and the skill copy into `~/.agents/skills`, run as one call. The state folder doesn't exist at launch; the install creates it. |
 | OpenCode | `opencode -m opencode/big-pickle` | No questions. Don't launch it with `--yolo`. OpenCode loads skills when it starts, so restart it after conversation 1, as the setup tells the agent to say. `/new` alone doesn't pick up the newly installed skill. |
 
 ## Coordinator pre-flight (no owner needed)
@@ -116,7 +116,7 @@ This test proves that the owner never has to ask for the SQL index. The agent as
 - The SQL grant reaches every SQL database in `default` (`tinycloud-node` names databases by their last path segment). The owner accepted this. The skill always passes the exact `--db`.
 - Parallel SQL writes to one database can fail or half-apply, so the skill writes SQL one block at a time.
 - On a machine that also has TinyChat's global `tc-cli` skill, Codex and OpenCode may load it for the word "TinyCloud".
-- Claude Code's auto mode sometimes blocks the install as unsafe. The setup then has the agent show the block and ask; the owner replies "go ahead".
+- Claude Code's auto mode can still block a step of the install, or the sign-in, as unsafe (TC-1607). The setup then has the agent show the step and ask; the owner replies "go ahead". The install is separate plain steps with no downloaded installer, to make that less likely. The `tc` helper is still a script from the skill that runs later, and the checksums only catch a corrupted download.
 - Codex's web tool sometimes fails to fetch the setup page ("Internal Error"). The agent falls back to `curl`.
 
 If OpenKey, the CLI, the node or the skill installer causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.
