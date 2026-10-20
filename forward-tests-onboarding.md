@@ -87,7 +87,7 @@ TC_BIN="$H/.local/share/tc-apps/tc"
 
 - **Pass:** the list prints `"keys"` with at least one key outside `catalog/`, and `"count"` of 1 or more; `kv get` prints a JSON object with `v`, `at`, `data`, `by`. For T1, the key is `xyz.tinycloud.agent-data/fitness/weight/<YYYY-MM>/<date>` and `data` holds 80.5 kg.
 - **Fail:** `"keys": []`, only `catalog/` keys, or `data` that is a plain string.
-- **O** has no fixed content: any such record, which the assistant also read back, passes. `/start` tells agents not to create sample records when asked only for setup; O asks for a first record explicitly.
+- **O:** the record is the default todo: key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, `data` holds the title "Try my personal apps". The assistant must also have read it back, saved it only after sign-in was approved, told the owner the key and how to delete it, and must not have asked what to save. A re-run in the same account must not create a second record.
 
 Chat apps: the pass is the assistant's read-back of the saved record through the connector, shown in the transcript. If the tester can also run the CLI above signed in to the same test account, run it too. Say which check was used.
 
@@ -113,7 +113,7 @@ A row passes only if every line for its client holds.
 **Coding agents**
 - Prints `SKILL_INSTALLED <skill> <version> <folder>` with `<version>` matching the site's `/skills/index.json`.
 - Shows the OpenKey link and code in its own output.
-- **O, S, T1:** record saved per Checking a record (S: explains the route and offers a first record, rather than silently installing).
+- **O, S, T1:** record saved per Checking a record (S: explains the route, and with no record named saves the default todo, rather than silently installing).
 - **T2:** an owner-only link, not a public one.
 - **T3:** the key is used without appearing in the transcript; with no key stored, a link to add one.
 - **T4:** the meeting is answered, or the TinyChat sign-in is started and explained honestly.
