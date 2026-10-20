@@ -5,8 +5,8 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 ## For the owner
 
 - **What it does:** installs the TinyCloud CLI 1.2.3 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
-- **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs the TinyCloud tool and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
-  - **Claude Code auto mode:** the sentence about what is saved is what its safety check looks for. If it still blocks a step, see [If Claude Code still blocks it](https://agents.tinycloud.xyz/start#claude-code-blocked).
+- **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
+  - **Claude Code auto mode:** its safety check asks you to name where the installed code comes from and what is saved, which that second sentence does. If it still blocks a step, see [If Claude Code still blocks it](https://agents.tinycloud.xyz/start#claude-code-blocked).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
 - **You approve:** your agent shows you an OpenKey link and code. Check the code, sign in with your passkey and approve: it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records.
 - **Undo:** see [Undo](#undo).
