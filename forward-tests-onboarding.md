@@ -87,7 +87,7 @@ TC_BIN="$H/.local/share/tc-apps/tc"
 
 - **Pass:** the list prints `"keys"` with at least one key outside `catalog/`, and `"count"` of 1 or more; `kv get` prints a JSON object with `v`, `at`, `data`, `by`. For T1, the key is `xyz.tinycloud.agent-data/fitness/weight/<YYYY-MM>/<date>` and `data` holds 80.5 kg.
 - **Fail:** `"keys": []`, only `catalog/` keys, or `data` that is a plain string.
-- **O:** the record is the default todo: key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, `data` holds the title "Try my personal apps". The assistant must also have read it back, saved it only after sign-in was approved, told the owner the key and how to delete it, and must not have asked what to save. A re-run in the same account must not create a second record.
+- **O:** the record is the default todo: key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, `data` holds the title "Try my personal apps". The assistant must also have read it back, saved it only after sign-in was approved, told the owner the key and how to delete it, and must not have asked what to save. A re-run in the same account must not create a second record, including after the todo is marked done (open key gone, `todos/todo/done/try-my-personal-apps` present).
 
 Chat apps: the pass is the assistant's read-back of the saved record through the connector, shown in the transcript. If the tester can also run the CLI above signed in to the same test account, run it too. Say which check was used.
 

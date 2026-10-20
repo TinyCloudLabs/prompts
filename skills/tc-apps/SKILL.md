@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them.
 metadata:
-  version: "0.1.6"
+  version: "0.1.7"
 ---
 
 # Personal apps in TinyCloud
@@ -60,7 +60,7 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
   - Use the time the owner gave. A part of the day counts as a time: morning `0800`, afternoon `1500`, evening or tonight `2000`.
   - With no time at all, use `<NOW>`'s time for today, and `1200` for another day.
   - If that key exists, add `-2`, `-3`.
-- Item kind: the creation date and a slug of the item: `2026-10-06-renew-passport`. The onboarding default `todos/todo/open/try-my-personal-apps` uses a fixed id so it stays unique across reruns.
+- Item kind: the creation date and a slug of the item: `2026-10-06-renew-passport`. The onboarding default `todos/todo/open/try-my-personal-apps` uses a fixed id so it stays unique across reruns; it counts as present if it exists in `open/` or `done/`.
 - `<YYYY-MM>` is the month of a log id's date.
 
 **A record** is one line of JSON: `{"v":1,"at":"2026-10-06T18:30+02:00","data":{"exercise":"bench press","sets":3,"reps":8,"kg":60},"by":"claude-code"}`.
