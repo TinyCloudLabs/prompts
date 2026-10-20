@@ -32,7 +32,7 @@ date -u +%FT%TZ
 
 It prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`, one per line.
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id.
-- `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong.
+- `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
 - `TC_BIN is unset` → the setup hasn't run on this computer, or ran before it installed `~/.local/share/tc-apps/tc`: stop, and ask the owner to send their request again with the setup link.
 
 ## 2. How the records are organised
@@ -104,7 +104,7 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.2.5` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.2.5 or newer.
+- The first line must be `1.2.5` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.2.5 or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
 - `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or broader sign-in, `--replace-session` or `tc space host`.
