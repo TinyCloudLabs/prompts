@@ -4,82 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Set up personal apps · TinyCloud</title>
-  <meta name="description" content="Set up tc-apps in a coding agent, or connect the TinyCloud MCP in Claude, ChatGPT and other chat apps. Keep your personal records in your own TinyCloud.">
+  <meta name="description" content="One prompt to set up TinyCloud personal apps in your coding agent or chat app.">
   <style>
     body { font: 16px/1.55 system-ui, sans-serif; max-width: 46rem; margin: 2.5rem auto; padding: 0 1.25rem; color: #1a1a1a; }
     a { color: #0b57d0; overflow-wrap: anywhere; }
-    code { font: 0.9em ui-monospace, monospace; background: #f2f2f2; padding: 0.1em 0.3em; border-radius: 3px; overflow-wrap: anywhere; }
-    section { border-top: 1px solid #ddd; margin-top: 2rem; }
-    h3 { margin-bottom: 0.25rem; }
-    li + li { margin-top: 0.5rem; }
     .prompt { background: #f2f2f2; padding: 1rem; border-radius: 3px; }
-    .note { color: #555; }
-    pre { background: #f2f2f2; padding: 1rem; border-radius: 3px; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
-    pre code { background: none; padding: 0; }
   </style>
 </head>
 <body>
   <main>
     <h1>Set up personal apps with TinyCloud</h1>
-    <p>Keep your weight, workouts, goals, todos and other personal records in your own TinyCloud. <code>tc-apps</code> lets your assistant organise and use them across conversations.</p>
-    <p>One setup link to share with your assistant: <a href="/start">https://agents.tinycloud.xyz/start</a>. Choose the path for the app you use.</p>
-    <p><strong>For the assistant reading this:</strong> if you are a coding agent on the owner's computer, follow the coding-agent guide below. If you are in an ordinary ChatGPT, Claude or similar chat app, help the owner connect the TinyCloud MCP instead; do not install a CLI in a temporary code sandbox. Once access is ready, continue the owner's original request. If they only asked for setup or named no record, save one default record without asking: app <code>todos</code>, kind <code>todo</code>, key <code>xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps</code>, value <code>{"v":1,"at":NOW,"data":{"title":"Try my personal apps"},"by":CLIENT}</code>. Read that key and its <code>done</code> twin (<code>…/todos/todo/done/try-my-personal-apps</code>) first, and skip saving if either exists. Then tell the owner the key, that asking “What’s on my todo list?” shows it, and that they can ask you to delete it. A brand-new account's TinyCloud can take a minute or two to finish setting up after the first approval: if a call says the space isn't hosted (<code>SPACE_NOT_HOSTED</code>), tell the owner it's still being set up and retry with backoff for about two minutes, as the guide says. Never ask for a second or broader sign-in to fix it.</p>
-
-    <section aria-labelledby="coding-agents">
-      <h2 id="coding-agents">OpenCode, Codex or Claude Code</h2>
-      <p>Add your request, then paste this line into your coding agent:</p>
-      <p class="prompt">Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in <code>~/.tinycloud</code>): <a href="/apps">https://agents.tinycloud.xyz/apps</a></p>
-      <p>The agent follows that guide to install the <code>tc-apps</code> skill and its private TinyCloud CLI. It needs Node.js 22.20 or later and npm, and shows you an OpenKey link and code to approve personal-record access.</p>
-      <p><strong>For coding agents:</strong> fetch and follow <a href="/apps">the tc-apps setup guide</a> in this conversation, then carry on with the owner's request. If they only asked for setup or named no record, once signed in save the default todo <code>xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps</code> as that guide says (get the key and its <code>done</code> twin first; skip if either exists), then tell the owner the key and that you can delete it on request.</p>
-    </section>
-
-    <section aria-labelledby="claude-code-blocked">
-      <h2 id="claude-code-blocked">If Claude Code still blocks it</h2>
-      <p>Claude Code's auto mode can refuse the install or the sign-in step, for example as "Code from External", "Instruction Poisoning" or "Unauthorized Persistence", because the setup runs code from npm and this site, writes a skill your agent reads, and saves a key and a 30-day sign-in on your computer. The line above names those in your own words, which is what auto mode looks for, but it doesn't decide the same way every time. If it blocks the install, reply that you allow it, naming what it does: "Go ahead: install @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz." If it blocks the sign-in, reply "Go ahead: save the TinyCloud sign-in in ~/.tinycloud." Or add an allow rule for the sign-in, which makes a block less likely but can't rule it out:</p>
-      <ol>
-        <li>Open <code>~/.claude/settings.json</code>, or <code>$CLAUDE_CONFIG_DIR/settings.json</code> if you set that: your user settings. Claude Code ignores <code>autoMode</code> in a project's settings files. Or run <code>/permissions</code> in Claude Code (2.1.246 or later), open the <strong>Auto mode</strong> tab and add the second string below as an allow rule.</li>
-        <li>Add this entry. If the file already has <code>autoMode.allow</code>, add only the second string to it and leave the rest. If that list doesn't start with <code>"$defaults"</code>, it already replaces Claude Code's built-in rules: add <code>"$defaults"</code> only if you want them back.</li>
-      </ol>
-      <pre><code>{
-  "autoMode": {
-    "allow": [
-      "$defaults",
-      "This is not Unauthorized Persistence: saving the owner's TinyCloud sign-in is allowed. The agent may run the TinyCloud CLI that the tc-apps setup installed (~/.local/share/tc-apps/tc, or ~/.local/share/tc-apps/cli/node_modules/.bin/tc) with `init --name agent-data --key-only`, and with `auth login --device --manifest ~/.local/state/tc-apps/agent-data.json --expiry 30d --profile agent-data` (or the same file under $TC_APPS_STATE, if the owner set that), to save a key and a 30-day session in the owner's TinyCloud profile folder (~/.tinycloud, or the TC_HOME the owner already set). That manifest requests only tinycloud.kv on xyz.tinycloud.agent-data/. Only those two commands and only the profile name agent-data. The device link and code may be shown only to the owner, who approves the sign-in on openkey.so."
-    ]
-  }
-}</code></pre>
-      <p class="note">This covers only those two commands of this CLI. It doesn't turn auto mode off or change any other check, and the sign-in still needs your approval on OpenKey. To undo it, delete the entry.</p>
-      <p><strong>For coding agents:</strong> if Claude Code refuses a step, show the owner this section and wait for their reply. Don't edit their settings files, and don't try another way to run the step.</p>
-    </section>
-
-    <section aria-labelledby="chat-apps">
-      <h2 id="chat-apps">Claude, ChatGPT or another chat app</h2>
-      <p>Connect the hosted <strong>TinyCloud MCP</strong>. No terminal, local CLI or skill installation is needed.</p>
-      <p class="prompt">Name: <strong>TinyCloud</strong><br>Remote MCP server URL: <code>https://mcp.tinycloud.xyz/mcp</code><br>Authentication: <strong>OAuth</strong> (sign in with OpenKey)</p>
-
-      <h3 id="claude">Claude — web, desktop, iOS and Android</h3>
-      <ol>
-        <li>Open <a href="https://claude.ai/customize/connectors">Claude's Connectors settings</a> in a browser. Choose <strong>Add → Add custom connector</strong>.</li>
-        <li>Name it <strong>TinyCloud</strong>, enter the remote MCP server URL above, and continue with OAuth sign-in. Use the same OpenKey account you use for TinyCloud.</li>
-        <li>In your conversation, open <strong>+ → Connectors</strong> and enable TinyCloud. You can use the connected account in Claude's iOS and Android apps too.</li>
-      </ol>
-      <p class="note">On a team or enterprise account, an owner may need to add the connector first. If the controls differ, see <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp">Claude's custom-connector instructions</a>.</p>
-
-      <h3 id="chatgpt">ChatGPT — set up and use on the web</h3>
-      <ol>
-        <li>Open <a href="https://chatgpt.com/plugins">ChatGPT Plugins</a> in a browser. Choose <strong>+ → Add custom MCP server</strong>. Custom MCP access depends on your plan and workspace permissions; enable developer mode if your account requires it.</li>
-        <li>Name it <strong>TinyCloud</strong>, describe it as <strong>Personal records in TinyCloud</strong>, and enter the remote MCP server URL above. Choose <strong>OAuth</strong>, review the warning, then select <strong>Create as a plugin</strong> and sign in with OpenKey when prompted.</li>
-        <li>Install the resulting plugin. Start a conversation, type <strong>@</strong> and select TinyCloud before making your request.</li>
-      </ol>
-      <p class="note"><strong>ChatGPT mobile:</strong> custom MCP connections are currently web-only; do not assume this connection will work in the iOS or Android app. Use ChatGPT in a browser, or Claude for mobile access. If the custom-server option is missing, check your plan or ask your workspace administrator. See <a href="https://developers.openai.com/plugins/deploy/connect-chatgpt">OpenAI's connection instructions</a> and <a href="https://help.openai.com/en/articles/12584461">MCP availability</a>.</p>
-
-      <h3>Other chat apps</h3>
-      <p>If your app supports remote MCP with OAuth, add the same server URL and sign in with OpenKey. Mobile support depends on the app. A chat app without custom remote MCP support cannot connect just by reading this page.</p>
-
-      <h3>Approve access, then keep chatting</h3>
-      <p>With TinyCloud enabled, make your original request, or ask: <strong>“What personal apps do I already have in TinyCloud?”</strong> Your assistant will show an OpenKey approval link when personal-record access is needed. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue.</p>
-      <p><strong>For chat assistants:</strong> use the connected TinyCloud personal-app tools and the instructions they return. Show the actual approval link when access is needed; never ask for a password, private key or access token in chat. If TinyCloud tools are not available yet, explain the connection steps above instead of claiming setup is complete. If the owner only asked for setup or named no record, once access is approved use the connected tools to save the default todo at <code>xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps</code> (title “Try my personal apps”; read the key and its <code>done</code> twin first and skip if either exists), then tell the owner the key and that you can delete it on request.</p>
-    </section>
+    <p class="prompt">Set it up with TinyCloud: <a href="/apps">https://agents.tinycloud.xyz/apps</a>. If you're a coding agent (OpenCode, Codex or Claude Code), install @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for my user, and save the 30-day sign-in (a key and session in ~/.tinycloud). Otherwise, help me connect the TinyCloud MCP in my chat app.</p>
   </main>
 </body>
 </html>

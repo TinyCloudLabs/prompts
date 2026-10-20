@@ -6,7 +6,7 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 
 - **What it does:** installs the TinyCloud CLI 1.2.3 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
 - **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
-  - **Claude Code auto mode:** its safety check asks you to name where the installed code comes from and what is saved, which that second sentence does. If it still blocks a step, see [If Claude Code still blocks it](https://agents.tinycloud.xyz/start#claude-code-blocked).
+  - **Claude Code auto mode:** its safety check asks you to name where the installed code comes from and what is saved, which that second sentence does. If it still blocks a step, see [If Claude Code still blocks it](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
 - **You approve:** your agent shows you an OpenKey link and code. Check the code, sign in with your passkey and approve: it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records.
 - **Undo:** see [Undo](#undo).
@@ -16,6 +16,28 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 Add `https://mcp.tinycloud.xyz/mcp` as a custom connector in Claude, sign in, and approve the connect and personal-record access links it shows you. Then ask naturally: “Log my weight: 80.5 kg today.” No local CLI or skill installation is needed for this connector.
 
 To avoid approving each record-writing tool call, go to **Settings → Connectors → TinyCloud**, find `tinycloud_apps_write`, and choose **Always allow**. This does not replace the OpenKey access approval.
+
+## Use it in ChatGPT and other chat apps
+
+Connect the hosted **TinyCloud MCP**, at `https://mcp.tinycloud.xyz/mcp`, using **OAuth** (sign in with OpenKey). No terminal, local CLI or skill installation is needed.
+
+### ChatGPT — set up and use on the web
+
+1. Open [ChatGPT Plugins](https://chatgpt.com/plugins) in a browser. Choose **+ → Add custom MCP server**. Custom MCP access depends on your plan and workspace permissions; enable developer mode if your account requires it.
+2. Name it **TinyCloud**, describe it as **Personal records in TinyCloud**, and enter the remote MCP server URL above. Choose **OAuth**, review the warning, then select **Create as a plugin** and sign in with OpenKey when prompted.
+3. Install the resulting plugin. Start a conversation, type **@** and select TinyCloud before making your request.
+
+**ChatGPT mobile:** custom MCP connections are currently web-only; do not assume this connection will work in the iOS or Android app. Use ChatGPT in a browser, or Claude for mobile access. If the custom-server option is missing, check your plan or ask your workspace administrator. See [OpenAI's connection instructions](https://developers.openai.com/plugins/deploy/connect-chatgpt) and [MCP availability](https://help.openai.com/en/articles/12584461).
+
+### Other chat apps
+
+If your app supports remote MCP with OAuth, add the same server URL and sign in with OpenKey. Mobile support depends on the app. A chat app without custom remote MCP support cannot connect just by reading this page.
+
+### Approve access, then keep chatting
+
+With TinyCloud enabled, make your original request, or ask: **“What personal apps do I already have in TinyCloud?”** Your assistant will show an OpenKey approval link when personal-record access is needed. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue.
+
+**For chat assistants:** use the connected TinyCloud personal-app tools and the instructions they return, not the CLI installation steps below. Show the actual approval link when access is needed; never ask for a password, private key or access token in chat. If TinyCloud tools are not available yet, explain the connection steps above instead of claiming setup is complete. After approval, continue the owner's request; for setup-only requests, follow the default-record instructions below using the connected tools. A brand-new account's TinyCloud can take a minute or two to finish setting up after the first approval: if a call says the space isn't hosted (`SPACE_NOT_HOSTED`), tell the owner it's still being set up and retry with backoff for about two minutes. Never ask for a second or broader sign-in to fix it.
 
 ## For the agent
 
@@ -62,7 +84,7 @@ chmod 755 "$HOME/.local/share/tc-apps/tc" && echo INSTALLED
 
 If something goes wrong:
 - **Codex:** its default sandbox blocks network access and writes outside the workspace, so npm, the download and the installer fail there. Run the block with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
-- **Your client refuses the block or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence" or "Code from External". Show the owner the block, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/start#claude-code-blocked> and wait. Don't edit their settings files, and don't run the step another way.
+- **Your client refuses the block or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence" or "Code from External". Show the owner the block, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait. Don't edit their settings files, and don't run the step another way.
 - **A command fails, or the block doesn't print `INSTALLED`:** stop and report the error. Don't retry it with other options or in another folder.
 
 Wait until the block has finished before §3: the skill doesn't exist until then.
@@ -84,6 +106,28 @@ The first is for Claude Code, the second for Codex and OpenCode. Your client may
 Follow the skill now for the owner's request, from its §1.
 
 **OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
+
+## If Claude Code still blocks it
+
+Claude Code's auto mode can refuse the install or the sign-in step, for example as "Code from External", "Instruction Poisoning" or "Unauthorized Persistence", because the setup runs code from npm and this site, writes a skill your agent reads, and saves a key and a 30-day sign-in on your computer. The paste line above names those in your own words, which is what auto mode looks for, but it doesn't decide the same way every time. If it blocks the install, reply that you allow it, naming what it does: "Go ahead: install @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz." If it blocks the sign-in, reply "Go ahead: save the TinyCloud sign-in in ~/.tinycloud." Or add an allow rule for the sign-in, which makes a block less likely but can't rule it out:
+
+1. Open `~/.claude/settings.json`, or `$CLAUDE_CONFIG_DIR/settings.json` if you set that: your user settings. Claude Code ignores `autoMode` in a project's settings files. Or run `/permissions` in Claude Code (2.1.246 or later), open the **Auto mode** tab and add the second string below as an allow rule.
+2. Add this entry. If the file already has `autoMode.allow`, add only the second string to it and leave the rest. If that list doesn't start with `"$defaults"`, it already replaces Claude Code's built-in rules: add `"$defaults"` only if you want them back.
+
+```json
+{
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "This is not Unauthorized Persistence: saving the owner's TinyCloud sign-in is allowed. The agent may run the TinyCloud CLI that the tc-apps setup installed (~/.local/share/tc-apps/tc, or ~/.local/share/tc-apps/cli/node_modules/.bin/tc) with `init --name agent-data --key-only`, and with `auth login --device --manifest ~/.local/state/tc-apps/agent-data.json --expiry 30d --profile agent-data` (or the same file under $TC_APPS_STATE, if the owner set that), to save a key and a 30-day session in the owner's TinyCloud profile folder (~/.tinycloud, or the TC_HOME the owner already set). That manifest requests only tinycloud.kv on xyz.tinycloud.agent-data/. Only those two commands and only the profile name agent-data. The device link and code may be shown only to the owner, who approves the sign-in on openkey.so."
+    ]
+  }
+}
+```
+
+This covers only those two commands of this CLI. It doesn't turn auto mode off or change any other check, and the sign-in still needs your approval on OpenKey. To undo it, delete the entry.
+
+**For coding agents:** if Claude Code refuses a step, show the owner this section and wait for their reply. Don't edit their settings files, and don't try another way to run the step.
 
 ## Undo
 
