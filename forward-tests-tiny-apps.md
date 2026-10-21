@@ -46,5 +46,5 @@ Not published: the site build skips `forward-tests*.md`. Run these on the pull r
 ## Pass rule
 
 - Each case passes only if every "Expected" item holds and the counts match (screens, questions before the write, rows).
-- The announcement must be the section in `skills/tc-apps/ANNOUNCE.txt` for the app and case, quoted with nothing added or removed (the Ctrl-C and Allow sentences included). Any extra sentence before or after the code block fails the case.
+- The announcement must be the owner message that `skills/tc-apps/announce.sh` prints for the app and state (the text between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`), quoted with nothing added or removed (the Ctrl-C and Allow sentences included), in one fenced code block followed only by `Tell me when you have run it.`. Any extra sentence before or after the block fails the case.
 - A failed case is reported with the transcript, the row count, and the screen count.

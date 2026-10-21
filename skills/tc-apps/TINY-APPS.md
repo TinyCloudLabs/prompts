@@ -23,7 +23,7 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. Don't ask any question in chat before that, and don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the full space id `$SPACE` saved in step 4.
 
-`AGENT_INSTALL_ENABLED` is `false` now: the agent logs into a Health Log that is already set up. Set it to `true` once `tinycloud apps install` ships. Only the step marked INSTALL depends on it.
+`AGENT_INSTALL_ENABLED` is `false` now: the agent logs into a Health Log that is already set up. Set it to `true` once `tinycloud apps install` ships. The same switch is set in `announce.sh`; change both together. Only the step marked INSTALL depends on it.
 
 Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent uses only its own profile, `agent-meal`, and never passes a profile to an owner command. The agent starts no browser and waits for no code: the owner's sign-in and grant are in step 3, the import in step 4.
 
@@ -60,25 +60,17 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (the owner's terminal).** Print the approval state first, then the announcement, in one block:
+3. **The owner's approval (the owner's terminal).** Run this one command. It prints the approval state and the owner's message; the agent runs nothing else for this step:
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; test -f "$STATE/owner-approved" && echo APPROVED || echo FIRST
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/ANNOUNCE.txt" "$HOME/.agents/skills/tc-apps/ANNOUNCE.txt"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
-   Choose the section from the `APPROVED` or `FIRST` line printed above, never from memory. For Recipes, the marker file is `recipes-owner-approved`:
+   Your reply to the owner is exactly the text printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, in one fenced code block, then the sentence `Tell me when you have run it.` Nothing else goes in that message: no words before the code block, no paraphrase, no translation, no added or changed words. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
 
-   | Printed | `AGENT_INSTALL_ENABLED` | Section heading to use |
-   |---|---|---|
-   | `FIRST` | any | `=== <app>, first approval ===` |
-   | `APPROVED` | `false` | `=== <app>, already approved, install off ===` |
-   | `APPROVED` | `true` | `=== <app>, already approved, install on ===` |
+   The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
 
-   `<app>` is Health Log or Recipes. Your reply starts with a code block that holds the body text of that section (the lines under its heading, not the heading), copied character for character: no paraphrase, no translation, no changed words (for example "Run the commands below", never "these commands"), and nothing before or after the block inside it. Then give the commands below. The owner runs them; the agent never runs them and never passes a profile to them. Replace `<TC_BIN>` and `<STATE>` in the commands with the absolute paths resolved in setup, and send the paths, not variable names, so the commands run in a fresh terminal. Then stop and wait for the owner's reply.
-
-   - Grant command, given first: `"<TC_BIN>" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there. A signed-in default profile needs only this one approval.
-   - Wait until the owner says it's done. If the grant says `PROFILE_NOT_FOUND`, the owner has no default profile: give `"<TC_BIN>" init --name default --paste`; if that prints `PROFILE_EXISTS`, give `"<TC_BIN>" auth login --paste` instead; then the grant again. If the grant says `AUTH_REQUIRED`, the default profile isn't signed in: give `"<TC_BIN>" auth login --paste`, then the grant again. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
+   - Wait until the owner says it's done. If the grant says `PROFILE_NOT_FOUND`, the owner has no default profile: give `"<TC_BIN>" init --name default --paste`; if that prints `PROFILE_EXISTS`, give `"<TC_BIN>" auth login --paste` instead; then the grant again. If the grant says `AUTH_REQUIRED`, the default profile isn't signed in: give `"<TC_BIN>" auth login --paste`, then the grant again. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on. `<TC_BIN>` is the absolute path in the printed grant command.
    - The agent never reads the owner's profile to decide this: the grant's own error code decides which sign-in runs.
    - **If the owner declines, cancels, or the grant fails** (anything other than the two errors above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
 
@@ -106,7 +98,7 @@ case "$SPACE" in tinycloud:pkh:eip155:*:applications) "$TC_BIN" --profile agent-
 
 6. Log the record at once (§4). Don't ask again.
 
-Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`) and its own approval marker, `recipes-owner-approved`, in place of `owner-approved`. The owner approves once per app.
+Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`) and its own approval marker, `recipes-owner-approved`, in place of `owner-approved`. In step 3, run the script with `recipes` in place of `healthlog`. The owner approves once per app.
 
 ## 4. Logging and showing the result
 

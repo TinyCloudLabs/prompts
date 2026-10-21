@@ -395,9 +395,9 @@ write(
 // by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
 const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
 const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
-const curlLine = appsGuide.match(/curl -fsSL -O "[^"\n]*\/skills\/apps\/\{([^}\n]+)\}"/);
+const curlLine = appsGuide.match(/curl -fsSL((?: -O "[^"\n]*\/skills\/apps\/[^"\n]+")+)/);
 if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
-const fetched = curlLine[1].split(",");
+const fetched = [...curlLine[1].matchAll(/\/skills\/apps\/([^"\n]+)"/g)].map((m) => m[1]);
 if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
   throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
 }
