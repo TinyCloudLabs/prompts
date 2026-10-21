@@ -68,7 +68,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
-   Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, as the first thing in your message: paste it exactly, with no words before it, no split, no paraphrase, no translation, no added or changed words. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
+   Your reply to the owner includes the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, once and unchanged, in one code fence. A one-sentence lead-in before it is fine. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
 
    The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
 
