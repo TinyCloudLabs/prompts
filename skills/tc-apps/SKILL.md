@@ -225,7 +225,7 @@ If §3 showed the `agent-data-sql` profile, `present` or `expired`, follow `SQL.
 
 ## 7. The fast copy (SQL index)
 
-The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, through OpenKey's approval page, because the phone-code sign-in can't grant SQL. That page ends with a code the owner sends back to you.
+The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, on OpenKey's approval page. The owner approves there, then runs the sign-in command in their own terminal and pastes the code there, not in this chat.
 
 **The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
 - first write your answer from the records you read;
