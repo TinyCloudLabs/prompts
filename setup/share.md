@@ -26,8 +26,8 @@ If the owner didn't say, ask. Never guess and never choose public yourself. The 
 | The owner says | `--to` value |
 |---|---|
 | Anyone with the link | `anyone` (the default) |
-| Only me | `email:<owner email>` |
-| One other person | `email:<their address>`, confirmed by the owner |
+| Only me | `email:<owner email>` (`$TC_OWNER_EMAIL`) |
+| One other person | `email:<their address>`: the address the owner named in the request, used exactly; if the owner gave a name but no address, ask. In the skill's §3 block this is `TC_SHARE_TO`. |
 | Everyone at a company or school | `domain:<name>`, e.g. `domain:example.com` |
 | A specific TinyCloud identity | `did:pkh:eip155:1:0x…` |
 
@@ -69,8 +69,8 @@ Always pass `--expires` and tell the owner the date. Default when omitted is 7 d
 Run through the skill's §3 blocks, which wrap exactly these commands. Shape of the command, with `$TC_BIN` and `$PROFILE` from the skill's preamble (`PROFILE=publisher`):
 
 ```sh
-# one person (owner-only is this with the owner's own address)
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:alex@example.com" --expires 7d --json
+# one person: TC_SHARE_TO is the address the owner named (the owner's own address only for a link for themselves)
+"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires 7d --json
 
 # anyone with the link
 "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to anyone --expires 24h --json
@@ -82,7 +82,7 @@ Run through the skill's §3 blocks, which wrap exactly these commands. Shape of 
 - `--json` prints redacted metadata with `metadata.shareId`; the link is not in it. Get the link as the skill does: `"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link`. Never combine `--reveal-link` with `--json`.
 - Everything after `#` in a link is the credential. Follow the skill's handling contract for storing and delivering it. Never retype or chunk a link.
 - Edit access for an addressed recipient: add `--action read edit`; it takes a list, so put it last, after the file and the other flags. Only use it when the owner asks and only with an addressed `--to`; the Markdown editor is the share viewer's. Never pass `--action edit` with `anyone`: the CLI release after 1.3.0-beta.30 refuses it (`INVALID_ARGUMENT`, exit 2: a link only reads), and earlier CLIs publish a read-only link without saying so.
-- Send the link to the recipient yourself (chat, email, wherever you talk). When they open it, the viewer emails them a one-time code to prove the address is theirs.
+- Give the link to the owner in your reply, with the recipient and the expiry; don't send it anywhere else. The owner passes it on. When the recipient opens it, the viewer emails them a one-time code to prove the address is theirs.
 
 What the recipient does: opens the link; for `email:`/`domain:` links they prove the address with a code the viewer emails them. A bearer link opens without signing in.
 
@@ -106,7 +106,7 @@ Report honestly what revoke did. `share revoke` is for shares this profile creat
 
 ### 6. Report
 
-Use the skill's report templates. State: the audience, the expiry date, what the recipient will see (use the HTML note for HTML and the Artifacts paragraph for JSX), and that you can revoke. For HTML or JSX, say first what the recipient will see (a running page, or a download), then, when it is a running page, add these words: **"Shared HTML and JSX pages run the sender's code in a sandbox. The sender can tell that you opened it."** Never tell the owner viewers are anonymous. Leave the line out for Markdown. End with the link, once, in the owner's channel.
+Use the skill's report templates. State: the audience, the expiry date, what the recipient will see (use the HTML note for HTML and the Artifacts paragraph for JSX), and that you can revoke. For HTML or JSX, say first what the recipient will see (a running page, or a download), then, when it is a running page, add these words: **"Shared HTML and JSX pages run the sender's code in a sandbox. The sender can tell that you opened it."** Never tell the owner viewers are anonymous. Leave the line out for Markdown. End with the link, once, in your reply to the owner.
 
 ## Undo
 

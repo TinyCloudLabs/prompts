@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.5"
+  version: "0.5.6"
 ---
 
 # Publish documents and HTML with `tc share`
@@ -44,7 +44,13 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 Default to the **owner-only email link**. Create a public link only when the owner's current request explicitly asks for a public or anyone-can-open link. Never decide on your own that content is shareable — if unsure, ask.
 
-Address owner-only links with `--to "email:$TC_OWNER_EMAIL"`. If `$TC_OWNER_EMAIL` is unset, ask the owner and never guess. To share with someone else, use their address as confirmed by the owner. Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
+Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` is the person who may open the link. Never guess it:
+
+- the owner named an address in the request → use exactly that address;
+- the owner asked for a link for themselves → use `$TC_OWNER_EMAIL`; if it is unset, ask the owner;
+- anything else ("send it to the team", a name with no address, no audience) → ask the owner who should open it.
+
+Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
 `--notify` is optional: use it only when the owner asks for an emailed invite, and only on an owner-only publish (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails the recipient one invitation with the link. You still send the link yourself (§6). Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
 
@@ -257,7 +263,7 @@ Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner 
 
 **File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. CLI `1.0.0-beta.17` (the version §1 prints) can't publish such names: spaces fail with `PERMISSION_DENIED`, and other unusual names may fail with `INVALID_ARGUMENT` "share input is invalid". That is not a consent problem — don't run §2. Tell the owner this file needs CLI `1.0.0-beta.18`, and don't rename or copy their file yourself.
 
-**Owner-only (the default):**
+**Owner-only (the default)** — set `TC_SHARE_TO` by the rule in "Choosing the link type"; the block publishes nothing while it is empty:
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
@@ -272,20 +278,25 @@ PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
 EXPIRES=7d
 NOTIFY=             # NOTIFY=--notify only if the owner asked for an emailed invite (CLI 1.0.1-beta.0 or newer)
+TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_OWNER_EMAIL" --expires "$EXPIRES" $NOTIFY --json \
-  > "$STATE/publish.json" 2>"$STATE/publish.err"; rc=$?
-if { [ "$rc" = 0 ] || [ "$rc" = 9 ]; } && [ -s "$STATE/publish.json" ]; then
-  id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
-  echo "PUBLISHED owner-only share id $id file $(basename "$FILE") expires $EXPIRES"
-  [ "$rc" = 9 ] && echo "INVITE_NOT_SENT"
-  "$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link \
-    | python3 -c 'import json,sys;link=json.load(sys.stdin)["link"];open(sys.argv[1],"w").write(link)' "$STATE/last-url" 2>/dev/null \
-    && echo LINK_SAVED || echo REVEAL_FAILED
+if [ -z "$TC_SHARE_TO" ]; then
+  echo "RECIPIENT_UNSET: ask the owner who should be able to open it"
 else
-  code=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("error",{}).get("code","?"))' "$STATE/publish.err" 2>/dev/null)
-  rm -f "$STATE/publish.json" "$STATE/last-url"; echo "PUBLISH_FAILED: ${code:-?}"
+  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" $NOTIFY --json \
+    > "$STATE/publish.json" 2>"$STATE/publish.err"; rc=$?
+  if { [ "$rc" = 0 ] || [ "$rc" = 9 ]; } && [ -s "$STATE/publish.json" ]; then
+    id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
+    echo "PUBLISHED owner-only share id $id file $(basename "$FILE") recipient $TC_SHARE_TO expires $EXPIRES"
+    [ "$rc" = 9 ] && echo "INVITE_NOT_SENT"
+    "$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link \
+      | python3 -c 'import json,sys;link=json.load(sys.stdin)["link"];open(sys.argv[1],"w").write(link)' "$STATE/last-url" 2>/dev/null \
+      && echo LINK_SAVED || echo REVEAL_FAILED
+  else
+    code=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("error",{}).get("code","?"))' "$STATE/publish.err" 2>/dev/null)
+    rm -f "$STATE/publish.json" "$STATE/last-url"; echo "PUBLISH_FAILED: ${code:-?}"
+  fi
 fi
 ```
 
@@ -362,16 +373,17 @@ fi
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
+TC_SHARE_TO=        # the same address the publish block used
 
 rm -f "$STATE/inspect.json" "$STATE/show.json"
 [ -s "$STATE/last-url" ] && [ -s "$STATE/publish.json" ] \
   && "$TC_BIN" --profile "$PROFILE" share inspect - --json < "$STATE/last-url" > "$STATE/inspect.json" \
   && id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json") \
   && "$TC_BIN" --profile "$PROFILE" share show "$id" > "$STATE/show.json" \
-  && python3 - "$STATE/inspect.json" "$STATE/publish.json" "$STATE/show.json" "$(basename "$FILE")" "$TC_OWNER_EMAIL" <<'PY' || echo MISMATCH
+  && python3 - "$STATE/inspect.json" "$STATE/publish.json" "$STATE/show.json" "$(basename "$FILE")" "$TC_SHARE_TO" <<'PY' || echo MISMATCH
 import json, sys, datetime, unicodedata
 ins, pub, show = (json.load(open(p)) for p in sys.argv[1:4])
-base, owner = sys.argv[4], sys.argv[5]
+base, recipient = sys.argv[4], sys.argv[5]
 t = lambda s: int(datetime.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp())
 m, p = ins["metadata"], pub["metadata"]
 ok = (m["target"]["kind"] == "email"
@@ -380,7 +392,7 @@ ok = (m["target"]["kind"] == "email"
       and unicodedata.normalize("NFC", (m.get("display") or {}).get("filename") or "") == unicodedata.normalize("NFC", base)
       and t(m["expiresAt"]) == t(p["expiresAt"])
       and ins["link"]["kind"] == "policy"
-      and show.get("recipient") == owner.strip().lower())
+      and show.get("recipient") == recipient.strip().lower())
 print("VERIFIED" if ok else "MISMATCH")
 PY
 ```
@@ -458,6 +470,8 @@ Report with the template for the link type — fill in the placeholders, keep th
 > **Owner-only:** Published `<file>` as an owner-only link. Only `<recipient email>` can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
 
 > **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>`, and I can revoke it any time before then. Verified: hash match. `<URL>`
+
+Hand the link to the owner in your reply, with the recipient and the expiry, and nowhere else: the owner decides how it reaches the recipient. Don't message the recipient or any other channel yourself.
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
