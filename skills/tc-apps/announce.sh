@@ -13,34 +13,33 @@ case "$1" in
 esac
 if [ ! -f "$DIR/$MARK" ]; then KIND=FIRST; elif [ "$AGENT_INSTALL_ENABLED" = true ]; then KIND=APPROVED-ON; else KIND=APPROVED-OFF; fi
 GRANT_CMD="\"$TC_BIN\" auth grant \"$DIR/$REQ\" > \"$DIR/$GRANT\""
-ALLOW='If your browser asks to connect to devices on your network, choose Allow.'
-CANCEL="If you cancel a screen, or the terminal doesn't return, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there. If the terminal prints an error, tell me the word in it."
+ALLOW='# If your browser asks to connect to devices on your network, choose Allow.'
+CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C and tell me. If the page shows a code, paste it into this terminal, not the chat."
 echo "STATE: $KIND"
 echo 'BEGIN OWNER MESSAGE'
 echo '```text'
 case "$KIND" in
   FIRST) cat <<EOF
-Run this command in your own terminal:
-
+# Run this in your own terminal. Approve each browser screen that opens; you may see one or two, one at a time.
+# Together they let me log in your $NAME app, for 7 days, and nothing else.
+$ALLOW
+$CANCEL
 $GRANT_CMD
-
-You may see one or two browser approval screens, one at a time. Approve each one that opens. Together they let me log this in your $NAME app, for 7 days, and nothing else. $ALLOW $CANCEL
 EOF
   ;;
   APPROVED-OFF) cat <<EOF
-Run this command in your own terminal:
-
+# Run this in your own terminal. A browser approval screen will open: approve it.
+# It lets me log in your $NAME app, for 7 days, and nothing else.
+$ALLOW
+$CANCEL
 $GRANT_CMD
-
-A browser approval screen will open. Approve it to let me log this in your $NAME app, for 7 days, and nothing else. $ALLOW $CANCEL
 EOF
   ;;
   APPROVED-ON) cat <<EOF
-Run this command in your own terminal:
-
+# Run this in your own terminal. A browser approval screen will open: approve it. It installs this app's notes and tables in your TinyCloud, adds entries, and lets me log in your $NAME app, for 7 days.
+$ALLOW
+$CANCEL
 $GRANT_CMD
-
-A browser approval screen will open: it installs this app's notes and tables in your TinyCloud, adds entries, and lets me log this in your $NAME app, for 7 days. Approve it. $ALLOW $CANCEL
 EOF
   ;;
 esac

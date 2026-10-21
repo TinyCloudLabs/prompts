@@ -43,7 +43,7 @@ case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null); printf '%s\n' "$CID" | grep -qE '^bafkr4i[a-z2-7]{52}$' && printf '%s xyz.tinycloud.sample.healthlog\n' "$CID" >> "$STATE/meal-grants.txt"
-"$TC_BIN" profile delete agent-meal > /dev/null; rm -f "$STATE/meal-space.txt"
+"$TC_BIN" profile delete agent-meal > /dev/null; : > "$STATE/meal-space.txt"
 ```
 
 The delete touches only `agent-meal` on this computer, never the owner's profile. The saved id stays for Undo.
@@ -68,7 +68,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
-   Your reply to the owner includes the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, once and unchanged, in one code fence. A one-sentence lead-in before it is fine. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
+   Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, once and unchanged, in one code fence, with nothing before it. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
 
    The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
 
@@ -76,11 +76,11 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
    - The agent never reads the owner's profile to decide this: the grant's own error code decides which sign-in runs.
    - **If the owner declines, cancels, or the grant fails** (anything other than the two errors above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
 
-4. **Import the grant (no screen).** This starts the agent's session in `agent-meal` and saves the full space id, which every later command passes as `--space "$SPACE"`. Short names such as `applications` fail for this profile with `ADDRESS_UNKNOWN`. The old space file is deleted first, so a failed import can't leave an earlier space in place.
+4. **Import the grant (no screen).** This starts the agent's session in `agent-meal` and saves the full space id, which every later command passes as `--space "$SPACE"`. Short names such as `applications` fail for this profile with `ADDRESS_UNKNOWN`. The old space file is emptied first, so a failed import can't leave an earlier space in place.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-rm -f "$STATE/meal-space.txt"
+: > "$STATE/meal-space.txt"
 if test -s "$STATE/meal-grant.json" && "$TC_BIN" --profile agent-meal auth import "$STATE/meal-grant.json" > /dev/null; then "$TC_BIN" --profile agent-meal context --json | jq -r '.spaceId // empty' > "$STATE/meal-space.txt"; fi
 SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null); case "$SPACE" in tinycloud:pkh:eip155:*:applications) touch "$STATE/owner-approved"; echo IMPORTED;; *) echo NO_SPACE;; esac
 ```
