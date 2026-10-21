@@ -27,8 +27,8 @@ The owner takes one step: the OpenKey approval. Don't ask any question in chat b
 
 1. Make your own `delegate-session` profile (§7) if you don't have one yet.
 2. Say one line to the owner, then request the grant:
-   - `AGENT_INSTALL_ENABLED` is `false`: "A browser approval screen will open: approve it to let me log this in your Health Log app. If your browser asks to connect to devices on your network, choose Allow."
-   - `AGENT_INSTALL_ENABLED` is `true`: "A browser approval screen will open. It will say: Install this app's notes and set up its tables in your TinyCloud, and add entries. Approve it to let me log this in your Health Log app. If your browser asks to connect to devices on your network, choose Allow."
+   - `AGENT_INSTALL_ENABLED` is `false`: "A browser approval screen will open. Approve it to let me log this in your <App name> app. If your browser asks to connect to devices on your network, choose Allow."
+   - `AGENT_INSTALL_ENABLED` is `true`: "A browser approval screen will open. Approve it to let me log this in your <App name> app. If your browser asks to connect to devices on your network, choose Allow."
 3. The owner approves the one OpenKey screen, and you import the grant. Then read the app's notes index with `tinycloud kv get <APP_ID>/knowledge/index.md --space applications`. If it prints the file, go to step 5.
 4. The notes index is missing:
    - `AGENT_INSTALL_ENABLED` is `false`: stop and write "Health Log isn't set up in your TinyCloud yet. Open https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.healthlog once, then ask me again." Write nothing.
