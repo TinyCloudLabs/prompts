@@ -7,6 +7,14 @@ metadata:
 
 # Personal apps in TinyCloud
 
+**For any request about the owner's data, read the catalog first.** Read whichever path exists:
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+```
+
+If a catalog app owns the domain, follow its fast path in that file: it checks the saved grant first, and no approval screen opens while the grant is live. Don't start the generic sign-in (§3, §4 below) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
+
 You keep the owner's records in their TinyCloud `default` space, under one key root: `xyz.tinycloud.agent-data/`. Records are grouped into apps, one per area of life (`fitness`, `todos`, …), which you create and extend as the owner starts tracking new things. A catalog under the root describes every app, so any agent in any conversation can find what exists and how it's stored. The owner approves access once, for 30 days, from an OpenKey link and code you show them. An optional SQL index answers questions over many records at once (§7).
 
 Operator-set, never change or unset:
@@ -23,7 +31,7 @@ How to run the blocks:
 
 ## 0. Route the request
 
-Read `TINY-APPS.md` first for any request about the owner's data. If a catalog app owns the domain, its routing there decides the target, and you log and show the result as it says. Use this skill's §1 to §8 only for a domain no catalog app owns. The owner's profile is never yours to read or use.
+The catalog in `TINY-APPS.md` (read first, per the top of this file) decides the target for any request about the owner's data: if a catalog app owns the domain, its routing there decides, and you log and show the result as it says. Use this skill's §1 to §8 only for a domain no catalog app owns. The owner's profile is never yours to read or use.
 
 ## 1. Read the paths and the time
 
@@ -233,7 +241,7 @@ The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agen
 
 When talking to the owner, call it "a fast, searchable copy of your records". Never say "index", "SQL" or "database"; OpenKey's own page names it, and the message tells them what they'll see there. If they don't approve, carry on without it: everything still works, only slower.
 
-Read `SQL.md` in full, from the folder you read this file from, when:
+Read `SQL.md` in full, at the install path shown below, when:
 - you ask for the fast copy as above, or the owner asks about it;
 - the owner sends you OpenKey's code after you asked, perhaps in a later conversation: a short code of eight letters and digits such as `ABCD-EFGH`, or the full code, a long block of letters and digits that starts with `eyJ`;
 - §3 showed the index (`present` or `expired`) and you write, move or delete a record;

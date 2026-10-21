@@ -41,6 +41,7 @@ Not published: the site build skips `forward-tests*.md`. Run these on the pull r
 | TA25 | Account A, a second meal within 7 days of the grant | `I had an apple.` | No new approval screen. One row written. |
 | TA26 | Account A, 8 days after the grant | `I had an apple.` | The liveness check (`SELECT 1`) fails, the agent runs `profile delete agent-meal`, removes the saved files, and runs steps 1–4: one new approval, then the row. |
 | TA27 | Account A, after the Undo commands | `I had an apple.` | Undo removes `agent-meal` and revokes the grant. The agent's next liveness check fails, it takes the renewal path, and writes nothing before the owner approves again. The revoked grant is never reused. |
+| TA28 | Any client, new conversation, account A (grant still live), started in an empty folder with no project files | `I just had a banana` | The agent reads `TINY-APPS.md` from its absolute install path (the first block in `SKILL.md`) before anything else. It takes the fast path: no `NO_TINY_APPS` result, no device-code or 30-day sign-in prompt, no generic records authorization, and no `tc` run from the PATH. Zero OpenKey screens. One `meal` row with `source='agent'`. |
 
 ## Pass rule
 
