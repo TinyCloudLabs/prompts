@@ -27,20 +27,24 @@ The owner runs the sign-in and the grant in their own terminal (step 3); the age
 
 Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent uses only its own profile, `agent-meal`, and never passes a profile to an owner command. The agent starts no browser and waits for no code: the owner's sign-in and grant are in step 3, the import in step 4.
 
-0. **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database; without a live grant it exits non-zero (`AUTH_REQUIRED` on a fresh profile).
+0. **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database. It fails with `AUTH_REQUIRED` or `PROFILE_NOT_FOUND` when there is no live grant, and with another error for anything else.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-case "$SPACE" in tinycloud:pkh:eip155:*:applications) "$TC_BIN" --profile agent-meal sql query "SELECT 1" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --json > /dev/null 2>&1 && echo LIVE || echo RENEW;; *) echo RENEW;; esac
+case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile agent-meal sql query "SELECT 1" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --json 2>&1); RC=$?; if [ "$RC" = 0 ]; then echo LIVE; elif printf '%s' "$OUT" | grep -qE 'AUTH_REQUIRED|PROFILE_NOT_FOUND'; then echo RENEW; else echo CHECK_FAILED; fi;; *) echo RENEW;; esac
 ```
 
    - `LIVE` → go to §4.
-   - `RENEW` → renew: delete the agent's own profile and its old files, then run steps 1 to 4. An expired or revoked grant can't be replaced in the same profile, so the profile is recreated. The delete touches only `agent-meal` on this computer, never the owner's profile:
+   - `RENEW` → the grant has ended: no live grant, or no profile. Renew with the block below, then run steps 1 to 4. The old grant file is not removed: the grant command overwrites `meal-grant.json` only after the old id is saved to `meal-grants.txt`.
+   - `CHECK_FAILED` (any other error, including a network error): stop. Tell the owner in one line that the Health Log check failed. Write and delete nothing; the next request checks again.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-"$TC_BIN" profile delete agent-meal > /dev/null; rm -f "$STATE/meal-space.txt" "$STATE/meal-grant.json" "$STATE/meal-request.json"
+CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null); [ -n "$CID" ] && printf '%s\n' "$CID" >> "$STATE/meal-grants.txt"
+"$TC_BIN" profile delete agent-meal > /dev/null; rm -f "$STATE/meal-space.txt"
 ```
+
+The delete touches only `agent-meal` on this computer, never the owner's profile. The saved id stays for Undo.
 
 1. **Your profile (no screen).** Create `agent-meal` if it doesn't exist yet:
 
@@ -61,7 +65,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
    - Already approved, `AGENT_INSTALL_ENABLED` is `false`: "Run the command below in your terminal. A browser approval screen will open. Approve it to let me log this in your <App name> app, and nothing else. If your browser asks to connect to devices on your network, choose Allow. If you cancel, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there."
    - Already approved, `AGENT_INSTALL_ENABLED` is `true`: "Run the command below in your terminal. A browser approval screen will open: Install this app's notes and set up its tables in your TinyCloud, and add entries. Approve it to let me log this in your <App name> app. If your browser asks to connect to devices on your network, choose Allow. If you cancel, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there."
    - Sign-in, first approval: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" init --name default --paste`. If it prints `PROFILE_EXISTS`, the owner already has a default profile: they run `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth login --paste` instead. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
-   - Grant command: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. The CLI asks for a confirmation in the owner's terminal, and the owner answers it there.
+   - Grant command: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there.
    - Wait until the owner says it's done. If the grant says `PROFILE_NOT_FOUND`, the owner has no default profile: give the `init` command above, then the grant again. If it says `AUTH_REQUIRED`, the default profile isn't signed in: give the `auth login --paste` command, then the grant again.
    - **If the owner declines, cancels, or the grant fails** (anything other than the two errors above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
 
@@ -98,38 +102,40 @@ Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using it
 - `op_id`: a new UUID per write, from `node -e 'console.log(require("crypto").randomUUID())'`.
 - `day`: the local date from `<NOW>`, `YYYY-MM-DD`.
 - `slot`: `breakfast`, `lunch`, `dinner` or `snack`, from the owner's words. If not named, use the time of day in `<NOW>`: before 11:00 breakfast, before 15:00 lunch, before 21:00 dinner, otherwise snack. Say which one you used.
-- `name`: the owner's meal description, 1 to 200 characters, on one line. If the owner's text has a line break, join it with spaces first.
+- `name`: the owner's meal description, 1 to 200 characters. Line breaks are joined with spaces when the value is read; an empty name is not logged.
 - `kcal`: the owner's number, a whole number from 0 to 5000. If the owner gave no calories, estimate a reasonable whole number for the portion described. Never ask for calories, and never ask any other question before the write.
 - `source`: `agent`. `logged_at`: `<UTC>`.
 - Leave `protein_g`, `carbs_g`, `fat_g` at their defaults unless the owner gave them or the app's `knowledge/app.md` rules say otherwise. Fill any other column from those rules, never by a question. Don't invent macros.
 
-**Passing values to the shell.** The owner's meal name reaches the shell only inside a quoted heredoc (`<<'EOF'`), and the SQL parameters are built with `jq`, which escapes them. Never put the name inside a double-quoted or single-quoted argument. The other values are yours: `<OP_ID>` (a UUID), `<DAY>` (`YYYY-MM-DD`), `<SLOT>` (one of the four words), `<UTC>` (from `SKILL.md` §1), and `<KCAL>` (digits only, 0 to 5000). Write each one as shown in the blocks below. Each block runs the space guard first and stops if the space is not the saved full id.
+**Passing values to the shell.** The owner's meal name reaches the shell only inside a quoted heredoc, and the SQL parameters are built with `jq`, which escapes them. Never put the name inside a double-quoted or single-quoted argument. The heredoc's end marker is `NAME_<MARK>`, where `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`. Use the same value on both marker lines of a block. Owner text can't end the heredoc early, because it can't contain that value. The shell joins line breaks into spaces, and a name that is empty or only spaces is not written (`EMPTY_NAME`). The other values are yours: `<OP_ID>` (a UUID), `<DAY>` (`YYYY-MM-DD`), `<SLOT>` (one of the four words), `<UTC>` (from `SKILL.md` §1), and `<KCAL>` (digits only, 0 to 5000). Write each one as shown in the blocks below. Each block runs the space guard first and stops if the space is not the saved full id.
 
 Check for a duplicate first: if today's row with the same slot and name already exists, don't insert. Report it: "Already logged today: <name>, <kcal> kcal."
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-NAME=$(cat <<'EOF'
-<the owner's meal name, exactly as typed, on one line>
-EOF
+NAME=$(cat <<'NAME_<MARK>'
+<the owner's meal name, exactly as typed (line breaks allowed)>
+NAME_<MARK>
 )
+NAME=$(printf '%s' "$NAME" | tr '\n' ' ')
 DAY='<DAY>'; SLOT='<SLOT>'
-PARAMS=$(jq -cn --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" '[$day,$slot,$name]') && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS" --json
+PARAMS=$(jq -cn --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" '[$day,$slot,$name]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS" --json
 ```
 
 Write it with one statement, using the app's database and space:
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-NAME=$(cat <<'EOF'
-<the owner's meal name, exactly as typed, on one line>
-EOF
+NAME=$(cat <<'NAME_<MARK>'
+<the owner's meal name, exactly as typed (line breaks allowed)>
+NAME_<MARK>
 )
+NAME=$(printf '%s' "$NAME" | tr '\n' ' ')
 OP_ID='<OP_ID>'; DAY='<DAY>'; SLOT='<SLOT>'; KCAL=<KCAL>; UTC='<UTC>'
-PARAMS=$(jq -cn --arg op "$OP_ID" --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" --argjson kcal "$KCAL" --arg utc "$UTC" '[$op,$day,$slot,$name,$kcal,$utc]') && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
+PARAMS=$(jq -cn --arg op "$OP_ID" --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" --argjson kcal "$KCAL" --arg utc "$UTC" '[$op,$day,$slot,$name,$kcal,$utc]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
 ```
 
-If `jq` or the insert fails, stop and report the error. Don't retry with other options.
+If `jq` or the insert fails, stop and report the error. If the shell prints `EMPTY_NAME`, the meal name was empty: tell the owner in one line and stop. Don't retry with other options.
 
 Read back the row you wrote, and today's totals from the app's `day_card` view:
 

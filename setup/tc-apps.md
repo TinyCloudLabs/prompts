@@ -154,10 +154,9 @@ TC="${TC_BIN:-$HOME/.local/share/tc-apps/tc}"
 "$TC" --profile agent-data-sql auth logout
 "$TC" profile delete agent-meal
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
-CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null)
-[ -n "$CID" ] && "$TC" delegation revoke "$CID"
+{ jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null; cat "$STATE/meal-grants.txt" 2>/dev/null; } | sort -u | while read -r CID; do [ -n "$CID" ] && "$TC" delegation revoke "$CID"; done
 ```
 
-The last two lines end the Health Log grant and need `jq`. Without `jq`, copy the `delegationCid` value from `meal-grant.json` and run `"$TC" delegation revoke <cid>`. If that file is gone, the grant ends by itself after 7 days. Your own `default` sign-in stays, because other TinyCloud tools use it.
+The last two lines end every Health Log grant and need `jq`. Without `jq`, copy each `delegationCid` from `meal-grant.json` and `meal-grants.txt` and run `"$TC" delegation revoke <cid>` for each. If both files are gone, the current grant ends by itself after 7 days. Your own `default` sign-in stays, because other TinyCloud tools use it.
 
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
