@@ -109,7 +109,7 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 - `SESSION: missing` / `expired` / `unknown-expiry` → start the waiter below.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
-**Consent is precious.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on it. Every launch counts — including relaunches after an expired or dead waiter. Never run two waiters at once, and never start a new request while a code is outstanding (waiter alive, deadline not passed).
+**Consent is precious.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on it. Every launch counts — including relaunches after an expired or dead waiter. Never run two waiters at once, and never start a new request while a code is outstanding (waiter alive, deadline not passed). Start ONE login and wait for it to finish; never start a second login while one is running.
 
 **Write the waiter script.** It records its own pid, runs the device login, and appends `TC_EXIT=` when it ends:
 
@@ -257,7 +257,7 @@ Delete the waiter files once it has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/
 
 ## 3. Publish — run exactly one of the two blocks
 
-Always pass `--expires` — 7d for owner-only, 24h for public, unless the owner says otherwise — and always tell the owner the expiry. `--expires` beyond the session fails `SESSION_LIFETIME_EXCEEDED`; under 60 s is refused.
+Always pass `--expires` — owner-only: the publisher session's remaining lifetime minus 1 h, computed by the owner-only block (`6d` only if the session's expiry can't be read); public: 24h — unless the owner says otherwise — and always tell the owner the expiry. `SESSION_LIFETIME_EXCEEDED` past the session's end → shorten `--expires`, never lengthen; under 60 s → lengthen it.
 
 **HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
 
@@ -276,12 +276,16 @@ fi
 mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
-EXPIRES=7d
+EXPIRES=6d          # fallback only when the session has no expiresAt
+SESSION_END=$("$TC_BIN" --profile "$PROFILE" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
+[ -n "$SESSION_END" ] && EXPIRES=$(python3 -c 'import sys,datetime as d;e=d.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00"));m=int((e-d.datetime.now(d.timezone.utc)).total_seconds()//60)-60;print(f"{m}m" if m>=2 else "")' "$SESSION_END" 2>/dev/null)
 NOTIFY=             # NOTIFY=--notify only if the owner asked for an emailed invite (CLI 1.0.1-beta.0 or newer)
 TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
-if [ -z "$TC_SHARE_TO" ]; then
+if [ -z "$EXPIRES" ]; then
+  echo "SESSION_ENDING: about 1 h or less of session left, or its expiry can't be read; renew consent (§2) before publishing"
+elif [ -z "$TC_SHARE_TO" ]; then
   echo "RECIPIENT_UNSET: ask the owner who should be able to open it"
 else
   "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" $NOTIFY --json \
@@ -527,7 +531,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 |---|---|---|
 | `AUTH_REQUIRED` | 3 | Session expired/invalid — return to §2 on the same profile (ignore the CLI's own `tc auth login`/`init` hint) |
 | `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On CLI `1.0.0-beta.17` a file name with spaces also gives this — see §3 **File names**, not §2 |
-| `SESSION_LIFETIME_EXCEEDED` | 2 | `--expires` beyond the session → shorten it or renew consent; under 60 s → lengthen it |
+| `SESSION_LIFETIME_EXCEEDED` | 2 | `--expires` beyond the session → shorten `--expires` (never lengthen) or renew consent; under 60 s → lengthen it |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
 | `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. |
 | `SESSION_IN_USE` | 2 | Live session would narrow — ask the owner; never `--replace-session` unprompted |

@@ -64,7 +64,7 @@ Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`,
 
 ### 3. Publish, with an expiry
 
-Always pass `--expires` and tell the owner the date. Default when omitted is 7 days; the skill uses 7d for private and 24h for public links. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
+Always pass `--expires` and tell the owner the date. Owner-only links default to the publisher session's remaining lifetime minus 1 h (6d if its expiry can't be read); public links use 24h. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
 
 Run through the skill's §3 blocks, which wrap exactly these commands. Shape of the command, with `$TC_BIN` and `$PROFILE` from the skill's preamble (`PROFILE=publisher`):
 
