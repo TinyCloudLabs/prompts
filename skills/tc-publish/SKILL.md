@@ -79,6 +79,8 @@ If the block prints `TC_NOT_FOUND`, `STALE` or `OWNER_EMAIL_UNSET`, follow https
 
 ## 2. Consent — only when there is no live session
 
+Start ONE login and wait for it to finish; never start a second login while one is running.
+
 Check the profile and session first:
 
 ```sh
@@ -109,7 +111,7 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 - `SESSION: missing` / `expired` / `unknown-expiry` → start the waiter below.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
-**Consent is precious.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on it. Every launch counts — including relaunches after an expired or dead waiter. Never run two waiters at once, and never start a new request while a code is outstanding (waiter alive, deadline not passed). Start ONE login and wait for it to finish; never start a second login while one is running.
+**Consent is precious.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on it. Every launch counts — including relaunches after an expired or dead waiter. Never run two waiters at once, and never start a new request while a code is outstanding (waiter alive, deadline not passed).
 
 **Write the waiter script.** It records its own pid, runs the device login, and appends `TC_EXIT=` when it ends:
 
@@ -140,7 +142,7 @@ echo "waiter script: $STATE/waiter.sh"
 
 **Start it so it survives the end of this tool call and of your turn.** A plain `( … ) &` job is killed when the command or turn ends, and an approval that lands with nobody waiting is lost.
 
-- **If your harness offers a supervised background process** (for example OMP's supervised process), start `sh <waiter script path> <profile>` there — the path printed above, and `publisher` unless the owner named another profile — with the same environment (`TC_BIN`, `TC_HOME`, `TC_PUBLISH_STATE`).
+- **If your harness offers a supervised background process** (for example OMP's supervised process), start `sh <waiter script path> <profile>` there — the path printed above, and `publisher` unless the owner named another profile — with the same environment (`TC_BIN`, `TC_HOME`, `TC_PUBLISH_STATE`). Run this ONCE; wait for it to finish; never start another login.
 - **Otherwise detach it:**
 
 ```sh
@@ -155,6 +157,7 @@ mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
 DETACH=$(command -v setsid)   # empty on macOS — prefer a supervised process there
+# run this ONCE; wait for it to finish; never start another login
 $DETACH nohup sh "$STATE/waiter.sh" "$PROFILE" > /dev/null 2>&1 < /dev/null &
 echo STARTED
 ```
@@ -265,6 +268,8 @@ Always pass `--expires` — owner-only: the publisher session's remaining lifeti
 
 **Owner-only (the default)** — set `TC_SHARE_TO` by the rule in "Choosing the link type"; the block publishes nothing while it is empty:
 
+Run EXACTLY this block; do not write your own `share publish` command.
+
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
@@ -305,6 +310,8 @@ fi
 ```
 
 **Public — only if the owner explicitly asked:**
+
+Run EXACTLY this block; do not write your own `share publish` command.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
