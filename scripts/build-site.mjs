@@ -172,7 +172,7 @@ const ABILITIES = [
     title: "Personal records",
     url: "apps",
     text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go.",
-    prompt: "Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, saves a 30-day sign-in (a key and session in ~/.tinycloud), and, if an app of yours handles this, asks you to approve access to just that app:",
+    prompt: "Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app; otherwise, 30-day access to your records:",
   },
   {
     title: "Publish",

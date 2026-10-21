@@ -21,11 +21,11 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 ## 3. Installing a catalog app and getting approval
 
-The owner takes one step: the OpenKey approval, which opens when the owner runs the grant command in step 3. Don't ask any question in chat before it, and don't ask before the first write.
+The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. Don't ask any question in chat before that, and don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the full space id `$SPACE` saved in step 4.
 
 `AGENT_INSTALL_ENABLED` is `false` for the Friday 10-23 drop: the agent logs into a Health Log that is already set up. It becomes `true` for the Monday 10-26 drop, which ships `tinycloud apps install`. Only the step marked INSTALL depends on it.
 
-Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent uses only its own profile, `agent-meal`. Sign-in happens in steps 3 and 4 only: the owner's sign-in is step 3's fallback, and the agent's is the import in step 4.
+Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent uses only its own profile, `agent-meal`, and never passes a profile to an owner command. The agent starts no browser and waits for no code: the owner's sign-in and grant are in step 3, the import in step 4.
 
 1. **Your profile (no screen).** Create `agent-meal` if it doesn't exist yet:
 
@@ -41,24 +41,29 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (the one OpenKey screen).** Say one line to the owner, then give them the grant command to run in their own terminal. The command runs in the owner's default profile; the agent never runs it and never passes a profile to it.
-   - `AGENT_INSTALL_ENABLED` is `false`: "A browser approval screen will open. Approve it to let me log this in your <App name> app. If your browser asks to connect to devices on your network, choose Allow."
-   - `AGENT_INSTALL_ENABLED` is `true`: "A browser approval screen will open: Install this app's notes and set up its tables in your TinyCloud, and add entries. Approve it to let me log this in your <App name> app. If your browser asks to connect to devices on your network, choose Allow."
-   - The command for the owner, with the paths filled in: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth grant "<STATE>/meal-request.json" --yes > "<STATE>/meal-grant.json"`
-   - Wait until the owner says it's done. If the command prints `AUTH_REQUIRED` ("Not authenticated"), the owner's default profile has no sign-in yet: the owner runs `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth login` once, then runs the grant command again.
+3. **The owner's approval (the owner's terminal).** Send the owner one message first, then the command or commands below. Use the first message if `$STATE/owner-approved` does not exist (the owner's first approval on this computer); use the second if it does. The owner runs the commands; the agent never runs them and never passes a profile to them.
+   - First approval: "Run the two commands below in your terminal. Two browser approval screens will open, one after the other. The first signs you in to TinyCloud on this computer, so it lists your whole space. The second lets me log this in your <App name> app, and nothing else. Approve both. If your browser asks to connect to devices on your network, choose Allow. If the page shows a code instead, paste it into that terminal."
+   - Already approved, `AGENT_INSTALL_ENABLED` is `false`: "Run the command below in your terminal. A browser approval screen will open. Approve it to let me log this in your <App name> app, and nothing else. If your browser asks to connect to devices on your network, choose Allow. If the page shows a code instead, paste it into that terminal."
+   - Already approved, `AGENT_INSTALL_ENABLED` is `true`: "Run the command below in your terminal. A browser approval screen will open: Install this app's notes and set up its tables in your TinyCloud, and add entries. Approve it to let me log this in your <App name> app. If your browser asks to connect to devices on your network, choose Allow. If the page shows a code instead, paste it into that terminal."
+   - Sign-in command, first approval or when the grant says `PROFILE_NOT_FOUND` (no default profile on this computer): `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" init --name default --paste`. If the grant says `AUTH_REQUIRED`, run `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth login --paste` instead. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
+   - Grant command: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth grant "<STATE>/meal-request.json" --yes > "<STATE>/meal-grant.json"`.
+   - Wait until the owner says it's done. If the grant fails with `PROFILE_NOT_FOUND` or `AUTH_REQUIRED`, run the sign-in command above, then the grant again.
 
-4. **Import the grant (no screen).** This starts the agent's session in `agent-meal`:
+4. **Import the grant (no screen).** This starts the agent's session in `agent-meal` and saves the full space id, which every later command passes as `--space "$SPACE"`. Short names such as `applications` fail for this profile with `ADDRESS_UNKNOWN`.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-"$TC_BIN" --profile agent-meal auth import "$STATE/meal-grant.json"
+"$TC_BIN" --profile agent-meal auth import "$STATE/meal-grant.json" && "$TC_BIN" --profile agent-meal context --json | jq -r '.spaceId // empty' > "$STATE/meal-space.txt"
+SPACE=$(cat "$STATE/meal-space.txt"); case "$SPACE" in tinycloud:pkh:eip155:*:applications) touch "$STATE/owner-approved";; *) echo NO_SPACE >&2;; esac
 ```
+
+   If it prints `NO_SPACE`, stop and report it; write nothing. The `owner-approved` file records that the owner has approved on this computer, so the next approval uses the short message in step 3.
 
 5. **Check the app (no screen).** Read the app's notes index:
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
-"$TC_BIN" --profile agent-meal kv get 'xyz.tinycloud.sample.healthlog/knowledge/index.md' --space applications --json
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt")
+"$TC_BIN" --profile agent-meal kv get 'xyz.tinycloud.sample.healthlog/knowledge/index.md' --space "$SPACE" --json
 ```
 
    If it prints the record, go to step 6. If it says `NOT_FOUND`:
@@ -84,23 +89,23 @@ Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using it
 Check for a duplicate first: if today's row with the same slot and name already exists, don't insert. Report it: "Already logged today: <name>, <kcal> kcal."
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
-"$TC_BIN" --profile agent-meal sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space applications --db xyz.tinycloud.sample.healthlog/healthlog --params '["<DAY>","<SLOT>","<NAME>"]' --json
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt")
+"$TC_BIN" --profile agent-meal sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params '["<DAY>","<SLOT>","<NAME>"]' --json
 ```
 
 Write it with one statement, using the app's database and space:
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
-"$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space applications --db xyz.tinycloud.sample.healthlog/healthlog --params '["<OP_ID>","<DAY>","<SLOT>","<NAME>",<KCAL>,"<UTC>"]'
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt")
+"$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params '["<OP_ID>","<DAY>","<SLOT>","<NAME>",<KCAL>,"<UTC>"]'
 ```
 
 Read back the row you wrote, and today's totals from the app's `day_card` view:
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
-"$TC_BIN" --profile agent-meal sql query "SELECT id, slot, name, kcal FROM meal WHERE op_id = ?" --space applications --db xyz.tinycloud.sample.healthlog/healthlog --params '["<OP_ID>"]' --json
-"$TC_BIN" --profile agent-meal sql query "SELECT * FROM day_card WHERE day = ?" --space applications --db xyz.tinycloud.sample.healthlog/healthlog --params '["<DAY>"]' --json
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt")
+"$TC_BIN" --profile agent-meal sql query "SELECT id, slot, name, kcal FROM meal WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params '["<OP_ID>"]' --json
+"$TC_BIN" --profile agent-meal sql query "SELECT * FROM day_card WHERE day = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params '["<DAY>"]' --json
 ```
 
 Column names for `day_card` come from the installed knowledge (`views/day_card.md`), not from memory.
@@ -112,8 +117,8 @@ Column names for `day_card` come from the installed knowledge (`views/day_card.m
 **Correct a row.** If the owner changes a value afterwards ("make that 150"), update that row by its op id, then say so in one line, for example "Updated to 150 kcal.":
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
-"$TC_BIN" --profile agent-meal sql execute "UPDATE meal SET kcal = ? WHERE op_id = ?" --space applications --db xyz.tinycloud.sample.healthlog/healthlog --params '[150,"<OP_ID>"]'
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt")
+"$TC_BIN" --profile agent-meal sql execute "UPDATE meal SET kcal = ? WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params '[150,"<OP_ID>"]'
 ```
 
 Keep the op id for the rest of the conversation. Use the same pattern for any other column the owner changes.
@@ -132,4 +137,4 @@ Use `SKILL.md` §2 to §8 only for a domain that no catalog app owns.
 
 ## 7. Profiles
 
-The agent uses one profile, `agent-meal`, which step 1 of §3 creates. Never read or use the owner's profile directory or session, and never pass an owner profile to any command, including `auth grant`. The grant runs only in the owner's own terminal, in the owner's default profile.
+The agent uses one profile, `agent-meal`, which step 1 of §3 creates. Never read or use the owner's profile directory or session, and never pass an owner profile to any command. The owner's sign-in and grant run only in the owner's own terminal, in the owner's default profile.

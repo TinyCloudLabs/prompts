@@ -9,8 +9,8 @@ You need a shell, Node.js 22.20 or later, and npm.
 ## Personal records: [/apps](tc-apps.md)
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
-- **Paste into your agent:** `Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, saves a 30-day sign-in (a key and session in ~/.tinycloud), and, if an app of yours handles this, asks you to approve access to just that app: https://agents.tinycloud.xyz/apps`
-- **You approve:** one OpenKey approval screen for your app's data. For a meal, it covers logging the meal in Health Log, for up to 7 days. Otherwise it lets the agents on this computer keep your records in your TinyCloud, for 30 days.
+- **Paste into your agent:** `Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app; otherwise, 30-day access to your records: https://agents.tinycloud.xyz/apps`
+- **You approve:** one OpenKey screen for the app, or two the first time on this computer: your own 7-day sign-in, which lists your whole space, then the app. For a meal, the app screen gives your agent access to just Health Log, for 7 days; otherwise, your records, for 30 days.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
