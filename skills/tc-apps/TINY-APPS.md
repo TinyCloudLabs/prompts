@@ -60,12 +60,17 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (the owner's terminal).** Send the owner one message first, then the command or commands below. Use the first message if `$STATE/owner-approved` does not exist (the owner's first approval on this computer); use the second if it does. The owner runs the commands; the agent never runs them and never passes a profile to them.
-   - First approval: "Run the commands below in your terminal, one after the other. You may see one or two browser approval screens. The first, if it opens, signs you in to TinyCloud on this computer, so it lists your whole space. The second lets me log this in your <App name> app, and nothing else. Approve each one that opens. If your browser asks to connect to devices on your network, choose Allow. If you cancel a screen, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there."
-   - Already approved, `AGENT_INSTALL_ENABLED` is `false`: "Run the command below in your terminal. A browser approval screen will open. Approve it to let me log this in your <App name> app, and nothing else. If your browser asks to connect to devices on your network, choose Allow. If you cancel, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there."
-   - Already approved, `AGENT_INSTALL_ENABLED` is `true`: "Run the command below in your terminal. A browser approval screen will open: Install this app's notes and set up its tables in your TinyCloud, and add entries. Approve it to let me log this in your <App name> app. If your browser asks to connect to devices on your network, choose Allow. If you cancel, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there."
+3. **The owner's approval (the owner's terminal).** Send the owner one message, then the commands below. The message is the quoted block, with one of the three sentences in `{SCREENS}`. Say the block verbatim, including the Ctrl-C and Allow sentences. Use the first-approval sentence if `$STATE/owner-approved` does not exist; otherwise use the sentence for the `AGENT_INSTALL_ENABLED` value. The owner runs the commands; the agent never runs them and never passes a profile to them.
+
+   > Run the commands below in your own terminal, one after the other. {SCREENS} If your browser asks to connect to devices on your network, choose Allow. If you cancel a screen, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there.
+
+   `{SCREENS}` is one of:
+   - First approval: "You may see one or two browser approval screens. The first, if it opens, signs you in to TinyCloud on this computer, so it lists your whole space. The second lets me log this in your <App name> app, and nothing else. Approve each one that opens."
+   - Already approved, `AGENT_INSTALL_ENABLED` is `false`: "A browser approval screen will open. Approve it to let me log this in your <App name> app, and nothing else."
+   - Already approved, `AGENT_INSTALL_ENABLED` is `true`: "A browser approval screen will open: it installs this app's notes and tables in your TinyCloud, adds entries, and lets me log this in your <App name> app. Approve it."
+
    - Sign-in, first approval: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" init --name default --paste`. If it prints `PROFILE_EXISTS`, the owner already has a default profile: they run `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth login --paste` instead. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
-   - Grant command: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there.
+   - Grant command: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth grant "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}/meal-request.json" > "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there.
    - Wait until the owner says it's done. If the grant says `PROFILE_NOT_FOUND`, the owner has no default profile: give the `init` command above, then the grant again. If it says `AUTH_REQUIRED`, the default profile isn't signed in: give the `auth login --paste` command, then the grant again.
    - **If the owner declines, cancels, or the grant fails** (anything other than the two errors above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
 
@@ -176,6 +181,8 @@ Use `SKILL.md` §2 to §8 only for a domain that no catalog app owns.
 ## 7. Profiles
 
 The agent uses one profile, `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. Never read or use the owner's profile directory or session, and never pass an owner profile to any command. The owner's sign-in and grant run only in the owner's own terminal, in the owner's default profile.
+
+The agent never runs `delegation revoke` or the Undo block in `setup/tc-apps.md`: a revoke needs a terminal for its OpenKey approval, and the agent has none.
 
 ## 8. Wording to the owner
 

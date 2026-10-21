@@ -43,6 +43,8 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 
 Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written. No installer is downloaded and run, and nothing is piped to a shell: the skill's files are fetched as plain files, checked against a checksum list and copied. The `tc` helper installed in step 6 is a small script from the skill, checked against that list, and it runs whenever the skill runs a command. The checksums show only that a download wasn't corrupted; they can't tell a compromised site from a good one. Stop at the first step that fails.
 
+Never run `npm install -g` or any other global install. The CLI goes only into `$HOME/.local/share/tc-apps/cli` (step 2). If `agents.tinycloud.xyz` does not answer, stop and say so, as described below.
+
 **Step 1. Folders.** The CLI's profile store, this skill's state folder, and a download folder.
 
 ```sh
@@ -99,6 +101,7 @@ If something goes wrong:
 - **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
 - **Your client refuses a step or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence", "Code from External" or "Instruction Poisoning". Show the owner the step, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait. Don't edit their settings files, and don't run the step another way.
 - **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder.
+- **`agents.tinycloud.xyz` does not answer** (step 3 fails): stop and say so to the owner. Don't switch to another source, and don't install the CLI globally.
 
 Wait until step 7 has printed its version before §3: the skill doesn't exist until then.
 
@@ -144,19 +147,20 @@ This covers only those two commands of this CLI. It doesn't turn auto mode off o
 
 ## Undo
 
-For the owner. Run these in a terminal where `TC_BIN` and `TC_HOME` have the values you started the client with, or are unset if you never set them: `TC_BIN` picks the CLI (otherwise the setup's `~/.local/share/tc-apps/tc`), and the CLI reads `TC_HOME` to find its profiles.
+For the owner. Run these in your own terminal, not in an AI agent's shell: a revoke needs a terminal for its approval screen, and without one it waits silently. Use a terminal where `TC_BIN` and `TC_HOME` have the values you started the client with, or are unset if you never set them.
 
-If you signed in, each command clears one local session. Approvals stay valid on TinyCloud until they expire: the `agent-data` approvals for 30 days, and the Health Log grant for 7 days. `PROFILE_NOT_FOUND` means you never signed in to that one; that's fine.
+The agent's access ends on its own: the Health Log grant after 7 days, and the `agent-data` sign-in after 30 days. To end it sooner, run the commands below in your own terminal. You may see one OpenKey approval per saved grant; approve each one that opens. Your `default` sign-in stays, because other TinyCloud tools use it.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tc-apps/tc}"
+STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 "$TC" --profile agent-data auth logout
 "$TC" --profile agent-data-sql auth logout
 "$TC" profile delete agent-meal
-STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
-{ jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null; cat "$STATE/meal-grants.txt" 2>/dev/null; } | sort -u | while read -r CID; do [ -n "$CID" ] && "$TC" delegation revoke "$CID"; done
+CIDS=$({ jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null; cat "$STATE/meal-grants.txt" 2>/dev/null; } | sort -u)
+for CID in $CIDS; do "$TC" delegation revoke "$CID"; done
 ```
 
-The last two lines end every Health Log grant and need `jq`. Without `jq`, copy each `delegationCid` from `meal-grant.json` and `meal-grants.txt` and run `"$TC" delegation revoke <cid>` for each. If both files are gone, the current grant ends by itself after 7 days. Your own `default` sign-in stays, because other TinyCloud tools use it.
+`PROFILE_NOT_FOUND` means you never signed in to that one; that's fine. Without `jq`, copy each `delegationCid` from `meal-grant.json` and `meal-grants.txt` and run `"$TC" delegation revoke <cid>` for each, in the same terminal. If both files are gone, the Health Log grant still ends on its own after 7 days.
 
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
