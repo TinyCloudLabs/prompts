@@ -3,7 +3,7 @@
 Part of the `tc-apps` skill: read `SKILL.md` first. The index copies every record into a SQLite database, `xyz.tinycloud.agent-data.index`, in the owner's `default` space, so one query can answer a question over many records. The KV records stay the truth: when the index and KV disagree, KV wins, and §6 rebuilds the index from it.
 
 - **Profile:** `agent-data-sql`, separate from `agent-data`.
-- **Sign-in:** OpenKey's approval page, because the phone-code sign-in can't grant SQL. The owner approves, then sends you back a code.
+- **Sign-in:** OpenKey's approval page. The owner approves there, then runs the sign-in command in their own terminal and pastes the code there, not in this chat.
 - **Lifetime:** 30 days.
 - **Reach:** the grant names one database, but TinyCloud's node also lets it open the space's other SQL databases. The owner accepted this. Always pass exactly `--db xyz.tinycloud.agent-data.index`, never a longer or different name.
 
