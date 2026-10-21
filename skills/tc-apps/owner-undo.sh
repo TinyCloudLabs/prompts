@@ -5,13 +5,18 @@
 set -u
 TC="${TC_BIN:-$HOME/.local/share/tc-apps/tc}"
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
+REVOKED=0
+cancel() { if [ "$REVOKED" -eq 0 ]; then echo 'Cancelled; nothing was revoked.' >&2; else echo 'Cancelled; some access was already revoked. Tell your agent.' >&2; fi; exit "$1"; }
+trap 'cancel 130' INT
+trap 'cancel 143' TERM
+trap 'cancel 129' HUP
 "$TC" --profile agent-data auth logout
 "$TC" --profile agent-data-sql auth logout
 "$TC" profile delete agent-meal
 CIDS=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null | grep -E '^bafkr4i[a-z2-7]{52}$' || true)
 FAIL=0
 for CID in $CIDS; do
-  "$TC" delegation revoke -- "$CID" < /dev/tty || FAIL=1
+  if "$TC" delegation revoke -- "$CID" < /dev/tty; then REVOKED=1; else FAIL=1; fi
 done
 if [ "$FAIL" -ne 0 ]; then
   echo 'A revoke failed. Tell your agent; do not retry the browser screen.' >&2
