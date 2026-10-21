@@ -1,6 +1,6 @@
 # Personal records in TinyCloud (`tc-apps`)
 
-Your agent keeps your records, like weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Any agent on this computer, in any conversation, can find and read them.
+Your agent keeps your records, like meals, weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Any agent on this computer, in any conversation, can find and read them.
 
 ## For the owner
 
