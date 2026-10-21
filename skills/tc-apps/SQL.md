@@ -30,7 +30,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep
 
 - **The link, then `waiting for the code`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
 
-  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then copy the code OpenKey shows at the end and send it to me here.
+  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve. If OpenKey shows a code, don't send it to me: paste it into your own terminal, using the command I give you.
 
   If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
 
