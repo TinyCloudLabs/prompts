@@ -4,15 +4,15 @@
 # Prints a STATE line for the agent, then the owner message as one fenced block between the BEGIN and END markers.
 # AGENT_INSTALL_ENABLED must match TINY-APPS.md §3 (the INSTALL switch).
 AGENT_INSTALL_ENABLED=false
-TC_BIN=${TC_BIN:-$HOME/.local/share/tc-apps/tc}
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "$1" in
-  healthlog) NAME='Health Log'; MARK=owner-approved; REQ=meal-request.json; GRANT=meal-grant.json ;;
-  recipes) NAME=Recipes; MARK=recipes-owner-approved; REQ=recipes-request.json; GRANT=recipes-grant.json ;;
+  healthlog) NAME='Health Log'; MARK=owner-approved ;;
+  recipes) NAME=Recipes; MARK=recipes-owner-approved ;;
   *) echo 'usage: sh announce.sh healthlog | recipes' >&2; exit 2 ;;
 esac
 if [ ! -f "$DIR/$MARK" ]; then KIND=FIRST; elif [ "$AGENT_INSTALL_ENABLED" = true ]; then KIND=APPROVED-ON; else KIND=APPROVED-OFF; fi
-GRANT_CMD="\"$TC_BIN\" auth grant \"$DIR/$REQ\" > \"$DIR/$GRANT\""
+FOLDER=$(cd "$(dirname "$0")" && pwd)
+GRANT_CMD="sh \"$FOLDER/owner-grant.sh\" $1"
 ALLOW='# If your browser asks to connect to devices on your network, choose Allow.'
 CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C and tell me. If the page shows a code, paste it into this terminal, not the chat."
 echo "STATE: $KIND"

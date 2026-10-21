@@ -184,7 +184,7 @@ Use `SKILL.md` §2 to §8 only for a domain that no catalog app owns.
 
 The agent uses one profile, `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. Never read or use the owner's profile directory or session, and never pass an owner profile to any command. The owner's sign-in and grant run only in the owner's own terminal, in the owner's default profile.
 
-The agent never runs `delegation revoke` or the Undo block in `setup/tc-apps.md`: a revoke needs a terminal for its OpenKey approval, and the agent has none.
+The agent never runs `delegation revoke`, `owner-undo.sh`, or the Undo block in `setup/tc-apps.md`: a revoke needs a terminal for its OpenKey approval, and the agent has none.
 
 ## 8. Wording to the owner
 
