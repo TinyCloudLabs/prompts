@@ -60,14 +60,13 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (the owner's terminal).** Send the owner one message, then the commands below. The message is the quoted block, with one of the three sentences in `{SCREENS}`. Say the block verbatim, including the Ctrl-C and Allow sentences. Use the first-approval sentence if `$STATE/owner-approved` does not exist; otherwise use the sentence for the `AGENT_INSTALL_ENABLED` value. The owner runs the commands; the agent never runs them and never passes a profile to them. Replace `<TC_BIN>` and `<STATE>` in the commands with the absolute paths resolved in setup, and send the paths, not variable names, so the commands run in a fresh terminal.
+3. **The owner's approval (the owner's terminal).** Show the owner the announcement, then the commands below. Print the announcement file with this loop (the same loop as the first block in `SKILL.md`):
 
-   > Run the commands below in your own terminal, one after the other. {SCREENS} If your browser asks to connect to devices on your network, choose Allow. If you cancel a screen, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there.
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/ANNOUNCE.txt" "$HOME/.agents/skills/tc-apps/ANNOUNCE.txt"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+```
 
-   `{SCREENS}` is one of:
-   - First approval: "You may see one or two browser approval screens. The first, if it opens, signs you in to TinyCloud on this computer, so it lists your whole space. The second lets me log this in your <App name> app, and nothing else. Approve each one that opens."
-   - Already approved, `AGENT_INSTALL_ENABLED` is `false`: "A browser approval screen will open. Approve it to let me log this in your <App name> app, and nothing else."
-   - Already approved, `AGENT_INSTALL_ENABLED` is `true`: "A browser approval screen will open: it installs this app's notes and tables in your TinyCloud, adds entries, and lets me log this in your <App name> app. Approve it."
+   Then reply with the section whose heading is `=== <app>, <case> ===` in that file, where `<app>` is Health Log or Recipes, and `<case>` is `first approval` if `$STATE/owner-approved` does not exist; otherwise `already approved, install off` when `AGENT_INSTALL_ENABLED` is `false`, or `already approved, install on` when it is `true`. Copy that section's text into a code block exactly as written: no heading, no words before or after the block, no edits. Then give the commands below. The owner runs them; the agent never runs them and never passes a profile to them. Replace `<TC_BIN>` and `<STATE>` in the commands with the absolute paths resolved in setup, and send the paths, not variable names, so the commands run in a fresh terminal. Then stop and wait for the owner's reply.
 
    - Sign-in, first approval: `"<TC_BIN>" init --name default --paste`. If it prints `PROFILE_EXISTS`, the owner already has a default profile: they run `"<TC_BIN>" auth login --paste` instead. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
    - Grant command: `"<TC_BIN>" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there.

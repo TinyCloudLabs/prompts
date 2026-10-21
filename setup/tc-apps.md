@@ -60,10 +60,10 @@ npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tiny
 **Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files; only `tc-wrapper.sh` is a script, and step 6 installs it.
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud.xyz/skills/apps/{SHA256SUMS,SKILL.md,QUICKSTART.md,SQL.md,TINY-APPS.md,tc-wrapper.sh}"
+cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud.xyz/skills/apps/{SHA256SUMS,SKILL.md,QUICKSTART.md,SQL.md,TINY-APPS.md,tc-wrapper.sh,ANNOUNCE.txt}"
 ```
 
-**Step 4. Check them.** Every file must print `OK`, one for each of the five. Anything else: stop.
+**Step 4. Check them.** Every file must print `OK`, one for each of the six. Anything else: stop.
 
 ```sh
 cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 256 -c SHA256SUMS; }
@@ -74,13 +74,13 @@ cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 
 Claude Code:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh ANNOUNCE.txt "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
 ```
 
 Codex and OpenCode:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh "$HOME/.agents/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh ANNOUNCE.txt "$HOME/.agents/skills/tc-apps/"
 ```
 
 **Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tc` is the skill's `tc-wrapper.sh`, copied from the download: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
@@ -149,7 +149,7 @@ This covers only those two commands of this CLI. It doesn't turn auto mode off o
 
 For the owner. Run these in your own terminal, not in an AI agent's shell: each revoke asks you to confirm `[y/N]` in that terminal, and an agent's shell can't answer it. Use a terminal where `TC_BIN` and `TC_HOME` have the values you started the client with, or are unset if you never set them.
 
-The agent's access ends on its own: the Health Log grant after 7 days, and the `agent-data` sign-in after 30 days. To end it sooner, run the commands below in your own terminal. The current Health Log grant asks `[y/N]` there: answer `y`, then approve the OpenKey screen if one opens. `profile delete agent-meal` also asks `[y/N]`. Your `default` sign-in stays, because other TinyCloud tools use it.
+The agent's access ends on its own: the Health Log grant after 7 days, and the `agent-data` sign-in after 30 days. To end it sooner, run the commands below in your own terminal. The current Health Log grant asks `[y/N]` there: answer `y`, then approve the OpenKey screen if one opens. `profile delete agent-meal` also asks `[y/N]`. Your `default` sign-in stays, because other TinyCloud tools use it. Undo revokes the grant recorded in `meal-grant.json`; do not edit that file.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tc-apps/tc}"
