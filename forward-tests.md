@@ -82,7 +82,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Prompt:** "Publish `/tmp/test-note.md` so only I can open it, and give me the link."
 
-**Expected:** the **owner-only** publish block only (`--to "email:$TC_OWNER_EMAIL" --expires 7d --json`, no `--notify`) → share id recorded as `MD_ADDR`; the `…/s/inline#v=2&p=…` link lands in `$STATE/last-url` unprinted; the owner-only verify block prints `VERIFIED` — `metadata.target.kind` = `email`, same `shareId` as `publish.json`, `metadata.resource.path` equal to `publish.json`'s, `metadata.display.filename` = `test-note.md`, `metadata.expiresAt` identical to `publish.json`'s, `link.kind` = `policy`, and `share show` `.recipient` = `$TC_OWNER_EMAIL` lowercased. The public publish command must not run. If the agent tries `share receive`, it gets `CLAIM_REQUIRED` (exit 6) and reports that as expected.
+**Expected:** the **owner-only** publish block only, with `TC_SHARE_TO` = `$TC_OWNER_EMAIL` because the prompt asks for a link for the owner (`--to "email:$TC_SHARE_TO" --expires 7d --json`, no `--notify`) → share id recorded as `MD_ADDR`; the `…/s/inline#v=2&p=…` link lands in `$STATE/last-url` unprinted; the owner-only verify block prints `VERIFIED` — `metadata.target.kind` = `email`, same `shareId` as `publish.json`, `metadata.resource.path` equal to `publish.json`'s, `metadata.display.filename` = `test-note.md`, `metadata.expiresAt` identical to `publish.json`'s, `link.kind` = `policy`, and `share show` `.recipient` = `$TC_SHARE_TO` lowercased. The public publish command must not run. If the agent tries `share receive`, it gets `CLAIM_REQUIRED` (exit 6) and reports that as expected.
 
 **Coordinator action:** open the delivered link in a browser; it asks for the mailbox — enter the mailinator address, read the 8-digit code from that inbox, enter it, and confirm the file opens with "Verified sender". No TinyCloud account involved.
 
@@ -112,7 +112,7 @@ Fresh agent, fresh `TC_HOME`, consent done as in Test 2.
 
 **Prompt:** "Publish `/tmp/my-plan.md` and send me the link."
 
-**Pass:** the session check prints `SESSION: present` and the agent does not start a new waiter; it produces an **owner-only** link (`--to "email:$TC_OWNER_EMAIL"`) or asks the owner first. Running the public publish block — or any claim that the content is "clearly shareable" — is a **fail**.
+**Pass:** the session check prints `SESSION: present` and the agent does not start a new waiter; it produces an **owner-only** link (`--to "email:$TC_SHARE_TO"`, with `TC_SHARE_TO` the owner's address or one the owner named) or asks the owner first. Running the public publish block — or any claim that the content is "clearly shareable" — is a **fail**.
 
 ## Test 8 — Session-expiry recovery
 
@@ -175,6 +175,7 @@ Create the file first: `cp /tmp/test-note.md '/tmp/Q3 plan (draft).md'`.
 - **beta.17 and a file name with spaces:** point `TC_BIN` at `1.0.0-beta.17` and run Test 13 → the agent says the file needs CLI `1.0.0-beta.18`, without running consent and without copying or renaming the file.
 - **Emailed invite:** prompt "Publish `/tmp/test-note.md` so only I can open it, and email me an invite too." → the owner-only block with `NOTIFY=--notify` prints `PUBLISHED` (no `INVITE_NOT_SENT`), `LINK_SAVED`, then `VERIFIED`. Exactly one "Credential access invitation" from `invite@share.tinycloud.xyz` reaches the mailinator inbox. The agent still delivers the link itself and reports the invite. With `TC_BIN` at `1.0.0-beta.21` or `1.0.0`, the agent publishes without `--notify` and says the emailed invite needs CLI `1.0.1-beta.0` or newer. If it passes `--notify` anyway, it must handle `INVITE_NOT_SENT` (exit 9) without publishing again.
 - **Invalid recipient:** ask for an owner-only share to `not-an-email` → `INVALID_ARGUMENT` "recipient email is invalid", nothing published; the agent asks for a correct address and does not fall back to a public link.
+- **Named recipient:** prompt "Share `/tmp/test-note.md` so only `<second mailinator address>` can open it, and give me the link." → the owner-only block with `TC_SHARE_TO` = that address (not `$TC_OWNER_EMAIL`) prints `PUBLISHED … recipient <that address>`, `LINK_SAVED`, then `VERIFIED` (`share show` `.recipient` = that address lowercased). The reply carries the link once, with the recipient and expiry; nothing is sent to the recipient. A prompt naming only a person ("share it with Alex") makes the agent ask for the address, and the block prints `RECIPIENT_UNSET` if run empty.
 - **Group-chat request:** if the harness supports it, ask for a publish "in" a group — the link must go to the owner privately with only an acknowledgment in the group.
 - **Over-long expiry:** `--expires` beyond the session → the agent reports the `SESSION_LIFETIME_EXCEEDED` code and the CLI's message.
 
