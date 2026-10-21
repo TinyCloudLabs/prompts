@@ -7,6 +7,14 @@ metadata:
 
 # Personal apps in TinyCloud
 
+**Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in, device flow or access request, including the 30-day `agent-data` sign-in in §4. Read the catalog now and follow it:
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+```
+
+Sections 1 to 8 below apply only to a request that no catalog app owns (`TINY-APPS.md` §2).
+
 **For any request about the owner's data, read the catalog first.** Read whichever path exists:
 
 ```sh

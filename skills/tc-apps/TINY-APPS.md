@@ -60,17 +60,26 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (the owner's terminal).** Show the owner the announcement, then the commands below. Print the announcement file with this loop (the same loop as the first block in `SKILL.md`):
+3. **The owner's approval (the owner's terminal).** Print the approval state first, then the announcement, in one block:
 
 ```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; test -f "$STATE/owner-approved" && echo APPROVED || echo FIRST
 for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/ANNOUNCE.txt" "$HOME/.agents/skills/tc-apps/ANNOUNCE.txt"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
 ```
 
-   Then reply with the section whose heading is `=== <app>, <case> ===` in that file, where `<app>` is Health Log or Recipes, and `<case>` is `first approval` if `$STATE/owner-approved` does not exist; otherwise `already approved, install off` when `AGENT_INSTALL_ENABLED` is `false`, or `already approved, install on` when it is `true`. Copy that section's text into a code block exactly as written: no heading, no words before or after the block, no edits. Then give the commands below. The owner runs them; the agent never runs them and never passes a profile to them. Replace `<TC_BIN>` and `<STATE>` in the commands with the absolute paths resolved in setup, and send the paths, not variable names, so the commands run in a fresh terminal. Then stop and wait for the owner's reply.
+   Choose the section from the `APPROVED` or `FIRST` line printed above, never from memory. For Recipes, the marker file is `recipes-owner-approved`:
 
-   - Sign-in, first approval: `"<TC_BIN>" init --name default --paste`. If it prints `PROFILE_EXISTS`, the owner already has a default profile: they run `"<TC_BIN>" auth login --paste` instead. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
-   - Grant command: `"<TC_BIN>" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there.
-   - Wait until the owner says it's done. If the grant says `PROFILE_NOT_FOUND`, the owner has no default profile: give the `init` command above, then the grant again. If it says `AUTH_REQUIRED`, the default profile isn't signed in: give the `auth login --paste` command, then the grant again.
+   | Printed | `AGENT_INSTALL_ENABLED` | Section heading to use |
+   |---|---|---|
+   | `FIRST` | any | `=== <app>, first approval ===` |
+   | `APPROVED` | `false` | `=== <app>, already approved, install off ===` |
+   | `APPROVED` | `true` | `=== <app>, already approved, install on ===` |
+
+   `<app>` is Health Log or Recipes. Your reply starts with a code block that holds the body text of that section (the lines under its heading, not the heading), copied character for character: no paraphrase, no translation, no changed words (for example "Run the commands below", never "these commands"), and nothing before or after the block inside it. Then give the commands below. The owner runs them; the agent never runs them and never passes a profile to them. Replace `<TC_BIN>` and `<STATE>` in the commands with the absolute paths resolved in setup, and send the paths, not variable names, so the commands run in a fresh terminal. Then stop and wait for the owner's reply.
+
+   - Grant command, given first: `"<TC_BIN>" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there. A signed-in default profile needs only this one approval.
+   - Wait until the owner says it's done. If the grant says `PROFILE_NOT_FOUND`, the owner has no default profile: give `"<TC_BIN>" init --name default --paste`; if that prints `PROFILE_EXISTS`, give `"<TC_BIN>" auth login --paste` instead; then the grant again. If the grant says `AUTH_REQUIRED`, the default profile isn't signed in: give `"<TC_BIN>" auth login --paste`, then the grant again. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
+   - The agent never reads the owner's profile to decide this: the grant's own error code decides which sign-in runs.
    - **If the owner declines, cancels, or the grant fails** (anything other than the two errors above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
 
 4. **Import the grant (no screen).** This starts the agent's session in `agent-meal` and saves the full space id, which every later command passes as `--space "$SPACE"`. Short names such as `applications` fail for this profile with `ADDRESS_UNKNOWN`. The old space file is deleted first, so a failed import can't leave an earlier space in place.
@@ -97,7 +106,7 @@ case "$SPACE" in tinycloud:pkh:eip155:*:applications) "$TC_BIN" --profile agent-
 
 6. Log the record at once (§4). Don't ask again.
 
-Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`). The owner approves once per app.
+Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`) and its own approval marker, `recipes-owner-approved`, in place of `owner-approved`. The owner approves once per app.
 
 ## 4. Logging and showing the result
 
