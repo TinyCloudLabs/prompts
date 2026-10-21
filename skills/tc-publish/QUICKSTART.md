@@ -65,7 +65,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 ## Links, lifetime and lifecycle
 
 - Everything after `#` is a credential — `#tc1=…` (public) or `#v=2&p=…` (owner-only). The full URL lives only in the CLI output, the 0600 state file, the one delivery read, and the one owner message.
-- Always pass `--expires`: owner-only = the session's remaining lifetime minus 1 h (computed by the §3 block; `6d` only if the session's expiry can't be read); public 24h; unless the owner says otherwise. Past the session's end → `SESSION_LIFETIME_EXCEEDED`: shorten `--expires`, never lengthen, or renew consent. Under 60 s → refused: lengthen it.
+- Always pass `--expires`: owner-only = the session's remaining lifetime minus 1 h (computed by the §3 block; `6d` only if the session's expiry can't be read); public 24h; unless the owner says otherwise. `SESSION_LIFETIME_EXCEEDED` with "exceeds session expiry": the share would outlive the login → use a shorter `--expires`, never a longer one; under 1 h of session left → the owner starts ONE new login. With "must be at least 60 seconds from now" → use the smallest allowed value, never beyond the session end minus 1 h.
 - `share list --json` is sender history with fields `shareId`, `target` (`bearer` or `email`), `expiresAt` and `revoked`; there is no `id` field. Public ids are CIDs (`bafkr4…`), owner-only ids are 32 hex characters. Filter out revoked and expired records before calling anything active.
 - Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
 - Invalid recipients are refused before anything is published: `INVALID_ARGUMENT` "recipient email is invalid" or "recipient email domain is invalid". Ask the owner for the correct address.
