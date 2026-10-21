@@ -13,7 +13,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** §2 step 4 prints `OK` for the four files, step 7 prints `1.2.5`, and `metadata.version` in the installed `SKILL.md` (`grep version <skill folder>/SKILL.md`) is the `tc-apps` version in that site's `/skills/index.json`.
+  - **Check the install:** §2 step 4 prints `OK` for the five files, step 7 prints `<beta with the change>`, and `metadata.version` in the installed `SKILL.md` (`grep version <skill folder>/SKILL.md`) is the `tc-apps` version in that site's `/skills/index.json`.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.

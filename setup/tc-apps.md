@@ -4,11 +4,11 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.5 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
-- **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
+- **What it does:** installs the TinyCloud CLI `<beta with the change>` into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, the matching first-party app (Health Log, Recipes) is installed and logs it.
+- **Paste into Claude Code, Codex or OpenCode:** `Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, saves a 30-day sign-in (a key and session in ~/.tinycloud), and, if an app of yours handles this, asks for a grant to just that app: https://agents.tinycloud.xyz/apps`
   - **Claude Code auto mode:** its safety check asks you to name where the installed code comes from and what is saved, which that second sentence does. If it still blocks a step, see [If Claude Code still blocks it](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
-- **You approve:** your agent shows you an OpenKey link and code. Check the code, sign in with your passkey and approve: it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records.
+- **You approve:** a browser approval screen opens, and your agent tells you in one line before it does. You will see one OpenKey approval screen for this app's data. Approve it. For a meal in Health Log, that one approval covers installing the app and logging the meal. Otherwise it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a SQL index of the same records. If your browser asks to connect to devices on your network, choose Allow.
 - **Undo:** see [Undo](#undo).
 
 ## Use it in Claude (web, iOS, Android)
@@ -36,7 +36,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or `1.2.5` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as an older `1.2.3` from an earlier setup, means run all the steps of §2: step 2 upgrades it in place.
+- The last line prints a path (the owner set `TC_BIN`) or `<beta with the change>` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as an older `1.2.5` from an earlier setup, means run all the steps of §2: step 2 upgrades it in place.
 - Anything else, such as `No such file or directory` → run all the steps of §2.
 
 ## 2. Install
@@ -52,16 +52,16 @@ mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/st
 **Step 2. The CLI,** unless §1 said it is ready. It goes into a private folder that only this skill uses.
 
 ```sh
-npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.5
+npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@<beta with the change>
 ```
 
 **Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files; only `tc-wrapper.sh` is a script, and step 6 installs it.
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud.xyz/skills/apps/{SHA256SUMS,SKILL.md,QUICKSTART.md,SQL.md,tc-wrapper.sh}"
+cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud.xyz/skills/apps/{SHA256SUMS,SKILL.md,QUICKSTART.md,SQL.md,TINY-APPS.md,tc-wrapper.sh}"
 ```
 
-**Step 4. Check them.** Every file must print `OK`, one for each of the four. Anything else: stop.
+**Step 4. Check them.** Every file must print `OK`, one for each of the five. Anything else: stop.
 
 ```sh
 cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 256 -c SHA256SUMS; }
@@ -72,13 +72,13 @@ cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 
 Claude Code:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md tc-wrapper.sh "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
 ```
 
 Codex and OpenCode:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md tc-wrapper.sh "$HOME/.agents/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh "$HOME/.agents/skills/tc-apps/"
 ```
 
 **Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tc` is the skill's `tc-wrapper.sh`, copied from the download: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
@@ -87,7 +87,7 @@ cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps"
 printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" && chmod 755 "$HOME/.local/share/tc-apps/tc"
 ```
 
-**Step 7. Check the CLI runs.** It prints `1.2.5`, or the version of the owner's `TC_BIN`.
+**Step 7. Check the CLI runs.** It prints `<beta with the change>`, or the version of the owner's `TC_BIN`.
 
 ```sh
 "$HOME/.local/share/tc-apps/tc" --version

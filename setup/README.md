@@ -9,8 +9,8 @@ You need a shell, Node.js 22.20 or later, and npm.
 ## Personal records: [/apps](tc-apps.md)
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like weight, workouts or todos, and organises them into apps as you go.
-- **Paste into your agent:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
-- **You approve:** one OpenKey request that lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days.
+- **Paste into your agent:** `Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, saves a 30-day sign-in (a key and session in ~/.tinycloud), and, if an app of yours handles this, asks for a grant to just that app: https://agents.tinycloud.xyz/apps`
+- **You approve:** one OpenKey approval screen for your app's data. For a meal, it covers installing Health Log and logging the meal; otherwise it lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)

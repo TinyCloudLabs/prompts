@@ -7,13 +7,13 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.2.5` from a folder of its own.
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@<beta with the change>` from a folder of its own.
 
 ## 0. Setup, in the same prompt
 
 Add the setup link to your first request:
 
-> Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps
+> Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, saves a 30-day sign-in (a key and session in ~/.tinycloud), and, if an app of yours handles this, asks for a grant to just that app: https://agents.tinycloud.xyz/apps
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
@@ -34,7 +34,7 @@ Claude Code and Codex also ask whether you trust a folder the first time you sta
 Optional variables, set before you start the client:
 - `TC_HOME`: the CLI profile store. Without it the CLI uses `~/.tinycloud`.
 - `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
-- `TC_BIN`: the absolute path to another `tc`, CLI 1.2.5 or later. The skill then uses it instead of its own folder.
+- `TC_BIN`: the absolute path to another `tc`, CLI `<beta with the change>` or later. The skill then uses it instead of its own folder.
 
 ## What you see at sign-in
 

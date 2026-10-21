@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them.
 metadata:
-  version: "0.1.12"
+  version: "0.1.13"
 ---
 
 # Personal apps in TinyCloud
@@ -10,7 +10,7 @@ metadata:
 You keep the owner's records in their TinyCloud `default` space, under one key root: `xyz.tinycloud.agent-data/`. Records are grouped into apps, one per area of life (`fitness`, `todos`, …), which you create and extend as the owner starts tracking new things. A catalog under the root describes every app, so any agent in any conversation can find what exists and how it's stored. The owner approves access once, for 30 days, from an OpenKey link and code you show them. An optional SQL index answers questions over many records at once (§7).
 
 Operator-set, never change or unset:
-- `TC_BIN`: absolute path to `tc`, CLI 1.2.5 or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
+- `TC_BIN`: absolute path to `tc`, CLI `<beta with the change>` or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
@@ -20,6 +20,10 @@ How to run the blocks:
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s. In Codex, pass `yield_time_ms: 30000` to `exec_command`. §4 is the exception: it waits for the owner.
 - Write files only through these blocks, never with a file-editing tool. Never install anything, and don't run `tc` commands that aren't here.
 - Run §1 and §3 once per conversation.
+
+## 0. Route the request
+
+Read `TINY-APPS.md` first for any request about the owner's data. If a catalog app owns the domain, its routing there decides the target, and you log and show the result as it says. Use this skill's §1 to §8 only for a domain no catalog app owns. The owner's profile is never yours to read or use.
 
 ## 1. Read the paths and the time
 
@@ -104,7 +108,7 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.2.5` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.2.5 or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
+- The first line must be `<beta with the change>` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI `<beta with the change>` or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
 - `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or broader sign-in, `--replace-session` or `tc space host`.
