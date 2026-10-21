@@ -5,7 +5,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 ## For the owner
 
 - **What it does:** installs the TinyCloud CLI into a folder only this skill uses, and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
-- **Paste into Claude Code, Codex or OpenCode:** `Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app; otherwise, 30-day access to your records: https://agents.tinycloud.xyz/apps`
+- **Paste into Claude Code, Codex or OpenCode:** `Never install globally: no npm install -g, no sudo, no curl piped to a shell. The only install is the npm install --prefix step on the setup page; if you're about to install anything else, stop and tell me. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app; otherwise, 30-day access to your records: https://agents.tinycloud.xyz/apps`
   - **Claude Code auto mode:** its safety check asks you to name where the installed code comes from and what is saved, which that second sentence does. If it still blocks a step, see [If Claude Code still blocks it](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
 - **You approve:** one OpenKey screen for the app, or two the first time on this computer. The first is your own sign-in to TinyCloud on this computer, for 7 days, so it lists access to your whole space: your data, and the delegations you've given. The second gives your agent access to just Health Log, for 7 days. Your agent tells you before they open. Otherwise it lets the agents on this computer keep your records in your TinyCloud, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a fast, searchable copy of the same records. If your browser asks to connect to devices on your network, choose Allow. If OpenKey shows a code instead, paste it only into your own terminal, using the command your agent gives you, never into the chat.
@@ -25,7 +25,7 @@ If the owner only asked for setup or named no record, save one default record wi
 
 Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode`.
 
-Run each block as one shell tool call from your project folder, exactly as written apart from `<client>`. Install nothing else. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
+Run each block as one shell tool call from your project folder, exactly as written apart from `<client>`. Install nothing else: the only install is step 2's `npm install --prefix`, never a global one. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
 
 ## 1. Check
 

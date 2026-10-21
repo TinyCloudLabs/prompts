@@ -1,7 +1,7 @@
 #!/bin/sh
 # Owner message for one catalog app, chosen by this computer's approval state.
 # Usage: sh announce.sh healthlog | sh announce.sh recipes
-# Prints a STATE line for the agent, then the owner message between the BEGIN and END markers.
+# Prints a STATE line for the agent, then the owner message as one fenced block between the BEGIN and END markers.
 # AGENT_INSTALL_ENABLED must match TINY-APPS.md §3 (the INSTALL switch).
 AGENT_INSTALL_ENABLED=false
 TC_BIN=${TC_BIN:-$HOME/.local/share/tc-apps/tc}
@@ -17,6 +17,7 @@ ALLOW='If your browser asks to connect to devices on your network, choose Allow.
 CANCEL="If you cancel a screen, or the terminal doesn't return, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there. If the terminal prints an error, tell me the word in it."
 echo "STATE: $KIND"
 echo 'BEGIN OWNER MESSAGE'
+echo '```text'
 case "$KIND" in
   FIRST) cat <<EOF
 Run this command in your own terminal:
@@ -43,4 +44,5 @@ A browser approval screen will open: it installs this app's notes and tables in 
 EOF
   ;;
 esac
+echo '```'
 echo 'END OWNER MESSAGE'

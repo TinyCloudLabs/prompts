@@ -1,5 +1,7 @@
 # Tiny apps: the pinned catalog and routing
 
+**Install rule: never run `npm install -g`, `npm i -g`, `sudo`, or `curl … | sh`. The only install is the `npm install --prefix` step on the setup page. If you're about to install anything else, stop and tell the owner.**
+
 This file is the first thing to read for any request about the owner's data. It lists the first-party tiny apps and decides where a request is stored. The list is pinned: the app ids and links below are fixed, and you don't search for apps or read an app's knowledge to decide routing.
 
 ## 1. The catalog
@@ -13,7 +15,7 @@ A domain is owned by a catalog app when one of its words matches the request. If
 
 ## 2. Routing rule
 
-1. A catalog app owns the domain: that app is the target. Install it if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
+1. A catalog app owns the domain: that app is the target. Set the app up if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
 2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §2 to §8).
 3. The request is ambiguous between two catalog apps: ask one question that names both, then follow rule 1 for the answer.
 
@@ -66,7 +68,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
-   Your reply to the owner is exactly the text printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, in one fenced code block, then the sentence `Tell me when you have run it.` Nothing else goes in that message: no words before the code block, no paraphrase, no translation, no added or changed words. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
+   Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, as the first thing in your message: paste it exactly, with no words before it, no split, no paraphrase, no translation, no added or changed words. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
 
    The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
 

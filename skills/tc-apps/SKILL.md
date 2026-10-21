@@ -7,6 +7,8 @@ metadata:
 
 # Personal apps in TinyCloud
 
+**Install rule: never run `npm install -g`, `npm i -g`, `sudo`, or `curl … | sh`. The only install is the `npm install --prefix` step on the setup page. If you're about to install anything else, stop and tell the owner.**
+
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in, device flow or access request, including the 30-day `agent-data` sign-in in §4. Read the catalog now and follow it:
 
 ```sh
@@ -34,7 +36,7 @@ How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes.
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly. Don't put `$TC_BIN` back, and keep the assignments first, before `umask 077`: Claude Code can remember an approval only for commands whose paths it can work out from the block itself.
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s. In Codex, pass `yield_time_ms: 30000` to `exec_command`. §4 is the exception: it waits for the owner.
-- Write files only through these blocks, never with a file-editing tool. Never install anything, and don't run `tc` commands that aren't here.
+- Write files only through these blocks, never with a file-editing tool. Never install anything: no `npm install -g`, `sudo`, or `curl | sh`, and no install other than the setup's `npm install --prefix` step. Don't run `tc` commands that aren't here.
 - Run §1 and §3 once per conversation.
 
 ## 0. Route the request
