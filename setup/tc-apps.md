@@ -155,6 +155,6 @@ The agent's access ends on its own: the Health Log grant after 7 days, and the `
 sh "$HOME/.local/share/tc-apps/skill/owner-undo.sh"
 ```
 
-`PROFILE_NOT_FOUND` means you never signed in to that one; that's fine. Without `jq`, copy each `delegationCid` from `meal-grant.json`, and each CID from a `meal-grants.txt` line that ends with `xyz.tinycloud.sample.healthlog`, then run `delegation revoke -- <cid>` for each, with the same client, in the same terminal. If both files are gone, the Health Log grant still ends on its own after 7 days. If the agent gave you a different state folder or client path, set `TC_APPS_STATE` or `TC_BIN` to those before running the helper.
+`PROFILE_NOT_FOUND` means you never signed in to that one; that's fine. Without `jq`, copy the `delegationCid` from `meal-grant.json`, then run `delegation revoke -- <cid>` with the same client, in the same terminal. If `meal-grant.json` is gone, the Health Log grant still ends on its own after 7 days, and so does a grant that a renewal replaced. If the agent gave you a different state folder or client path, set `TC_APPS_STATE` or `TC_BIN` to those before running the helper.
 
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.

@@ -13,8 +13,16 @@ if [ ! -f "$DIR/$REQ" ]; then
   echo "No request file at $DIR/$REQ. Ask your agent to start the install, then run this again." >&2
   exit 1
 fi
-if ! "$TC_BIN" auth grant "$DIR/$REQ" > "$DIR/$GRANT"; then
-  echo "The grant failed. Tell your agent; do not retry the browser screen." >&2
+# Write to a temp file first: a failed or empty grant must not replace the recorded one.
+TMP=$(mktemp "$DIR/$GRANT.XXXXXX")
+trap 'rm -f "$TMP"' EXIT
+if ! "$TC_BIN" auth grant "$DIR/$REQ" > "$TMP"; then
+  echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
   exit 1
 fi
+if [ ! -s "$TMP" ]; then
+  echo 'The grant printed nothing. Tell your agent; do not retry the browser screen.' >&2
+  exit 1
+fi
+mv -f "$TMP" "$DIR/$GRANT"
 echo 'Done: tell your agent'

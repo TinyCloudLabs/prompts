@@ -37,16 +37,15 @@ case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile 
 ```
 
    - `LIVE` → go to §4.
-   - `RENEW` → the grant has ended: no live grant, or no profile. Renew with the block below, then run steps 1 to 4. The old grant file is not removed: the grant command overwrites `meal-grant.json` only after the old id is saved to `meal-grants.txt`.
+   - `RENEW` → the grant has ended: no live grant, or no profile. Renew with the block below, then run steps 1 to 4. The old grant file is not removed. A new grant replaces it only when the grant succeeds.
    - `CHECK_FAILED` (any other error, including a network error): stop. Tell the owner in one line that the Health Log check failed. Write and delete nothing; the next request checks again.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null); printf '%s\n' "$CID" | grep -qE '^bafkr4i[a-z2-7]{52}$' && printf '%s xyz.tinycloud.sample.healthlog\n' "$CID" >> "$STATE/meal-grants.txt"
 "$TC_BIN" profile delete agent-meal > /dev/null; : > "$STATE/meal-space.txt"
 ```
 
-The delete touches only `agent-meal` on this computer, never the owner's profile. The saved id stays for Undo.
+The delete touches only `agent-meal` on this computer, never the owner's profile. A replaced grant is not revoked: it lapses on its own within 7 days.
 
 1. **Your profile (no screen).** Create `agent-meal` if it doesn't exist yet:
 
