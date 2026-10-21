@@ -40,21 +40,24 @@ Don't open the link yourself, and run 1a only once per approval.
 
 If Claude Code's auto mode refuses 1a or 1b, show the owner <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait for their reply. Don't edit their settings files, and don't run the step another way.
 
-**1b. Finish with the owner's code.** Paste it between the `CODE` lines exactly as they sent it, in one tool call. Paste it exactly as sent; either case works.
+**1b. Finish in the owner's terminal.** Don't take the owner's code in chat. Give them this command to run in their own terminal, with `<TC_BIN>` and `<STATE>` filled in as in 1a:
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-cat > "$STATE/sql-code" <<'CODE'
-<the code exactly as the owner sent it>
-CODE
-"$TC_BIN" auth login --paste --manifest "$STATE/agent-data-sql.json" --expiry 30d --profile agent-data-sql < "$STATE/sql-code"
-rm -f "$STATE/sql-code" "$STATE/sql-login.err"
+"<TC_BIN>" auth login --paste --manifest "<STATE>/agent-data-sql.json" --expiry 30d --profile agent-data-sql
 ```
 
-- **`"authenticated": true` and `"declined": []`** → §2, then §6 for every kind the catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
-- **`"declined"` lists `tinycloud.sql/schema`** → the owner unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
-- **`OPENKEY_PROOF_INVALID`, or the code was cut short** → ask the owner to send the code again, and rerun 1b. Don't start a new 1a.
-- **"Delegation code not found or expired"** → the short code is more than 10 minutes old, or mistyped. Ask the owner for the full code OpenKey shows below it, and rerun 1b with that.
+Say: "Run that in your own terminal, paste the code OpenKey shows when it asks, and tell me when it's done. Use the same `TC_HOME` as this conversation: unset, unless you set it." Then check the sign-in yourself:
+
+```sh
+TC_BIN='<TC_BIN>'; umask 077
+"$TC_BIN" --profile agent-data-sql auth status --json
+```
+
+- **`"authenticated": true`** → §2, then §6 for every kind the catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
+- **`"authenticated": false`** → the owner hasn't finished. Ask them to run the command again, paste the code again, and tell you. Then check once more. Don't start a new 1a.
+- **The owner reports `tinycloud.sql/schema` declined** → they unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
+- **The owner reports `OPENKEY_PROOF_INVALID`, or the code was cut short** → ask them to run the command again and paste the code again. Don't start a new 1a.
+- **The owner reports "Delegation code not found or expired"** → the short code is more than 10 minutes old, or mistyped. Ask them to paste the full code OpenKey shows below it, when the command asks.
 - Never reuse a code for another profile.
 
 ## 2. Create the table and the view

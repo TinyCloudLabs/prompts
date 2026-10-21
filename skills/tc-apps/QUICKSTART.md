@@ -82,7 +82,7 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 You don't need to set anything up. The first time a question needs many records, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of your records:
 
 1. The agent shows an OpenKey link. Open it and sign in. OpenKey lists the request as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space, for 30 days; that's the copy.
-2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`: copy it and send it to the agent. If it has expired (after 10 minutes), send the full code OpenKey also shows. The phone-code approval can't grant this kind of access, which is why there's a code to copy.
+2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it into your own terminal, where the agent gives you a command to run, and keep it out of the chat. If it has expired (after 10 minutes), paste the full code OpenKey also shows. The phone-code approval can't grant this kind of access, which is why there's a code.
 3. The agent finishes, builds the copy from your records, and says when it's done. From then on it answers questions over many records with one lookup instead of reading every record. The agent's own thinking still takes most of the time.
 
 If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
@@ -91,7 +91,7 @@ Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.
 - **When the index expires** after 30 days, everything keeps working, more slowly, until you approve it again.
 - **Its reach is wider than its label.** The approval names one database, but TinyCloud's node also lets it open your `default` space's other SQL databases. The agent only ever uses the index.
-- **The code you paste** stays in the conversation's history. It works only with this computer's `agent-data-sql` profile key, and a short code expires after 10 minutes.
+- **The code** is typed only into your own terminal, so it stays out of the conversation's history. It works only with this computer's `agent-data-sql` profile key, and a short code expires after 10 minutes.
 
 ## What the sign-ins grant
 

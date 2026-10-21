@@ -146,11 +146,18 @@ This covers only those two commands of this CLI. It doesn't turn auto mode off o
 
 For the owner. Run these in a terminal where `TC_BIN` and `TC_HOME` have the values you started the client with, or are unset if you never set them: `TC_BIN` picks the CLI (otherwise the setup's `~/.local/share/tc-apps/tc`), and the CLI reads `TC_HOME` to find its profiles.
 
-If you signed in, each command clears one local session. The approvals stay valid on TinyCloud until they expire, after 30 days. `PROFILE_NOT_FOUND` means you never signed in to that one; that's fine.
+If you signed in, each command clears one local session. Approvals stay valid on TinyCloud until they expire: the `agent-data` approvals for 30 days, and the Health Log grant for 7 days. `PROFILE_NOT_FOUND` means you never signed in to that one; that's fine.
 
 ```sh
-"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data auth logout
-"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data-sql auth logout
+TC="${TC_BIN:-$HOME/.local/share/tc-apps/tc}"
+"$TC" --profile agent-data auth logout
+"$TC" --profile agent-data-sql auth logout
+"$TC" profile delete agent-meal
+STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
+CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null)
+[ -n "$CID" ] && "$TC" delegation revoke "$CID"
 ```
+
+The last two lines end the Health Log grant and need `jq`. Without `jq`, copy the `delegationCid` value from `meal-grant.json` and run `"$TC" delegation revoke <cid>`. If that file is gone, the grant ends by itself after 7 days. Your own `default` sign-in stays, because other TinyCloud tools use it.
 
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
