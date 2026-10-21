@@ -149,7 +149,7 @@ This covers only those two commands of this CLI. It doesn't turn auto mode off o
 
 For the owner. Run these in your own terminal, not in an AI agent's shell: each revoke asks you to confirm `[y/N]` in that terminal, and an agent's shell can't answer it. Use a terminal where `TC_BIN` and `TC_HOME` have the values you started the client with, or are unset if you never set them.
 
-The agent's access ends on its own: the Health Log grant after 7 days, and the `agent-data` sign-in after 30 days. To end it sooner, run the commands below in your own terminal. Each saved grant asks `[y/N]` there: answer `y`, then approve the OpenKey screen if one opens. `profile delete agent-meal` also asks `[y/N]`. Your `default` sign-in stays, because other TinyCloud tools use it.
+The agent's access ends on its own: the Health Log grant after 7 days, and the `agent-data` sign-in after 30 days. To end it sooner, run the commands below in your own terminal. The current Health Log grant asks `[y/N]` there: answer `y`, then approve the OpenKey screen if one opens. `profile delete agent-meal` also asks `[y/N]`. Your `default` sign-in stays, because other TinyCloud tools use it.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tc-apps/tc}"
@@ -157,7 +157,7 @@ STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 "$TC" --profile agent-data auth logout
 "$TC" --profile agent-data-sql auth logout
 "$TC" profile delete agent-meal
-{ jq -r --arg app xyz.tinycloud.sample.healthlog 'select((.delegationCid // "") != "") | "\(.delegationCid) \($app)"' "$STATE/meal-grant.json" 2>/dev/null; cat "$STATE/meal-grants.txt" 2>/dev/null; } | grep -E '^bafkr4i[a-z2-7]{52} xyz\.tinycloud\.sample\.healthlog$' | cut -d' ' -f1 | sort -u | while IFS= read -r CID; do "$TC" delegation revoke -- "$CID" < /dev/tty; done
+CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null); printf '%s\n' "$CID" | grep -E '^bafkr4i[a-z2-7]{52}$' | while IFS= read -r CID; do "$TC" delegation revoke -- "$CID" < /dev/tty; done
 ```
 
 `PROFILE_NOT_FOUND` means you never signed in to that one; that's fine. Without `jq`, copy each `delegationCid` from `meal-grant.json`, and each CID from a `meal-grants.txt` line that ends with `xyz.tinycloud.sample.healthlog`, then run `"$TC" delegation revoke -- <cid>` for each, in the same terminal. If both files are gone, the Health Log grant still ends on its own after 7 days. If the agent gave you a different state folder or client path, use those on the `STATE` and `TC` lines.
