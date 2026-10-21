@@ -40,7 +40,7 @@ case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile 
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null); [ -n "$CID" ] && printf '%s\n' "$CID" >> "$STATE/meal-grants.txt"
+CID=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null); printf '%s\n' "$CID" | grep -qE '^bafkr4i[a-z2-7]{52}$' && printf '%s xyz.tinycloud.sample.healthlog\n' "$CID" >> "$STATE/meal-grants.txt"
 "$TC_BIN" profile delete agent-meal > /dev/null; rm -f "$STATE/meal-space.txt"
 ```
 
@@ -60,7 +60,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (the owner's terminal).** Send the owner one message, then the commands below. The message is the quoted block, with one of the three sentences in `{SCREENS}`. Say the block verbatim, including the Ctrl-C and Allow sentences. Use the first-approval sentence if `$STATE/owner-approved` does not exist; otherwise use the sentence for the `AGENT_INSTALL_ENABLED` value. The owner runs the commands; the agent never runs them and never passes a profile to them.
+3. **The owner's approval (the owner's terminal).** Send the owner one message, then the commands below. The message is the quoted block, with one of the three sentences in `{SCREENS}`. Say the block verbatim, including the Ctrl-C and Allow sentences. Use the first-approval sentence if `$STATE/owner-approved` does not exist; otherwise use the sentence for the `AGENT_INSTALL_ENABLED` value. The owner runs the commands; the agent never runs them and never passes a profile to them. Replace `<TC_BIN>` and `<STATE>` in the commands with the absolute paths resolved in setup, and send the paths, not variable names, so the commands run in a fresh terminal.
 
    > Run the commands below in your own terminal, one after the other. {SCREENS} If your browser asks to connect to devices on your network, choose Allow. If you cancel a screen, press Ctrl-C in that terminal and tell me. If the page shows a code instead, don't send it to me: I'll give you a command to run in your own terminal, and you paste the code there.
 
@@ -69,8 +69,8 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
    - Already approved, `AGENT_INSTALL_ENABLED` is `false`: "A browser approval screen will open. Approve it to let me log this in your <App name> app, and nothing else."
    - Already approved, `AGENT_INSTALL_ENABLED` is `true`: "A browser approval screen will open: it installs this app's notes and tables in your TinyCloud, adds entries, and lets me log this in your <App name> app. Approve it."
 
-   - Sign-in, first approval: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" init --name default --paste`. If it prints `PROFILE_EXISTS`, the owner already has a default profile: they run `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth login --paste` instead. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
-   - Grant command: `"${TC_BIN:-$HOME/.local/share/tc-apps/tc}" auth grant "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}/meal-request.json" > "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there.
+   - Sign-in, first approval: `"<TC_BIN>" init --name default --paste`. If it prints `PROFILE_EXISTS`, the owner already has a default profile: they run `"<TC_BIN>" auth login --paste` instead. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on.
+   - Grant command: `"<TC_BIN>" auth grant "<STATE>/meal-request.json" > "<STATE>/meal-grant.json"`. OpenKey asks the owner to approve it; if the owner's terminal prompts instead, they answer it there.
    - Wait until the owner says it's done. If the grant says `PROFILE_NOT_FOUND`, the owner has no default profile: give the `init` command above, then the grant again. If it says `AUTH_REQUIRED`, the default profile isn't signed in: give the `auth login --paste` command, then the grant again.
    - **If the owner declines, cancels, or the grant fails** (anything other than the two errors above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
 

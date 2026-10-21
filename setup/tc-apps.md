@@ -157,10 +157,9 @@ STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 "$TC" --profile agent-data auth logout
 "$TC" --profile agent-data-sql auth logout
 "$TC" profile delete agent-meal
-CIDS=$({ jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null; cat "$STATE/meal-grants.txt" 2>/dev/null; } | sort -u)
-for CID in $CIDS; do "$TC" delegation revoke "$CID"; done
+{ jq -r --arg app xyz.tinycloud.sample.healthlog 'select((.delegationCid // "") != "") | "\(.delegationCid) \($app)"' "$STATE/meal-grant.json" 2>/dev/null; cat "$STATE/meal-grants.txt" 2>/dev/null; } | grep -E '^bafkr4i[a-z2-7]{52} xyz\.tinycloud\.sample\.healthlog$' | cut -d' ' -f1 | sort -u | while IFS= read -r CID; do "$TC" delegation revoke -- "$CID" < /dev/null; done
 ```
 
-`PROFILE_NOT_FOUND` means you never signed in to that one; that's fine. Without `jq`, copy each `delegationCid` from `meal-grant.json` and `meal-grants.txt` and run `"$TC" delegation revoke <cid>` for each, in the same terminal. If both files are gone, the Health Log grant still ends on its own after 7 days.
+`PROFILE_NOT_FOUND` means you never signed in to that one; that's fine. Without `jq`, copy each `delegationCid` from `meal-grant.json`, and each CID from a `meal-grants.txt` line that ends with `xyz.tinycloud.sample.healthlog`, then run `"$TC" delegation revoke -- <cid>` for each, in the same terminal. If both files are gone, the Health Log grant still ends on its own after 7 days. If the agent gave you a different state folder or client path, use those on the `STATE` and `TC` lines.
 
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
