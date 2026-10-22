@@ -6,8 +6,8 @@
 AGENT_INSTALL_ENABLED=false
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "$1" in
-  healthlog) NAME='Health Log'; MARK=owner-approved ;;
-  recipes) NAME=Recipes; MARK=recipes-owner-approved ;;
+  healthlog) NAME='Health Log'; MARK=owner-approved; ACCESS="read it, add, change and delete its entries, save notes and preference files in it, and it can create, change and delete this app's tables" ;;
+  recipes) NAME=Recipes; MARK=recipes-owner-approved; ACCESS='read it, add, change and delete its entries, save notes and preference files in it' ;;
   *) echo 'usage: sh announce.sh healthlog | recipes' >&2; exit 2 ;;
 esac
 if [ ! -f "$DIR/$MARK" ]; then KIND=FIRST; elif [ "$AGENT_INSTALL_ENABLED" = true ]; then KIND=APPROVED-ON; else KIND=APPROVED-OFF; fi
@@ -21,7 +21,7 @@ echo '```text'
 case "$KIND" in
   FIRST) cat <<EOF
 # Run this in your own terminal. Approve each browser screen that opens; you may see one or two, one at a time.
-# Together they let me log in your $NAME app, for 7 days, and nothing else.
+# Together they let me work in your $NAME app for 7 days: $ACCESS.
 $ALLOW
 $CANCEL
 $GRANT_CMD
@@ -29,14 +29,14 @@ EOF
   ;;
   APPROVED-OFF) cat <<EOF
 # Run this in your own terminal. A browser approval screen will open: approve it.
-# It lets me log in your $NAME app, for 7 days, and nothing else.
+# It lets me work in your $NAME app for 7 days: $ACCESS.
 $ALLOW
 $CANCEL
 $GRANT_CMD
 EOF
   ;;
   APPROVED-ON) cat <<EOF
-# Run this in your own terminal. A browser approval screen will open: approve it. It installs this app's notes and tables in your TinyCloud, adds entries, and lets me log in your $NAME app, for 7 days.
+# Run this in your own terminal. A browser approval screen will open: approve it. It installs this app's notes and tables in your TinyCloud, adds entries, and lets me work in your $NAME app for 7 days: $ACCESS.
 $ALLOW
 $CANCEL
 $GRANT_CMD
