@@ -23,7 +23,10 @@ trap cleanup EXIT
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
 trap 'cancel 129' HUP
-if ! "$TC_BIN" auth grant "$DIR/$REQ" > "$TMP"; then
+RC=0
+"$TC_BIN" auth grant "$DIR/$REQ" > "$TMP" || RC=$?
+if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
+if [ "$RC" -ne 0 ]; then
   echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
   exit 1
 fi
