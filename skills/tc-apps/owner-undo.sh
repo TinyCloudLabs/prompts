@@ -16,7 +16,8 @@ trap 'cancel 129' HUP
 CIDS=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null | grep -E '^bafkr4i[a-z2-7]{52}$' || true)
 FAIL=0
 for CID in $CIDS; do
-  if "$TC" delegation revoke -- "$CID" < /dev/tty; then REVOKED=1; else FAIL=1; fi
+  "$TC" delegation revoke -- "$CID" < /dev/tty; RC=$?
+  if [ "$RC" -eq 0 ]; then REVOKED=1; elif [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; else FAIL=1; fi
 done
 if [ "$FAIL" -ne 0 ]; then
   echo 'A revoke failed. Tell your agent; do not retry the browser screen.' >&2
