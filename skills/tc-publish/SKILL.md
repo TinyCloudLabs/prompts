@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.6"
+  version: "0.5.7"
 ---
 
 # Publish documents and HTML with `tc share`
@@ -289,7 +289,7 @@ TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL onl
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
 if [ -z "$EXPIRES" ]; then
-  echo "SESSION_ENDING: about 1 h or less of session left, or its expiry can't be read; renew consent (§2) before publishing"
+  echo "SESSION_ENDING: about 1 h or less of session left; renew consent (§2) before publishing"
 elif [ -z "$TC_SHARE_TO" ]; then
   echo "RECIPIENT_UNSET: ask the owner who should be able to open it"
 else
