@@ -64,20 +64,9 @@ Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`,
 
 ### 3. Publish, with an expiry
 
-Always pass `--expires` and tell the owner the date. Default when omitted is 7 days; the skill uses 7d for private and 24h for public links. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
+Always pass `--expires` and tell the owner the date. Owner-only links default to the publisher session's remaining lifetime minus 1 h (6d if its expiry can't be read); public links use 24h. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
 
-Run through the skill's §3 blocks, which wrap exactly these commands. Shape of the command, with `$TC_BIN` and `$PROFILE` from the skill's preamble (`PROFILE=publisher`):
-
-```sh
-# one person: TC_SHARE_TO is the address the owner named (the owner's own address only for a link for themselves)
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires 7d --json
-
-# anyone with the link
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to anyone --expires 24h --json
-
-# everyone at a domain
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "domain:example.com" --expires 7d --json
-```
+Publish only through the skill's §3 blocks (`skills/tc-publish/SKILL.md`). They compute `--expires` from the publisher session and handle `RECIPIENT_UNSET` and `SESSION_ENDING`. Run EXACTLY those blocks; do not write your own `share publish` command.
 
 - `--json` prints redacted metadata with `metadata.shareId`; the link is not in it. Get the link as the skill does: `"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link`. Never combine `--reveal-link` with `--json`.
 - Everything after `#` in a link is the credential. Follow the skill's handling contract for storing and delivering it. Never retype or chunk a link.
