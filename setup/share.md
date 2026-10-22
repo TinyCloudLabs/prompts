@@ -58,26 +58,15 @@ Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`,
 
 - **JSX:** `export default function App() { … }` in one file. The libraries available to it are `react` 19 (and `react-dom/client`), `lucide-react` (icons), `recharts` (charts), `d3`, `mermaid` 11 (diagrams) and Tailwind CSS classes (browser runtime). Nothing else can be imported. The code runs sandboxed: no network, no CDN, no storage, no cookies and no access to the page around it, so embed the data. An import that isn't in this list shows a "library not available" panel instead of the page.
 - **TinyCloud style tokens** are available in JSX artifacts only; plain HTML pages don't get them. CSS variables: `var(--tc-color-page|surface|text|text-muted|border|accent|on-accent|link)`, `var(--tc-space-1…7)`, `var(--tc-radius-sm|md|lg)`, `var(--tc-font-sans|mono)`. Tailwind classes map to them: colors `tc-page|surface|subtle|active|text|muted|border|accent|accent-hover|on-accent|success|warning|danger` (`bg-tc-surface`, `text-tc-muted`, `border-tc-border`), `rounded-tc-sm|md|lg`, `font-tc-sans|mono`. Light and dark follow the system. In a plain HTML page the variables are undefined, so any `var(--tc-…)` there needs a fallback value, for example `var(--tc-color-text, #1a1c21)`.
-- **Pin a version:** `--artifact new` stores the file as write-once version 1 and pins the link to it; a later publish of changed content with `--artifact <id>` (the `artifactId` in the JSON) makes version 2 with its own link, and the earlier link keeps showing version 1 (identical bytes to a bearer link return the same version). Needs CLI 1.3.0-beta.10 or newer, not the 1.2.5 this site pins; check with `"$TC_BIN" share publish --help | grep -q -- --artifact`. A profile approved on an older CLI must go through the skill's §2 consent again to add the `artifacts/` scope. A pinned share is read-only: `--action edit` is refused with `--artifact`.
+- **Pin a version:** `--artifact new` stores the file as write-once version 1 and pins the link to it; a later publish of changed content with `--artifact <id>` (the `artifactId` in the JSON) makes version 2 with its own link, and the earlier link keeps showing version 1 (identical bytes to a bearer link return the same version). Needs CLI 1.3.0-beta.10 or newer; the 1.3.0 this site pins has it. Check with `"$TC_BIN" share publish --help | grep -q -- --artifact`. A profile approved on an older CLI must go through the skill's §2 consent again to add the `artifacts/` scope. A pinned share is read-only: `--action edit` is refused with `--artifact`.
 - **Revoke:** `share revoke <id>` closes the link. Copies already opened or downloaded can't be recalled.
 - Never put secrets or tokens in an artifact: everyone who holds the link can read its source.
 
 ### 3. Publish, with an expiry
 
-Always pass `--expires` and tell the owner the date. Default when omitted is 7 days; the skill uses 7d for private and 24h for public links. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
+Always pass `--expires` and tell the owner the date. Owner-only links default to the publisher session's remaining lifetime minus 1 h (6d if its expiry can't be read); public links use 24h. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
 
-Run through the skill's §3 blocks, which wrap exactly these commands. Shape of the command, with `$TC_BIN` and `$PROFILE` from the skill's preamble (`PROFILE=publisher`):
-
-```sh
-# one person: TC_SHARE_TO is the address the owner named (the owner's own address only for a link for themselves)
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires 7d --json
-
-# anyone with the link
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to anyone --expires 24h --json
-
-# everyone at a domain
-"$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "domain:example.com" --expires 7d --json
-```
+Publish only through the skill's §3 blocks (`skills/tc-publish/SKILL.md`). They compute `--expires` from the publisher session and handle `RECIPIENT_UNSET` and `SESSION_ENDING`. Run EXACTLY those blocks; do not write your own `share publish` command.
 
 - `--json` prints redacted metadata with `metadata.shareId`; the link is not in it. Get the link as the skill does: `"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link`. Never combine `--reveal-link` with `--json`.
 - Everything after `#` in a link is the credential. Follow the skill's handling contract for storing and delivering it. Never retype or chunk a link.

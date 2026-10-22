@@ -4,7 +4,7 @@ Your agent keeps your records, like weight, workouts, goals or todos, in your ow
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI 1.2.5 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
+- **What it does:** installs the TinyCloud CLI 1.3.0 into a folder only this skill uses and the `tc-apps` skill for your user, then carries out your request.
 - **Paste into Claude Code, Codex or OpenCode:** `Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps`
   - **Claude Code auto mode:** its safety check asks you to name where the installed code comes from and what is saved, which that second sentence does. If it still blocks a step, see [If Claude Code still blocks it](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
@@ -36,7 +36,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or `1.2.5` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as an older `1.2.3` from an earlier setup, means run all the steps of §2: step 2 upgrades it in place.
+- The last line prints a path (the owner set `TC_BIN`) or `1.3.0` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as an older `1.2.3` from an earlier setup, means run all the steps of §2: step 2 upgrades it in place.
 - Anything else, such as `No such file or directory` → run all the steps of §2.
 
 ## 2. Install
@@ -52,7 +52,7 @@ mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/st
 **Step 2. The CLI,** unless §1 said it is ready. It goes into a private folder that only this skill uses.
 
 ```sh
-npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.2.5
+npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.3.0
 ```
 
 **Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files; only `tc-wrapper.sh` is a script, and step 6 installs it.
@@ -87,7 +87,7 @@ cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps"
 printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" && chmod 755 "$HOME/.local/share/tc-apps/tc"
 ```
 
-**Step 7. Check the CLI runs.** It prints `1.2.5`, or the version of the owner's `TC_BIN`.
+**Step 7. Check the CLI runs.** It prints `1.3.0`, or the version of the owner's `TC_BIN`.
 
 ```sh
 "$HOME/.local/share/tc-apps/tc" --version

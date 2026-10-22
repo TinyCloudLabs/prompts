@@ -7,7 +7,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.2.5` from a folder of its own.
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.0` from a folder of its own.
 
 ## 0. Setup, in the same prompt
 

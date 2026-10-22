@@ -7,7 +7,7 @@ Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.2.5
+npm install --prefix <dir> @tinycloud/cli@1.3.0
 export TC_BIN=<dir>/node_modules/.bin/tinycloud
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
@@ -33,7 +33,7 @@ That rebuilds the state paths, keeps the state directory at 0700, repairs any re
 1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: `enable share` must offer `--replace-session` and `auth login` must offer `--expiry`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
 2. **Check the profile and session** (§2, first block). `SESSION: present` means consent already exists — go straight to publishing. Return to consent only when a publish fails with `AUTH_REQUIRED` or `PERMISSION_DENIED`, and only once: `STORAGE_QUOTA_EXCEEDED` and `UPLOAD_FAILED` are never consent problems. `init` runs only when the profile doesn't exist (`PROFILE_NOT_FOUND`); any other failure stops the flow. Never `profile delete`.
 3. **Consent** (§2, waiter). The agent writes a small waiter script into `$STATE` and starts it so it outlives the tool call and the turn — as the harness's supervised background process if there is one, otherwise detached with `setsid nohup … < /dev/null &`. In a **separate** command it checks that the waiter is alive and the `Approve on your phone:` line is in `$LOG`; only then does it send the approval message, word for word from the template. `enable share` has no `--expiry`; it requests 30 days and the owner can choose shorter on the consent page. For a shorter request, the waiter script takes the lifetime as a second argument and runs `auth login --device --manifest builtin:share-publishing --expiry <1m–30d>`.
-4. **Publish** (§3). Exactly one of the two blocks — owner-only by default, public only when the owner explicitly asked. The block publishes with `--json`, records the share id, and saves the link to `$STATE/last-url` with `share show <id> --reveal-link`, so the link never prints. A failed publish prints `PUBLISH_FAILED: <code>` and leaves no link file.
+4. **Publish** (§3). Exactly one of the two blocks — owner-only by default, public only when the owner explicitly asked. The block publishes with `--json`, records the share id, and saves the link to `$STATE/last-url` with `share show <id> --reveal-link`, so the link never prints. A failed publish prints `PUBLISH_FAILED: <code>` and leaves no link file. Run EXACTLY the block; do not write your own `share publish` command.
 5. **Verify** (§4). Public: receive the link and compare SHA-256 with the source → `VERIFIED` or `MISMATCH (reason)`. Owner-only: the agent can't receive it (`CLAIM_REQUIRED` is expected), so it checks `share inspect` against the publish record and the sender record: email target, same share id, same stored path, display name equal to the file name, identical expiry, `policy` link, recipient = `$TC_SHARE_TO` lowercased (the CLI canonicalizes the whole address to lower case).
 6. **Deliver, report, clean up** (§6). Hand the link to the owner in the reply with the recipient and expiry, and nowhere else; report with the template for the link type (either link type can be revoked any time before it expires), then delete the state files.
 
@@ -65,7 +65,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 ## Links, lifetime and lifecycle
 
 - Everything after `#` is a credential — `#tc1=…` (public) or `#v=2&p=…` (owner-only). The full URL lives only in the CLI output, the 0600 state file, the one delivery read, and the one owner message.
-- Always pass `--expires`: 7d owner-only, 24h public, unless the owner says otherwise. Beyond the session's end → `SESSION_LIFETIME_EXCEEDED` (shorten or renew consent); under 60 s → refused (lengthen).
+- Always pass `--expires`: owner-only = the session's remaining lifetime minus 1 h (computed by the §3 block; `6d` only if the session's expiry can't be read); public 24h; unless the owner says otherwise. `SESSION_LIFETIME_EXCEEDED` with "exceeds session expiry": the share would outlive the login → use a shorter `--expires`, never a longer one; under 1 h of session left → the owner starts ONE new login. With "must be at least 60 seconds from now" → use the smallest allowed value, never beyond the session end minus 1 h.
 - `share list --json` is sender history with fields `shareId`, `target` (`bearer` or `email`), `expiresAt` and `revoked`; there is no `id` field. Public ids are CIDs (`bafkr4…`), owner-only ids are 32 hex characters. Filter out revoked and expired records before calling anything active.
 - Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
 - Invalid recipients are refused before anything is published: `INVALID_ARGUMENT` "recipient email is invalid" or "recipient email domain is invalid". Ask the owner for the correct address.
