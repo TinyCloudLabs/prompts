@@ -25,6 +25,8 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. Don't ask any question in chat before that, and don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the full space id `$SPACE` saved in step 4.
 
+**Say the two steps first.** Setup has two steps: the owner signs in to, or creates, their OpenKey so you know who they are, then gives you permission to do what they asked. The `FIRST` message from `announce.sh` opens with that in plain words: send it unchanged, as below. Carry on from there without detours: no extra questions, no other route. In what you say to the owner, call it "permission", not "delegation", "DID" or "capability".
+
 `AGENT_INSTALL_ENABLED` is `false` now: the agent logs into a Health Log that is already set up. Set it to `true` once `tinycloud apps install` ships. The same switch is set in `announce.sh`; change both together. Only the step marked INSTALL depends on it.
 
 Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent uses only its own profile, `agent-meal`, and never passes a profile to an owner command. The agent starts no browser and waits for no code: the owner's sign-in and grant are in step 3, the import in step 4.

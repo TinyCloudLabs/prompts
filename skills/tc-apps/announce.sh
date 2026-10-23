@@ -20,6 +20,7 @@ echo 'BEGIN OWNER MESSAGE'
 echo '```text'
 case "$KIND" in
   FIRST) cat <<EOF
+# TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked.
 # Run this in your own terminal. Approve each browser screen that opens; you may see one or two, one at a time.
 # Together they let me work in your $NAME app for 7 days: $ACCESS.
 $ALLOW
