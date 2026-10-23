@@ -18,7 +18,7 @@ Before the first approval, say the two steps in plain words, once: "TinyCloud is
 
 ### 1. CLI
 
-Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It installs `@tinycloud/cli@1.3.0` in `~/.local/share/tinycloud/cli` or uses the operator's existing `TC_BIN`, without changing a conflicting `tc` or using sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
+Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It installs `@tinycloud/cli@1.3.4` in `~/.local/share/tinycloud/cli` or uses the operator's existing `TC_BIN`, without changing a conflicting `tc` or using sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
 
 ### 2. Non-secret owner defaults
 
