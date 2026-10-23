@@ -131,9 +131,9 @@ Claude Code's auto mode can refuse the install or the sign-in step, for example 
 
 **For coding agents:** if Claude Code refuses a step, show the owner this section and wait for their reply.
 
-### Allow rule for the sign-in (autoMode.allow)
+### Optional: a setting that removes the sign-in confirmation
 
-Or add an allow rule for the sign-in:
+This part is optional. Set it only if you choose to: the agent does not need it and does not set it. It is a line you add yourself in your Claude Code settings. It removes the confirmation dialog for the TinyCloud sign-in command. Without it, the dialog still appears, and you can answer it yourself.
 
 1. Open `~/.claude/settings.json`, or `$CLAUDE_CONFIG_DIR/settings.json` if you set that: your user settings. Claude Code ignores `autoMode` in a project's settings files. Or run `/permissions` in Claude Code (2.1.246 or later), open the **Auto mode** tab and add the second string below as an allow rule.
 2. Add this entry. If the file already has `autoMode.allow`, add only the second string to it and leave the rest. If that list doesn't start with `"$defaults"`, it already replaces Claude Code's built-in rules: add `"$defaults"` only if you want them back.

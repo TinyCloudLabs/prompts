@@ -23,7 +23,7 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. A code OpenKey shows during the owner's sign-in goes into the terminal where that sign-in is running; if the owner pastes one in the chat, say where it goes and carry on. Don't ask any question in chat before that, and don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the full space id `$SPACE` saved in step 4.
 
-**Say the two steps first.** The owner signs in to, or creates, their OpenKey, then gives you permission for what they asked; signing in is not what gives you access. The `FIRST` message from `announce.sh` says this in plain words: send it unchanged. If the action skill's own message already opens with this, don't repeat it. Call it "permission", not "delegation", "DID" or "capability".
+**Say the two steps first.** The owner signs in to, or creates, their OpenKey, then gives you permission for what they asked; signing in is not what gives you access. The `FIRST` message from `announce.sh` says this: copy that message into your reply exactly, character for character, once, and do not reword any line of it. If the action skill's own message already opens with this, don't repeat it. Call it "permission", not "delegation", "DID" or "capability".
 
 `AGENT_INSTALL_ENABLED` is `false` now: the agent logs into a Health Log that is already set up. Set it to `true` once `tinycloud apps install` ships. The same switch is set in `announce.sh`; change both together. Only the step marked INSTALL depends on it.
 
@@ -67,7 +67,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
-   Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, once and unchanged, in one code fence, with nothing before it. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
+   Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, copied exactly, character for character, once, in one code fence, with nothing before it. Do not reword any line of it. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
 
    The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
 

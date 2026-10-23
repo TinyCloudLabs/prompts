@@ -18,6 +18,7 @@ CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C an
 echo "STATE: $KIND"
 echo 'BEGIN OWNER MESSAGE'
 echo '```text'
+echo '# Verbatim: copy this message exactly as printed, character for character, once, in one code fence, and do not reword it. A reworded command, approval link or code can fail.'
 case "$KIND" in
   FIRST) cat <<EOF
 # TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked.
