@@ -8,7 +8,7 @@ Keep the owner's original request and your client (`claude-code`, `codex` or `op
 
 ### Before any approval screen opens
 
-Before the first approval, say the two steps once, copying the quoted text exactly, character for character, without rewording it: "TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked. Signing in is not what gives me access; the permission is the separate approval." If the action skill's own message already opens with this, don't repeat it. Say which approval screens will open, using that message, and carry on without extra questions. Call it "permission", not "delegation", "DID" or "capability".
+Before the first approval, say the two steps once, copying the quoted text exactly, character for character, without rewording it: "TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked." If the action skill's own message already opens with this, don't repeat it. Say which approval screens will open, using that message, and carry on without extra questions. Call it "permission", not "delegation", "DID" or "capability".
 
 ### What is and isn't secret
 
