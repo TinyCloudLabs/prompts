@@ -9,7 +9,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 
 It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.1` from a folder of its own.
 
-Permission slips and approval codes are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
+A permission slip and the code OpenKey shows after you approve are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
 ## 0. Setup, in the same prompt
 
@@ -84,7 +84,7 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 You don't need to set anything up. The first time a question needs many records, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of your records:
 
 1. The agent shows an OpenKey link. Open it and sign in. OpenKey lists the request as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space, for 30 days; that's the copy.
-2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it in the chat and the agent finishes the sign-in, or paste it into your own terminal with the command the agent gives you. A short code works once and expires after a few minutes; if it has expired, paste the full code OpenKey also shows.
+2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it in the chat and the agent finishes the sign-in, or paste it into your own terminal with the command the agent gives you. A short code works once and expires within minutes; if it has expired, paste the full code OpenKey also shows.
 3. The agent finishes, builds the copy from your records, and says when it's done. From then on it answers questions over many records with one lookup instead of reading every record. The agent's own thinking still takes most of the time.
 
 If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
@@ -93,7 +93,7 @@ Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.
 - **When the index expires** after 30 days, everything keeps working, more slowly, until you approve it again.
 - **Its reach is wider than its label.** The approval names one database, but TinyCloud's node also lets it open your `default` space's other SQL databases. The agent only ever uses the index.
-- **The code** works only with this computer's `agent-data-sql` profile key. It's a permission slip, so it's fine to paste in the chat. A short code works once and expires after a few minutes.
+- **The code** is a permission slip for this computer's `agent-data-sql` profile, so it's fine to paste in the chat. A short code only works for the sign-in that asked for it, works once, and expires within minutes.
 
 ## What the sign-ins grant
 

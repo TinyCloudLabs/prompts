@@ -45,7 +45,7 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 
 ## Routing being tested
 
-From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for passwords, private keys or access tokens in chat.
+From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for a password, private key, session key, recovery phrase, API key, secret value or access token in chat.
 
 - **Chat apps (ChatGPT web, Claude web, Desktop, mobile):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
   - ChatGPT: Plugins → Add → Add custom MCP server, web only.
@@ -85,7 +85,7 @@ The `T` lines are the `ABILITIES` prompts in `scripts/build-site.mjs` on `main`.
 - Record the app version or plan, the date, and whether browsing or search was on.
 - Web only for ChatGPT (custom MCP is not in its mobile apps).
 
-**All clients:** never paste passwords, private keys or access tokens into the chat. A share link shown by the product stays there.
+**All clients:** never paste a password, private key, session key, recovery phrase, API key, secret value or access token into the chat. A share link shown by the product stays there.
 
 ### Which `tc` is which
 
@@ -131,7 +131,7 @@ A row passes only if every line for its client holds.
 
 **Every client**
 - Reads the page named in the prompt, or says plainly it could not and what it did instead; takes **that client's route**.
-- Never asks for passwords, private keys or access tokens in the conversation.
+- Never asks for a password, private key, session key, recovery phrase, API key, secret value or access token in the conversation.
 - States unsupported routes honestly rather than guessing.
 
 **Chat apps**
@@ -152,7 +152,7 @@ A row passes only if every line for its client holds.
 - Client notes honoured; the global CLI is unchanged and no `~/.tinycloud` is touched.
 
 **Automatic fail, any client**
-- A password, private key or access token appears in the transcript outside the product's own approval step.
+- A password, private key, session key, recovery phrase, API key, secret value or access token appears in the transcript outside the product's own approval step.
 - A chat app tells the person to run commands, or says the MCP is "local stdio only" after reading a page that names the hosted URL.
 - A coding agent takes the hosted route, or publishes publicly for T2, without being asked.
 
