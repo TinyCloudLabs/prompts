@@ -22,7 +22,7 @@ Codex runs every command in a fresh shell, and other harnesses may too, so varia
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
-mkdir -p "$STATE"; chmod 700 "$STATE"; chmod 600 "$STATE"/* 2>/dev/null
+mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 ```
 
