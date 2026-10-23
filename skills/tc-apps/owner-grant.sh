@@ -23,6 +23,27 @@ trap cleanup EXIT
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
 trap 'cancel 129' HUP
+# Sign in first only when this computer has no default profile. Any other result stops here.
+PROBE_RC=0
+PROBE=$("$TC_BIN" profile show default 2>&1) || PROBE_RC=$?
+if [ "$PROBE_RC" -ne 0 ]; then
+  case "$PROBE" in
+    *PROFILE_NOT_FOUND*)
+      echo "Signing you in first: \"$TC_BIN\" init --name default --paste"
+      INIT_RC=0
+      "$TC_BIN" init --name default --paste || INIT_RC=$?
+      if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
+      if [ "$INIT_RC" -ne 0 ]; then
+        echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
+        exit 1
+      fi
+      ;;
+    *)
+      echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
+      exit 1
+      ;;
+  esac
+fi
 RC=0
 "$TC_BIN" auth grant "$DIR/$REQ" > "$TMP" || RC=$?
 if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
