@@ -9,6 +9,8 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 
 It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.1` from a folder of its own.
 
+Permission slips and approval codes are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
+
 ## 0. Setup, in the same prompt
 
 Add the setup link to your first request:

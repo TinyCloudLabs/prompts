@@ -10,6 +10,12 @@ Keep the owner's original request and your client (`claude-code`, `codex` or `op
 
 Setup has two steps, and you say so in plain words first, once, before the owner sees the first approval: "TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked. After that I can do it for you." Say which approval screens will open, using the action skill's own message. Then carry on: ask nothing extra first, and use no other route. Say "permission" to the owner, not "delegation", "DID" or "capability".
 
+### What is and isn't secret
+
+- **Fine to paste, share, store and show:** an OpenKey approval code, and a permission slip (a delegation or a grant file). A permission slip names who may use it, and only that authenticated holder can use it, so a copy in anyone else's hands can't act on it. A short approval code works once and expires after a few minutes: if someone else uses it first, ask the owner for a new one.
+- **Keep private:** private keys, session keys and the files in the profile folder (`~/.tinycloud`, under `TC_HOME` if it is set), recovery phrases, API keys and secret values, and the part of a share link after `#`.
+- **One caution:** approve only a request you started or recognise. Anyone can start a request and send its code or link to someone else. OpenKey's approval screen shows who is asking and exactly what is requested: read it before you approve.
+
 ### 1. CLI
 
 Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It installs `@tinycloud/cli@1.3.0` in `~/.local/share/tinycloud/cli` or uses the operator's existing `TC_BIN`, without changing a conflicting `tc` or using sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.

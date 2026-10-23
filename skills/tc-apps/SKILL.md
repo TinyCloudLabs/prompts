@@ -9,6 +9,8 @@ metadata:
 
 **Install rule: never run `npm install -g`, `npm i -g`, `sudo`, or `curl … | sh`. The only install is the `npm install --prefix` step on the setup page. If you're about to install anything else, stop and tell the owner.**
 
+**What is and isn't secret:** a permission slip (a delegation or a grant file) and an OpenKey approval code are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
+
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in, device flow or access request, including the 30-day `agent-data` sign-in in §4. Read the catalog now and follow it:
 
 ```sh
