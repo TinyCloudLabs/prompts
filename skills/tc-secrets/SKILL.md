@@ -282,7 +282,7 @@ Compose **one** message from the template at the end, with the add link (if §2b
 
 ## 3. Consent — only when §2 reports `NO_ACCESS`
 
-**3a. Create the profile if it doesn't exist.** `init` may make the new profile the default (tc 1.2.x leaves the default unchanged), so always pass `--profile`.
+**3a. Create the profile if it doesn't exist.** `init` may make the new profile the default, so always pass `--profile`.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
