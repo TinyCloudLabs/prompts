@@ -15,7 +15,7 @@ A permission slip and the code OpenKey shows after you approve are fine to share
 
 Add the setup link to your first request:
 
-> Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records.
+> Read https://agents.tinycloud.xyz/apps and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
@@ -27,7 +27,7 @@ No shell profile to edit, and nothing to restart except OpenCode, once (see belo
 
 | Client | Start | What to expect |
 |---|---|---|
-| Claude Code | `claude` | Auto mode asks nothing when the pasted line names what the setup installs and saves, as above. Its safety check doesn't decide the same way every time and can still block the install or the sign-in. The agent then shows you the block and asks; reply "go ahead", or allow it in your settings: [If Claude Code still blocks it](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). Manual mode asks on first use for the setup page, the check, the install and each kind of skill block; choose "Yes, and don't ask again" where it's offered. Blocks that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
+| Claude Code | `claude` | Auto mode can block the install or the sign-in. The agent then shows you the block and asks; reply "go ahead", or allow it in your settings: [If Claude Code still blocks it](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). Manual mode asks on first use for the setup page, the check, the install and each kind of skill block; choose "Yes, and don't ask again" where it's offered. Blocks that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
 | Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/.tinycloud --add-dir ~/.local/state/tc-apps` | One approval, for the install. The CLI needs the network, and it writes the profile store and the state folder, both outside the project. With `TC_HOME` or `TC_APPS_STATE` set, pass `$TC_HOME/.tinycloud` and `$TC_APPS_STATE` instead. Folders under your home don't need to exist yet: the setup creates them. A missing `--add-dir` folder under `/tmp`, though, stops Codex's sandbox from starting, so create it first. |
 | OpenCode | `opencode` | No questions. After the first setup, restart OpenCode once, as the agent will tell you: it loads skills only when it starts. Claude Code and Codex don't need a restart. |
 

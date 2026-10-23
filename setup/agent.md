@@ -8,13 +8,13 @@ Keep the owner's original request and your client (`claude-code`, `codex` or `op
 
 ### Before any approval screen opens
 
-Setup has two steps, and you say so in plain words first, once, before the owner sees the first approval: "TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked. Signing in is not what gives me access; the permission is the separate approval. After that I can do it for you." If the action skill's own message already opens with this, don't repeat it. Say which approval screens will open, using the action skill's own message. Then carry on: ask nothing extra first, and use no other route. Say "permission" to the owner, not "delegation", "DID" or "capability".
+Before the first approval, say the two steps in plain words, once: "TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked. Signing in is not what gives me access; the permission is the separate approval." If the action skill's own message already opens with this, don't repeat it. Say which approval screens will open, using that message, and carry on without extra questions. Call it "permission", not "delegation", "DID" or "capability".
 
 ### What is and isn't secret
 
-- **Fine to paste, share, store and show:** the code OpenKey shows after you approve, and a permission slip (a delegation or a grant file). A permission slip names who may use it, and only that authenticated holder can use it. The short code OpenKey shows after you approve works once and expires within minutes: if someone else uses it first, ask the owner for a new one.
-- **Keep private:** private keys, session keys and the files in the profile folder (`~/.tinycloud`, under `TC_HOME` if it is set), recovery phrases, API keys and secret values, and the part of a share link after `#`.
-- **One caution:** approve only a request you started or recognise. Anyone can start a request and send its code or link to someone else. OpenKey's approval screen shows who is asking and exactly what is requested: read it before you approve.
+- **Fine to share:** the code OpenKey shows after you approve (a short code works once and expires within minutes), and a permission slip (a delegation or a grant file): it names who may use it, and only that authenticated holder can use it.
+- **Keep private:** private keys, session keys and the profile folder (`~/.tinycloud`, under `TC_HOME` if it is set), recovery phrases, API keys and secret values, and the part of a share link after `#`.
+- **Approve only a request you started or recognise.** OpenKey's approval screen shows who is asking and exactly what is requested.
 
 ### 1. CLI
 
@@ -121,9 +121,9 @@ Install **only** the skill for the selected action using the site's checksum-che
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <action> --agent <client>
 ```
 
-Read its installed `SKILL.md` by path (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/` or `/tc-publish/` or `/courier/` for Claude Code; `$HOME/.agents/skills/` for Codex/OpenCode). Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed. Setup alone never authorizes access.
+Read its installed `SKILL.md` by path (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/` or `/tc-publish/` or `/courier/` for Claude Code; `$HOME/.agents/skills/` for Codex/OpenCode). Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed.
 
-If the owner only asked for setup, report which CLI and skill are ready, and which non-secret owner field still needs an answer; do not start an approval. If the task asks for a different capability, use its own setup page; this page does not grant it.
+If the owner only asked for setup, report which CLI and skill are ready, and which non-secret owner field still needs an answer; do not start an approval. If the task asks for a different capability, use its own setup page.
 
 ## Remove setup
 

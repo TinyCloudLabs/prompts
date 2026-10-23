@@ -38,7 +38,7 @@ How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes.
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly. Don't put `$TC_BIN` back, and keep the assignments first, before `umask 077`: Claude Code can remember an approval only for commands whose paths it can work out from the block itself.
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s. In Codex, pass `yield_time_ms: 30000` to `exec_command`. §4 is the exception: it waits for the owner.
-- Write files only through these blocks, never with a file-editing tool. Never install anything: no `npm install -g`, `sudo`, or `curl | sh`, and no install other than the setup's `npm install --prefix` step. Don't run `tc` commands that aren't here.
+- Write files only through these blocks, never with a file-editing tool. Don't run `tc` commands that aren't here.
 - Run §1 and §3 once per conversation.
 
 ## 0. Route the request
@@ -275,6 +275,6 @@ The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `DEVICE_AUTH_DENIED` → the owner declined. Stop.
 - `DEVICE_AUTH_RATE_LIMITED` → too many sign-ins from this network. Tell the owner to ask again in 10 minutes.
 - `OPENKEY_OWNER_MISMATCH` → they approved with a different account or key than this profile's. Ask them to use the same one as before, and run §4 again when they're ready.
-- `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or broader sign-in, `--replace-session` or `tc space host`.
+- `SPACE_NOT_HOSTED` → handle it as in §3.
 - `SESSION_IN_USE` → ask the owner. Never pass `--replace-session`.
 - Anything else → report the code.
