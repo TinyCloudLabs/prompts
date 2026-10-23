@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.7"
+  version: "0.5.8"
 ---
 
 # Publish documents and HTML with `tc share`
@@ -52,7 +52,7 @@ Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` i
 
 Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-`--notify` is optional: use it only when the owner asks for an emailed invite, and only on an owner-only publish (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails the recipient one invitation with the link. You still send the link yourself (§6). Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
+When the owner names a person's email address to share with, pass `--notify` (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails that person one invitation with the link, so you have sent it for the owner. Leave `--notify` out only when the owner asks you not to email them, and on a public link. Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -480,13 +480,15 @@ Report with the template for the link type — fill in the placeholders, keep th
 
 > **Owner-only:** Published `<file>` as an owner-only link. Only `<recipient email>` can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
 
+> **Owner-only, invitation sent:** Published `<file>` and TinyCloud emailed `<recipient email>` the invitation. Only they can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
+
 > **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>`, and I can revoke it any time before then. Verified: hash match. `<URL>`
 
-Hand the link to the owner in your reply, with the recipient and the expiry, and nowhere else: the owner decides how it reaches the recipient. Don't message the recipient or any other channel yourself.
+With `--notify` the invitation has gone to the recipient: tell the owner who it was sent to and when it expires; there is nothing for the owner to forward. When no invitation is sent (a public link, a `did:` recipient, or the owner asked for no email), give the owner the link in your reply, ready to forward, with the recipient and the expiry. Never write steps for the owner to carry out (no "copy this and send it to…"): you send it, or you hand over the link. Don't message the recipient through any other channel yourself.
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
-If you passed `--notify`, add: "TinyCloud also emailed `<recipient email>` an invitation." After `INVITE_NOT_SENT`, add instead: "The invitation email couldn't be sent."
+After `INVITE_NOT_SENT`, add instead: "The invitation email couldn't be sent."
 
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
