@@ -1,0 +1,33 @@
+{
+  "scenario": "HTTP-skill",
+  "checkedAt": "2026-10-23T12:07:05.553Z",
+  "candidate": {
+    "label": "disposable-native-onboarding",
+    "revision": "remote-deployment-unverified",
+    "connectUrl": "https://agents.tinycloud.xyz/connect",
+    "mcpUrl": "https://mcp.tinycloud.xyz/mcp"
+  },
+  "requests": [
+    {
+      "url": "https://agents.tinycloud.xyz/skills/apps/SHA256SUMS",
+      "status": 200,
+      "contentType": "application/octet-stream",
+      "sha256": "6c1444a0ff07eb0e6e714f98a6d500455871578b903b65f76286505d2fb7de89",
+      "bytes": 626
+    }
+  ],
+  "checks": [
+    {
+      "id": "manifest",
+      "status": "failed",
+      "observed": "Checksum manifest must enumerate exactly the four published skill files",
+      "evidence": []
+    },
+    {
+      "id": "integrity",
+      "status": "failed",
+      "observed": "Manifest did not validate; cannot trust its filenames",
+      "evidence": []
+    }
+  ]
+}

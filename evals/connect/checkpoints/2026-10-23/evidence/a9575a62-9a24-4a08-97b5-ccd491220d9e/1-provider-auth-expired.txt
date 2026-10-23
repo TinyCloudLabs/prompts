@@ -1,0 +1,5 @@
+The first actual Codex device-login process exited with code 1 after its advertised 15-minute lifetime.
+Observed native error: Error logging in with device code: device auth timed out after 15 minutes
+No provider login completed, no model ran, and no TinyCloud guide or storage operation occurred in that attempt.
+The expired one-time code is omitted. The earlier evidence of reaching a real provider authorization request remains valid, but the original request is no longer actionable. A new request is necessary before owner approval can continue this fixture.
+This timeout is an external authorization wait, not a TinyCloud product failure or a model capability verdict.

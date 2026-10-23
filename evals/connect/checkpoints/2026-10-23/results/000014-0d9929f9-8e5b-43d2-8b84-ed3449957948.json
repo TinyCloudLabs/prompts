@@ -1,0 +1,45 @@
+{
+  "platform": "public-web",
+  "scenario": "HTTP-skill",
+  "variant": "default",
+  "status": "failed",
+  "environment": {
+    "model": "none",
+    "clientVersion": "v22.23.2",
+    "os": "linux",
+    "surface": "unauthenticated HTTPS",
+    "account": "none",
+    "workspace": "none",
+    "fixture": "public-read-only"
+  },
+  "observed": "manifest: Checksum manifest must enumerate exactly the four published skill files\nintegrity: Manifest did not validate; cannot trust its filenames",
+  "checks": [
+    {
+      "id": "manifest",
+      "status": "failed",
+      "observed": "Checksum manifest must enumerate exactly the four published skill files",
+      "evidence": [
+        "evidence/a2491338-9757-4fab-8364-5e2af7ff72ae/public-probe.json"
+      ]
+    },
+    {
+      "id": "integrity",
+      "status": "failed",
+      "observed": "Manifest did not validate; cannot trust its filenames",
+      "evidence": [
+        "evidence/a2491338-9757-4fab-8364-5e2af7ff72ae/public-probe.json"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/a2491338-9757-4fab-8364-5e2af7ff72ae/public-probe.json",
+      "sha256": "eda6b832e6eb59126f1c1c8ee5cc9414d632078de0f13162fe9e1597a2812fa5"
+    }
+  ],
+  "metrics": {
+    "durationMs": 242
+  },
+  "id": "0d9929f9-8e5b-43d2-8b84-ed3449957948",
+  "recordedAt": "2026-10-23T12:07:05.568Z"
+}

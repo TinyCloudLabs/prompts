@@ -1,0 +1,65 @@
+{
+  "scenario": "HTTP-entry",
+  "checkedAt": "2026-10-23T12:07:02.391Z",
+  "candidate": {
+    "label": "disposable-native-onboarding",
+    "revision": "remote-deployment-unverified",
+    "connectUrl": "https://agents.tinycloud.xyz/connect",
+    "mcpUrl": "https://mcp.tinycloud.xyz/mcp"
+  },
+  "requests": [
+    {
+      "url": "https://agents.tinycloud.xyz/connect",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "sha256": "e8fd2e42eb794360fcde222a85fa7889a3d3287e1a56fb317443f44d9ec919cc",
+      "bytes": 11099
+    },
+    {
+      "publicSnapshot": "evidence/cf4ca47b-3565-45e5-9153-83d74d0991e6/entry-readable.txt",
+      "sha256": "e8fd2e42eb794360fcde222a85fa7889a3d3287e1a56fb317443f44d9ec919cc"
+    },
+    {
+      "url": "https://agents.tinycloud.xyz/connect.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "sha256": "8a58f954483320e15b9cf545d29c8627f35ef3e3d6894c2001aabaa583ed1608",
+      "bytes": 7956
+    },
+    {
+      "publicSnapshot": "evidence/fbc447a4-363e-4854-8842-65ff30535010/markdown-readable.txt",
+      "sha256": "8a58f954483320e15b9cf545d29c8627f35ef3e3d6894c2001aabaa583ed1608"
+    },
+    {
+      "url": "https://agents.tinycloud.xyz/apps",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8",
+      "sha256": "4a5baf8a1a3d451778c01214fe51f942de3ce1b0d2160989b8db8e1abcc63d61",
+      "bytes": 16381
+    },
+    {
+      "publicSnapshot": "evidence/b7887ea1-fadf-4f45-98f7-74d5c9f42f12/coding-guide-readable.txt",
+      "sha256": "4a5baf8a1a3d451778c01214fe51f942de3ce1b0d2160989b8db8e1abcc63d61"
+    }
+  ],
+  "checks": [
+    {
+      "id": "entry-readable",
+      "status": "passed",
+      "observed": "Readable public document (11099 bytes); content SHA-256 e8fd2e42eb794360fcde222a85fa7889a3d3287e1a56fb317443f44d9ec919cc. No agent behavior asserted.",
+      "evidence": []
+    },
+    {
+      "id": "markdown-readable",
+      "status": "passed",
+      "observed": "Readable public document (7956 bytes); content SHA-256 8a58f954483320e15b9cf545d29c8627f35ef3e3d6894c2001aabaa583ed1608. No agent behavior asserted.",
+      "evidence": []
+    },
+    {
+      "id": "coding-guide-readable",
+      "status": "passed",
+      "observed": "Readable public document (16381 bytes); content SHA-256 4a5baf8a1a3d451778c01214fe51f942de3ce1b0d2160989b8db8e1abcc63d61. No agent behavior asserted.",
+      "evidence": []
+    }
+  ]
+}

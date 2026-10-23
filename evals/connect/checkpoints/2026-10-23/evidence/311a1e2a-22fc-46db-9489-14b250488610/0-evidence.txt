@@ -1,0 +1,17 @@
+Scenario: core-bare-url. Client verified: omp/18.4.8. Container: tc-connect-omp-532f391c. Surface: real native interactive terminal, first via tool PTY, then relaunched unchanged in host tmux for safe owner input.
+
+Preflight (inside assigned container):
+- omp models find pickle --json -> {"models":[]}
+- omp models --json -> {"models":[]}
+- omp models refresh -> No models available. Set API keys in environment variables.
+- omp login --help documents OAuth provider ID openai-codex.
+These results do not establish that every possible free provider is unsupported; no actually available model was exposed in this unauthenticated catalog.
+
+Native launch: sudo -n docker exec -it -w /work tc-connect-omp-532f391c omp https://agents.tinycloud.xyz/connect
+The sole initial positional user message was exactly https://agents.tinycloud.xyz/connect. No coaching, extra prompt, model override, or approval bypass flags were supplied. The native client intercepted startup at Setup step 1 of 5 before processing the user message.
+Observed provider chooser: Sign in to your providers; selected ChatGPT Plus/Pro (Codex Subscription), the existing-account OpenAI Codex path.
+Observed resulting UI: Signing in to openai-codex; Browser login: Open login URL; Paste the authorization code (or full redirect URL); Waiting for browser authentication. Authorization URL/state omitted here.
+
+The first tool-only waiter was interrupted with Ctrl+C and the exact same native command relaunched in tmux session tc-connect-omp-owner. Current owner handoff: tmux attach-session -t tc-connect-omp-owner. The new session was observed at the real OAuth paste prompt. Owner completes login in their own browser and pastes the return directly into the attached terminal, not chat. Detach with Ctrl+B then D. No login completed or subscription purchased by this run.
+
+Provider requested: openai-codex. Exact model: none selected, no model invocation observed. No TinyCloud guide fetch, CLI install, OpenKey consent, account creation, storage write, or authoritative read-back occurred. TinyCloud onboarding behavior cannot be assessed beyond native startup being blocked by provider authentication. This is an evidenced fixture/provider-auth blocker, not a TinyCloud product failure or completed onboarding pass.

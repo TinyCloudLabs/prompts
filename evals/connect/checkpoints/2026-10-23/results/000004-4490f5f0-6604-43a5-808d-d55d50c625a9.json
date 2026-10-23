@@ -1,0 +1,55 @@
+{
+  "platform": "opencode",
+  "scenario": "core-bare-url",
+  "variant": "big-pickle-native-mini-default-tmp",
+  "status": "blocked",
+  "environment": {
+    "model": "opencode/big-pickle",
+    "clientVersion": "1.18.31",
+    "os": "Linux x64; Debian bookworm container",
+    "surface": "Attempted native OpenCode --mini UI; OpenTUI failed before a user/model turn",
+    "account": "Fresh provider state; requested public free model was not invoked",
+    "workspace": "/work; isolated nonroot uid1000 container",
+    "fixture": "Initially no TinyCloud installation; default container /tmp observed noexec; read-only root; private home/work volumes; no host credentials"
+  },
+  "observed": "Initial native startup failed to map the OpenTUI shared object from noexec /tmp, before a model turn. This is an evidenced container-runtime prerequisite blocker. A later attempt with TMPDIR on the existing private home volume is recorded as a different fixture variant, not carried backward as coverage.",
+  "reviewer": "omp operator; native-run agent startup-failure evidence reviewed",
+  "checks": [
+    {
+      "id": "route",
+      "status": "blocked",
+      "observed": "Native runtime failed before the assistant could fetch a guide.",
+      "evidence": [
+        "evidence/021dab9a-c630-480c-897e-7312fff52674/0-evidence.txt"
+      ]
+    },
+    {
+      "id": "setup-intent",
+      "status": "blocked",
+      "observed": "No model processed the initial URL because OpenTUI startup failed.",
+      "evidence": [
+        "evidence/021dab9a-c630-480c-897e-7312fff52674/0-evidence.txt"
+      ]
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Conditional on ChatGPT; this attempted native OpenCode run exercised no ChatGPT formatting behavior.",
+      "evidence": [
+        "evidence/021dab9a-c630-480c-897e-7312fff52674/0-evidence.txt"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/021dab9a-c630-480c-897e-7312fff52674/0-evidence.txt",
+      "sha256": "4d77b7af1c4530162ba4eccfd1721424038192471abf04ba2666cf2c442e6370"
+    }
+  ],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "4490f5f0-6604-43a5-808d-d55d50c625a9",
+  "recordedAt": "2026-10-22T15:21:37.574Z"
+}

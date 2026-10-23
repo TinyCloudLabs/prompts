@@ -1,0 +1,43 @@
+{
+  "platform": "copilot",
+  "scenario": "core-bare-url",
+  "variant": "agent-owned-chromium-headless",
+  "status": "blocked",
+  "environment": {
+    "model": "Unavailable: signup incomplete",
+    "clientVersion": "Google Chrome for Testing 150.0.7871.24; app build not exposed",
+    "os": "Linux x64",
+    "surface": "Actual Copilot web entry and Microsoft signup",
+    "account": "Agent-controlled mailbox verified; dedicated Microsoft signup incomplete",
+    "workspace": "Dedicated persistent browser profile; no personal login",
+    "fixture": "No TinyCloud connector or grant; required account details unavailable"
+  },
+  "observed": "Reached Microsoft signup from the actual Copilot sign-in link. Submitted the agent-controlled mailbox, authenticated the Microsoft verification email with SPF/DKIM/DMARC passes, and entered its code privately. Signup then required country/region and date of birth; no identity details were invented or submitted. No TinyCloud prompt, connector, grant or storage operation was reached.",
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "Required account identity details block the provider prerequisite.",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "Required account identity details block the provider prerequisite.",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Required account identity details block the provider prerequisite.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "e1a08b39-be8d-469e-ab5e-5f98bbfb7473",
+  "recordedAt": "2026-10-23T12:30:58.249Z"
+}

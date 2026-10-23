@@ -1,0 +1,74 @@
+{
+  "checkedAt": "2026-10-23T12:28:37.707Z",
+  "manifestSha256": "6c1444a0ff07eb0e6e714f98a6d500455871578b903b65f76286505d2fb7de89",
+  "recordedProbeManifestSha256": "6c1444a0ff07eb0e6e714f98a6d500455871578b903b65f76286505d2fb7de89",
+  "recordedScenarioStatus": "failed",
+  "recordedScenarioExpectedFiles": 4,
+  "publishedFiles": [
+    {
+      "name": "QUICKSTART.md",
+      "expectedSha256": "b3b7b33bfe851e553a3c91c0fd205c03a70e8ac6b5f29e50d0429761d756c460",
+      "status": 200,
+      "bytes": 11719,
+      "actualSha256": "b3b7b33bfe851e553a3c91c0fd205c03a70e8ac6b5f29e50d0429761d756c460",
+      "matches": true
+    },
+    {
+      "name": "SKILL.md",
+      "expectedSha256": "adf9defe2b125ebff1e042ec27f1bfb635b9e74e0f5b28d6f1ac66df70345c55",
+      "status": 200,
+      "bytes": 23741,
+      "actualSha256": "adf9defe2b125ebff1e042ec27f1bfb635b9e74e0f5b28d6f1ac66df70345c55",
+      "matches": true
+    },
+    {
+      "name": "SQL.md",
+      "expectedSha256": "4cf75150005f09bb84ecda3b1c4874aeced8171f96169ce33f618c2e542abd9d",
+      "status": 200,
+      "bytes": 13712,
+      "actualSha256": "4cf75150005f09bb84ecda3b1c4874aeced8171f96169ce33f618c2e542abd9d",
+      "matches": true
+    },
+    {
+      "name": "TINY-APPS.md",
+      "expectedSha256": "d0129545dfeb01c5b05d72521d67a8b827b91e0552365267460a1a7f84c32c4d",
+      "status": 200,
+      "bytes": 17111,
+      "actualSha256": "d0129545dfeb01c5b05d72521d67a8b827b91e0552365267460a1a7f84c32c4d",
+      "matches": true
+    },
+    {
+      "name": "announce.sh",
+      "expectedSha256": "8ee9fc8cfc9110562985c8dd3c128417abd678064771d094a87f37a6c49b61ff",
+      "status": 200,
+      "bytes": 2140,
+      "actualSha256": "8ee9fc8cfc9110562985c8dd3c128417abd678064771d094a87f37a6c49b61ff",
+      "matches": true
+    },
+    {
+      "name": "owner-grant.sh",
+      "expectedSha256": "939ca1b9fbf2afbd3dfa4f9b367915be2d8835d9e09fc552c9a9a312aa6a5f03",
+      "status": 200,
+      "bytes": 1527,
+      "actualSha256": "939ca1b9fbf2afbd3dfa4f9b367915be2d8835d9e09fc552c9a9a312aa6a5f03",
+      "matches": true
+    },
+    {
+      "name": "owner-undo.sh",
+      "expectedSha256": "438d8c4686f25bfe88ea69a29ef4bc0f6ccce1957f34f268d87b1f25b42312a1",
+      "status": 200,
+      "bytes": 1816,
+      "actualSha256": "438d8c4686f25bfe88ea69a29ef4bc0f6ccce1957f34f268d87b1f25b42312a1",
+      "matches": true
+    },
+    {
+      "name": "tc-wrapper.sh",
+      "expectedSha256": "7dfec1aeaf8ebc616707f2a3047c34f5ba9ecbed9b7fca97b5f84e50a275065b",
+      "status": 200,
+      "bytes": 743,
+      "actualSha256": "7dfec1aeaf8ebc616707f2a3047c34f5ba9ecbed9b7fca97b5f84e50a275065b",
+      "matches": true
+    }
+  ],
+  "execution": "Downloaded and hashed only; no scripts executed or skills installed."
+}

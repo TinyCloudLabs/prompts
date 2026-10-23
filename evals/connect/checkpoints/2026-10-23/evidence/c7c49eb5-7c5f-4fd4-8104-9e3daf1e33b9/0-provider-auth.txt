@@ -1,0 +1,11 @@
+Client: Codex CLI 0.160.0
+Fixture: fresh provider state in container tc-connect-codex-532f391c; non-root; read-only root; isolated writable home/work volumes; no host credential mounts.
+Actual command: sudo -n docker exec -it tc-connect-codex-532f391c codex login --device-auth
+Observed native output: the client opened its device-code authorization flow, identified https://auth.openai.com/codex/device as the authorization page, and issued a one-time code with a 15-minute lifetime.
+The code and other authentication state are deliberately omitted from this evidence.
+At this observation, the actual login process was waiting for human provider authorization. No provider model was selected or invoked, no bare-URL assistant prompt had been sent, no TinyCloud installation had run, and no TinyCloud grant or storage operation had occurred.
+This is a provider-authentication prerequisite blocker, not a TinyCloud routing or onboarding verdict. Earlier restricted-host results belong to a different fixture and are not carried forward as container coverage.
+Remaining owner action: authorize the actual disposable Codex client in the provider's own device-login UI. A stale/expired code must be replaced by a fresh request rather than represented as a successful login.
+Native model turns: 0
+Human approvals observed: 0
+Conditional ChatGPT-format check: this client is Codex, not the ChatGPT app; that response-format behavior was not exercised.

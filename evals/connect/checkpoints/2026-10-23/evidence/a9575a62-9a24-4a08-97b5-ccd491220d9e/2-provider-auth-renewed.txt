@@ -1,0 +1,5 @@
+After the first request expired, the operator started a new actual native request with the same command:
+sudo -n docker exec -it tc-connect-codex-532f391c codex login --device-auth
+The client again identified itself as Codex v0.160.0, issued a new one-time code with a 15-minute lifetime, and instructed the owner to authorize it at https://auth.openai.com/codex/device.
+Live service: tc-eval-codex-provider-login-renewed, persistent.
+No code or authentication-state secret is retained in reportable evidence. The new request was observed at the owner-authorization wait; no authenticated model turn, TinyCloud consent, or storage operation had occurred.

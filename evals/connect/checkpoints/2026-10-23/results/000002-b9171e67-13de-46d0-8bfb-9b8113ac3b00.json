@@ -1,0 +1,55 @@
+{
+  "platform": "claude-code",
+  "scenario": "core-bare-url",
+  "variant": "container-interactive",
+  "status": "blocked",
+  "environment": {
+    "model": "Not selected; provider authentication pending",
+    "clientVersion": "2.1.304 (Claude Code)",
+    "os": "Linux; isolated Debian bookworm Docker container",
+    "surface": "Native Claude Code interactive provider login in owner-attachable tmux; no assistant conversation yet",
+    "account": "Fresh container provider state; owner authorization pending",
+    "workspace": "/work; isolated synthetic evaluation workspace",
+    "fixture": "Read-only container root; private writable home/work volumes; no host credentials or TinyCloud profile"
+  },
+  "observed": "The actual Claude provider OAuth flow is waiting at its private return-code prompt in tmux session tc-eval-claude-auth. Provider authorization is pending; no bare-URL model turn or TinyCloud setup has run. This is a fixture prerequisite blocker, not a TinyCloud product verdict.",
+  "reviewer": "omp operator; actual native command and terminal output reviewed",
+  "checks": [
+    {
+      "id": "route",
+      "status": "blocked",
+      "observed": "No model turn or guide fetch was possible before the real provider authorization request is completed.",
+      "evidence": [
+        "evidence/99371586-aa68-45b5-af4f-042256df61b9/0-provider-auth.txt"
+      ]
+    },
+    {
+      "id": "setup-intent",
+      "status": "blocked",
+      "observed": "The bare URL has not yet been submitted to an authenticated assistant; setup intent is unassessed.",
+      "evidence": [
+        "evidence/99371586-aa68-45b5-af4f-042256df61b9/0-provider-auth.txt"
+      ]
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Conditional on the ChatGPT app. This is Claude Code; no ChatGPT formatting behavior was exercised.",
+      "evidence": [
+        "evidence/99371586-aa68-45b5-af4f-042256df61b9/0-provider-auth.txt"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/99371586-aa68-45b5-af4f-042256df61b9/0-provider-auth.txt",
+      "sha256": "d025fbf0ade3afaa10af03f7bba0760207eb50b3632779da5fd5766aea605786"
+    }
+  ],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "b9171e67-13de-46d0-8bfb-9b8113ac3b00",
+  "recordedAt": "2026-10-22T15:17:36.922Z"
+}

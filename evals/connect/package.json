@@ -1,0 +1,10 @@
+{
+  "name": "tinycloud-connect-evals",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "eval": "node runner.mjs",
+    "test": "node --test eval.test.mjs native.test.mjs"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "platform": "opencode",
+  "scenario": "core-native-session",
+  "variant": "big-pickle-native-mini-persistence",
+  "status": "needs_review",
+  "environment": {
+    "model": "opencode/big-pickle",
+    "clientVersion": "1.18.31",
+    "os": "linux",
+    "surface": "native interactive terminal; read-only VHS observation of persistent tmux session",
+    "account": "operator-managed test fixture; capture does not authenticate or approve",
+    "workspace": "operator-owned disposable runner; no state reset by recorder",
+    "fixture": "Dedicated synthetic OpenKey key; persistent OpenCode mini session; real owner approval; CLI 1.3.0; original bare URL then exact setup-and-save prompt"
+  },
+  "observed": "Actual native OpenCode completed owner-approved setup, saved the documented starter and explicit Test TinyCloud todo, and read the explicit record back twice in the original conversation. After one native process restart, a new conversation given only the todo title independently discovered the installed skill, catalog and record and returned identical data/key/etag, with no reinstall, new grant or writes. Initial approval expiry and later renewal are preserved in the history. This used an owner-provided test identity, not a verified zero-account signup/billing fixture. Prepared for human evidence review; no human grading/redaction attestation has been supplied.",
+  "checks": [
+    {
+      "id": "survival",
+      "status": "not_run",
+      "observed": "Original native session retained the setup request through consent expiry, renewal and actual owner approval; then executed the exact setup-and-save prompt and an authoritative follow-up. No provider API or replacement model conversation performed the write.",
+      "evidence": []
+    },
+    {
+      "id": "persistence",
+      "status": "not_run",
+      "observed": "After the documented one-time restart, the distinct fresh native session read the same key, typed value and etag using the retained agent-data profile, without reinstalling, requesting a grant or writing anything.",
+      "evidence": []
+    },
+    {
+      "id": "observability",
+      "status": "not_run",
+      "observed": "Native tool exports include actual kv put and kv get outputs with exit 0; original and fresh record values and etags were compared. The PNG shows the real fresh-client read-back. Human check grading remains pending.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {},
+  "id": "c96a6adb-b518-4994-8434-24fd5eb4b16b",
+  "recordedAt": "2026-10-23T10:52:34.669Z"
+}
