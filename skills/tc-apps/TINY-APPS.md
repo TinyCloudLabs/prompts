@@ -23,7 +23,7 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 ## 3. Installing a catalog app and getting approval
 
-The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. Don't ask any question in chat before that, and don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the full space id `$SPACE` saved in step 4.
+The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. Your sign-in keys stay with the owner: the agent only gets a limited permission slip for its own `agent-meal` profile, never the owner's profile or session. A code OpenKey shows during the owner's sign-in goes into the terminal where it is running, because it only works with that computer's key; if the owner pastes one in the chat, say that in one line and carry on. Don't ask any question in chat before that, and don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the full space id `$SPACE` saved in step 4.
 
 **Say the two steps first.** Setup has two steps: the owner signs in to, or creates, their OpenKey so you know who they are, then gives you permission to do what they asked. The `FIRST` message from `announce.sh` opens with that in plain words: send it unchanged, as below. Carry on from there without detours: no extra questions, no other route. In what you say to the owner, call it "permission", not "delegation", "DID" or "capability".
 

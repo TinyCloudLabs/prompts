@@ -14,7 +14,7 @@ if [ ! -f "$DIR/$MARK" ]; then KIND=FIRST; elif [ "$AGENT_INSTALL_ENABLED" = tru
 FOLDER=$(cd "$(dirname "$0")" && pwd)
 GRANT_CMD="sh \"$FOLDER/owner-grant.sh\" $1"
 ALLOW='# If your browser asks to connect to devices on your network, choose Allow.'
-CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C and tell me. If the page shows a code, paste it into this terminal, not the chat."
+CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C and tell me. If the page shows a code, paste it into this terminal: it only works on this computer."
 echo "STATE: $KIND"
 echo 'BEGIN OWNER MESSAGE'
 echo '```text'

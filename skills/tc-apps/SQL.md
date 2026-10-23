@@ -3,7 +3,7 @@
 Part of the `tc-apps` skill: read `SKILL.md` first. The index copies every record into a SQLite database, `xyz.tinycloud.agent-data.index`, in the owner's `default` space, so one query can answer a question over many records. The KV records stay the truth: when the index and KV disagree, KV wins, and §6 rebuilds the index from it.
 
 - **Profile:** `agent-data-sql`, separate from `agent-data`.
-- **Sign-in:** OpenKey's approval page. The owner approves there, then runs the sign-in command in their own terminal and pastes the code there, not in this chat.
+- **Sign-in:** OpenKey's approval page. The owner approves there, then sends you the code it shows (1b finishes the sign-in), or runs the sign-in command in their own terminal and pastes the code there.
 - **Lifetime:** 30 days.
 - **Reach:** the grant names one database, but TinyCloud's node also lets it open the space's other SQL databases. The owner accepted this. Always pass exactly `--db xyz.tinycloud.agent-data.index`, never a longer or different name.
 
@@ -30,7 +30,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep
 
 - **The link, then `waiting for the code`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
 
-  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve. If OpenKey shows a code, don't send it to me: paste it into your own terminal, using the command I give you.
+  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve. If OpenKey shows a code, paste it here and I'll finish the sign-in, or paste it into your own terminal using the command I give you.
 
   If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
 
@@ -40,7 +40,16 @@ Don't open the link yourself, and run 1a only once per approval.
 
 If Claude Code's auto mode refuses 1a or 1b, show the owner <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait for their reply. Don't edit their settings files, and don't run the step another way.
 
-**1b. Finish in the owner's terminal.** Don't take the owner's code in chat. Give them this command to run in their own terminal, with `<TC_BIN>` and `<STATE>` filled in as in 1a:
+**1b. Finish with the owner's code.** The code belongs to your own profile, `agent-data-sql`, so the owner can send it to you in the chat. Run the same sign-in with the code on stdin. A quoted heredoc keeps every character of the code as it is; `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`, used on both marker lines. Fill `<TC_BIN>` and `<STATE>` as in 1a:
+
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+"$TC_BIN" auth login --paste --manifest "$STATE/agent-data-sql.json" --expiry 30d --profile agent-data-sql <<'CODE_<MARK>'
+<the code, exactly as the owner sent it>
+CODE_<MARK>
+```
+
+If the owner would rather use their own terminal, give them this command, with `<TC_BIN>` and `<STATE>` filled in:
 
 ```sh
 "<TC_BIN>" auth login --paste --manifest "<STATE>/agent-data-sql.json" --expiry 30d --profile agent-data-sql
@@ -54,10 +63,10 @@ TC_BIN='<TC_BIN>'; umask 077
 ```
 
 - **`"authenticated": true`** → §2, then §6 for every kind the catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
-- **`"authenticated": false`** → the owner hasn't finished. Ask them to run the command again, paste the code again, and tell you. Then check once more. Don't start a new 1a.
+- **`"authenticated": false`** → the owner hasn't finished. Ask them to send the code again, or to run the terminal command and tell you. Then check once more. Don't start a new 1a.
 - **The owner reports `tinycloud.sql/schema` declined** → they unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
-- **The owner reports `OPENKEY_PROOF_INVALID`, or the code was cut short** → ask them to run the command again and paste the code again. Don't start a new 1a.
-- **The owner reports "Delegation code not found or expired"** → the short code is more than 10 minutes old, or mistyped. Ask them to paste the full code OpenKey shows below it, when the command asks.
+- **The owner reports `OPENKEY_PROOF_INVALID`, or the code was cut short** → ask them to send the whole code again, or to run the terminal command again and paste it. Don't start a new 1a.
+- **The owner reports "Delegation code not found or expired"** → the short code has expired, was already used, or was mistyped. Ask them to send the full code OpenKey shows below it.
 - Never reuse a code for another profile.
 
 ## 2. Create the table and the view

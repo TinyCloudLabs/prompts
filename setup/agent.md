@@ -102,7 +102,7 @@ node "$HOME/.config/tinycloud/agent-env.mjs" set TC_BIN "${TC_BIN:-$HOME/.local/
 
 Check only the field needed for this task before asking: `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_DID` for Secrets, or `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_EMAIL` for publish. Exit 1 means absent; exit 2 means invalid. Do not read the entire file.
 
-For **Secrets**, ask once for the address of the account that holds the requested secrets, as shown in Secret Manager, if no valid `TC_OWNER_DID` exists. For **publish/share**, ask once for the owner's email for owner-only links if no valid `TC_OWNER_EMAIL` exists. Do not guess either or publish publicly instead. A reply from the owner resumes this same setup, not a fresh request. Use the parser with the owner-supplied non-secret value, never with a secret or an OpenKey code:
+For **Secrets**, ask once for the address of the account that holds the requested secrets, as shown in Secret Manager, if no valid `TC_OWNER_DID` exists. For **publish/share**, ask once for the owner's email for owner-only links if no valid `TC_OWNER_EMAIL` exists. Do not guess either or publish publicly instead. A reply from the owner resumes this same setup, not a fresh request. Use the parser with the owner-supplied value for that field only, never with a secret:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
