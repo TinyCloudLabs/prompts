@@ -163,6 +163,24 @@ const SKILLS = [
     tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.3.tgz",
     integrity: "sha512-DRCQ7qDZUTIH2fK+6WJUQYY2krNQI+i3LE5AN/JNnGY8W70JHLfB2aH0R5xV96RCFUtgFqUDiY8ryRyFO0dMEQ==",
     dir: "package/skills/tinycloud-delegated-secrets",
+    // 0.5.3 calls the MCP "local stdio only", and chat assistants read that as
+    // "there is no hosted endpoint" (TC-1361). js-sdk fixes the text upstream;
+    // drop this change when the pin moves to a release that has it.
+    changes: {
+      "SKILL.md": [
+        [
+          "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
+          [
+            "TinyCloud MCP has two transports. Chat apps and other remote MCP clients",
+            "connect to the hosted endpoint `https://mcp.tinycloud.xyz/mcp` with OAuth",
+            "through OpenKey; local clients run the `tinycloud-mcp` stdio server from",
+            "`@tinycloud/mcp`. Each tool above lists the surfaces it runs on. Neither",
+            "transport has a continuation tool, resources, prompts, elicitation, a generic",
+            "permission grant, or a secret mutation tool.",
+          ].join("\n"),
+        ],
+      ],
+    },
   },
 ];
 
