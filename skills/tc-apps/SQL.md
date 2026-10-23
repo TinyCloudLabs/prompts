@@ -46,7 +46,7 @@ If Claude Code's auto mode refuses 1a or 1b, show the owner <https://agents.tiny
 "<TC_BIN>" auth login --paste --manifest "<STATE>/agent-data-sql.json" --expiry 30d --profile agent-data-sql
 ```
 
-Say: "Run that in your own terminal, paste the code OpenKey shows when it asks, and tell me when it's done. Use the same `TC_HOME` as this conversation: unset, unless you set it." Then check the sign-in yourself:
+Say: "Run that in your own terminal, choose 1) OpenKey, paste the code OpenKey shows when it asks, and tell me when it's done. Use the same `TC_HOME` as this conversation: unset, unless you set it." Then check the sign-in yourself:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
