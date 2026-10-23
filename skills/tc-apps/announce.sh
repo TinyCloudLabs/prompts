@@ -22,6 +22,7 @@ case "$KIND" in
   FIRST) cat <<EOF
 # Run this in your own terminal. Approve each browser screen that opens; you may see one or two, one at a time.
 # Together they let me work in your $NAME app for 7 days: $ACCESS.
+# If you haven't signed in to TinyCloud on this computer before, the command signs you in first, then asks you to approve.
 $ALLOW
 $CANCEL
 $GRANT_CMD
