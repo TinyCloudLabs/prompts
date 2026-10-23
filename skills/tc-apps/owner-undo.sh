@@ -13,7 +13,19 @@ trap 'cancel 129' HUP
 "$TC" --profile agent-data auth logout
 "$TC" --profile agent-data-sql auth logout
 "$TC" profile delete agent-meal
+if [ ! -e "$STATE/meal-grant.json" ]; then
+  echo 'No recorded grant to revoke. Nothing was revoked.'
+  exit 0
+fi
+if ! command -v jq > /dev/null 2>&1; then
+  echo 'jq is needed to read the grant id, so nothing was revoked. Without jq, copy the delegationCid from meal-grant.json, then run delegation revoke -- <cid> with the same client, in the same terminal.' >&2
+  exit 1
+fi
 CIDS=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null | grep -E '^bafkr4i[a-z2-7]{52}$' || true)
+if [ -z "$CIDS" ]; then
+  echo 'No valid grant id was found in meal-grant.json, so nothing was revoked. Tell your agent.' >&2
+  exit 1
+fi
 FAIL=0
 for CID in $CIDS; do
   "$TC" delegation revoke -- "$CID" < /dev/tty; RC=$?
