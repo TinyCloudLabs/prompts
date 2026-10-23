@@ -1,0 +1,9 @@
+Additional observation of the same real OpenCode native --mini session; no new bare-URL prompt or model-provider fixture was introduced.
+A second scoped local-directory permission prompt was present for the command that waited for the login process and read its log. The operator selected Allow once for that isolated path. No TinyCloud owner consent was approved.
+The actual CLI log then reported:
+error.code: DEVICE_AUTH_EXPIRED
+error.message: OpenKey device authorization expired_token: the approval window closed. Run the command again.
+The advertised owner approval deadline was 2026-10-22T15:22:55Z.
+The native assistant's actual final response was: The approval window expired before it was approved. Run it again when you're ready and I'll generate a fresh OpenKey link.
+The assistant did not automatically retry consent or claim connection/storage success. The old verification link/code is no longer actionable and is excluded from reportable evidence. A fresh request should be made only when the owner asks, consistent with the guide's expiry instruction.
+The earlier bare-URL routing/setup-intent observations remain passed. This later observation does not establish approved access, first save, read-back, or a complete onboarding pass. The pending-device timeout is not an expired previously authorized session and must not be presented as coverage of that distinct lifecycle case.

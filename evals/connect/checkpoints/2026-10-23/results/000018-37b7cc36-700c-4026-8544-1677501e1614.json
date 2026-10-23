@@ -1,0 +1,43 @@
+{
+  "platform": "perplexity",
+  "scenario": "core-bare-url",
+  "status": "blocked",
+  "observed": "Provider entry displayed Performing security verification with a Verify you are human checkbox. No signup form, email submission, account or TinyCloud conversation was reached.",
+  "variant": "agent-owned-chromium-headless",
+  "environment": {
+    "model": "Unavailable: provider signup not reached",
+    "clientVersion": "Google Chrome for Testing 150.0.7871.24; app build not exposed",
+    "os": "Linux x64",
+    "surface": "Perplexity web in real headless Chrome",
+    "account": "Anonymous browser; dedicated agent-controlled mailbox available",
+    "workspace": "Dedicated persistent browser profile; no personal login",
+    "fixture": "Fresh provider browser; no TinyCloud connector or grant"
+  },
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "37b7cc36-700c-4026-8544-1677501e1614",
+  "recordedAt": "2026-10-23T12:27:13.753Z"
+}

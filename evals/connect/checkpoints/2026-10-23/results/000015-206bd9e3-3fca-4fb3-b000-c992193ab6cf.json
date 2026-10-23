@@ -1,0 +1,43 @@
+{
+  "platform": "claude",
+  "scenario": "core-bare-url",
+  "status": "blocked",
+  "observed": "Claude entry shows Performing security verification and a Cloudflare Verify you are human checkbox. Signup form and email entry were not reached.",
+  "variant": "agent-owned-chromium-headless",
+  "environment": {
+    "model": "Unavailable: provider signup not reached",
+    "clientVersion": "Google Chrome for Testing 150.0.7871.24; app build not exposed",
+    "os": "Linux x64",
+    "surface": "Claude web in real headless Chrome",
+    "account": "Anonymous browser; dedicated agent-controlled mailbox available",
+    "workspace": "Dedicated persistent browser profile; no personal login",
+    "fixture": "Fresh provider browser; no TinyCloud connector or grant"
+  },
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "206bd9e3-3fca-4fb3-b000-c992193ab6cf",
+  "recordedAt": "2026-10-23T12:27:13.729Z"
+}

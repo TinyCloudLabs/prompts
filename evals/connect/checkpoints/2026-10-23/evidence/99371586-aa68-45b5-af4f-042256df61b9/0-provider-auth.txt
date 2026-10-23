@@ -1,0 +1,12 @@
+Client: Claude Code 2.1.304
+Fixture: fresh provider state in container tc-connect-claude-code-532f391c; non-root; read-only root; isolated writable home/work volumes; no host credential mounts.
+Actual native command: sudo -n docker exec -it tc-connect-claude-code-532f391c claude auth login --claudeai
+The initial tool-owned terminal reached the real provider authorization URL and a private return-code prompt. It was interrupted and replaced by a named, owner-attachable tmux terminal so the owner can input the sensitive return directly rather than sending it to model chat.
+Live handoff: tmux attach-session -t tc-eval-claude-auth
+At 2026-10-22T15:15:25.317Z, actual terminal observation confirmed both the Claude OAuth authorization URL and the 'Paste code here' prompt. No full authorization-state URL or code is included here.
+At that observation, provider authentication was pending. No model was selected or invoked, no bare-URL assistant prompt had been sent, no TinyCloud installation had run, and no TinyCloud grant or storage operation had occurred.
+This is a provider-authentication prerequisite blocker, not a TinyCloud routing or onboarding verdict. Earlier restricted-host results belong to a different fixture and are not carried forward as container coverage.
+Remaining owner action: attach the private terminal, open the displayed official provider authorization URL using the intended account, and paste its return code directly in that terminal, never into chat.
+Native model turns: 0
+Human approvals observed: 0
+Conditional ChatGPT-format check: this client is Claude Code, not the ChatGPT app; that response-format behavior was not exercised.

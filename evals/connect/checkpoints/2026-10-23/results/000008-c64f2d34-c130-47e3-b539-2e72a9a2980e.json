@@ -1,0 +1,76 @@
+{
+  "platform": "codex",
+  "scenario": "core-bare-url",
+  "variant": "container-interactive",
+  "status": "blocked",
+  "environment": {
+    "model": "Not selected; provider authentication pending",
+    "clientVersion": "codex-cli 0.160.0",
+    "os": "Linux; isolated Debian bookworm Docker container",
+    "surface": "Native Codex interactive provider login via Docker PTY; no assistant conversation yet",
+    "account": "Fresh container provider state; owner authorization pending",
+    "workspace": "/work; isolated synthetic evaluation workspace",
+    "fixture": "Read-only container root; private writable home/work volumes; no host credentials or TinyCloud profile"
+  },
+  "observed": "Both actual Codex device-login requests timed out after15 minutes without completing provider authorization. The latest code is expired and no active Codex login waiter remains. Await owner readiness before creating a fresh request. No model turn, guide fetch, TinyCloud grant, storage write or read-back ran; this is a provider prerequisite blocker, not a TinyCloud product verdict.",
+  "reviewer": "omp operator; actual native command output reviewed",
+  "checks": [
+    {
+      "id": "route",
+      "status": "blocked",
+      "observed": "No model turn or guide fetch was possible before the real provider authorization request is approved.",
+      "evidence": [
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/0-provider-auth.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/1-provider-auth-expired.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/2-provider-auth-renewed.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/3-provider-auth-renewal-expired.txt"
+      ]
+    },
+    {
+      "id": "setup-intent",
+      "status": "blocked",
+      "observed": "The bare URL has not yet been submitted to an authenticated assistant; setup intent is unassessed.",
+      "evidence": [
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/0-provider-auth.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/1-provider-auth-expired.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/2-provider-auth-renewed.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/3-provider-auth-renewal-expired.txt"
+      ]
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Conditional on the ChatGPT app. This is Codex; no ChatGPT formatting behavior was exercised.",
+      "evidence": [
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/0-provider-auth.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/1-provider-auth-expired.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/2-provider-auth-renewed.txt",
+        "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/3-provider-auth-renewal-expired.txt"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/0-provider-auth.txt",
+      "sha256": "24e3f268c8eac8ed8c94834a2ce8df35077b4c3bc6a1ec4c004607ef5c97dfa1"
+    },
+    {
+      "path": "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/1-provider-auth-expired.txt",
+      "sha256": "df3d092e721771435dc3e3922be6eb572063e0f9aa6571a0d43a55e6bd26679d"
+    },
+    {
+      "path": "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/2-provider-auth-renewed.txt",
+      "sha256": "d00defab81f64766a586ff4566c719a78ba5ca7356a42dbacd5c6f0ed1f663cc"
+    },
+    {
+      "path": "evidence/c7c49eb5-7c5f-4fd4-8104-9e3daf1e33b9/3-provider-auth-renewal-expired.txt",
+      "sha256": "e81610a67e1f72f6c967363f7ce164698c40881f9d3d62a39ca2d50a5a334ff5"
+    }
+  ],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "c64f2d34-c130-47e3-b539-2e72a9a2980e",
+  "recordedAt": "2026-10-22T15:39:00.151Z"
+}

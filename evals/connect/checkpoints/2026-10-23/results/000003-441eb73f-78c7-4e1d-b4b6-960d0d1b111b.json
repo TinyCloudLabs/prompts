@@ -1,0 +1,55 @@
+{
+  "platform": "omp",
+  "scenario": "core-bare-url",
+  "variant": "container-interactive",
+  "status": "blocked",
+  "environment": {
+    "model": "None selected or invoked; openai-codex provider login pending",
+    "clientVersion": "omp/18.4.8",
+    "os": "Linux; isolated Debian bookworm Docker container",
+    "surface": "Native interactive omp TUI in owner-attachable tmux",
+    "account": "Fresh container provider state; Codex subscription sign-in selected; not authorized",
+    "workspace": "/work; isolated synthetic evaluation workspace",
+    "fixture": "Read-only container root; private writable home/work volumes; no host credentials or TinyCloud profile"
+  },
+  "observed": "The exact bare URL was supplied as the sole initial prompt, but native startup intercepted at setup step 1/5. Selecting the existing-account Codex provider produced a real OAuth URL and private return-code prompt. The owner-attachable session tc-connect-omp-owner is waiting for provider authentication. No TinyCloud fetch or onboarding ran; this is a prerequisite blocker, not a product verdict.",
+  "reviewer": "omp operator; native-run agent evidence and observations reviewed",
+  "checks": [
+    {
+      "id": "route",
+      "status": "blocked",
+      "observed": "The actual provider setup wizard prevented any model turn or guide fetch. Native client startup alone cannot establish routing behavior.",
+      "evidence": [
+        "evidence/311a1e2a-22fc-46db-9489-14b250488610/0-evidence.txt"
+      ]
+    },
+    {
+      "id": "setup-intent",
+      "status": "blocked",
+      "observed": "The bare URL was supplied unchanged, but no authenticated model processed it; setup intent remains unassessed.",
+      "evidence": [
+        "evidence/311a1e2a-22fc-46db-9489-14b250488610/0-evidence.txt"
+      ]
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Conditional on the ChatGPT app. This is omp; no ChatGPT formatting behavior was exercised.",
+      "evidence": [
+        "evidence/311a1e2a-22fc-46db-9489-14b250488610/0-evidence.txt"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/311a1e2a-22fc-46db-9489-14b250488610/0-evidence.txt",
+      "sha256": "72f0f86db4cf2a203a0e48a05cb12407cb0a10c3c5df33138fc2f83e7a91d560"
+    }
+  ],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "441eb73f-78c7-4e1d-b4b6-960d0d1b111b",
+  "recordedAt": "2026-10-22T15:18:35.826Z"
+}

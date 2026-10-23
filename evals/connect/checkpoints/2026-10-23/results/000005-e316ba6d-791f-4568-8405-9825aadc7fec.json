@@ -1,0 +1,52 @@
+{
+  "platform": "opencode",
+  "scenario": "core-bare-url",
+  "variant": "big-pickle-native-mini-isolated",
+  "status": "passed",
+  "environment": {
+    "model": "opencode/big-pickle",
+    "clientVersion": "1.18.31",
+    "os": "Linux x64; Debian bookworm container; Node v22.23.4",
+    "surface": "Actual OpenCode native --mini interactive UI over Docker PTY; not default full TUI or print mode",
+    "account": "Public free model; no provider login; TinyCloud test-identity consent pending",
+    "workspace": "/work; isolated nonroot uid1000 container",
+    "fixture": "Initially no TinyCloud installation or approved access; read-only container root; private home/work volumes; TMPDIR=/home/node/.tmp to permit OpenTUI library loading; no host credentials"
+  },
+  "observed": "The exact bare URL triggered complete connect/apps fetches, real CLI1.3.0 installation, four matching skill checksums, key-only profile initialization, and a scoped OpenKey device request without a feature-choice question. Bare-URL routing/setup-intent passed. Complete onboarding did NOT pass: identity approval, active session, storage provisioning, save, and authoritative read-back remain unverified. Independent context showed session missing and access not-tested. One local-directory Allow once permission was selected by the operator; no owner grant was approved.",
+  "reviewer": "omp operator; actual native-run transcript extract and independent state observations reviewed",
+  "checks": [
+    {
+      "id": "route",
+      "status": "passed",
+      "observed": "Actual native webfetch results for connect and apps both reported truncated:false; the complete coding-agent route was followed, followed by real installation.",
+      "evidence": [
+        "evidence/a7fcd86d-a901-4082-9f91-9579cb8746da/0-evidence.txt"
+      ]
+    },
+    {
+      "id": "setup-intent",
+      "status": "passed",
+      "observed": "The exact sole bare URL immediately triggered installation and scoped sign-in, without a feature questionnaire or false completed-storage claim.",
+      "evidence": [
+        "evidence/a7fcd86d-a901-4082-9f91-9579cb8746da/0-evidence.txt"
+      ]
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "passed",
+      "observed": "This conditional requirement does not apply because the actual client is OpenCode, not ChatGPT. This verdict certifies no ChatGPT wording or UI behavior.",
+      "evidence": [
+        "evidence/a7fcd86d-a901-4082-9f91-9579cb8746da/0-evidence.txt"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/a7fcd86d-a901-4082-9f91-9579cb8746da/0-evidence.txt",
+      "sha256": "4d77b7af1c4530162ba4eccfd1721424038192471abf04ba2666cf2c442e6370"
+    }
+  ],
+  "metrics": {},
+  "id": "e316ba6d-791f-4568-8405-9825aadc7fec",
+  "recordedAt": "2026-10-22T15:21:37.709Z"
+}

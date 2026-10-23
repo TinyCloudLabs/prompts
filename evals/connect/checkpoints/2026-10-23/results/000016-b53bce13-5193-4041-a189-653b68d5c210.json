@@ -1,0 +1,43 @@
+{
+  "platform": "chatgpt",
+  "scenario": "core-bare-url",
+  "status": "blocked",
+  "observed": "Provider entry remained on Just a moment... with challenge-platform script and no signup controls after a bounded wait. No email submitted, account created, connector inspected or TinyCloud prompt sent.",
+  "variant": "agent-owned-chromium-headless",
+  "environment": {
+    "model": "Unavailable: provider signup not reached",
+    "clientVersion": "Google Chrome for Testing 150.0.7871.24; app build not exposed",
+    "os": "Linux x64",
+    "surface": "ChatGPT web in real headless Chrome",
+    "account": "Anonymous browser; dedicated agent-controlled mailbox available",
+    "workspace": "Dedicated persistent browser profile; no personal login",
+    "fixture": "Fresh provider browser; no TinyCloud connector or grant"
+  },
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Provider prerequisite blocked; acceptance check not exercised.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "b53bce13-5193-4041-a189-653b68d5c210",
+  "recordedAt": "2026-10-23T12:27:13.737Z"
+}

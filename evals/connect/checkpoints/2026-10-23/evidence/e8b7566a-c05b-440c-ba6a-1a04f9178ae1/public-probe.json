@@ -1,0 +1,149 @@
+{
+  "scenario": "HTTP-oauth",
+  "checkedAt": "2026-10-23T12:07:05.291Z",
+  "candidate": {
+    "label": "disposable-native-onboarding",
+    "revision": "remote-deployment-unverified",
+    "connectUrl": "https://agents.tinycloud.xyz/connect",
+    "mcpUrl": "https://mcp.tinycloud.xyz/mcp"
+  },
+  "requests": [
+    {
+      "url": "https://mcp.tinycloud.xyz/mcp",
+      "status": 401,
+      "contentType": "application/json",
+      "sha256": "465e9eb7a90fc9584214063c8f49583df9bc7269887272bf862a7a3baa9bccfe",
+      "bytes": 76,
+      "challenge": "Bearer error=\"invalid_token\", error_description=\"Missing Authorization header\", scope=\"tinycloud:mcp\", resource_metadata=\"https://mcp.tinycloud.xyz/.well-known/oauth-protected-resource/mcp\""
+    },
+    {
+      "url": "https://mcp.tinycloud.xyz/.well-known/oauth-protected-resource/mcp",
+      "status": 200,
+      "contentType": "application/json",
+      "sha256": "0ca81032717ef724b4f78c31cdc040a3bf52fc0f0c73593ae76dc6f0b414ac40",
+      "bytes": 242
+    },
+    {
+      "protectedResource": {
+        "resource": "https://mcp.tinycloud.xyz/mcp",
+        "authorization_servers": [
+          "https://api.openkey.so/api/auth"
+        ],
+        "scopes_supported": [
+          "tinycloud:mcp"
+        ],
+        "resource_name": "TinyCloud hosted MCP",
+        "resource_documentation": "https://docs.tinycloud.xyz/cli/mcp"
+      }
+    },
+    {
+      "url": "https://api.openkey.so/.well-known/oauth-authorization-server/api/auth",
+      "status": 200,
+      "contentType": "application/json",
+      "sha256": "c4b2cdbe5a5164b8abfb97fa4961af78021ac0ff8b488b3c7c1752bb3a726335",
+      "bytes": 1874
+    },
+    {
+      "authorizationServer": {
+        "scopes_supported": [
+          "openid",
+          "email",
+          "keys",
+          "offline_access",
+          "tinycloud:mcp",
+          "tinycloud:session",
+          "tinycloud:manage-key",
+          "tinycloud:delegation"
+        ],
+        "issuer": "https://api.openkey.so/api/auth",
+        "authorization_endpoint": "https://api.openkey.so/api/auth/oauth2/authorize",
+        "token_endpoint": "https://api.openkey.so/api/auth/oauth2/token",
+        "jwks_uri": "https://api.openkey.so/api/auth/jwks",
+        "registration_endpoint": "https://api.openkey.so/api/auth/oauth2/register",
+        "introspection_endpoint": "https://api.openkey.so/api/auth/oauth2/introspect",
+        "revocation_endpoint": "https://api.openkey.so/api/auth/oauth2/revoke",
+        "response_types_supported": [
+          "code"
+        ],
+        "response_modes_supported": [
+          "query"
+        ],
+        "grant_types_supported": [
+          "authorization_code",
+          "client_credentials",
+          "refresh_token"
+        ],
+        "token_endpoint_auth_methods_supported": [
+          "none",
+          "client_secret_basic",
+          "client_secret_post"
+        ],
+        "introspection_endpoint_auth_methods_supported": [
+          "client_secret_basic",
+          "client_secret_post"
+        ],
+        "revocation_endpoint_auth_methods_supported": [
+          "client_secret_basic",
+          "client_secret_post"
+        ],
+        "code_challenge_methods_supported": [
+          "S256"
+        ],
+        "authorization_response_iss_parameter_supported": true,
+        "claims_supported": [
+          "sub",
+          "iss",
+          "aud",
+          "exp",
+          "iat",
+          "sid",
+          "scope",
+          "azp",
+          "email",
+          "email_verified"
+        ],
+        "userinfo_endpoint": "https://api.openkey.so/api/auth/oauth2/userinfo",
+        "subject_types_supported": [
+          "public"
+        ],
+        "id_token_signing_alg_values_supported": [
+          "EdDSA"
+        ],
+        "end_session_endpoint": "https://api.openkey.so/api/auth/oauth2/end-session",
+        "acr_values_supported": [
+          "urn:mace:incommon:iap:bronze"
+        ],
+        "prompt_values_supported": [
+          "login",
+          "consent",
+          "create",
+          "select_account",
+          "none"
+        ],
+        "pushed_authorization_request_endpoint": "https://api.openkey.so/api/auth/oauth2/par",
+        "tinycloud_delegation_renew_endpoint": "https://api.openkey.so/api/auth/oauth2/tinycloud/renew",
+        "tinycloud_delegation_revocation_endpoint": "https://api.openkey.so/api/auth/oauth2/tinycloud/revoke"
+      }
+    }
+  ],
+  "checks": [
+    {
+      "id": "challenge",
+      "status": "passed",
+      "observed": "Unauthenticated initialize rejected with 401 and a discoverable Bearer protected resource.",
+      "evidence": []
+    },
+    {
+      "id": "resource-metadata",
+      "status": "passed",
+      "observed": "Protected resource matches MCP URL and advertises HTTPS authorization servers.",
+      "evidence": []
+    },
+    {
+      "id": "authorization-metadata",
+      "status": "passed",
+      "observed": "Advertised issuers and endpoints validated; code flow and PKCE S256 advertised. No signup/token/tool call performed.",
+      "evidence": []
+    }
+  ]
+}

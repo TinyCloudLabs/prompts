@@ -1,0 +1,43 @@
+{
+  "platform": "muse",
+  "scenario": "core-bare-url",
+  "variant": "agent-owned-chromium-headless",
+  "status": "blocked",
+  "environment": {
+    "model": "Unavailable: signup incomplete",
+    "clientVersion": "Google Chrome for Testing 150.0.7871.24; app build not exposed",
+    "os": "Linux x64",
+    "surface": "Official Meta Muse web signup at muse.ai",
+    "account": "Agent-controlled mailbox verified; dedicated Meta signup incomplete",
+    "workspace": "Dedicated persistent browser profile; no personal login",
+    "fixture": "No TinyCloud connector or grant; required account details unavailable"
+  },
+  "observed": "The official Muse web entry accepted the agent-controlled mailbox. Retrieved its Meta verification email with aligned SPF/DKIM/DMARC passes and entered the code privately. Signup advanced to Finish creating your account, requiring first name, last name and birthday. No identity or age details were invented or submitted. Muse chat, TinyCloud setup, consent and storage were not reached.",
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "Required account identity details block the provider prerequisite.",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "Required account identity details block the provider prerequisite.",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Required account identity details block the provider prerequisite.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "1a4e4446-8304-4801-8029-3d45fb5dce82",
+  "recordedAt": "2026-10-23T12:37:56.672Z"
+}

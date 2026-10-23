@@ -1,0 +1,53 @@
+{
+  "platform": "public-web",
+  "scenario": "HTTP-oauth",
+  "variant": "default",
+  "status": "passed",
+  "environment": {
+    "model": "none",
+    "clientVersion": "v22.23.2",
+    "os": "linux",
+    "surface": "unauthenticated HTTPS",
+    "account": "none",
+    "workspace": "none",
+    "fixture": "public-read-only"
+  },
+  "observed": "challenge: Unauthenticated initialize rejected with 401 and a discoverable Bearer protected resource.\nresource-metadata: Protected resource matches MCP URL and advertises HTTPS authorization servers.\nauthorization-metadata: Advertised issuers and endpoints validated; code flow and PKCE S256 advertised. No signup/token/tool call performed.",
+  "checks": [
+    {
+      "id": "challenge",
+      "status": "passed",
+      "observed": "Unauthenticated initialize rejected with 401 and a discoverable Bearer protected resource.",
+      "evidence": [
+        "evidence/e8b7566a-c05b-440c-ba6a-1a04f9178ae1/public-probe.json"
+      ]
+    },
+    {
+      "id": "resource-metadata",
+      "status": "passed",
+      "observed": "Protected resource matches MCP URL and advertises HTTPS authorization servers.",
+      "evidence": [
+        "evidence/e8b7566a-c05b-440c-ba6a-1a04f9178ae1/public-probe.json"
+      ]
+    },
+    {
+      "id": "authorization-metadata",
+      "status": "passed",
+      "observed": "Advertised issuers and endpoints validated; code flow and PKCE S256 advertised. No signup/token/tool call performed.",
+      "evidence": [
+        "evidence/e8b7566a-c05b-440c-ba6a-1a04f9178ae1/public-probe.json"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/e8b7566a-c05b-440c-ba6a-1a04f9178ae1/public-probe.json",
+      "sha256": "e36b48a491edc1bd2276b683334b13271abe97de33a16a507258b5337f10bf35"
+    }
+  ],
+  "metrics": {
+    "durationMs": 2889
+  },
+  "id": "c79b5651-9f07-4eb3-af44-d5a3541f69f4",
+  "recordedAt": "2026-10-23T12:07:05.310Z"
+}

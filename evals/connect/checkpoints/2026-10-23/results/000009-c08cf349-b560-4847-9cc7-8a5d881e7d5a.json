@@ -1,0 +1,42 @@
+{
+  "platform": "opencode",
+  "scenario": "core-native-session",
+  "variant": "big-pickle-native-mini-persistence",
+  "status": "needs_review",
+  "environment": {
+    "model": "opencode/big-pickle",
+    "clientVersion": "1.18.31",
+    "os": "linux",
+    "surface": "native interactive terminal; read-only VHS observation of persistent tmux session",
+    "account": "operator-managed test fixture; capture does not authenticate or approve",
+    "workspace": "operator-owned disposable runner; no state reset by recorder",
+    "fixture": "Dedicated synthetic OpenKey key; persistent OpenCode mini session; real owner approval; CLI 1.3.0; original bare URL then exact setup-and-save prompt"
+  },
+  "observed": "VHS exit=0, stop=none, screenshot=true.  Screen matches are synchronization only, not acceptance. Raw captures remain private; no checks are graded. The recorder never sends input to or terminates the native session.",
+  "checks": [
+    {
+      "id": "survival",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    },
+    {
+      "id": "persistence",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    },
+    {
+      "id": "observability",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "durationMs": 4643
+  },
+  "id": "c08cf349-b560-4847-9cc7-8a5d881e7d5a",
+  "recordedAt": "2026-10-23T10:39:34.187Z"
+}

@@ -1,0 +1,55 @@
+{
+  "platform": "codex",
+  "scenario": "core-bare-url",
+  "variant": "container-interactive",
+  "status": "blocked",
+  "environment": {
+    "model": "Not selected; provider authentication pending",
+    "clientVersion": "codex-cli 0.160.0",
+    "os": "Linux; isolated Debian bookworm Docker container",
+    "surface": "Native Codex interactive provider login via Docker PTY; no assistant conversation yet",
+    "account": "Fresh container provider state; owner authorization pending",
+    "workspace": "/work; isolated synthetic evaluation workspace",
+    "fixture": "Read-only container root; private writable home/work volumes; no host credentials or TinyCloud profile"
+  },
+  "observed": "The actual Codex device-login flow issued an owner authorization request. Provider authorization is pending, so the bare-URL assistant scenario has not started. This is a fixture prerequisite blocker, not a TinyCloud product verdict.",
+  "reviewer": "omp operator; actual native command output reviewed",
+  "checks": [
+    {
+      "id": "route",
+      "status": "blocked",
+      "observed": "No model turn or guide fetch was possible before the real provider authorization request is approved.",
+      "evidence": [
+        "evidence/009edc21-918b-4008-bc82-de6254d61443/0-provider-auth.txt"
+      ]
+    },
+    {
+      "id": "setup-intent",
+      "status": "blocked",
+      "observed": "The bare URL has not yet been submitted to an authenticated assistant; setup intent is unassessed.",
+      "evidence": [
+        "evidence/009edc21-918b-4008-bc82-de6254d61443/0-provider-auth.txt"
+      ]
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Conditional on the ChatGPT app. This is Codex; no ChatGPT formatting behavior was exercised.",
+      "evidence": [
+        "evidence/009edc21-918b-4008-bc82-de6254d61443/0-provider-auth.txt"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/009edc21-918b-4008-bc82-de6254d61443/0-provider-auth.txt",
+      "sha256": "24e3f268c8eac8ed8c94834a2ce8df35077b4c3bc6a1ec4c004607ef5c97dfa1"
+    }
+  ],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "ea811f12-42ce-4e33-a5bb-b8f1f0c784d0",
+  "recordedAt": "2026-10-22T15:15:25.443Z"
+}

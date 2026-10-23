@@ -1,0 +1,32 @@
+Native OpenCode core-bare-url observation — 2026-10-22
+
+Fixture: OpenCode 1.18.31, actual native --mini interactive UI, model opencode/big-pickle (OpenCode provider, public free choice), isolated nonroot Docker container, /work directory, no provider login, no initial TinyCloud installation. No --auto, API substitute, public paid provider or host credential injection.
+
+Launch: opencode --model opencode/big-pickle --prompt https://agents.tinycloud.xyz/connect --mini
+The initial launch failed before a user turn: OpenTUI failed to map its shared object from /tmp. Container /tmp was observed noexec. Retried with TMPDIR=/home/node/.tmp on the existing private writable home volume; no mount/isolation changes. The native interface rendered OpenCode, /work and Big Pickle.
+
+Exact first and only user message: https://agents.tinycloud.xyz/connect
+First assistant actions: webfetch https://agents.tinycloud.xyz/connect, then webfetch https://agents.tinycloud.xyz/apps. Exported tool metadata marked both results truncated:false (7,926 and 13,531 characters). The first user-facing assistant text was: Installing the TinyCloud CLI and the `tc-apps` skill.
+
+Observed commands/outcomes:
+- node --version: v22.23.4; npm --version: 10.9.9.
+- Initial expected TinyCloud executable did not exist.
+- npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.3.0: added 130 packages in 24s. Non-blocking npm whatwg-encoding deprecation notice and npm update notice.
+- Downloaded official /skills/apps/{SHA256SUMS,SKILL.md,QUICKSTART.md,SQL.md,tc-wrapper.sh}.
+- sha256sum -c SHA256SUMS: QUICKSTART.md, SKILL.md, SQL.md and tc-wrapper.sh all OK.
+- Copied all four files into /home/node/.agents/skills/tc-apps; installed wrapper and cli-path under /home/node/.local/share/tc-apps.
+- Wrapper --version returned 1.3.0, also independently verified by operator.
+- Read the installed SKILL.md. Existing profile lookup returned PROFILE_NOT_FOUND.
+- Created profile agent-data with init --name agent-data --key-only, and a manifest requesting tinycloud.kv get/put/list/del on xyz.tinycloud.agent-data/ in default space, defaults:false.
+- Launched actual background command: nohup "$TC_BIN" auth login --device --manifest "$STATE/agent-data.json" --expiry 30d --profile agent-data > "$STATE/login.log" 2>&1 &
+- Model explained it backgrounded login to make the device URL visible without waiting for the foreground shell tool to finish. It did not run the guide's login block literally in foreground.
+- Login process PID 239 printed an actual OpenKey device verification URL and human entry code; expiry 2026-10-22T15:22:55Z. URL/code are deliberately omitted here and retained only in private owner handoff.
+- Native permission dialog asked to access external directory ~/.local/state/tc-apps to read login.log. Operator selected Allow once. No OpenKey consent or account grant was approved.
+- Assistant then told the owner: Open [PRIVATE VERIFICATION URL] and approve the request on OpenKey. It should show the code [PRIVATE ENTRY CODE]. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days. I'll carry on as soon as you approve.
+- Assistant started a shell loop waiting for PID 239 to exit, then reading login.log.
+
+Independent state observation after handoff: wrapper version 1.3.0; context --json --profile agent-data returned ownerDid:null, spaceId:null, session.state:missing, access:not-tested. Local session identity omitted. kill -0 239 succeeded. ps was not installed, so existence was checked with shell kill -0 instead.
+
+Outcome: genuine owner approval boundary reached. Installation succeeded and scoped sign-in request exists; authentication, storage provisioning, save, and authoritative read-back are NOT completed or claimed. No personal records, production writes, new external accounts, or automatic approvals occurred. Route/setup-intent checks passed from actual guide fetch and installation behavior; ChatGPT-specific formatting condition does not apply to this OpenCode surface.
+
+Live handoff: persistent service tc-opencode-native-connect-home-tmp; container tc-connect-opencode-532f391c; native session ses_e9bd52397ffeINILiX0z5Ql9GU. The operator must approve the pending device request in their own OpenKey surface if desired. Private owner-handoff.json contains the entry URL/code and continuation instructions. The public/reportable evidence intentionally contains no approval URL, entry code, signed proof, token, key or personal data. Private session.json preserves the actual native transcript and must not be imported as reportable evidence.

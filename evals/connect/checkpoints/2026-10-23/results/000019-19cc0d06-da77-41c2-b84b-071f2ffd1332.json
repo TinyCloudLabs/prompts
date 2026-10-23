@@ -1,0 +1,43 @@
+{
+  "platform": "gemini",
+  "scenario": "core-bare-url",
+  "status": "needs_review",
+  "observed": "Gemini answered the bare connect URL with Claude web/Desktop Customize > Connectors instructions and referred to enabling that connector in our conversation. No TinyCloud tool, account consent, save or read-back occurred.",
+  "variant": "agent-owned-chromium-headless",
+  "environment": {
+    "model": "3.5 Flash-Lite",
+    "clientVersion": "Google Chrome for Testing 150.0.7871.24; app build not exposed",
+    "os": "Linux x64",
+    "surface": "Gemini consumer web in real headless Chrome, anonymous chat",
+    "account": "Anonymous browser; dedicated agent-controlled mailbox available",
+    "workspace": "Dedicated persistent browser profile; no personal login",
+    "fixture": "Fresh provider browser; no TinyCloud connector or grant"
+  },
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "Actual response and screenshot retained privately; human evidence review required.",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "Actual response and screenshot retained privately; human evidence review required.",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Actual response and screenshot retained privately; human evidence review required.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 1,
+    "approvals": 0
+  },
+  "id": "19cc0d06-da77-41c2-b84b-071f2ffd1332",
+  "recordedAt": "2026-10-23T12:27:13.762Z"
+}

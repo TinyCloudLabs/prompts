@@ -1,0 +1,43 @@
+{
+  "platform": "dots",
+  "scenario": "core-bare-url",
+  "variant": "agent-owned-chromium-headless",
+  "status": "blocked",
+  "environment": {
+    "model": "Not observed in native Dots",
+    "clientVersion": "Dots build unavailable; official access documentation checked",
+    "os": "Linux x64",
+    "surface": "Dots native surface not reached; shared ChatGPT signup prerequisite blocked",
+    "account": "No authenticated test ChatGPT account; Dots eligibility unverified",
+    "workspace": "Dedicated ChatGPT browser profile; no personal login or paid plan",
+    "fixture": "No Dots instance, TinyCloud connector or grant"
+  },
+  "observed": "Dots runs inside ChatGPT according to official onboarding documentation. The dedicated ChatGPT signup attempt was stopped by the provider challenge before a form was available; no authenticated test account exists. Dots-specific UI, enabled status and TinyCloud capabilities were not observed. Official access documentation additionally requires an eligible Pro or Business Premium plan, or an admin-enabled Enterprise workspace, with rollout and region restrictions. No paid plan was purchased. Sources: https://learn.chatgpt.com/docs/dots/getting-started https://learn.chatgpt.com/docs/dots#access",
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "Dots account prerequisite unavailable; Dots-specific acceptance not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "Dots account prerequisite unavailable; Dots-specific acceptance not exercised.",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "Dots account prerequisite unavailable; Dots-specific acceptance not exercised.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 0,
+    "approvals": 0
+  },
+  "id": "ec825eea-8ec0-461d-8582-52f06801c2c9",
+  "recordedAt": "2026-10-23T12:33:46.706Z"
+}

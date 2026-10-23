@@ -1,0 +1,42 @@
+{
+  "platform": "omp",
+  "scenario": "core-bare-url",
+  "variant": "scoped-gateway-native",
+  "status": "blocked",
+  "environment": {
+    "model": "openai-codex/gpt-6-astra",
+    "clientVersion": "omp 18.4.8; official gateway 18.12.6; TinyCloud CLI 1.3.1",
+    "os": "linux",
+    "surface": "native interactive terminal; read-only VHS observation of persistent tmux session",
+    "account": "operator-managed test fixture; capture does not authenticate or approve",
+    "workspace": "operator-owned disposable runner; no state reset by recorder",
+    "fixture": "Fresh TinyCloud home in hardened container; existing provider OAuth via scoped one-account one-model gateway; exact bare connect URL; local installer permissions only; no OpenKey consent"
+  },
+  "observed": "VHS exit=1, stop=none, screenshot=false.  Screen matches are synchronization only, not acceptance. Raw captures remain private; no checks are graded. The recorder never sends input to or terminates the native session.",
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "durationMs": 17585
+  },
+  "id": "fb59668c-407e-44f2-ae6f-bd78e674b9d4",
+  "recordedAt": "2026-10-23T13:02:31.649Z"
+}

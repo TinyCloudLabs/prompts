@@ -1,0 +1,65 @@
+{
+  "platform": "public-web",
+  "scenario": "HTTP-entry",
+  "variant": "default",
+  "status": "passed",
+  "environment": {
+    "model": "none",
+    "clientVersion": "v22.23.2",
+    "os": "linux",
+    "surface": "unauthenticated HTTPS",
+    "account": "none",
+    "workspace": "none",
+    "fixture": "public-read-only"
+  },
+  "observed": "entry-readable: Readable public document (11099 bytes); content SHA-256 e8fd2e42eb794360fcde222a85fa7889a3d3287e1a56fb317443f44d9ec919cc. No agent behavior asserted.\nmarkdown-readable: Readable public document (7956 bytes); content SHA-256 8a58f954483320e15b9cf545d29c8627f35ef3e3d6894c2001aabaa583ed1608. No agent behavior asserted.\ncoding-guide-readable: Readable public document (16381 bytes); content SHA-256 4a5baf8a1a3d451778c01214fe51f942de3ce1b0d2160989b8db8e1abcc63d61. No agent behavior asserted.",
+  "checks": [
+    {
+      "id": "entry-readable",
+      "status": "passed",
+      "observed": "Readable public document (11099 bytes); content SHA-256 e8fd2e42eb794360fcde222a85fa7889a3d3287e1a56fb317443f44d9ec919cc. No agent behavior asserted.",
+      "evidence": [
+        "evidence/ba775595-c9c6-4b20-ae45-5cb37fc0728e/public-probe.json"
+      ]
+    },
+    {
+      "id": "markdown-readable",
+      "status": "passed",
+      "observed": "Readable public document (7956 bytes); content SHA-256 8a58f954483320e15b9cf545d29c8627f35ef3e3d6894c2001aabaa583ed1608. No agent behavior asserted.",
+      "evidence": [
+        "evidence/ba775595-c9c6-4b20-ae45-5cb37fc0728e/public-probe.json"
+      ]
+    },
+    {
+      "id": "coding-guide-readable",
+      "status": "passed",
+      "observed": "Readable public document (16381 bytes); content SHA-256 4a5baf8a1a3d451778c01214fe51f942de3ce1b0d2160989b8db8e1abcc63d61. No agent behavior asserted.",
+      "evidence": [
+        "evidence/ba775595-c9c6-4b20-ae45-5cb37fc0728e/public-probe.json"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/ba775595-c9c6-4b20-ae45-5cb37fc0728e/public-probe.json",
+      "sha256": "e43582adcde8f8ed53c3a880dcdc801f742f6b9e75cc09cac17f9c2e51d0a959"
+    },
+    {
+      "path": "evidence/cf4ca47b-3565-45e5-9153-83d74d0991e6/entry-readable.txt",
+      "sha256": "e8fd2e42eb794360fcde222a85fa7889a3d3287e1a56fb317443f44d9ec919cc"
+    },
+    {
+      "path": "evidence/fbc447a4-363e-4854-8842-65ff30535010/markdown-readable.txt",
+      "sha256": "8a58f954483320e15b9cf545d29c8627f35ef3e3d6894c2001aabaa583ed1608"
+    },
+    {
+      "path": "evidence/b7887ea1-fadf-4f45-98f7-74d5c9f42f12/coding-guide-readable.txt",
+      "sha256": "4a5baf8a1a3d451778c01214fe51f942de3ce1b0d2160989b8db8e1abcc63d61"
+    }
+  ],
+  "metrics": {
+    "durationMs": 381
+  },
+  "id": "fb66da41-f147-4cf6-abd8-c2c2c8bad7ff",
+  "recordedAt": "2026-10-23T12:07:02.403Z"
+}

@@ -1,0 +1,79 @@
+name: Connect evaluations
+
+on:
+  pull_request:
+    paths: ['evals/connect/**', 'setup/**', 'apps/**', '.github/workflows/connect-evals.yml']
+  push:
+    paths: ['evals/connect/**', 'setup/**', 'apps/**', '.github/workflows/connect-evals.yml']
+  schedule:
+    - cron: '23 8 * * *'
+  workflow_dispatch:
+    inputs:
+      baseline_run_id:
+        description: 'Optional previous workflow run ID containing connect-evaluation artifact'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm --prefix evals/connect test
+
+  public-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start public evaluation (not native onboarding certification)
+        run: node evals/connect/runner.mjs init --out .evals/current --candidate "public-${GITHUB_RUN_ID}" --revision "workflow-source:${GITHUB_SHA}; remote deployment unverified"
+      - name: Check public entry, OAuth discovery and skill integrity
+        id: probe
+        continue-on-error: true
+        run: node evals/connect/runner.mjs probe --run .evals/current
+      - name: Download selected baseline
+        if: inputs.baseline_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: connect-evaluation
+          path: .evals/baseline
+          run-id: ${{ inputs.baseline_run_id }}
+          github-token: ${{ github.token }}
+      - name: Render current matrix
+        if: always()
+        env:
+          BASELINE_RUN: ${{ inputs.baseline_run_id }}
+        run: |
+          if [ -n "$BASELINE_RUN" ] && [ -f .evals/baseline/run.json ]; then
+            node evals/connect/runner.mjs report --run .evals/current --baseline .evals/baseline
+          else
+            node evals/connect/runner.mjs report --run .evals/current
+          fi
+      - name: Upload reviewable matrix and evidence (never private captures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: connect-evaluation
+          include-hidden-files: true
+          path: |
+            .evals/current/run.json
+            .evals/current/results/
+            .evals/current/evidence/
+            .evals/current/matrix.html
+            .evals/current/matrix.md
+          retention-days: 30
+      - name: Compare selected baseline
+        if: inputs.baseline_run_id != ''
+        run: node evals/connect/runner.mjs compare --run .evals/current --baseline .evals/baseline
+      - name: Require public probe success only
+        run: node evals/connect/runner.mjs gate --run .evals/current --platform public-web --tier smoke

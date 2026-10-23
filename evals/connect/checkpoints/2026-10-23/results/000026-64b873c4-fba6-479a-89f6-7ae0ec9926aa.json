@@ -1,0 +1,42 @@
+{
+  "platform": "omp",
+  "scenario": "core-bare-url",
+  "variant": "scoped-gateway-native",
+  "status": "needs_review",
+  "environment": {
+    "model": "openai-codex/gpt-6-astra",
+    "clientVersion": "omp 18.4.8; official gateway 18.12.6; TinyCloud CLI 1.3.1",
+    "os": "linux",
+    "surface": "native interactive terminal; read-only VHS observation of persistent tmux session",
+    "account": "operator-managed test fixture; capture does not authenticate or approve",
+    "workspace": "operator-owned disposable runner; no state reset by recorder",
+    "fixture": "Fresh TinyCloud home in hardened container; existing provider OAuth via scoped one-account one-model gateway; exact bare connect URL; installed eight verified skill files; paused before requesting OpenKey consent"
+  },
+  "observed": "One actual interactive native conversation fetched the connect/apps pages, installed the pinned CLI and all eight checksum-verified skill files, and activated the helper. CLI --version returned 1.3.1. Catalog read returned AUTH_REQUIRED; both profiles initially did not exist. A local key-only agent-data profile was created with authenticated=false. The TUI is paused before executing device authorization, so no expiring approval request was issued, no owner consent was performed and no records were saved. Provider login was reused without copying provider credentials. A nested eval timed out while a Bash approval remained queued; the native agent recovered using direct tools. Successful read-only VHS capture at the pending authorization command; one earlier capture missed the preceding write-permission screen. These observations are from the same native conversation, not a second execution. Raw transcript and captures remain private; acceptance checks require human review.",
+  "checks": [
+    {
+      "id": "route",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    },
+    {
+      "id": "setup-intent",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    },
+    {
+      "id": "chatgpt-format",
+      "status": "not_run",
+      "observed": "",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "durationMs": 4839
+  },
+  "id": "64b873c4-fba6-479a-89f6-7ae0ec9926aa",
+  "recordedAt": "2026-10-23T13:10:00.216Z"
+}

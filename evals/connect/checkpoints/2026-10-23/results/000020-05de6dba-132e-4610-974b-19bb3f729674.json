@@ -1,0 +1,37 @@
+{
+  "platform": "opencode",
+  "scenario": "core-existing-session",
+  "variant": "native-mini-connected",
+  "status": "needs_review",
+  "environment": {
+    "model": "opencode/big-pickle",
+    "clientVersion": "OpenCode 1.18.31",
+    "os": "Linux x64; dedicated Node 22 container",
+    "surface": "Actual interactive OpenCode --mini; existing connected native conversation",
+    "account": "Owner-approved synthetic KV fixture; existing scoped grant",
+    "workspace": "Disposable OpenCode container; no host provider credentials",
+    "fixture": "Installed tc-apps and valid session; known Test TinyCloud record and starter remain"
+  },
+  "observed": "Submitted the exact existing-session prompt in the live native UI. OpenCode performed one successful authoritative catalog list and reported the Todos app. No reinstall, login, consent request or write occurred. It did not re-read the sentinel body in this turn; its reported open-item count used earlier conversation reads. Native export and pane evidence remain private for human review.",
+  "checks": [
+    {
+      "id": "reuse",
+      "status": "not_run",
+      "observed": "Native export shows only a successful catalog-list tool call; no install/auth/write. Awaiting review.",
+      "evidence": []
+    },
+    {
+      "id": "read",
+      "status": "not_run",
+      "observed": "Fresh catalog was listed, but no fresh sentinel-body read occurred in this turn. Awaiting review.",
+      "evidence": []
+    }
+  ],
+  "evidence": [],
+  "metrics": {
+    "turns": 1,
+    "approvals": 0
+  },
+  "id": "05de6dba-132e-4610-974b-19bb3f729674",
+  "recordedAt": "2026-10-23T12:27:13.770Z"
+}
