@@ -171,8 +171,8 @@ const ABILITIES = [
   {
     title: "Personal records",
     url: "apps",
-    text: "Log, track and look up anything you keep records of, like weight, workouts or todos. Your agent organises them into apps as you go.",
-    prompt: "Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud):",
+    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go.",
+    prompt: "Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records:",
   },
   {
     title: "Publish",
@@ -395,9 +395,9 @@ write(
 // by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
 const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
 const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
-const curlLine = appsGuide.match(/curl -fsSL -O "[^"\n]*\/skills\/apps\/\{([^}\n]+)\}"/);
+const curlLine = appsGuide.match(/curl -fsSL((?: -O "[^"\n]*\/skills\/apps\/[^"\n]+")+)/);
 if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
-const fetched = curlLine[1].split(",");
+const fetched = [...curlLine[1].matchAll(/\/skills\/apps\/([^"\n]+)"/g)].map((m) => m[1]);
 if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
   throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
 }

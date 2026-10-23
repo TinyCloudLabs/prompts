@@ -1,16 +1,34 @@
 ---
 name: tc-apps
-description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them.
+description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.1.12"
+  version: "0.1.13"
 ---
 
 # Personal apps in TinyCloud
 
+**Install rule: never run `npm install -g`, `npm i -g`, `sudo`, or `curl … | sh`. The only install is the `npm install --prefix` step on the setup page. If you're about to install anything else, stop and tell the owner.**
+
+**Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in, device flow or access request, including the 30-day `agent-data` sign-in in §4. Read the catalog now and follow it:
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+```
+
+Sections 1 to 8 below apply only to a request that no catalog app owns (`TINY-APPS.md` §2).
+
+**For any request about the owner's data, read the catalog first.** Read whichever path exists:
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+```
+
+If a catalog app owns the domain, follow its fast path in that file: it checks the saved grant first, and no approval screen opens while the grant is live. Don't start the generic sign-in (§3, §4 below) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
+
 You keep the owner's records in their TinyCloud `default` space, under one key root: `xyz.tinycloud.agent-data/`. Records are grouped into apps, one per area of life (`fitness`, `todos`, …), which you create and extend as the owner starts tracking new things. A catalog under the root describes every app, so any agent in any conversation can find what exists and how it's stored. The owner approves access once, for 30 days, from an OpenKey link and code you show them. An optional SQL index answers questions over many records at once (§7).
 
 Operator-set, never change or unset:
-- `TC_BIN`: absolute path to `tc`, CLI 1.2.5 or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
+- `TC_BIN`: absolute path to `tc`, CLI `1.3.1` or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
@@ -18,8 +36,12 @@ How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes.
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly. Don't put `$TC_BIN` back, and keep the assignments first, before `umask 077`: Claude Code can remember an approval only for commands whose paths it can work out from the block itself.
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s. In Codex, pass `yield_time_ms: 30000` to `exec_command`. §4 is the exception: it waits for the owner.
-- Write files only through these blocks, never with a file-editing tool. Never install anything, and don't run `tc` commands that aren't here.
+- Write files only through these blocks, never with a file-editing tool. Never install anything: no `npm install -g`, `sudo`, or `curl | sh`, and no install other than the setup's `npm install --prefix` step. Don't run `tc` commands that aren't here.
 - Run §1 and §3 once per conversation.
+
+## 0. Route the request
+
+The catalog in `TINY-APPS.md` (read first, per the top of this file) decides the target for any request about the owner's data: if a catalog app owns the domain, its routing there decides, and you log and show the result as it says. Use this skill's §1 to §8 only for a domain no catalog app owns. The owner's profile is never yours to read or use.
 
 ## 1. Read the paths and the time
 
@@ -104,7 +126,7 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.2.5` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI 1.2.5 or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
+- The first line must be `1.3.1` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI `1.3.1` or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
 - `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or broader sign-in, `--replace-session` or `tc space host`.
@@ -221,7 +243,7 @@ If §3 showed the `agent-data-sql` profile, `present` or `expired`, follow `SQL.
 
 ## 7. The fast copy (SQL index)
 
-The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, through OpenKey's approval page, because the phone-code sign-in can't grant SQL. That page ends with a code the owner sends back to you.
+The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, on OpenKey's approval page. The owner approves there, then runs the sign-in command in their own terminal and pastes the code there, not in this chat.
 
 **The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
 - first write your answer from the records you read;
@@ -229,7 +251,7 @@ The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agen
 
 When talking to the owner, call it "a fast, searchable copy of your records". Never say "index", "SQL" or "database"; OpenKey's own page names it, and the message tells them what they'll see there. If they don't approve, carry on without it: everything still works, only slower.
 
-Read `SQL.md` in full, from the folder you read this file from, when:
+Read `SQL.md` in full, at the install path shown below, when:
 - you ask for the fast copy as above, or the owner asks about it;
 - the owner sends you OpenKey's code after you asked, perhaps in a later conversation: a short code of eight letters and digits such as `ABCD-EFGH`, or the full code, a long block of letters and digits that starts with `eyJ`;
 - §3 showed the index (`present` or `expired`) and you write, move or delete a record;

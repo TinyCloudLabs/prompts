@@ -7,13 +7,13 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.0` from a folder of its own.
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.1` from a folder of its own.
 
 ## 0. Setup, in the same prompt
 
 Add the setup link to your first request:
 
-> Log my weight: 80.5 kg today. Set it up with TinyCloud. This installs @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a 30-day sign-in (a key and session in ~/.tinycloud): https://agents.tinycloud.xyz/apps
+> Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
@@ -34,7 +34,7 @@ Claude Code and Codex also ask whether you trust a folder the first time you sta
 Optional variables, set before you start the client:
 - `TC_HOME`: the CLI profile store. Without it the CLI uses `~/.tinycloud`.
 - `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
-- `TC_BIN`: the absolute path to another `tc`, CLI 1.2.5 or later. The skill then uses it instead of its own folder.
+- `TC_BIN`: the absolute path to another `tc`, CLI `1.3.1` or later. The skill then uses it instead of its own folder.
 
 ## What you see at sign-in
 
@@ -82,7 +82,7 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 You don't need to set anything up. The first time a question needs many records, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of your records:
 
 1. The agent shows an OpenKey link. Open it and sign in. OpenKey lists the request as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space, for 30 days; that's the copy.
-2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`: copy it and send it to the agent. If it has expired (after 10 minutes), send the full code OpenKey also shows. The phone-code approval can't grant this kind of access, which is why there's a code to copy.
+2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it into your own terminal, where the agent gives you a command to run, and keep it out of the chat. If it has expired (after 10 minutes), paste the full code OpenKey also shows.
 3. The agent finishes, builds the copy from your records, and says when it's done. From then on it answers questions over many records with one lookup instead of reading every record. The agent's own thinking still takes most of the time.
 
 If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
@@ -91,7 +91,7 @@ Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.
 - **When the index expires** after 30 days, everything keeps working, more slowly, until you approve it again.
 - **Its reach is wider than its label.** The approval names one database, but TinyCloud's node also lets it open your `default` space's other SQL databases. The agent only ever uses the index.
-- **The code you paste** stays in the conversation's history. It works only with this computer's `agent-data-sql` profile key, and a short code expires after 10 minutes.
+- **The code** is typed only into your own terminal, so it stays out of the conversation's history. It works only with this computer's `agent-data-sql` profile key, and a short code expires after 10 minutes.
 
 ## What the sign-ins grant
 
