@@ -8,9 +8,9 @@ You need a shell, Node.js 22.20 or later, and npm.
 
 ## Personal records: [/apps](tc-apps.md)
 
-- **What it does:** your agent logs, tracks and looks up anything you keep records of, like weight, workouts or todos, and organises them into apps as you go.
-- **Paste into your agent:** `Log my weight: 80.5 kg today. Set it up with TinyCloud: https://agents.tinycloud.xyz/apps`
-- **You approve:** one OpenKey request that lets the agents on this computer keep records under `xyz.tinycloud.agent-data/` in your `default` space, for 30 days.
+- **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
+- **Paste into your agent:** `Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records.`
+- **You approve:** one OpenKey screen for the app, or two the first time on this computer: your own 7-day sign-in, which lists your whole space, then the app. For a meal, the app screen gives your agent access to just Health Log, for 7 days; otherwise, your records, for 30 days. If OpenKey shows a code, paste it into your own terminal, never into the chat.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)

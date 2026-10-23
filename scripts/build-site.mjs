@@ -2,6 +2,8 @@
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Public URLs are short and flat; the repository layout is only for authoring:
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
+// - /connect: chat-app setup and a handoff to the unchanged /apps coding guide,
+//   as HTML by default or Markdown via Accept; /connect.md is the same entry page.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
@@ -12,12 +14,14 @@
 // Other repository files are copied at their repository path. index.html,
 // llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
 // agent-skills discovery index are generated.
-// No dependencies; fetches the pinned skill tarballs. Run: node scripts/build-site.mjs
+// Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
+import { Marked } from "marked";
+import { gfmHeadingId } from "marked-gfm-heading-id";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
@@ -28,15 +32,17 @@ const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
 // docs/: internal notes, kept in the repository, never published.
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", "_site", "docs", "functions", "node_modules", "README.md", "scripts", "skills"]);
+const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
 
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
+// `html` adds a rendered page and a Markdown alternate, both from the same text.
 const PAGES = [
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
+  { url: "connect", src: "setup/connect.md", html: true },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "publish", src: "setup/publish.md" },
   { url: "share", src: "setup/share.md" },
@@ -56,13 +62,15 @@ const PAGES = [
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released CLI and Courier skills contain this exact resolver. Replace it
+// The released CLI and Courier skills contain one of these exact resolvers (courier 0.1.3 and
+// CLI 1.2.3 end in `tc`; CLI 1.2.4 and later end in `tinycloud`). Replace it
 // in every published Markdown file, including the core skill's reference pages.
-const UPSTREAM_RESOLVER = [
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"   # else a global npm install',
+const upstreamResolver = (bin) => [
+  `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
+  `[ -n "\${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/${bin}"   # else a global npm install`,
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+const UPSTREAM_RESOLVERS = [upstreamResolver("tc"), upstreamResolver("tinycloud")];
 const RESOLVER = [
   '{ set +x; } 2>/dev/null; umask 077',
   'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
@@ -83,9 +91,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.2.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.2.3.tgz",
-    integrity: "sha512-bKcFuqjxKkq8XLR1xfZ0wKBOTwvMBJovKoWOgQHcYEFy5/Ssg5h38FjeNNlDwzLJb+IUbqdfyFxtcbkuXSQtIA==",
+    version: "1.3.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.0.tgz",
+    integrity: "sha512-Hrvls0XOjlcG2rBiL5QrVPiSqs7Nji7wHXRkLBNL7d41OZVIEkvzbv49FkpW3Z8GX2+XelpB6qerSZByb7sW/g==",
     dir: "package/skills/tc-cli",
     checkCli: true,
   },
@@ -163,8 +171,8 @@ const ABILITIES = [
   {
     title: "Personal records",
     url: "apps",
-    text: "Log, track and look up anything you keep records of, like weight, workouts or todos. Your agent organises them into apps as you go.",
-    prompt: "Log my weight: 80.5 kg today. Set it up with TinyCloud:",
+    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go.",
+    prompt: "Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records:",
   },
   {
     title: "Publish",
@@ -278,9 +286,9 @@ async function loadSkill(skill) {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
       const text = body.toString("utf8");
-      if (!text.includes(UPSTREAM_RESOLVER)) return [path, body];
+      if (!UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) return [path, body];
       changed.add(path);
-      return [path, Buffer.from(text.replaceAll(UPSTREAM_RESOLVER, RESOLVER))];
+      return [path, Buffer.from(UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text))];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -338,14 +346,24 @@ for (const f of copied) {
 write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
 
 const pages = PAGES.map((p) => {
-  const text = render(p.src);
-  write(p.url, text);
+  let text = render(p.src);
+  if (p.url === "connect") {
+    // Chat apps share the first-record recipe; coding agents fetch /apps unchanged.
+    const recipe = render("setup/tc-apps.md").match(/^If the owner only asked for setup or named no record,[^\n]+$/m)?.[0];
+    const marker = "<!-- setup-only-record -->";
+    if (!recipe || text.split(marker).length !== 2) {
+      throw new Error("connect: expected the /apps setup-only record recipe and one setup-only-record marker");
+    }
+    text = text.replace(marker, () => recipe);
+  }
+  write(p.html ? `${p.url}.md` : p.url, text);
   return { ...p, text, ...describe(text, p.url) };
 });
 const page = (name) => pages.find((p) => p.url === name);
 
 for (const s of skills) {
   for (const f of s.files) write(f.url, f.body);
+  write(`skills/${s.short}/SHA256SUMS`, s.files.map((f) => `${sha256(f.body)}  ${f.path}\n`).join(""));
   write(`skills/${s.short}.md`, s.text);
 }
 const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
@@ -372,6 +390,27 @@ write(
     2,
   ) + "\n",
 );
+
+// The /apps setup downloads the skill's files by name, checks them against SHA256SUMS and copies them
+// by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
+const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
+const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
+const curlLine = appsGuide.match(/curl -fsSL((?: -O "[^"\n]*\/skills\/apps\/[^"\n]+")+)/);
+if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
+const fetched = [...curlLine[1].matchAll(/\/skills\/apps\/([^"\n]+)"/g)].map((m) => m[1]);
+if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
+  throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
+}
+const copies = [...appsGuide.matchAll(/ cp ((?:[\w.-]+ )+)"[^"\n]*\/tc-apps\/"/g)];
+if (copies.length !== 2 || copies.some(([, names]) => JSON.stringify(names.trim().split(" ").sort()) !== JSON.stringify(appsFiles))) {
+  throw new Error(`setup/tc-apps.md step 5 must copy exactly ${appsFiles}, in both the Claude Code and the Codex/OpenCode block`);
+}
+const servedIndex = JSON.parse(readFileSync(join(OUT, "skills/index.json"), "utf8"));
+for (const s of servedIndex.skills) {
+  const sums = readFileSync(join(OUT, `skills/${s.short}/SHA256SUMS`), "utf8").trimEnd().split("\n");
+  const want = s.files.map((f) => `${f.sha256}  ${f.path}`);
+  if (JSON.stringify(sums) !== JSON.stringify(want)) throw new Error(`skills/${s.short}/SHA256SUMS differs from the sha256 entries in skills/index.json`);
+}
 
 // Agent Skills discovery index (agentskills.io discovery 0.2.0)
 write(
@@ -407,9 +446,9 @@ const listedPages = pages.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides and skills that give a coding agent (Claude Code, Codex, OpenCode) abilities backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. Every file is plain Markdown at a short, stable URL.",
+  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /connect serves HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("setup")}: it lists every guide, what each does, and what the owner approves. Guides need a shell, Node.js 22.20 or later and npm.`,
+  `Start at ${url("connect")} for personal records in ChatGPT, Claude or a coding agent. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
   "",
   "## Abilities",
   "",
@@ -473,7 +512,7 @@ write(
 
 /*.txt
   Content-Type: text/plain; charset=utf-8
-${PAGES.map((p) => p.url)
+${PAGES.filter((p) => !p.html).map((p) => p.url)
   .map((name) => `\n/${name}\n  Content-Type: text/markdown; charset=utf-8\n`)
   .join("")}
 /
@@ -490,6 +529,38 @@ const style = `  <style>
     a { color: #0b57d0; }
     footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
   </style>`;
+const connect = page("connect");
+const markdownRenderer = new Marked(gfmHeadingId());
+write(
+  "connect.html",
+  `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${esc(connect.title)} · TinyCloud</title>
+  <meta name="description" content="${esc(connect.desc)}">
+  <link rel="canonical" href="${esc(url("connect"))}">
+  <link rel="alternate" type="text/markdown" href="/connect.md">
+${style}
+  <style>
+    h2 { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; }
+    h3 { margin-top: 1.75rem; }
+    pre { background: #f2f2f2; padding: 1rem; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre code { padding: 0; }
+    blockquote { margin: 1rem 0; padding: 0.25rem 1rem; border-left: 3px solid #0b57d0; background: #f2f2f2; overflow-wrap: anywhere; }
+    li { margin: 0.4rem 0; }
+  </style>
+</head>
+<body>
+  <main>
+${markdownRenderer.parse(connect.text)}
+  </main>
+</body>
+</html>
+`,
+);
+
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
@@ -560,7 +631,7 @@ const wrongCli = skills
     s.files.flatMap((f) => {
       const text = f.body.toString("utf8");
       const lookups = text.split("npm prefix --global").length - 1;
-      const upstream = text.includes(UPSTREAM_RESOLVER);
+      const upstream = UPSTREAM_RESOLVERS.some((resolver) => text.includes(resolver));
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
       const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
       return !upstream && lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
@@ -583,7 +654,7 @@ const broken = markdown.flatMap((from) => {
     const site = [BASE, SITE].find((b) => target.startsWith(`${b}/`));
     if (!site && (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#"))) return [];
     const path = decodeURIComponent(new URL(site ? target.slice(site.length) : target, `http://site${from}`).pathname);
-    return served.has(path) || (path === "/" && served.has("/index.html")) ? [] : [`${from} → ${target}`];
+    return served.has(path) || served.has(`${path}.html`) || (path === "/" && served.has("/index.html")) ? [] : [`${from} → ${target}`];
   });
 });
 if (broken.length) throw new Error(`links to paths this site doesn't serve:\n  ${broken.join("\n  ")}`);

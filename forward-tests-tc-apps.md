@@ -13,7 +13,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** the setup prints `SKILL_INSTALLED tc-apps <version> <folder>`; `<version>` must be the `tc-apps` version in that site's `/skills/index.json`.
+  - **Check the install:** §2 step 4 prints `OK` for the eight files, step 7 prints `1.3.1`, and `metadata.version` in the installed `SKILL.md` (`grep version <skill folder>/SKILL.md`) is the `tc-apps` version in that site's `/skills/index.json`.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -36,7 +36,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 | Client | Command | Notes |
 |---|---|---|
 | Claude Code | `claude` | It asks whether to trust a new folder on first launch. In auto mode it asks nothing else. In manual mode it asks on first use for each kind of block, and every time for blocks that use a pipeline or write the state folder. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, and the skill installer writing `~/.agents/skills`. The state folder doesn't exist at launch; the install creates it. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, the download, and the skill copy into `~/.agents/skills`, run as one call. The state folder doesn't exist at launch; the install creates it. |
 | OpenCode | `opencode -m opencode/big-pickle` | No questions. Don't launch it with `--yolo`. OpenCode loads skills when it starts, so restart it after conversation 1, as the setup tells the agent to say. `/new` alone doesn't pick up the newly installed skill. |
 
 ## Coordinator pre-flight (no owner needed)
@@ -54,9 +54,9 @@ Each step is a **new conversation**. The first conversation in each client carri
 
 | # | Client | Prompt | Expected |
 |---|---|---|---|
-| 1 | OpenCode | "Log my weight: 80.5 kg today. Set it up with TinyCloud: `<setup link>`" | Install. §3 shows `AUTH_REQUIRED`. §4: **the test's only device approval**. Then app `fitness` with kind `weight` (`per: day`), record `fitness/weight/<YYYY-MM>/<date>`, read back. The agent says it started a fitness app. |
-| 2 | Codex | "My goal is 78 kg by December. Set it up with TinyCloud: `<setup link>`" | Install (one escalation). **No sign-in**: §3 lists the catalog. An item kind for goals is added to `fitness` (its states are the agent's choice, e.g. `open`/`done`), and the goal is written under its first state. The agent announces the new kind. |
-| 3 | Claude Code | "Bench press, 3 sets of 8 at 60 kg. Set it up with TinyCloud: `<setup link>`" | Install. Kind `lift` or similar (`per: time`), key ending `-bench-press`. |
+| 1 | OpenCode | "Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log my weight: 80.5 kg today. Set it up with TinyCloud, which saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records." | Install. §3 shows `AUTH_REQUIRED`. §4: **the test's only device approval**. Then app `fitness` with kind `weight` (`per: day`), record `fitness/weight/<YYYY-MM>/<date>`, read back. The agent says it started a fitness app. |
+| 2 | Codex | "Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. My goal is 78 kg by December. Set it up with TinyCloud, which saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records." | Install (one escalation). **No sign-in**: §3 lists the catalog. An item kind for goals is added to `fitness` (its states are the agent's choice, e.g. `open`/`done`), and the goal is written under its first state. The agent announces the new kind. |
+| 3 | Claude Code | "Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Bench press, 3 sets of 8 at 60 kg. Set it up with TinyCloud, which saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records." | Install. Kind `lift` or similar (`per: time`), key ending `-bench-press`. |
 | 4 | OpenCode | "Ran 5 km in 27 minutes this morning." | No link needed. One broad `per: time` kind for sports other than lifting, e.g. `session` with `sport`, `minutes`, `km`. Not a `run` kind (`SKILL.md` §2, rule 1). |
 | 5 | Codex | "Bouldering tonight: 90 minutes, hardest problem 6a." | The same kind with a new `sport` value, plus a new field for the grade, added to the kind's `fields` with "(added <date>)". |
 | 6 | Claude Code | "Add a todo: renew my passport." | App `todos` with kind `todo` (item: `open`, `done`), record under `todos/todo/open/`. |
@@ -112,11 +112,11 @@ This test proves that the owner never has to ask for the SQL index. The agent as
 ## Known rough edges
 
 - The device link is valid for 10 minutes. After that the CLI exits with `DEVICE_AUTH_EXPIRED`, and the agent tells the owner instead of starting another.
-- A new account may not have its `default` space hosted. Sign-in then succeeds, and §3 fails with `SPACE_NOT_HOSTED`; the agent stops.
+- A new account's `default` space is hosted in the background after sign-in, so §3 can fail with `SPACE_NOT_HOSTED` for a while. The agent tells the owner it's still being set up, retries with backoff for about 2 minutes, and never asks for a second or broader sign-in (TC-1608).
 - The SQL grant reaches every SQL database in `default` (`tinycloud-node` names databases by their last path segment). The owner accepted this. The skill always passes the exact `--db`.
 - Parallel SQL writes to one database can fail or half-apply, so the skill writes SQL one block at a time.
 - On a machine that also has TinyChat's global `tc-cli` skill, Codex and OpenCode may load it for the word "TinyCloud".
-- Claude Code's auto mode sometimes blocks the install as unsafe. The setup then has the agent show the block and ask; the owner replies "go ahead".
+- Claude Code's auto mode can still block a step of the install, or the sign-in, as unsafe (TC-1607). The setup then has the agent show the step and ask; the owner replies "go ahead". The install is separate plain steps with no downloaded installer, to make that less likely. The `tc` helper is still a script from the skill that runs later, and the checksums only catch a corrupted download.
 - Codex's web tool sometimes fails to fetch the setup page ("Internal Error"). The agent falls back to `curl`.
 
 If OpenKey, the CLI, the node or the skill installer causes friction, write it up with what happened, where, and the evidence. Don't patch those repositories from this test.

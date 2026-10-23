@@ -1,0 +1,65 @@
+# Set up TinyCloud
+
+Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in ChatGPT, Claude, Claude Code, Codex or OpenCode.
+
+**Paste this into your app or agent:**
+
+> Set up TinyCloud using https://agents.tinycloud.xyz/connect
+
+**For the assistant:** keep the owner's original request and continue it in this conversation. Use the route for the environment you are running in. In a chat app, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format.
+
+## Coding agents
+
+**Claude Code, Codex and OpenCode on the owner's computer:** fetch and read the [original coding-agent setup guide](tc-apps.md) in full, then follow it exactly for the owner's original request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
+
+The original guide is the authority for all prerequisites, installation commands, permissions, sign-in, first-record behavior, troubleshooting and cleanup. This page does not replace or modify any of those instructions. Do not reconstruct the setup from a summary or use the chat-app MCP instructions below for this route.
+
+**ChatGPT, Claude chat and other chat apps:** use the instructions below instead. Do not run the coding-agent setup in a chat app's temporary code sandbox.
+
+Jump to [ChatGPT](#chatgpt), [Claude](#claude), or [other chat apps](#other-chat-apps).
+
+## ChatGPT
+
+**For ChatGPT assistants:** if TinyCloud tools are not available yet, reply with only the four numbered steps below, in at most 120 words. No introduction, images, feature menu, plan or price caveats, extra sections, or closing questions. Do not send the owner back to this page to find the instructions. If the tools are already available, use them to continue the original request instead of repeating setup.
+
+1. In a browser, open [ChatGPT Plugins](https://chatgpt.com/plugins) → **+ → Add custom MCP server**.
+2. Enter **Name:** TinyCloud; **Description:** Personal records in TinyCloud; **Server URL:** `https://mcp.tinycloud.xyz/mcp`; **Authentication:** OAuth.
+3. Review the warning, select **Create as a plugin**, sign in with OpenKey, and install it.
+4. In a conversation, type **@**, select **TinyCloud**, and make your original request. For setup only, ask: **“What personal apps do I already have in TinyCloud?”**
+
+**Troubleshooting only after a reported or observed blocker:** do not infer that an account cannot connect from its plan name, generic availability documentation, or TinyCloud's absence from the app directory. Do not run an eligibility preflight or recommend an upgrade or developer mode speculatively. A successful connection takes precedence over a contrary documentation assumption. If the option is missing or an action is rejected, address that specific UI state or error briefly; ask one targeted question only if needed to choose the next action. Once enabled, follow [Approve access and continue](#approve-access-and-continue) when the tools request approval, not as an extra initial setup section.
+
+## Claude
+
+Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+
+1. On Claude web or Desktop, open [Customize → Connectors](https://claude.ai/customize/connectors), then **+ Add → Add custom connector**.
+2. Name it **TinyCloud**, enter **`https://mcp.tinycloud.xyz/mcp`**, and continue. Review the detected OAuth settings and choose to sign in with OpenKey.
+3. Finish adding the connector. In your conversation, use **+ → Connectors** to enable TinyCloud, then make your original request.
+4. Follow [Approve access and continue](#approve-access-and-continue) below. Once connected, you can also use it in Claude's mobile apps.
+
+For a managed workspace, an owner or administrator may need to add the connector first. See [Claude's custom-connector instructions](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp).
+
+If you want to approve record-writing tools once rather than on every call, find `tinycloud_apps_write` in the connector's tool permissions and choose **Always allow**. Only do this if you trust it to write records without per-call confirmation. This does not replace the OpenKey access approval.
+
+## Other chat apps
+
+If your app supports remote MCP over HTTP with OAuth, add **`https://mcp.tinycloud.xyz/mcp`**, choose **OAuth**, and sign in with OpenKey. Enable the connection for your conversation, then make your request. Mobile support depends on the app.
+
+If the app has no custom remote MCP support, reading this page cannot add that capability. Say so and direct the owner to a supported ChatGPT web or Claude client. Do not suggest installing a CLI in a temporary chat sandbox as a substitute.
+
+## Approve access and continue
+
+With TinyCloud enabled, make your original request, or ask: **“What personal apps do I already have in TinyCloud?”** The assistant will show the actual OpenKey connect or personal-record access link returned by a TinyCloud tool. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue.
+
+**For chat assistants:** use the connected TinyCloud personal-app tools and the instructions they return. If the tools are not available yet, give the relevant connection steps above; do not claim setup is complete. Never ask the owner to paste a password, private key, access token, delegation or approval code into chat. For setup-only requests, follow the [default-record recipe](#setup-only-requests-in-chat-apps) below, but perform the reads and writes through the connected tools, not the CLI. Read the saved record back before reporting success.
+
+A brand-new account's storage can take a minute or two to finish setting up after the first approval. If a tool reports `SPACE_NOT_HOSTED`, tell the owner it is still being set up and retry with backoff for about two minutes. Do not ask for another or broader sign-in to fix it.
+
+To disconnect a chat app, remove or disconnect TinyCloud in that app's plugin or connector settings. Disconnecting does not delete your stored records. Local CLI cleanup remains in the original [coding-agent guide's Undo section](tc-apps.md#undo).
+
+### Setup-only requests in chat apps
+
+This record recipe is shared with the original guide. For chat apps, use the connected tools rather than its CLI or skill-command references.
+
+<!-- setup-only-record -->

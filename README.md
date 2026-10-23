@@ -10,6 +10,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | --- | --- | --- |
 | `/setup` | The entry point: every ability, what to paste, what the owner approves, how to undo it | [`setup/README.md`](setup/README.md) |
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
+| `/connect` | One link for ChatGPT, Claude and coding agents: HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); coding agents follow the unchanged [`/apps` guide](setup/tc-apps.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
 | `/share` | Share an artifact (`tc-publish`): choose who can open it, set an expiry, revoke | [`setup/share.md`](setup/share.md) |
@@ -19,12 +20,25 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/openkey` | Building block: the standalone OpenKey CLI | [`setup/openkey.md`](setup/openkey.md) |
 | `/skills/<skill>.md` | A skill's `SKILL.md` to read, for `apps`, `chat`, `publish`, `secrets`, `courier`, `cli` and `mcp`; its relative links point into `/skills/<skill>/` | see [Skills](#skills) |
 | `/skills/<skill>/<file>` | The skill's files exactly as installed, `SKILL.md` included | |
+| `/skills/<skill>/SHA256SUMS` | The sha256 of each of the skill's files, in `sha256sum -c` format, the same values as `index.json`; the `/apps` setup checks its downloads against it | generated |
 | `/skills/index.json` | Every skill's name, short name, version, description, source, changed files, and files with sha256 checksums | generated |
 | `/skills/install.js` | The installer the guides run | [`scripts/install-skill.js`](scripts/install-skill.js) |
 
 The earlier URLs, the repository paths such as `/setup/tc-apps.md`, `/apps/tinychat/setup.md` and `/skills/tc-apps/SKILL.md`, redirect to these, and so does each page's URL with a trailing slash (`/apps/` → `/apps`). The site also generates `/` (for people), `/llms.txt`, `/llms-full.txt`, the sitemap and `/.well-known/agent-skills/index.json`. This README isn't published; `/README.md` redirects to `/setup`.
 
 Guides link to each other and to skill files by relative repository path; the build rewrites those links to the public URLs. The build then fails if any link in a served Markdown file, relative or to this site, doesn't reach a file the site serves.
+
+### One-link personal-record setup
+
+Share `Set up TinyCloud using https://agents.tinycloud.xyz/connect` in any supported client. Chat apps receive the hosted MCP URL, OAuth and client-specific connection steps. Local coding agents are told to fetch and follow `/apps` in full for the owner's original request, without asking the owner for another URL. The original `/apps` source, output and Markdown response remain unchanged.
+
+In ChatGPT, a bare `/connect` link means setup, not a request for a feature menu. The initial reply is only four numbered steps, at most 120 words: direct Plugins link, connection fields and OAuth, OpenKey sign-in/install, then `@TinyCloud`. No introduction, images, speculative plan/price warnings or closing questionnaire. Troubleshoot only reported or observed blockers; a plan label or generic documentation gap is not evidence that an account cannot connect. Once tools are available, continue the original request rather than repeating installation.
+
+The build generates `connect.html` and `connect.md` from the same entry-page text. It shares only the setup-only record recipe with chat apps; it does not embed, reword or relink the coding-agent installation guide. `/apps` remains the sole authority for that workflow. Marked renders the HTML at build time with heading IDs, without JavaScript. The additional coding-agent fetch is intentional: preserve the tested guide rather than maintain a modified copy. This preserves instructions, not a guarantee of identical model decisions.
+
+`functions/connect.js` returns HTML for ordinary requests, including `Accept: */*`. An explicit, nonzero `text/markdown` preference at least as high as HTML returns Markdown at the **same `/connect` URL**, with `Vary: Accept`. It respects HTML wildcard preferences and never infers the client from User-Agent. `/connect.md` is also available as a machine-readable alternate; owners do not need to choose it.
+
+The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Cloudflare email obfuscation can mistake `package@version` for an email address and rewrite guide text for readers that do not run JavaScript. This opt-out affects `/connect` only; neither `/apps` nor zone-wide settings are changed. Verify the production HTML bytes, not just the `pages.dev` preview.
 
 ## Skills
 
@@ -35,8 +49,8 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tc-apps` | `apps` | [`skills/tc-apps`](skills/tc-apps), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
-| `tc-cli` | `cli` | `skills/tc-cli` in the npm package [`@tinycloud/cli@1.2.3`](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.3) (js-sdk), unchanged |
-| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.1.3`](https://www.npmjs.com/package/@tinycloud/courier/v/0.1.3) (js-sdk), unchanged; `@tinycloud/cli@1.2.3` ships the same files |
+| `tc-cli` | `cli` | `skills/tc-cli` in the npm package [`@tinycloud/cli@1.3.0`](https://www.npmjs.com/package/@tinycloud/cli/v/1.3.0) (js-sdk), unchanged |
+| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.1.3`](https://www.npmjs.com/package/@tinycloud/courier/v/0.1.3) (js-sdk), unchanged |
 | `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.16`](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz), with the changes below |
 | `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.5.3`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.5.3) (js-sdk), unchanged |
 
@@ -44,7 +58,7 @@ Skills written for these guides live in `skills/`. Skills owned by another repos
 
 The owner-facing pages call the CLI `tinycloud`, the name `@tinycloud/cli` 1.2.3 added next to `tc`: on Linux, `/usr/sbin/tc` is the system's traffic-control tool, and `tinycloud` doesn't clash with anything. [`/cli`](setup/tinycloud.md) links `tinycloud` onto the owner's `PATH`, and `tc` too where nothing else has that name. The skills themselves don't need either name on the `PATH`: they run the CLI as `TC_BIN` if set, else from `~/.local/share/tinycloud/cli`.
 
-Every skill whose `SKILLS` entry has `checkCli` must run the CLI that way. For tc-cli, courier and tinychat-retrieval, the build fails if a served file looks up the CLI other than through the three-line resolver tc-cli 1.2.3 ships (`TC_BIN` if set, else `~/.local/share/tinycloud/cli`, else a global npm install), has a bare `tc` command in a shell block, or has a script that runs `tc` (as a default executable, a spawned program or a returned value). tc-cli 1.2.3 and courier 0.1.3 pass as released ([TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522)). The skills written here (`tc-publish`, `tc-secrets`) resolve `TC_BIN` in each block's preamble the same way, preferring the `tinycloud` executable.
+Every skill whose `SKILLS` entry has `checkCli` must run the CLI that way. For tc-cli, courier and tinychat-retrieval, the build fails if a served file looks up the CLI other than through the three-line resolver that tc-cli and courier ship (`TC_BIN` if set, else `~/.local/share/tinycloud/cli`, else a global npm install; the released lines end in `tc` up to tc-cli 1.2.3 and courier 0.1.3, and in `tinycloud` from tc-cli 1.2.4), has a bare `tc` command in a shell block, or has a script that runs `tc` (as a default executable, a spawned program or a returned value). tc-cli 1.3.0 and courier 0.1.3 pass as released ([TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522)). The skills written here (`tc-publish`, `tc-secrets`) resolve `TC_BIN` in each block's preamble the same way, preferring the `tinycloud` executable.
 
 One released skill is served with changes, listed as `changes` in `SKILLS` and as `changed` in `/skills/index.json`: `tinychat-retrieval`'s scripts run `TC_BIN` if set, else the `tinycloud` in `~/.local/share/tinycloud/cli`, else `tinycloud` on the `PATH`, never `tc`; with none of them they fail with `CLI_UNAVAILABLE` ("TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN"). That's `defaultTc()` in `lib/retrieval.mjs`, used by `lib/setup.mjs` and `lib/login.mjs`; `scripts/retrieve.mjs --help` and `references/meetings.md` say so. TinyChat's pack needs the same change upstream (TC-1077); once a pinned release has it, drop the changes here.
 
@@ -64,7 +78,7 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@1.2.3` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.2.3) |
+| TinyCloud CLI and `tc-cli` skill | `@tinycloud/cli@1.3.0` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.3.0) |
 | TinyChat retrieval pack | `0.1.1-onboarding.16` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
 
@@ -79,6 +93,11 @@ The owning repositories remain authoritative for executable code and their skill
 ## Source and deployment boundary
 
 The site is deployed from `main` through Cloudflare Pages (project `tinycloud-agents`), which runs `node scripts/build-site.mjs` and serves `_site/`. `functions/` holds the Pages Functions. Other branches get preview builds, where every `https://agents.tinycloud.xyz` URL in the guides, and the installer's own site, point at the preview, so a branch's guides install that branch's skills. TinyChat's own production entry point at `https://tinycloud.chat/agents/setup.md` and its versioned app pack are separate and unchanged.
+
+Run `npm ci --ignore-scripts --no-audit --no-fund`, then `npm run build` locally. The lockfile pins the build-time Markdown renderer and heading-link extension. CI installs those dependencies before its existing checks; Cloudflare Pages installs package dependencies automatically before its build command. Neither the package manifests nor `node_modules` are published.
+
+Preview the actual Pages Functions with `wrangler pages dev _site --compatibility-date 2026-08-18`. Check `/connect` in a browser and with `curl -H 'Accept: text/markdown'`; both must contain the MCP connection steps and the coding-agent handoff to `/apps`. Follow that link and check that `/apps` is still raw Markdown and byte-identical to the baseline. A local page/HTTP check does not prove an agent followed the handoff or completed authorization; those require the client checks in [`forward-tests-onboarding.md`](forward-tests-onboarding.md).
+
 
 ## Snapshot provenance
 

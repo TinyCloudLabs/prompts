@@ -7,7 +7,7 @@ Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.2.3
+npm install --prefix <dir> @tinycloud/cli@1.3.0
 <dir>/node_modules/.bin/tinycloud --profile api-keys auth caps   # once per existing profile after an upgrade
 export TC_BIN=<dir>/node_modules/.bin/tinycloud
 export TC_OWNER_DID=did:pkh:eip155:1:<owner address>    # the account that owns the secrets

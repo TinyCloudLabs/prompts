@@ -1,0 +1,12 @@
+{
+  "name": "tinycloud-agent-guides",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-site.mjs",
+    "test": "node --test scripts/*.test.mjs"
+  },
+  "dependencies": {
+    "marked": "18.1.1",
+    "marked-gfm-heading-id": "4.1.4"
+  }
+}
