@@ -34,12 +34,12 @@ if [ "$PROBE_RC" -ne 0 ]; then
       "$TC_BIN" init --name default --paste || INIT_RC=$?
       if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
       if [ "$INIT_RC" -ne 0 ]; then
-        echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
+        echo "Sign-in didn't finish, so nothing was granted. Run the line above again." >&2
         exit 1
       fi
       ;;
     *)
-      echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
+      echo "Couldn't check your TinyCloud sign-in, so nothing was granted. Tell your agent." >&2
       exit 1
       ;;
   esac
