@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.1.13"
+  version: "0.1.14"
 ---
 
 # Personal apps in TinyCloud
@@ -12,7 +12,7 @@ metadata:
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in, device flow or access request, including the 30-day `agent-data` sign-in in §4. Read the catalog now and follow it:
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md" "$HOME/.local/share/tc-apps/skill/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
 ```
 
 Sections 1 to 8 below apply only to a request that no catalog app owns (`TINY-APPS.md` §2).
@@ -20,7 +20,7 @@ Sections 1 to 8 below apply only to a request that no catalog app owns (`TINY-AP
 **For any request about the owner's data, read the catalog first.** Read whichever path exists:
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md" "$HOME/.local/share/tc-apps/skill/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
 ```
 
 If a catalog app owns the domain, follow its fast path in that file: it checks the saved grant first, and no approval screen opens while the grant is live. Don't start the generic sign-in (§3, §4 below) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
@@ -260,6 +260,7 @@ Read `SQL.md` in full, at the install path shown below, when:
 For example:
 - Claude Code with the user-level install: `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SQL.md"`.
 - Codex and OpenCode with the user-level install: `cat "$HOME/.agents/skills/tc-apps/SQL.md"`.
+- Download folder, for this conversation only, when the copy into the client's skills folder isn't allowed: `cat "$HOME/.local/share/tc-apps/skill/SQL.md"`.
 
 ## 8. Errors
 
