@@ -69,7 +69,7 @@ cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud
 cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 256 -c SHA256SUMS; }
 ```
 
-**Step 5. Put the skill where your client looks for skills,** for your user, so every project folder sees it. Use the block for your client.
+**Step 5. Put the skill where your client looks for skills,** for your user, so later conversations see it. Use the block for your client.
 
 Claude Code:
 
@@ -82,6 +82,8 @@ Codex and OpenCode:
 ```sh
 cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh "$HOME/.agents/skills/tc-apps/"
 ```
+
+If your client doesn't allow installing the skill, use it from the download folder for this conversation only, and tell the owner the one line that installs it for later chats. That line is the step 5 command for their client, which they can run in their own terminal if they choose. Then carry on with §3.
 
 **Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tc` is the skill's `tc-wrapper.sh`, copied from the download: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
 
@@ -99,15 +101,15 @@ It takes about 30 s, almost all of it step 2.
 
 If something goes wrong:
 - **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
-- **Your client refuses a step or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence", "Code from External" or "Instruction Poisoning". Show the owner the step, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait. Don't edit their settings files, and don't run the step another way.
-- **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder.
+- **Your client refuses a step or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence", "Code from External" or "Instruction Poisoning". Show the owner the step, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait. Don't edit their settings files, and don't run the step another way. This bullet doesn't cover the step 5 copy: see step 5.
+- **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder. A refused step 5 copy is covered in step 5, not here.
 - **`agents.tinycloud.xyz` does not answer** (step 3 fails): stop and say so to the owner. Don't switch to another source, and don't install the CLI globally.
 
-Wait until step 7 has printed its version before §3: the skill doesn't exist until then.
+Wait until step 7 has printed its version before §3: the skill's commands need the CLI until then.
 
 ## 3. Carry on with the skill
 
-Read the installed skill in full, with the line for your client:
+Read the skill in full, with the line for your client. If your client doesn't allow the step 5 copy, read the download folder's copy with the last line:
 
 ```sh
 cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"
@@ -117,7 +119,11 @@ cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"
 cat "$HOME/.agents/skills/tc-apps/SKILL.md"
 ```
 
-The first is for Claude Code, the second for Codex and OpenCode. Your client may not list the new skill until it restarts; you don't need it to.
+```sh
+cat "$HOME/.local/share/tc-apps/skill/SKILL.md"
+```
+
+The first is for Claude Code, the second for Codex and OpenCode, and the third is the download folder's copy, used for this conversation only when the step 5 copy isn't allowed. Your client may not list the new skill until it restarts; you don't need it to.
 
 Follow the skill now for the owner's request, from its §1.
 
