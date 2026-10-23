@@ -60,9 +60,9 @@ Identical in every client, pasted as one message into a new conversation. Don't 
 
 | ID | Prompt | Source |
 |---|---|---|
-| **O** | `Read https://agents.tinycloud.xyz/apps and follow it. Set up TinyCloud for me and save my first record.` | Candidate onboarding prompt (F-68), now using `/apps` after the separate landing page was removed. |
+| **O** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Set up TinyCloud for me and save my first record.` | Candidate onboarding prompt (F-68), now using `/apps` after the separate landing page was removed. |
 | **S** | `I want to understand how to use https://agents.tinycloud.xyz/apps` | The 16 Oct opener. |
-| **T1** | `Read https://agents.tinycloud.xyz/apps and follow it. Log my weight: 80.5 kg today.` | "Try:" on `/`: Personal records. |
+| **T1** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log my weight: 80.5 kg today.` | "Try:" on `/`: Personal records. |
 | **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" on `/`: Publish. |
 | **T3** | `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets` | "Try:" on `/`: Secrets. |
 | **T4** | `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat` | "Try:" on `/`: Meetings. |

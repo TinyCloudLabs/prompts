@@ -15,7 +15,7 @@ A permission slip and the code OpenKey shows after you approve are fine to share
 
 Add the setup link to your first request:
 
-> Read https://agents.tinycloud.xyz/apps and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
+> Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.

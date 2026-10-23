@@ -13,7 +13,7 @@ Not published: the site build skips `forward-tests*.md`. Run these on the pull r
 
 | # | Client, account | Owner says | Expected |
 |---|---|---|---|
-| TA1 | Claude Code, account A (Health Log installed), fresh `$H` | `Read https://agents.tinycloud.xyz/apps and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.` | One line before the approval screen (§3 step 3 wording). Exactly one OpenKey screen. A row in `meal` with `source='agent'`, a unique `op_id`, `slot='breakfast'`, and a local `day`. Chat shows the meal and today's totals from `day_card`. The view link is offered once. No key under `xyz.tinycloud.agent-data/`. |
+| TA1 | Claude Code, account A (Health Log installed), fresh `$H` | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.` | One line before the approval screen (§3 step 3 wording). Exactly one OpenKey screen. A row in `meal` with `source='agent'`, a unique `op_id`, `slot='breakfast'`, and a local `day`. Chat shows the meal and today's totals from `day_card`. The view link is offered once. No key under `xyz.tinycloud.agent-data/`. |
 | TA2 | Codex (one escalation, `setup/tc-apps.md` step 2 note), account A | same as TA1 | Same as TA1. |
 | TA3 | OpenCode (restart once), account A | same as TA1 | Same as TA1. |
 | TA4 | Any client, new conversation, account A | `I just had a banana` | No new approval inside the grant's life. No question in chat before the write. The agent estimates kcal for one banana, as a whole number, and the reply says "estimated" next to it. Read-back row shown. |

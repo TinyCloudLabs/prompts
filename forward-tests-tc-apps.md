@@ -54,9 +54,9 @@ Each step is a **new conversation**. The first conversation in each client carri
 
 | # | Client | Prompt | Expected |
 |---|---|---|---|
-| 1 | OpenCode | "Read https://agents.tinycloud.xyz/apps and follow it. Log my weight: 80.5 kg today." | Install. §3 shows `AUTH_REQUIRED`. §4: **the test's only device approval**. Then app `fitness` with kind `weight` (`per: day`), record `fitness/weight/<YYYY-MM>/<date>`, read back. The agent says it started a fitness app. |
-| 2 | Codex | "Read https://agents.tinycloud.xyz/apps and follow it. My goal is 78 kg by December." | Install (one escalation). **No sign-in**: §3 lists the catalog. An item kind for goals is added to `fitness` (its states are the agent's choice, e.g. `open`/`done`), and the goal is written under its first state. The agent announces the new kind. |
-| 3 | Claude Code | "Read https://agents.tinycloud.xyz/apps and follow it. Bench press, 3 sets of 8 at 60 kg." | Install. Kind `lift` or similar (`per: time`), key ending `-bench-press`. |
+| 1 | OpenCode | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log my weight: 80.5 kg today." | Install. §3 shows `AUTH_REQUIRED`. §4: **the test's only device approval**. Then app `fitness` with kind `weight` (`per: day`), record `fitness/weight/<YYYY-MM>/<date>`, read back. The agent says it started a fitness app. |
+| 2 | Codex | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it. My goal is 78 kg by December." | Install (one escalation). **No sign-in**: §3 lists the catalog. An item kind for goals is added to `fitness` (its states are the agent's choice, e.g. `open`/`done`), and the goal is written under its first state. The agent announces the new kind. |
+| 3 | Claude Code | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Bench press, 3 sets of 8 at 60 kg." | Install. Kind `lift` or similar (`per: time`), key ending `-bench-press`. |
 | 4 | OpenCode | "Ran 5 km in 27 minutes this morning." | No link needed. One broad `per: time` kind for sports other than lifting, e.g. `session` with `sport`, `minutes`, `km`. Not a `run` kind (`SKILL.md` §2, rule 1). |
 | 5 | Codex | "Bouldering tonight: 90 minutes, hardest problem 6a." | The same kind with a new `sport` value, plus a new field for the grade, added to the kind's `fields` with "(added <date>)". |
 | 6 | Claude Code | "Add a todo: renew my passport." | App `todos` with kind `todo` (item: `open`, `done`), record under `todos/todo/open/`. |
