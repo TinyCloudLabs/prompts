@@ -99,10 +99,13 @@ Publication review found two harness defects: preview packets could instruct an 
 
 The [CI workflow](../../.github/workflows/connect-evals.yml) runs the contract suite and anonymous public probes, retains only allowlisted reports/evidence, and supports a selected historical baseline. It does not automate native account access, consent, signup, payments or acceptance grading. The archived `needs_review` and blocked outcomes are intentionally preserved.
 
+The site publisher also excludes `evals/`, private `.evals/` runs and the two acceptance runbooks. The first hosted site check exposed repository-only link failures when those files were copied into the public deployment. A publication-boundary regression now exercises a private run fixture and verifies that evaluation sources, private runs and acceptance notes are not served; the normal public-link validator remains enabled.
+
 ## Verification performed for this handoff
 
 - `npm --prefix evals/connect test`: **19 passed**, zero failures or skips on Linux.
+- `npm test`: **37 passed**, including the publication-boundary regression. `npm run build` completed with 11 guides and seven skills.
 - Actual CLI packet generation used the configured preview URL. A real Chromium report view showed that preview URL in the executable S01 prompt, while retaining canonical scenario provenance.
 - Actual CLI cancellation smokes for both SIGINT and SIGTERM returned exit 2 / `blocked`, left every acceptance check ungraded, and did not launch the synthetic main command. No provider/model was used for these harness checks.
 - An offline copy of the portable checkpoint regenerated HTML/Markdown and verified the frozen catalog and all attachment hashes: 26 attempts, 20 attachments, unchanged recorded outcomes. The rendered Gemini observation remained `needs_review`.
-- No live public probe or authenticated onboarding was repeated during PR preparation. The known historical skill-probe failure remains visible; local verification does not claim a successful GitHub-hosted workflow run.
+- No authenticated onboarding was repeated during PR preparation. The initial [GitHub public-probe run](https://github.com/TinyCloudLabs/prompts/actions/runs/39996747692) passed HTTP entry/OAuth and failed `HTTP-skill`'s four-file manifest contract. That unresolved gate is separate from harness correctness; neither local tests nor public HTTP probes certify native acceptance.

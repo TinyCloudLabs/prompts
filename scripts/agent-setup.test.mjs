@@ -172,9 +172,21 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
 });
 
 before(() => {
+  mkdirSync(join(root, ".evals"), { recursive: true });
+  const privateRun = mkdtempSync(join(root, ".evals", "site-boundary-"));
+  homes.push(privateRun);
+  writeFileSync(join(privateRun, "session.md"), "# Private eval fixture\n\nEvaluation publication boundary sentinel.\n");
   const built = spawnSync(process.execPath, [join(root, "scripts/build-site.mjs")], { encoding: "utf8" });
   assert.equal(built.status, 0, built.stderr);
 });
+
+test("site excludes evaluation sources, private runs and acceptance runbooks", () => {
+  for (const path of [".evals", "evals", "tinycloud-chatgpt-first-user-readiness-todo.md", "tinycloud-mcp-first-user-readiness-todo.md"]) {
+    assert.equal(existsSync(join(root, "_site", path)), false, `${path} must not be served`);
+  }
+  assert.doesNotMatch(readFileSync(join(root, "_site/llms-full.txt"), "utf8"), /Evaluation publication boundary sentinel/);
+});
+
 for (const name of ["courier", "cli"]) {
   test(`${name} skill selects the persisted custom CLI in a fresh shell`, () => {
     const dir = home();

@@ -4,7 +4,7 @@
 
 **Status: planned, not production-certified.** This checklist carries forward the findings in the [first-user MCP audit](tinycloud-mcp-first-user-readiness-todo.md). No new authenticated ChatGPT run was performed to create this document. Every checkbox remains open until its acceptance evidence exists.
 
-**Route:** existing custom remote MCP on ChatGPT web, using `https://mcp.tinycloud.xyz/mcp` and OpenKey OAuth. No CLI, local skill, temporary code sandbox, wallet import or user-supplied API key. Public-directory approval, publisher verification and ZIP submission are a separate [public-plugin release plan](tinycloud-chatgpt-plugin-release-plan.md); they are not prerequisites for this custom-connection checklist. Do not transfer public-directory eligibility or mobile claims to custom MCP.
+**Route:** existing custom remote MCP on ChatGPT web, using `https://mcp.tinycloud.xyz/mcp` and OpenKey OAuth. No CLI, local skill, temporary code sandbox, wallet import or user-supplied API key. Public-directory approval, publisher verification and ZIP submission belong to the separate public-plugin release plan (`tinycloud-chatgpt-plugin-release-plan.md`, not bundled with this evaluation handoff); they are not prerequisites for this custom-connection checklist. Do not transfer public-directory eligibility or mobile claims to custom MCP.
 
 ## 1. Setup first; troubleshoot observed blockers
 
