@@ -3,7 +3,7 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export const NOT_MEASURED = "not measured yet";
 export const TITLE = "How many steps each skill asks of you";
 export const INTRO =
-  "When your AI agent uses a TinyCloud skill, it sometimes needs you. You approve something in OpenKey, paste or type a code, or answer a yes-or-no question. Each of those counts as one step here. A <strong>new agent</strong> is one using the skill for the first time on your computer. A <strong>returning agent</strong> has used it before and still has a valid sign-in. The table shows how many steps each task took in our latest test runs. Counts marked \"scripted owner\" come from a test run that performs the same steps a person would; a person re-checks the main flows.";
+  "When your AI agent uses a TinyCloud skill, it sometimes needs you. You approve something in OpenKey, paste or type a code, or answer a yes-or-no question. Each of those counts as one step here. A <strong>new agent</strong> is one using the skill for the first time on your computer. A <strong>returning agent</strong> has used it before and still has a valid sign-in. The table shows how many steps each task took in our latest test runs. Counts marked \"scripted owner\" come from a test run in which a script does each step a person would do. A person re-checks the main tasks.";
 
 const PARTS = [
   ["openkey_approvals", "OpenKey approvals"],

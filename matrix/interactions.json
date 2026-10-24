@@ -69,7 +69,7 @@
             "notes": "After sign-in the owner did nothing; the agent inserted the row (1 change)."
           },
           "returning": null,
-          "caption": "Counted after sign-in, in the same run."
+          "caption": "Counted after sign-in. \"See today's meals\" is the agent reading the day's meals back while it logs one."
         },
         {
           "id": "read-back",
@@ -92,7 +92,7 @@
             "notes": "Read back the row and the day total with no owner action."
           },
           "returning": null,
-          "caption": "Counted after sign-in, in the same run. The agent read the meal back inside the meal request."
+          "caption": "Counted after sign-in. \"See today's meals\" is the agent reading the day's meals back while it logs one."
         },
         {
           "id": "undo",

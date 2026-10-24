@@ -92,7 +92,7 @@ test("a measured cell needs owner_kind; the label and agent turns render from th
   const noTurns = page({ owner_kind: "human", agent_turns: null });
   assert.match(noTurns, /human owner</);
   assert.doesNotMatch(noTurns, /agent turn|not measured yet<\/span><small/);
-  assert.match(renderMatrix(data), /Counts marked &quot;scripted owner&quot;|Counts marked "scripted owner" come from a test run/);
+  assert.match(renderMatrix(data), /Counts marked "scripted owner" come from a test run in which a script does each step a person would do\. A person re-checks the main tasks\./);
 });
 
 test("the renderer requires measured_on and run_ref for a measured cell, and prints a row caption", () => {
