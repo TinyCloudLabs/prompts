@@ -1,7 +1,7 @@
 #!/bin/sh
 # tc-apps: runs the TinyCloud CLI named in cli-path, next to this script. A kv or sql command that fails with
 # NETWORK_ERROR (a dropped connection, "fetch failed") runs again, up to twice, after 2 s and 4 s; only the last
-# attempt's error is shown. The setup at agents.tinycloud.xyz/apps copies this file to ~/.local/share/tc-apps/tc.
+# attempt's error is shown. The setup at agents.tinycloud.xyz/apps copies this file to ~/.local/share/tc-apps/tinycloud.
 CLI=$(cat "$(dirname "$0")/cli-path")
 case "$1" in kv|sql) ;; *) exec "$CLI" "$@" ;; esac
 case " $* " in *" --stdin "*) IN=$(cat) ;; *) IN= ;; esac

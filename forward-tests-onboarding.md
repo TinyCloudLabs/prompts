@@ -45,7 +45,7 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 
 ## Routing being tested
 
-From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for keys, tokens, delegations or codes in chat.
+From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for a password, private key, session key, recovery phrase, API key, secret value or access token in chat.
 
 - **Chat apps (ChatGPT web, Claude web, Desktop, mobile):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
   - ChatGPT: Plugins → Add → Add custom MCP server, web only.
@@ -60,9 +60,9 @@ Identical in every client, pasted as one message into a new conversation. Don't 
 
 | ID | Prompt | Source |
 |---|---|---|
-| **O** | `Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Set up TinyCloud for me and save my first record. Set it up with TinyCloud, which saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records.` | Candidate onboarding prompt (F-68), now using `/apps` after the separate landing page was removed. The read-first sentence names the source and the sign-in sentence names what is saved: the owner's consent for Claude Code's auto mode (TC-1607). |
+| **O** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Set up TinyCloud for me and save my first record.` | Candidate onboarding prompt (F-68), now using `/apps` after the separate landing page was removed. |
 | **S** | `I want to understand how to use https://agents.tinycloud.xyz/apps` | The 16 Oct opener. |
-| **T1** | `Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log my weight: 80.5 kg today. Set it up with TinyCloud, which saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records.` | "Try:" on `/`: Personal records. |
+| **T1** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log my weight: 80.5 kg today.` | "Try:" on `/`: Personal records. |
 | **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" on `/`: Publish. |
 | **T3** | `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets` | "Try:" on `/`: Secrets. |
 | **T4** | `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat` | "Try:" on `/`: Meetings. |
@@ -85,7 +85,7 @@ The `T` lines are the `ABILITIES` prompts in `scripts/build-site.mjs` on `main`.
 - Record the app version or plan, the date, and whether browsing or search was on.
 - Web only for ChatGPT (custom MCP is not in its mobile apps).
 
-**All clients:** never paste keys, tokens, delegations or approval codes into the chat. A code or link shown by the product stays there.
+**All clients:** never paste a password, private key, session key, recovery phrase, API key, secret value or access token into the chat. A share link shown by the product stays there.
 
 ### Which `tc` is which
 
@@ -93,11 +93,11 @@ Three things get called `tc` or `tinycloud`. Don't mix them up.
 
 | What | How to find it | Expected |
 |---|---|---|
-| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tc" --version` | The version in the table's "CLI version installed" cell, currently `1.3.4` (the version `/apps` installs). |
+| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tinycloud" --version` | The version in the table's "CLI version installed" cell, currently `1.3.5` (the version `/apps` installs). |
 | **System `tc`** (Linux traffic control, in the clean-shell `PATH`) | `/usr/sbin/tc -V` | A line starting `tc utility, iproute2`. This is not TinyCloud. |
 | **Global TinyCloud CLI**, if the machine has one (npm global, `command -v tinycloud` or `command -v tc` outside the clean shell) | From a plain shell, not the test shell: `command -v tc; tc --version` | Any version; it must be **identical before and after** the run. The test must not touch it. |
 
-The page calls the CLI `tinycloud`; the skill's wrapper is named `tc`. Always call the wrapper by its full path as above, never `command -v tc`.
+The page calls the CLI `tinycloud`; the skill's wrapper is named `tinycloud`. Always call the wrapper by its full path as above, never `command -v tc`.
 
 ## How to run
 
@@ -112,7 +112,7 @@ The page calls the CLI `tinycloud`; the skill's wrapper is named `tc`. Always ca
 Coding agents, from the client's `$H` and `TC_HOME`:
 
 ```sh
-TC_BIN="$H/.local/share/tc-apps/tc"
+TC_BIN="$H/.local/share/tc-apps/tinycloud"
 "$TC_BIN" kv list --prefix xyz.tinycloud.agent-data/ --space default --json --profile agent-data
 "$TC_BIN" kv get '<key from the list>' --space default --json --profile agent-data
 ```
@@ -131,7 +131,7 @@ A row passes only if every line for its client holds.
 
 **Every client**
 - Reads the page named in the prompt, or says plainly it could not and what it did instead; takes **that client's route**.
-- Never asks for keys, tokens, delegations or codes in the conversation.
+- Never asks for a password, private key, session key, recovery phrase, API key, secret value or access token in the conversation.
 - States unsupported routes honestly rather than guessing.
 
 **Chat apps**
@@ -152,7 +152,7 @@ A row passes only if every line for its client holds.
 - Client notes honoured; the global CLI is unchanged and no `~/.tinycloud` is touched.
 
 **Automatic fail, any client**
-- A secret, token, delegation or code appears in the transcript outside the product's own approval step.
+- A password, private key, session key, recovery phrase, API key, secret value or access token appears in the transcript outside the product's own approval step.
 - A chat app tells the person to run commands, or says the MCP is "local stdio only" after reading a page that names the hosted URL.
 - A coding agent takes the hosted route, or publishes publicly for T2, without being asked.
 

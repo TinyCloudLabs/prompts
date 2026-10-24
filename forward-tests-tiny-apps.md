@@ -6,14 +6,14 @@ Not published: the site build skips `forward-tests*.md`. Run these on the pull r
 
 - Three clients (Claude Code, Codex, OpenCode), each with a fresh home `$H` and an empty project folder (see `forward-tests-tc-apps.md`).
 - Two accounts: one with no Health Log app, one where Health Log is already installed.
-- CLI pin: `1.3.1` in `setup/tc-apps.md`, `skills/tc-apps/QUICKSTART.md` and `forward-tests-tc-apps.md`. The install stage is the `AGENT_INSTALL_ENABLED` switch in `skills/tc-apps/TINY-APPS.md` §3: run the Friday cases (TA6a, TA14) with `false`, the Monday cases (TA6b, TA10, TA15 to TA17, TA19) with `true`. TA18 and TA20 run on both stages.
+- CLI pin: `1.3.5` in `setup/tc-apps.md`, `skills/tc-apps/QUICKSTART.md` and `forward-tests-tc-apps.md`. The install stage is the `AGENT_INSTALL_ENABLED` switch in `skills/tc-apps/TINY-APPS.md` §3: run the Friday cases (TA6a, TA14) with `false`, the Monday cases (TA6b, TA10, TA15 to TA17, TA19) with `true`. TA18 and TA20 run on both stages.
 - Count the screens: every OpenKey or browser approval screen, and every chat question the agent asks before a write.
 
 ## Cases
 
 | # | Client, account | Owner says | Expected |
 |---|---|---|---|
-| TA1 | Claude Code, account A (Health Log installed), fresh `$H` | `Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. …` | One line before the approval screen (§3 step 3 wording). Exactly one OpenKey screen. A row in `meal` with `source='agent'`, a unique `op_id`, `slot='breakfast'`, and a local `day`. Chat shows the meal and today's totals from `day_card`. The view link is offered once. No key under `xyz.tinycloud.agent-data/`. |
+| TA1 | Claude Code, account A (Health Log installed), fresh `$H` | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.` | One line before the approval screen (§3 step 3 wording). Exactly one OpenKey screen. A row in `meal` with `source='agent'`, a unique `op_id`, `slot='breakfast'`, and a local `day`. Chat shows the meal and today's totals from `day_card`. The view link is offered once. No key under `xyz.tinycloud.agent-data/`. |
 | TA2 | Codex (one escalation, `setup/tc-apps.md` step 2 note), account A | same as TA1 | Same as TA1. |
 | TA3 | OpenCode (restart once), account A | same as TA1 | Same as TA1. |
 | TA4 | Any client, new conversation, account A | `I just had a banana` | No new approval inside the grant's life. No question in chat before the write. The agent estimates kcal for one banana, as a whole number, and the reply says "estimated" next to it. Read-back row shown. |

@@ -7,17 +7,19 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.1` from a folder of its own.
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.5` from a folder of its own.
+
+A permission slip and the code OpenKey shows after you approve are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
 ## 0. Setup, in the same prompt
 
 Add the setup link to your first request:
 
-> Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records.
+> Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
-2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tc`, a short script that runs this CLI and retries when TinyCloud drops a connection.
+2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tinycloud`, a short script that runs this CLI and retries when TinyCloud drops a connection.
 3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
 4. It reads the skill and signs you in, as below.
 
@@ -25,7 +27,7 @@ No shell profile to edit, and nothing to restart except OpenCode, once (see belo
 
 | Client | Start | What to expect |
 |---|---|---|
-| Claude Code | `claude` | Auto mode asks nothing when the pasted line names what the setup installs and saves, as above. Its safety check doesn't decide the same way every time and can still block the install or the sign-in. The agent then shows you the block and asks; reply "go ahead", or allow it in your settings: [If Claude Code still blocks it](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). Manual mode asks on first use for the setup page, the check, the install and each kind of skill block; choose "Yes, and don't ask again" where it's offered. Blocks that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
+| Claude Code | `claude` | Claude Code can deny a step or the sign-in, or ask you to confirm it. The agent then shows you the step and asks you to reply naming it: [Confirming a step in Claude Code](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). Manual mode asks on first use for the setup page, the check, the install and each kind of skill step; choose "Yes, and don't ask again" where it's offered. Steps that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
 | Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/.tinycloud --add-dir ~/.local/state/tc-apps` | One approval, for the install. The CLI needs the network, and it writes the profile store and the state folder, both outside the project. With `TC_HOME` or `TC_APPS_STATE` set, pass `$TC_HOME/.tinycloud` and `$TC_APPS_STATE` instead. Folders under your home don't need to exist yet: the setup creates them. A missing `--add-dir` folder under `/tmp`, though, stops Codex's sandbox from starting, so create it first. |
 | OpenCode | `opencode` | No questions. After the first setup, restart OpenCode once, as the agent will tell you: it loads skills only when it starts. Claude Code and Codex don't need a restart. |
 
@@ -34,7 +36,7 @@ Claude Code and Codex also ask whether you trust a folder the first time you sta
 Optional variables, set before you start the client:
 - `TC_HOME`: the CLI profile store. Without it the CLI uses `~/.tinycloud`.
 - `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
-- `TC_BIN`: the absolute path to another `tc`, CLI `1.3.1` or later. The skill then uses it instead of its own folder.
+- `TC_BIN`: the absolute path to another `tc`, CLI `1.3.4` or later. The skill then uses it instead of its own folder.
 
 ## What you see at sign-in
 
@@ -82,7 +84,7 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 You don't need to set anything up. The first time a question needs many records, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of your records:
 
 1. The agent shows an OpenKey link. Open it and sign in. OpenKey lists the request as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space, for 30 days; that's the copy.
-2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it into your own terminal, where the agent gives you a command to run, and keep it out of the chat. If it has expired (after 10 minutes), paste the full code OpenKey also shows.
+2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it in the chat and the agent finishes the sign-in, or paste it into your own terminal with the command the agent gives you. A short code works once and expires within minutes; if it has expired, paste the full code OpenKey also shows.
 3. The agent finishes, builds the copy from your records, and says when it's done. From then on it answers questions over many records with one lookup instead of reading every record. The agent's own thinking still takes most of the time.
 
 If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
@@ -91,7 +93,7 @@ Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.
 - **When the index expires** after 30 days, everything keeps working, more slowly, until you approve it again.
 - **Its reach is wider than its label.** The approval names one database, but TinyCloud's node also lets it open your `default` space's other SQL databases. The agent only ever uses the index.
-- **The code** is typed only into your own terminal, so it stays out of the conversation's history. It works only with this computer's `agent-data-sql` profile key, and a short code expires after 10 minutes.
+- **The code** is a permission slip for this computer's `agent-data-sql` profile, so it's fine to paste in the chat. A short code only works for the sign-in that asked for it, works once, and expires within minutes.
 
 ## What the sign-ins grant
 
@@ -101,8 +103,9 @@ Good to know:
 - **Stopping:** each command below clears the local session, with `TC_HOME` and `TC_BIN` set as when you started the client, so it uses the same CLI as the skill. The approvals stay valid on TinyCloud until they expire.
 
   ```sh
-  "${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data auth logout
-  "${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data-sql auth logout
+  W=$HOME/.local/share/tc-apps; TC=${TC_BIN:-}; [ -n "$TC" ] || { TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; }
+  "$TC" --profile agent-data auth logout
+  "$TC" --profile agent-data-sql auth logout
   ```
 
   To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the `tc-apps` skill folders.
@@ -110,7 +113,7 @@ Good to know:
 ## Why it works this way
 
 - **One root, one approval.** Every app lives under one key root, so new apps and new kinds need no new approval. The price is that the one grant covers all of your agent-kept records.
-- **Phone-code approval for records.** `tc auth login --device` needs nothing to reach back to the machine the agent runs on, so it works over SSH and from your phone. OpenKey allows it only for key-value storage in an ordinary space, under an explicit path.
+- **Phone-code approval for records.** `tinycloud auth login --device` needs nothing to reach back to the machine the agent runs on, so it works over SSH and from your phone. OpenKey allows it only for key-value storage in an ordinary space, under an explicit path.
 - **KV first, SQL as a copy.** Key-value records work with the phone-code approval and survive agent mistakes, because each record is its own key. The SQL index is rebuildable, so it never holds the only copy of anything.
 - **Reads run side by side.** Each storage command takes 3–5 s against TinyCloud, so the agent fetches up to eight records at once.
 - **Literal paths in commands.** Claude Code can remember an approval only for a command it can work out from the text.

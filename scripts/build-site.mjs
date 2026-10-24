@@ -38,10 +38,12 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
+// `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
+  { url: "owner", src: "setup/owner.md", unlisted: true },
   { url: "connect", src: "setup/connect.md", html: true },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "publish", src: "setup/publish.md" },
@@ -91,9 +93,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.3.4",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.4.tgz",
-    integrity: "sha512-vVIxJClL0zX0gqLbB2QYTd5eHLMvSIFQJTPBwf2wWxAVfb5RCt20Rw/+pBdNoFBUD4P7yDrApp9PkmluLODI5g==",
+    version: "1.3.5",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.5.tgz",
+    integrity: "sha512-pVym0zg04yVvyIimZN4bVjWqApzKeiwToJyvgQ+yYGXL2VkehPiaVFR13TT5lVmxTqswC/tI8+ei5YutcZ8zGA==",
     dir: "package/skills/tc-cli",
     checkCli: true,
   },
@@ -172,7 +174,8 @@ const ABILITIES = [
     title: "Personal records",
     url: "apps",
     text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go.",
-    prompt: "Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records:",
+    prompt: `Fetch ${BASE}/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`,
+    whole: true,
   },
   {
     title: "Publish",
@@ -206,6 +209,7 @@ if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
+const examplePrompt = (a) => (a.whole ? a.prompt : `${a.prompt} ${url(a.url)}`);
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -442,7 +446,8 @@ const redirects = [
 ];
 write("_redirects", redirects.join("\n") + "\n");
 
-const listedPages = pages.filter((p) => p.url !== "setup");
+const indexed = pages.filter((p) => !p.unlisted);
+const listedPages = indexed.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
@@ -452,7 +457,7 @@ const llms = [
   "",
   "## Abilities",
   "",
-  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${a.prompt} ${url(a.url)}"`),
+  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${examplePrompt(a)}"`),
   "",
   "## Guides",
   "",
@@ -475,12 +480,12 @@ write("llms.txt", llms);
 write(
   "llms-full.txt",
   [`# TinyCloud agent abilities: full text`, "", `> Every guide and skill listed in ${url("llms.txt")}, concatenated.`, ""]
-    .concat(pages.map((p) => `\n---\nSource: ${url(p.url)}\n---\n\n${p.text.trimEnd()}\n`))
+    .concat(indexed.map((p) => `\n---\nSource: ${url(p.url)}\n---\n\n${p.text.trimEnd()}\n`))
     .concat(skills.map((s) => `\n---\nSource: ${url(`skills/${s.short}.md`)}\n---\n\n${s.text.trimEnd()}\n`))
     .join("\n"),
 );
 
-const sitemapPaths = ["", ...pages.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+const sitemapPaths = ["", ...indexed.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -489,11 +494,12 @@ write(
 );
 
 const AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Google-Extended"];
+const disallow = pages.filter((p) => p.unlisted).map((p) => `Disallow: /${p.url}`);
 write(
   "robots.txt",
   [
     "# These pages are written for AI agents. Fetch them freely.",
-    ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /"]),
+    ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /", ...disallow]),
     "",
     `Sitemap: ${url("sitemap.xml")}`,
     "",
@@ -564,7 +570,7 @@ ${markdownRenderer.parse(connect.text)}
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
-        <p>Try: <code>${esc(`${a.prompt} ${url(a.url)}`)}</code></p>
+        <p>Try: <code>${esc(examplePrompt(a))}</code></p>
       </li>`;
 const desc = "Paste one line into your coding agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
 write(
