@@ -52,7 +52,7 @@ Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` i
 
 Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-When the owner names a person's email address to share with, pass `--notify` (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails that person one invitation with the link, so you have sent it for the owner. Leave `--notify` out only when the owner asks you not to email them, and on a public link. Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
+When the owner names a person's email address to share with, pass `--notify` (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails that person one invitation with the link, so you have sent it for the owner. Leave `--notify` out only when the owner asks you not to email them, on a public link, or for a `did:` recipient. Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -284,7 +284,7 @@ FILE='<absolute path of the file>'
 EXPIRES=6d          # fallback only when the session has no expiresAt
 SESSION_END=$("$TC_BIN" --profile "$PROFILE" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
 [ -n "$SESSION_END" ] && EXPIRES=$(python3 -c 'import sys,datetime as d;e=d.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00"));m=int((e-d.datetime.now(d.timezone.utc)).total_seconds()//60)-60;print(f"{m}m" if m>=2 else "")' "$SESSION_END" 2>/dev/null)
-NOTIFY=             # NOTIFY=--notify only if the owner asked for an emailed invite (CLI 1.0.1-beta.0 or newer)
+NOTIFY=             # NOTIFY=--notify when the owner named an email address to share with (CLI 1.0.1-beta.0 or newer); empty for a public link or when the owner asked for no email
 TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
@@ -488,7 +488,7 @@ With `--notify` the invitation has gone to the recipient: tell the owner who it 
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
-After `INVITE_NOT_SENT`, add instead: "The invitation email couldn't be sent."
+After `INVITE_NOT_SENT`, add: "The invitation email couldn't be sent."
 
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
