@@ -3,7 +3,7 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export const NOT_MEASURED = "not measured yet";
 export const TITLE = "How many steps each skill asks of you";
 export const INTRO =
-  "When your AI agent uses a TinyCloud skill, it sometimes needs you. You approve something in OpenKey, paste or type a code, or answer a yes-or-no question. Each of those counts as one step here. A <strong>new agent</strong> is one using the skill for the first time on your computer. A <strong>returning agent</strong> has used it before and still has a valid sign-in. The table shows how many steps each task took in our latest test runs.";
+  "When your AI agent uses a TinyCloud skill, it sometimes needs you. You approve something in OpenKey, paste or type a code, or answer a yes-or-no question. Each of those counts as one step here. A <strong>new agent</strong> is one using the skill for the first time on your computer. A <strong>returning agent</strong> has used it before and still has a valid sign-in. The table shows how many steps each task took in our latest test runs. Counts marked \"scripted owner\" come from a test run that performs the same steps a person would; a person re-checks the main flows.";
 
 const PARTS = [
   ["openkey_approvals", "OpenKey approvals"],
@@ -13,10 +13,16 @@ const PARTS = [
 ];
 
 // A cell shows its total only with a fully observed breakdown; otherwise it shows nothing but "not measured yet".
+export const OWNER_KINDS = { scripted: "scripted owner", human: "human owner" };
 export const cellModel = (v) => {
   const oi = v?.owner_interactions;
   if (!oi || !Number.isInteger(oi.total) || !PARTS.every(([k]) => Number.isInteger(oi[k]))) return { total: null, parts: [] };
-  return { total: oi.total, parts: PARTS.map(([k, name]) => `${name} ${oi[k]}`) };
+  if (!v.measured_on || !v.run_ref) throw new Error(`a measured cell needs measured_on and run_ref (run_ref ${v.run_ref ?? "missing"})`);
+  if (!Object.hasOwn(OWNER_KINDS, v.owner_kind)) throw new Error(`a measured cell needs owner_kind "scripted" or "human" (run_ref ${v.run_ref})`);
+  const parts = PARTS.map(([k, name]) => `${name} ${oi[k]}`);
+  parts.push(OWNER_KINDS[v.owner_kind]);
+  if (Number.isInteger(v.agent_turns) && v.agent_turns >= 0) parts.push(`${v.agent_turns} agent turn${v.agent_turns === 1 ? "" : "s"}`);
+  return { total: oi.total, parts };
 };
 
 const cell = (label, v) => {
@@ -43,7 +49,7 @@ export function renderMatrix(data, style = "") {
       const foot = footerLines(s);
       return `      <tbody>
         <tr class="group"><th scope="rowgroup" colspan="4"><code>${esc(s.name)}</code><span class="blurb">${esc(s.blurb)}</span></th></tr>
-${s.flows.map((f) => `        <tr><td class="sk"><code>${esc(s.name)}</code></td><th scope="row">${esc(f.task)}</th>${cell("New agent", f.fresh)}${cell("Returning agent", f.returning)}</tr>`).join("\n")}
+${s.flows.map((f) => `        <tr><td class="sk"><code>${esc(s.name)}</code></td><th scope="row">${esc(f.task)}${f.caption ? `<small class="cap">${esc(f.caption)}</small>` : ""}</th>${cell("New agent", f.fresh)}${cell("Returning agent", f.returning)}</tr>`).join("\n")}
 ${foot.length ? `        <tr class="foot"><td colspan="4">${foot.map(esc).join("<br>")}</td></tr>\n` : ""}
       </tbody>`;
     })
@@ -66,6 +72,7 @@ ${style}
     tbody th[scope="row"] { font-weight: 600; }
     td.sk code { font-size: 0.8em; }
     .none { color: #777; }
+    small.cap { font-weight: normal; }
     small { display: block; color: #666; font-size: 0.78rem; }
     tr.foot td { color: #555; font-size: 0.85rem; }
     @media (max-width: 767px) {
