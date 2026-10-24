@@ -340,7 +340,7 @@ else
 fi
 ```
 
-On `PUBLISH_FAILED`, stop and use the errors table. `INVITE_NOT_SENT` (exit 9, only with `--notify`) means the share was published but the invite email wasn't sent: don't publish again — verify (§4), deliver the link yourself (§6) and tell the owner no invite went out. Record the share id, file name and link type — never the URL. `--reveal-link` already prints JSON with `.link`; never combine it with `--json` (`INVALID_ARGUMENT`).
+On `PUBLISH_FAILED`, stop and use the errors table. If the CLI exits 9, the block prints `INVITE_NOT_SENT`: the share was created, but the invitation email wasn't sent. Don't publish again: verify (§4), give the owner the link (§6) and tell the owner no invite went out. Record the share id, file name and link type — never the URL. `--reveal-link` already prints JSON with `.link`; never combine it with `--json` (`INVALID_ARGUMENT`).
 
 ## 4. Verify — always, before reporting
 
@@ -552,7 +552,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
 | `STORAGE_QUOTA_EXCEEDED` / `STORAGE_LIMIT_REACHED` | 10 (4 on CLIs before the TC-625 release) | The owner's TinyCloud storage is full, or this file is larger than what is left. Newer CLIs include the account's used and plan sizes. Nothing was shared. Tell the owner and point them to https://account.tinycloud.xyz/billing; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
-| exit 9, "partial share success" | 9 | Only with `--notify`: the share exists but the invite email failed — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, send the link yourself (§6) and tell the owner no invite went out |
+| exit 9, "partial share success" | 9 | Only with `--notify`: the share exists but the invite email failed — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, give the owner the link (§6) and tell the owner no invite went out |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
 | `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
