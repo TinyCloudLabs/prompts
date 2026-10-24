@@ -7,8 +7,8 @@ Your agent publishes a document or web page from your computer to your own TinyC
 - **Paste into Claude Code, Codex or OpenCode:** `Share this with TinyCloud, and ask me who should be able to open it: https://agents.tinycloud.xyz/share`
 - You need a shell, Node.js 22.20 or later, and npm. A chat agent that can't run shell commands can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
 - **What it does:** installs the pinned TinyCloud CLI and the `tc-publish` skill, asks which audience you want, publishes, and returns the link.
-- **You approve:** one OpenKey request for standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Owner-only and email links need one more approval, for decryption, which your agent asks for the first time.
-- **Ask first.** With no audience named, the agent asks who the link is for before it publishes. Owner-only and email links need one extra approval (decryption), which the agent asks for the first time. Public links work right away, and the agent makes one only when you ask for one.
+- **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. The first time, you approve two sign-ins in OpenKey and paste each code back to your agent.
+- **Default is private.** With no audience named, the agent makes a link only your own email can open. It makes a public link only when you ask for one.
 - **Undo:** see [Undo](#undo).
 
 ## For the agent
@@ -28,8 +28,6 @@ If the owner didn't say, ask. Never guess and never choose public yourself. The 
 | Anyone with the link | `anyone` |
 | Only me | `email:<owner email>` (`$TC_OWNER_EMAIL`) |
 | One other person | `email:<their address>`: the address the owner named in the request, used exactly; if the owner gave a name but no address, ask. In the skill's §3 block this is `TC_SHARE_TO`. |
-
-The `email:` choices need the extra approval described above. `anyone` works right away.
 
 A bare address (`alex@example.com`) also works as `--to`; write the `email:` form so the intent is unambiguous. An invalid address is refused before anything is published, with `INVALID_ARGUMENT`.
 
