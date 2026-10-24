@@ -6,7 +6,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 - **What it does:** installs the TinyCloud CLI into a folder only this skill uses, and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into Claude Code, Codex or OpenCode:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-  - **Claude Code auto mode:** if it blocks a step, see [If Claude Code still blocks it](#if-claude-code-still-blocks-it).
+  - **Claude Code:** it may ask you to confirm a step. See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
 - **You approve:** one OpenKey screen for the app, or two the first time on this computer. The first is your own sign-in to TinyCloud on this computer, for 7 days, so it lists access to your whole space: your data, and the delegations you've given. The second gives your agent access to just Health Log, for 7 days. Your agent tells you before they open. Otherwise it lets the agents on this computer keep your records in your TinyCloud, for 30 days. If you later ask questions over many records, the agent may ask for one more approval, for a fast, searchable copy of the same records. If your browser asks to connect to devices on your network, choose Allow. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat.
 - **Undo:** see [Undo](#undo).
@@ -101,7 +101,7 @@ It takes about 30 s, almost all of it step 2.
 
 If something goes wrong:
 - **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
-- **Your client refuses a step or the sign-in,** for example Claude Code's auto mode with "Unauthorized Persistence", "Code from External" or "Instruction Poisoning". Show the owner the step, say that it installs the TinyCloud CLI and this skill for their user, or that the sign-in saves a key and a 30-day session in their TinyCloud profile folder, and ask them to allow it. Run it again only once they agree. If it is still blocked after they agree, show them <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait. Don't edit their settings files, and don't run the step another way.
+- **Claude Code asks to confirm a step or the sign-in.** Show the owner the step and what it does: it installs the TinyCloud CLI and this skill for their user, or the sign-in saves a key and a 30-day session in their TinyCloud profile folder. Ask them to reply naming the step, as in <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it>, and run it again only once they agree. Don't edit their settings files, and don't run the step another way.
 - **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder.
 - **`agents.tinycloud.xyz` does not answer** (step 3 fails): stop and say so to the owner. Don't switch to another source.
 
@@ -125,11 +125,13 @@ Follow the skill now for the owner's request, from its §1.
 
 **OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
 
-## If Claude Code still blocks it
+<a id="if-claude-code-still-blocks-it"></a>
 
-Claude Code's auto mode can refuse the install or the sign-in step, for example as "Code from External", "Instruction Poisoning" or "Unauthorized Persistence", because the setup runs code from npm and this site, writes a skill your agent reads, and saves a key and a sign-in on your computer. If it blocks the install, reply that you allow it, naming what it does: "Go ahead: install @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz." If it blocks the sign-in, reply "Go ahead: save the TinyCloud sign-in in ~/.tinycloud."
+## Confirming a step in Claude Code
 
-**For coding agents:** if Claude Code refuses a step, show the owner the matching "Go ahead" reply above and wait for their reply.
+Claude Code can ask you to confirm a step before it runs. Reply with the step, for example: "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." Name the step, because a reply without it may not be enough.
+
+**For coding agents:** when Claude Code asks the owner to confirm a step, show them the step and the reply above, then wait for their answer.
 
 Owners can read about an optional Claude Code setting for the sign-in command at https://agents.tinycloud.xyz/owner.
 
