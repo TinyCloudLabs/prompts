@@ -129,7 +129,7 @@ Follow the skill now for the owner's request, from its §1.
 
 Claude Code's auto mode can refuse the install or the sign-in step, for example as "Code from External", "Instruction Poisoning" or "Unauthorized Persistence", because the setup runs code from npm and this site, writes a skill your agent reads, and saves a key and a sign-in on your computer. If it blocks the install, reply that you allow it, naming what it does: "Go ahead: install @tinycloud/cli from npm and the tc-apps skill from agents.tinycloud.xyz." If it blocks the sign-in, reply "Go ahead: save the TinyCloud sign-in in ~/.tinycloud."
 
-**For coding agents:** if Claude Code refuses a step, show the owner this section and wait for their reply.
+**For coding agents:** if Claude Code refuses a step, show the owner the matching "Go ahead" reply above and wait for their reply.
 
 Owners can read about an optional Claude Code setting for the sign-in command at https://agents.tinycloud.xyz/owner.
 
