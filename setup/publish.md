@@ -6,7 +6,7 @@ Your agent publishes a document or web page from your computer to your TinyCloud
 
 - **Paste into Claude Code, Codex or OpenCode:** `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
 - Your agent follows [the shared setup](agent.md): it installs or reuses the pinned CLI, records your email as a non-secret owner default, installs only the `tc-publish` skill and continues this request. It asks for your email if it is unknown; it never switches to a public link unless you reply "Yes, make an open link".
-- **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant. The first time, you approve two sign-ins in OpenKey and paste each code back to your agent; they last up to 30 days.
+- **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant. The first time, you approve two sign-ins in OpenKey and paste each code back to your agent.
 - **Undo:** the receipt must distinguish revoking a share from clearing the agent's local login. Revoking a share stops its link opening; copies already downloaded can't be recalled. After key rotation, older links may last until expiry.
 
 ## For the agent

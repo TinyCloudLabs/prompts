@@ -48,7 +48,7 @@ Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` i
 
 - the owner named an address in the request → use exactly that address;
 - the owner asked for a link for themselves → use `$TC_OWNER_EMAIL`; if it is unset, ask the owner;
-- anything else ("send it to the team", a name with no address, no audience) → ask the owner who should open it.
+- anything else ("send it to the team", a name with no address) → ask the owner who should open it.
 
 Never use a public link as a substitute for a private one, unless the owner replied "Yes, make an open link" to the choice in "When decryption is missing". The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
@@ -272,7 +272,7 @@ rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
 - `DECRYPT_DECLINED` → give the owner the choice in "When decryption is missing".
 - `CODE_EXPIRED` → say exactly: "That short code has expired. Please paste the full code OpenKey shows instead." Then wait for the full code, save it, and run call 2 again.
 - `NO_CODE`, `OWNER_DID_UNSET` → fix the step before (save the code; run the first approval) and run call 2 again.
-- `LOGIN_TIMEOUT` or `LOGIN_FAILED <code>` → report the code and ask the owner to paste the code again (save it and run call 2 again). The second `LOGIN_TIMEOUT` or `LOGIN_FAILED` for a sign-in means the paste sign-in isn't working here: offer the device sign-in below.
+- `LOGIN_TIMEOUT` or `LOGIN_FAILED <code>` → report the error code and ask the owner to paste their code again (save it and run call 2 again). The second `LOGIN_TIMEOUT` or `LOGIN_FAILED` for a sign-in means the paste sign-in isn't working here: offer the device sign-in below.
 
 **Renewing.** Renew by running the §2 sign-in again (the same profile). Don't use `--replace-session`; it drops decryption.
 
