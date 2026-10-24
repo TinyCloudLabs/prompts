@@ -42,6 +42,7 @@ const PAGES = [
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
+  { url: "owner", src: "setup/owner.md" },
   { url: "connect", src: "setup/connect.md", html: true },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "publish", src: "setup/publish.md" },
