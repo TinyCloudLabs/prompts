@@ -131,7 +131,7 @@ Follow the skill now for the owner's request, from its §1.
 
 Claude Code can ask you to confirm a step before it runs. Reply with the step, for example: "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." Name the step, because a reply without it may not be enough.
 
-**For coding agents:** when Claude Code denies a step or asks the owner to confirm it, show them the step and the reply above, then wait for their answer.
+**For coding agents:** when Claude Code denies a step or asks the owner to confirm it, show them the step and the exact "Go ahead: …" reply from above for them to send, then wait for their answer.
 
 Owners can read about an optional Claude Code setting for the sign-in command at https://agents.tinycloud.xyz/owner.
 
