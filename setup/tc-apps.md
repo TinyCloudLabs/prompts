@@ -38,7 +38,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycloud" 
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or exactly `1.3.5` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as `1.3.0` or an older `1.2.5` from an earlier setup, means run all the steps of §2: step 2 installs `1.3.5` in place of it.
+- The last line prints a path (the owner set `TC_BIN`) or exactly `1.3.5` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as `1.3.4` from an earlier setup, means run all the steps of §2: step 2 installs `1.3.5` in place of it.
 - Anything else, such as `No such file or directory` → run all the steps of §2.
 
 ## 2. Install
