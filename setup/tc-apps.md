@@ -27,7 +27,7 @@ If the owner only asked for setup or named no record, save one default record wi
 
 Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode`.
 
-Run each block as one shell tool call from your project folder, exactly as written apart from `<client>`. Install nothing else: the only install is step 2's `npm install --prefix`; never `npm install -g`, `sudo` or `curl … | sh`. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
+Run each block as one shell tool call from your project folder, exactly as written. Where a step has a block for each client, run only the block for yours. Install nothing else: the only install is step 2's `npm install --prefix`; never `npm install -g`, `sudo` or `curl … | sh`. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
 
 ## 1. Check
 
@@ -43,7 +43,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 
 ## 2. Install
 
-Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written. The skill's files are fetched as plain files, checked against a checksum list and copied. Stop at the first step that fails.
+Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written, using only your client's block where a step has one for each client. The skill's files are fetched as plain files, checked against a checksum list and copied. Stop at the first step that fails.
 
 If `agents.tinycloud.xyz` does not answer, stop and say so, as described below.
 
