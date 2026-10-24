@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.13"
+  version: "0.5.14"
 ---
 
 # Publish documents and HTML with `tinycloud share`
@@ -42,7 +42,7 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 ## Choosing the link type
 
-Default to the **owner-only email link**. Create a public link only when the owner's current request explicitly asks for a public or anyone-can-open link. Never decide on your own that content is shareable — if unsure, ask.
+When the owner doesn't say who the link is for, don't publish yet: ask the "only you" question in (2) and wait for their answer. Create a public link only when the owner's current request explicitly asks for a public or anyone-can-open link. Never decide on your own that content is shareable — if unsure, ask.
 
 Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` is the person who may open the link. Never guess it:
 
@@ -52,7 +52,17 @@ Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` i
 
 Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-When the owner names a person's email address to share with, pass `--notify` (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails that person one invitation with the link, so you have sent it for the owner. Leave `--notify` out only when the owner asks you not to email them, on a public link, or for a `did:` recipient. Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
+**(1) The owner names an email address:** say:
+
+> I can't create a link that only {email} can open from this sign-in. Two ways to share it:
+> 1. Open https://share.tinycloud.xyz as yourself and share it with {email} there. It emails them the invitation.
+> 2. I make a link that anyone who has it can open, and you send it to them. Reply "Yes, make an open link" if you want that.
+
+**(2) "Only I can open it":** say:
+
+> I can't create a link that only you can open from this sign-in. Two ways:
+> 1. Open https://share.tinycloud.xyz and share it with yourself there.
+> 2. I make a link that anyone who has it can open. Reply "Yes, make an open link" if you want that.
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -260,13 +270,15 @@ Delete the waiter files once it has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/
 
 ## 3. Publish — run exactly one of the two blocks
 
+Publish with `--to anyone` for (1) or (2) only after the owner replies "Yes, make an open link". Never turn a named recipient or "only me" into an open link on its own, and don't publish anything else meanwhile.
+
 Always pass `--expires` — owner-only: the publisher session's remaining lifetime minus 1 h, computed by the owner-only block (`6d` only if the session's expiry can't be read); public: 24h — unless the owner says otherwise — and always tell the owner the expiry. `SESSION_LIFETIME_EXCEEDED` handling: see the error table below.
 
 **HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
 
 **File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. CLI `1.0.0-beta.17` (the version §1 prints) can't publish such names: spaces fail with `PERMISSION_DENIED`, and other unusual names may fail with `INVALID_ARGUMENT` "share input is invalid". That is not a consent problem — don't run §2. Tell the owner this file needs CLI `1.0.0-beta.18`, and don't rename or copy their file yourself.
 
-**Owner-only (the default)** — set `TC_SHARE_TO` by the rule in "Choosing the link type"; the block publishes nothing while it is empty:
+**Owner-only** — set `TC_SHARE_TO` by the rule in "Choosing the link type"; the block publishes nothing while it is empty:
 
 Run EXACTLY this block; do not write your own `share publish` command.
 
@@ -284,7 +296,6 @@ FILE='<absolute path of the file>'
 EXPIRES=6d          # fallback only when the session has no expiresAt
 SESSION_END=$("$TC_BIN" --profile "$PROFILE" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
 [ -n "$SESSION_END" ] && EXPIRES=$(python3 -c 'import sys,datetime as d;e=d.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00"));m=int((e-d.datetime.now(d.timezone.utc)).total_seconds()//60)-60;print(f"{m}m" if m>=2 else "")' "$SESSION_END" 2>/dev/null)
-NOTIFY=             # NOTIFY=--notify when the owner named an email address to share with (CLI 1.0.1-beta.0 or newer); empty for a public link or when the owner asked for no email
 TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
@@ -293,7 +304,7 @@ if [ -z "$EXPIRES" ]; then
 elif [ -z "$TC_SHARE_TO" ]; then
   echo "RECIPIENT_UNSET: ask the owner who should be able to open it"
 else
-  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" $NOTIFY --json \
+  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" --json \
     > "$STATE/publish.json" 2>"$STATE/publish.err"; rc=$?
   if { [ "$rc" = 0 ] || [ "$rc" = 9 ]; } && [ -s "$STATE/publish.json" ]; then
     id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
@@ -480,11 +491,9 @@ Report with the template for the link type — fill in the placeholders, keep th
 
 > **Owner-only:** Published `<file>` as an owner-only link. Only `<recipient email>` can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
 
-> **Owner-only, invitation sent:** Published `<file>` and TinyCloud emailed `<recipient email>` the invitation. Only they can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
-
 > **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>`, and I can revoke it any time before then. Verified: hash match. `<URL>`
 
-With `--notify` the invitation has gone to the recipient: tell the owner who it was sent to and when it expires; there is nothing for the owner to forward. When no invitation is sent (a public link, a `did:` recipient, the owner asked for no email, or the CLI exits 9 and prints `INVITE_NOT_SENT`: the share exists, but the invitation didn't go out, so give the owner the link), give the owner the link in your reply, ready to forward, with the recipient and the expiry. Never write steps for the owner to carry out (no "copy this and send it to…"): you send it, or you hand over the link. Don't message the recipient through any other channel yourself.
+Hand the link to the owner in your reply, with the recipient and the expiry, and nowhere else: the owner decides how it reaches the recipient. Don't message the recipient or any other channel yourself.
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
