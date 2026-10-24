@@ -16,4 +16,6 @@ Optional. The agent doesn't need this and won't set it. Claude Code may stop a c
 }
 ```
 
+If you added this setting before, paste it again so it also covers the new `tinycloud` name.
+
 To undo it, delete the entry.
