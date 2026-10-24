@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.1.17"
+  version: "0.1.18"
 ---
 
 # Personal apps in TinyCloud
@@ -167,7 +167,7 @@ When the command exits, its output ends with JSON:
 
 Run one sign-in at a time, and never retry in a loop: OpenKey allows 5 per 10 minutes. Don't open the link yourself. If the owner writes while the command is still running, tell them you're waiting for their approval.
 
-If Claude Code's auto mode refuses this block, which also covers the sign-in you run again after 30 days, show the owner <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait for their reply. Don't edit their settings files, and don't run the step another way.
+If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: run announce.sh for Health Log." Then wait. Don't suggest changing their settings, and don't run it another way.
 
 ## 5. Read
 

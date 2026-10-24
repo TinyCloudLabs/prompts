@@ -38,7 +38,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep
 
 Don't open the link yourself, and run 1a only once per approval.
 
-If Claude Code's auto mode refuses 1a or 1b, show the owner <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it> and wait for their reply. Don't edit their settings files, and don't run the step another way.
+If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: run announce.sh for Health Log." Then wait. Don't suggest changing their settings, and don't run it another way.
 
 **1b. Finish with the owner's code.** The code belongs to your own profile, `agent-data-sql`, so the owner can send it to you in the chat. Run the same sign-in with the code on stdin. The CLI reads only the first non-blank line, so the code must go on one line: remove any code fence, quotes or spaces around it, and join line breaks, before the heredoc. A quoted heredoc keeps every character of the code as it is; `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`, used on both marker lines. Fill `<TC_BIN>` and `<STATE>` as in 1a:
 
