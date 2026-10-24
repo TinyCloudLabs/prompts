@@ -167,7 +167,7 @@ When the command exits, its output ends with JSON:
 
 Run one sign-in at a time, and never retry in a loop: OpenKey allows 5 per 10 minutes. Don't open the link yourself. If the owner writes while the command is still running, tell them you're waiting for their approval.
 
-If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: run announce.sh for Health Log." Then wait. Don't suggest changing their settings, and don't run it another way.
+If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: sign in to TinyCloud to keep your records." Then wait. Don't suggest changing their settings, and don't run it another way.
 
 ## 5. Read
 
