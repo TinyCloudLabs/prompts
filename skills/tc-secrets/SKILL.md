@@ -2,10 +2,10 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.7"
+  version: "0.5.8"
 ---
 
-# Read secrets from TinyCloud with `tc secrets`
+# Read secrets from TinyCloud with `tinycloud secrets`
 
 The owner stores secrets in TinyCloud Secrets (secrets.tinycloud.xyz). You read only the names they approved, through a CLI profile the owner authorizes with OpenKey. When a secret is missing, you send the owner a link where they add it themselves. You never see, ask for, or store a secret value in the conversation.
 
@@ -59,7 +59,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 - **Only the owner adds secrets and approves.** Never open the add link or the approval link yourself, never approve anything for the owner, and never relay a code you didn't get from the owner.
 - **Run only the blocks the task needs, as written.**
   - Don't create, rename or delete profiles beyond §3a's `init`, and never run `profile delete`.
-  - Don't improvise extra `tc` commands to "test" access: §2 is the access test.
+  - Don't improvise extra `tinycloud` commands to "test" access: §2 is the access test.
 
 ## 1. Check the CLI
 
@@ -90,7 +90,7 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 - `CLI_LEGACY` → the CLI predates `secrets request` and `secrets wait`. Everything still works with the older steps marked **(old CLI)** below. Tell the operator once that the CLI should be upgraded to the pinned version.
 - `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/agent for the pinned private install or the owner's non-secret DID, then return to this same task. Do not ask for a secret value or start a broad grant.
 
-If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tc` command.
+If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tinycloud` command.
 
 ## 2. Check (or wait for) the names
 

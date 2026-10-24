@@ -2,10 +2,10 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.10"
+  version: "0.5.11"
 ---
 
-# Publish documents and HTML with `tc share`
+# Publish documents and HTML with `tinycloud share`
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
@@ -472,7 +472,7 @@ id='<owner-only share id you recorded>'
 
 Afterwards `share show "$id"` reports `"revoked": true`.
 
-**Public (bearer) links can be revoked too.** Revoke any share with `tc share revoke <id>`; after that the link stops opening (`SHARE_REVOKED`). Copies already downloaded can't be recalled, and the stored file stays in the owner's space until deleted.
+**Public (bearer) links can be revoked too.** Revoke any share with `tinycloud share revoke <id>`; after that the link stops opening (`SHARE_REVOKED`). Copies already downloaded can't be recalled, and the stored file stays in the owner's space until deleted.
 
 ## 6. Deliver and report
 
@@ -536,7 +536,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 
 | Code | Exit | Action |
 |---|---|---|
-| `AUTH_REQUIRED` | 3 | Session expired/invalid — return to §2 on the same profile (ignore the CLI's own `tc auth login`/`init` hint) |
+| `AUTH_REQUIRED` | 3 | Session expired/invalid — return to §2 on the same profile (ignore the CLI's own `auth login`/`init` hint) |
 | `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On CLI `1.0.0-beta.17` a file name with spaces also gives this — see §3 **File names**, not §2 |
 | `SESSION_LIFETIME_EXCEEDED` | 2 | Two cases, told apart by the message. **"requested share lifetime exceeds session expiry"** → the share would outlive the login: use a SHORTER `--expires` (session end minus 1 hour), never a longer one. If the session has under 1 hour left, tell the owner the login is about to end and ask them to start ONE new login (§2). **"share expiry must be at least 60 seconds from now"** → use the smallest allowed value (`2m`), never beyond the session end minus 1 hour. |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |

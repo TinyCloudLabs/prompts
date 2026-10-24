@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.1.18"
+  version: "0.1.19"
 ---
 
 # Personal apps in TinyCloud
@@ -30,7 +30,7 @@ If a catalog app owns the domain, follow its fast path in that file: it checks t
 You keep the owner's records in their TinyCloud `default` space, under one key root: `xyz.tinycloud.agent-data/`. Records are grouped into apps, one per area of life (`fitness`, `todos`, …), which you create and extend as the owner starts tracking new things. A catalog under the root describes every app, so any agent in any conversation can find what exists and how it's stored. The owner approves access once, for 30 days, from an OpenKey link and code you show them. An optional SQL index answers questions over many records at once (§7).
 
 Operator-set, never change or unset:
-- `TC_BIN`: absolute path to `tc`, CLI `1.3.4` or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tc`, the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
+- `TC_BIN`: absolute path to the TinyCloud CLI (`tinycloud`), CLI `1.3.4` or newer. Optional: without it, §1 finds `~/.local/share/tc-apps/tinycloud` (or an earlier install's `tc` in the same folder), the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
@@ -38,7 +38,7 @@ How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes.
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly. Don't put `$TC_BIN` back, and keep the assignments first, before `umask 077`: Claude Code can remember an approval only for commands whose paths it can work out from the block itself.
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s. In Codex, pass `yield_time_ms: 30000` to `exec_command`. §4 is the exception: it waits for the owner.
-- Write files only through these blocks, never with a file-editing tool. Don't run `tc` commands that aren't here.
+- Write files only through these blocks, never with a file-editing tool. Don't run `tinycloud` commands that aren't here.
 - Run §1 and §3 once per conversation.
 
 ## 0. Route the request
@@ -48,7 +48,7 @@ The catalog in `TINY-APPS.md` (read first, per the top of this file) decides the
 ## 1. Read the paths and the time
 
 ```sh
-printenv TC_BIN || ls "$HOME/.local/share/tc-apps/tc" 2>/dev/null || echo 'TC_BIN is unset'
+printenv TC_BIN || ls "$HOME/.local/share/tc-apps/tinycloud" 2>/dev/null || ls "$HOME/.local/share/tc-apps/tc" 2>/dev/null || echo 'TC_BIN is unset'
 printenv TC_APPS_STATE || echo "$HOME/.local/state/tc-apps"
 date +%Y-%m-%dT%H:%M%z | sed 's/..$/:&/'
 date -u +%FT%TZ
@@ -57,7 +57,7 @@ date -u +%FT%TZ
 It prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`, one per line.
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id.
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
-- `TC_BIN is unset` → the setup hasn't run on this computer, or ran before it installed `~/.local/share/tc-apps/tc`: stop, and ask the owner to send their request again with the setup link.
+- `TC_BIN is unset` → the setup hasn't run on this computer, or ran before it installed `~/.local/share/tc-apps/tinycloud`: stop, and ask the owner to send their request again with the setup link.
 
 ## 2. How the records are organised
 

@@ -2,7 +2,7 @@
 # Owner step: finish the approval for one catalog app. Run in your own terminal.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
-TC_BIN=${TC_BIN:-$HOME/.local/share/tc-apps/tc}
+if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "${1:-}" in
   healthlog) REQ=meal-request.json; GRANT=meal-grant.json ;;

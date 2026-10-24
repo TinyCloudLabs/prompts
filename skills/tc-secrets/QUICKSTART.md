@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli@1.2.0-beta.2` or later; pin an exact version. 1.0.0-beta.23 still works through the skill's old-CLI steps (no `secrets request`/`wait`; the owner sends OpenKey's long code). Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli@1.2.0-beta.2` or later; pin an exact version. The `tinycloud` command needs 1.2.3 or later; on older versions, run the same commands as `tc`. 1.0.0-beta.23 still works through the skill's old-CLI steps (no `secrets request`/`wait`; the owner sends OpenKey's long code). Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
 
 ## 0. Operator setup (once, not run by the agent)
 
