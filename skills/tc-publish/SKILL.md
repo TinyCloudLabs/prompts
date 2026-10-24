@@ -42,7 +42,7 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 ## Choosing the link type
 
-Default to the **owner-only email link**. Create a public link only when the owner's current request explicitly asks for a public or anyone-can-open link. Never decide on your own that content is shareable — if unsure, ask.
+When the owner doesn't say who the link is for, don't publish yet: ask the "only you" question in (2) and wait for their answer. Create a public link only when the owner's current request explicitly asks for a public or anyone-can-open link. Never decide on your own that content is shareable — if unsure, ask.
 
 Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` is the person who may open the link. Never guess it:
 
@@ -278,7 +278,7 @@ Always pass `--expires` — owner-only: the publisher session's remaining lifeti
 
 **File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`). Public links show that stored name; owner-only links show the original. CLI `1.0.0-beta.17` (the version §1 prints) can't publish such names: spaces fail with `PERMISSION_DENIED`, and other unusual names may fail with `INVALID_ARGUMENT` "share input is invalid". That is not a consent problem — don't run §2. Tell the owner this file needs CLI `1.0.0-beta.18`, and don't rename or copy their file yourself.
 
-**Owner-only (the default)** — set `TC_SHARE_TO` by the rule in "Choosing the link type"; the block publishes nothing while it is empty:
+**Owner-only** — set `TC_SHARE_TO` by the rule in "Choosing the link type"; the block publishes nothing while it is empty:
 
 Run EXACTLY this block; do not write your own `share publish` command.
 
