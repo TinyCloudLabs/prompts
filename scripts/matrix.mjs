@@ -28,18 +28,13 @@ const cell = (label, v) => {
   }</td>`;
 };
 
-// One line per distinct (date, CLI, skill) among the skill's measured flows.
+// Newest measured date among cells that show a number, with the CLI and skill versions of those cells.
 export const footerLines = (skill) => {
-  const seen = new Set();
-  for (const f of skill.flows) {
-    for (const v of [f.fresh, f.returning]) {
-      if (v?.measured_on) seen.add(`${v.measured_on}\t${v.cli_version ?? "unknown"}\t${v.skill_version ?? "unknown"}`);
-    }
-  }
-  return [...seen].sort().reverse().map((k) => {
-    const [date, cli, sk] = k.split("\t");
-    return `Last measured ${date}, CLI ${cli}, skill ${sk}.`;
-  });
+  const measured = skill.flows.flatMap((f) => [f.fresh, f.returning]).filter((v) => v?.measured_on && cellModel(v).total !== null);
+  if (!measured.length) return [];
+  const date = measured.map((v) => v.measured_on).sort().at(-1);
+  const list = (key) => [...new Set(measured.map((v) => v[key] ?? "unknown"))].sort().join(", ");
+  return [`Last measured ${date}, CLI ${list("cli_version")}, skill ${list("skill_version")}.`];
 };
 
 export function renderMatrix(data, style = "") {
@@ -49,7 +44,7 @@ export function renderMatrix(data, style = "") {
       return `      <tbody>
         <tr class="group"><th scope="rowgroup" colspan="4"><code>${esc(s.name)}</code><span class="blurb">${esc(s.blurb)}</span></th></tr>
 ${s.flows.map((f) => `        <tr><td class="sk"><code>${esc(s.name)}</code></td><th scope="row">${esc(f.task)}</th>${cell("New agent", f.fresh)}${cell("Returning agent", f.returning)}</tr>`).join("\n")}
-        <tr class="foot"><td colspan="4">${foot.length ? foot.map(esc).join("<br>") : NOT_MEASURED}</td></tr>
+${foot.length ? `        <tr class="foot"><td colspan="4">${foot.map(esc).join("<br>")}</td></tr>\n` : ""}
       </tbody>`;
     })
     .join("\n");

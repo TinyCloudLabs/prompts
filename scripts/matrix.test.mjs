@@ -64,3 +64,21 @@ test("a measured zero renders as 0, not as not measured", () => {
   assert.deepEqual(cellsOf(html, "t"), [["New agent", "0|OpenKey approvals 0 · codes pasted 0 · codes typed 0 · answers 0"], ["Returning agent", NOT_MEASURED]]);
   assert.match(html, /Last measured 2026-10-24, CLI 1, skill 2\./);
 });
+
+test("'Last measured' appears only for a skill with at least one number, from its numbered cells", () => {
+  const zero = { total: 0, openkey_approvals: 0, pastes: 0, choices: 0, codes_typed: 0 };
+  const none = { total: null, openkey_approvals: null, pastes: null, choices: null, codes_typed: null };
+  const mk = (oi, on, cli, sk) => ({ owner_interactions: oi, measured_on: on, cli_version: cli, skill_version: sk });
+  const html = renderMatrix({
+    skills: [
+      { name: "a", blurb: "b", flows: [{ task: "t1", fresh: mk(none, "2026-10-24", "1.3.5", "0.5.13"), returning: null }] },
+      { name: "c", blurb: "d", flows: [{ task: "t2", fresh: mk(zero, "2026-10-20", "1.3.4", "0.1.1"), returning: mk(zero, "2026-10-24", "1.3.5", "0.1.2") }, { task: "t3", fresh: mk(none, "2026-10-30", "9", "9"), returning: null }] },
+    ],
+  });
+  assert.equal(html.split("Last measured").length - 1, 1);
+  assert.match(html, /Last measured 2026-10-24, CLI 1\.3\.4, 1\.3\.5, skill 0\.1\.1, 0\.1\.2\./);
+  assert.doesNotMatch(html, /0\.5\.13|2026-10-30/);
+  const page = renderMatrix(data);
+  const publish = page.slice(page.indexOf("<code>tc-publish</code>"), page.indexOf("<code>tc-secrets</code>"));
+  assert.doesNotMatch(publish, /Last measured/);
+});
