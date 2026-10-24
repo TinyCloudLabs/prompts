@@ -38,10 +38,12 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
+// `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
+  { url: "owner", src: "setup/owner.md", unlisted: true },
   { url: "connect", src: "setup/connect.md", html: true },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "publish", src: "setup/publish.md" },
@@ -444,7 +446,8 @@ const redirects = [
 ];
 write("_redirects", redirects.join("\n") + "\n");
 
-const listedPages = pages.filter((p) => p.url !== "setup");
+const indexed = pages.filter((p) => !p.unlisted);
+const listedPages = indexed.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
@@ -477,12 +480,12 @@ write("llms.txt", llms);
 write(
   "llms-full.txt",
   [`# TinyCloud agent abilities: full text`, "", `> Every guide and skill listed in ${url("llms.txt")}, concatenated.`, ""]
-    .concat(pages.map((p) => `\n---\nSource: ${url(p.url)}\n---\n\n${p.text.trimEnd()}\n`))
+    .concat(indexed.map((p) => `\n---\nSource: ${url(p.url)}\n---\n\n${p.text.trimEnd()}\n`))
     .concat(skills.map((s) => `\n---\nSource: ${url(`skills/${s.short}.md`)}\n---\n\n${s.text.trimEnd()}\n`))
     .join("\n"),
 );
 
-const sitemapPaths = ["", ...pages.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+const sitemapPaths = ["", ...indexed.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -491,11 +494,12 @@ write(
 );
 
 const AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Google-Extended"];
+const disallow = pages.filter((p) => p.unlisted).map((p) => `Disallow: /${p.url}`);
 write(
   "robots.txt",
   [
     "# These pages are written for AI agents. Fetch them freely.",
-    ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /"]),
+    ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /", ...disallow]),
     "",
     `Sitemap: ${url("sitemap.xml")}`,
     "",
