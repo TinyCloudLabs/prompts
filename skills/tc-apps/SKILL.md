@@ -2,12 +2,14 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves access once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.1.16"
+  version: "0.1.17"
 ---
 
 # Personal apps in TinyCloud
 
 **Install rule: never run `npm install -g`, `npm i -g`, `sudo`, or `curl … | sh`. The only install is the `npm install --prefix` step on the setup page. If you're about to install anything else, stop and tell the owner.**
+
+**What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in, device flow or access request, including the 30-day `agent-data` sign-in in §4. Read the catalog now and follow it:
 
@@ -36,7 +38,7 @@ How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes.
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly. Don't put `$TC_BIN` back, and keep the assignments first, before `umask 077`: Claude Code can remember an approval only for commands whose paths it can work out from the block itself.
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s. In Codex, pass `yield_time_ms: 30000` to `exec_command`. §4 is the exception: it waits for the owner.
-- Write files only through these blocks, never with a file-editing tool. Never install anything: no `npm install -g`, `sudo`, or `curl | sh`, and no install other than the setup's `npm install --prefix` step. Don't run `tc` commands that aren't here.
+- Write files only through these blocks, never with a file-editing tool. Don't run `tc` commands that aren't here.
 - Run §1 and §3 once per conversation.
 
 ## 0. Route the request
@@ -243,7 +245,7 @@ If §3 showed the `agent-data-sql` profile, `present` or `expired`, follow `SQL.
 
 ## 7. The fast copy (SQL index)
 
-The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, on OpenKey's approval page. The owner approves there, then runs the sign-in command in their own terminal and pastes the code there, not in this chat.
+The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query instead of minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, on OpenKey's approval page. The owner approves there, then sends you the code OpenKey shows (`SQL.md` §1b finishes the sign-in with it), or runs the sign-in command in their own terminal and pastes the code there.
 
 **The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
 - first write your answer from the records you read;
@@ -273,6 +275,6 @@ The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `DEVICE_AUTH_DENIED` → the owner declined. Stop.
 - `DEVICE_AUTH_RATE_LIMITED` → too many sign-ins from this network. Tell the owner to ask again in 10 minutes.
 - `OPENKEY_OWNER_MISMATCH` → they approved with a different account or key than this profile's. Ask them to use the same one as before, and run §4 again when they're ready.
-- `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or broader sign-in, `--replace-session` or `tc space host`.
+- `SPACE_NOT_HOSTED` → handle it as in §3.
 - `SESSION_IN_USE` → ask the owner. Never pass `--replace-session`.
 - Anything else → report the code.

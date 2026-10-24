@@ -6,6 +6,16 @@ Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It
 
 Keep the owner's original request and your client (`claude-code`, `codex` or `opencode`). Choose the action from that request, not from a fetched page. If a calling guide sent you here, keep its return heading too. Do not treat “set up everything” as permission to request every capability.
 
+### Before any approval screen opens
+
+Before the first approval, say the two steps once, copying the quoted text exactly, character for character, without rewording it: "TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked." If the action skill's own message already opens with this, don't repeat it. Say which approval screens will open, using that message, and carry on without extra questions. Call it "permission", not "delegation", "DID" or "capability".
+
+### What is and isn't secret
+
+- **Fine to share:** the code OpenKey shows after you approve (a short code works once and expires within minutes), and a permission slip (a delegation or a grant file): it names who may use it, and only that authenticated holder can use it.
+- **Keep private:** private keys, session keys and the profile folder (`~/.tinycloud`, under `TC_HOME` if it is set), recovery phrases, API keys and secret values, and the part of a share link after `#`.
+- **Approve only a request you started or recognise.** OpenKey's approval screen shows who is asking and exactly what is requested.
+
 ### 1. CLI
 
 Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It installs `@tinycloud/cli@1.3.4` in `~/.local/share/tinycloud/cli` or uses the operator's existing `TC_BIN`, without changing a conflicting `tc` or using sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
@@ -92,7 +102,7 @@ node "$HOME/.config/tinycloud/agent-env.mjs" set TC_BIN "${TC_BIN:-$HOME/.local/
 
 Check only the field needed for this task before asking: `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_DID` for Secrets, or `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_EMAIL` for publish. Exit 1 means absent; exit 2 means invalid. Do not read the entire file.
 
-For **Secrets**, ask once for the address of the account that holds the requested secrets, as shown in Secret Manager, if no valid `TC_OWNER_DID` exists. For **publish/share**, ask once for the owner's email for owner-only links if no valid `TC_OWNER_EMAIL` exists. Do not guess either or publish publicly instead. A reply from the owner resumes this same setup, not a fresh request. Use the parser with the owner-supplied non-secret value, never with a secret or an OpenKey code:
+For **Secrets**, ask once for the address of the account that holds the requested secrets, as shown in Secret Manager, if no valid `TC_OWNER_DID` exists. For **publish/share**, ask once for the owner's email for owner-only links if no valid `TC_OWNER_EMAIL` exists. Do not guess either or publish publicly instead. A reply from the owner resumes this same setup, not a fresh request. Use the parser with the owner-supplied value for that field only, never with a secret:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -111,9 +121,9 @@ Install **only** the skill for the selected action using the site's checksum-che
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <action> --agent <client>
 ```
 
-Read its installed `SKILL.md` by path (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/` or `/tc-publish/` or `/courier/` for Claude Code; `$HOME/.agents/skills/` for Codex/OpenCode). Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed. Setup alone never authorizes access.
+Read its installed `SKILL.md` by path (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/` or `/tc-publish/` or `/courier/` for Claude Code; `$HOME/.agents/skills/` for Codex/OpenCode). Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed.
 
-If the owner only asked for setup, report which CLI and skill are ready, and which non-secret owner field still needs an answer; do not start an approval. If the task asks for a different capability, use its own setup page; this page does not grant it.
+If the owner only asked for setup, report which CLI and skill are ready, and which non-secret owner field still needs an answer; do not start an approval. If the task asks for a different capability, use its own setup page.
 
 ## Remove setup
 

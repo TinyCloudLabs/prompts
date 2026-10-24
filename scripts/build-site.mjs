@@ -172,7 +172,8 @@ const ABILITIES = [
     title: "Personal records",
     url: "apps",
     text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go.",
-    prompt: "Never run npm install -g, npm i -g, sudo, or curl piped to a shell. Read https://agents.tinycloud.xyz/apps in full and follow it: fetch it with curl -fsSL https://agents.tinycloud.xyz/apps and read the whole output; do not run any other command, including npm or node checks or an install, before you have read it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal. Set it up with TinyCloud. This installs @tinycloud/cli from npm into its own folder and the tc-apps skill from agents.tinycloud.xyz for your user, and saves a sign-in (a key and session in ~/.tinycloud). If an app of yours handles this, it asks you to approve 7-day access to just that app. Otherwise it asks for 30-day access to your records:",
+    prompt: `Fetch ${BASE}/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`,
+    whole: true,
   },
   {
     title: "Publish",
@@ -206,6 +207,7 @@ if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
+const examplePrompt = (a) => (a.whole ? a.prompt : `${a.prompt} ${url(a.url)}`);
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -452,7 +454,7 @@ const llms = [
   "",
   "## Abilities",
   "",
-  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${a.prompt} ${url(a.url)}"`),
+  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${examplePrompt(a)}"`),
   "",
   "## Guides",
   "",
@@ -564,7 +566,7 @@ ${markdownRenderer.parse(connect.text)}
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
-        <p>Try: <code>${esc(`${a.prompt} ${url(a.url)}`)}</code></p>
+        <p>Try: <code>${esc(examplePrompt(a))}</code></p>
       </li>`;
 const desc = "Paste one line into your coding agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
 write(

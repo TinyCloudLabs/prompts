@@ -14,15 +14,16 @@ if [ ! -f "$DIR/$MARK" ]; then KIND=FIRST; elif [ "$AGENT_INSTALL_ENABLED" = tru
 FOLDER=$(cd "$(dirname "$0")" && pwd)
 GRANT_CMD="sh \"$FOLDER/owner-grant.sh\" $1"
 ALLOW='# If your browser asks to connect to devices on your network, choose Allow.'
-CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C and tell me. If the page shows a code, paste it into this terminal, not the chat."
+CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C and tell me. If the page shows a code, paste it into this terminal."
 echo "STATE: $KIND"
 echo 'BEGIN OWNER MESSAGE'
 echo '```text'
+echo '# Verbatim: copy this message exactly as printed, character for character, once, in one code fence, and do not reword it. A reworded command, approval link or code can fail.'
 case "$KIND" in
   FIRST) cat <<EOF
+# TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked.
 # Run this in your own terminal. Approve each browser screen that opens; you may see one or two, one at a time.
-# Together they let me work in your $NAME app for 7 days: $ACCESS.
-# If you haven't signed in to TinyCloud on this computer before, the command signs you in first, then asks you to approve.
+# If you see two, the first is your own sign-in and doesn't give me access. The last one is the permission: it lets me work in your $NAME app for 7 days: $ACCESS.
 $ALLOW
 $CANCEL
 $GRANT_CMD
