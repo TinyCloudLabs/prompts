@@ -93,7 +93,7 @@ Three things get called `tc` or `tinycloud`. Don't mix them up.
 
 | What | How to find it | Expected |
 |---|---|---|
-| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tinycloud" --version` | The version in the table's "CLI version installed" cell, currently `1.3.4` (the version `/apps` installs). |
+| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tinycloud" --version` | The version in the table's "CLI version installed" cell, currently `1.3.5` (the version `/apps` installs). |
 | **System `tc`** (Linux traffic control, in the clean-shell `PATH`) | `/usr/sbin/tc -V` | A line starting `tc utility, iproute2`. This is not TinyCloud. |
 | **Global TinyCloud CLI**, if the machine has one (npm global, `command -v tinycloud` or `command -v tc` outside the clean shell) | From a plain shell, not the test shell: `command -v tc; tc --version` | Any version; it must be **identical before and after** the run. The test must not touch it. |
 

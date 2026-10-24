@@ -93,9 +93,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.3.4",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.4.tgz",
-    integrity: "sha512-vVIxJClL0zX0gqLbB2QYTd5eHLMvSIFQJTPBwf2wWxAVfb5RCt20Rw/+pBdNoFBUD4P7yDrApp9PkmluLODI5g==",
+    version: "1.3.5",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.5.tgz",
+    integrity: "sha512-pVym0zg04yVvyIimZN4bVjWqApzKeiwToJyvgQ+yYGXL2VkehPiaVFR13TT5lVmxTqswC/tI8+ei5YutcZ8zGA==",
     dir: "package/skills/tc-cli",
     checkCli: true,
   },
