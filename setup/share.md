@@ -25,7 +25,7 @@ If the owner didn't say, ask. Never guess and never choose public yourself. The 
 
 | The owner says | `--to` value |
 |---|---|
-| Anyone with the link | `anyone` (the default) |
+| Anyone with the link | `anyone` |
 | Only me | `email:<owner email>` (`$TC_OWNER_EMAIL`) |
 | One other person | `email:<their address>`: the address the owner named in the request, used exactly; if the owner gave a name but no address, ask. In the skill's §3 block this is `TC_SHARE_TO`. |
 
