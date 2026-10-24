@@ -1,0 +1,73 @@
+{
+  "about": "Steps each skill asks of the owner, per basic flow, measured on real QA runs. Unmeasured values are null and the page prints \"not measured yet\". Never fill a value from an estimate: every number needs measured_on and run_ref. Retries and extra steps go in notes, not in the counts. owner_interactions.total counts openkey_approvals + pastes + choices + codes_typed; leave total null unless all four were observed.",
+  "skills": [
+    {
+      "name": "tc-apps",
+      "blurb": "Small apps your agent runs for you",
+      "flows": [
+        {
+          "id": "setup",
+          "task": "Set up the skill",
+          "fresh": { "owner_interactions": { "total": null, "openkey_approvals": null, "pastes": null, "choices": null, "codes_typed": null }, "agent_turns": null, "measured_on": "2026-10-24", "cli_version": "1.3.5", "skill_version": "0.1.20", "result": "pass", "run_ref": "QA run cli135-p70, cell 3", "notes": "Install pinned CLI 1.3.5 and wrote the skill. The skill-copy step was blocked once by the agent's permission check; the owner replied with the page's 'Go ahead' line and it continued. Step counts not tallied for this flow." },
+          "returning": null
+        },
+        {
+          "id": "sign-in",
+          "task": "Sign in",
+          "fresh": { "owner_interactions": { "total": null, "openkey_approvals": 2, "pastes": null, "choices": null, "codes_typed": 1 }, "agent_turns": null, "measured_on": "2026-10-24", "cli_version": "1.3.5", "skill_version": "0.1.20", "result": "pass", "run_ref": "QA run cli135-p70, cell 3", "notes": "Two OpenKey approvals (sign-in, then grant), one code pasted into the CLI, exit 0. Pastes and choices not tallied, so total is null." },
+          "returning": null
+        },
+        {
+          "id": "log-meal",
+          "task": "Log a meal",
+          "fresh": { "owner_interactions": { "total": 0, "openkey_approvals": 0, "pastes": 0, "choices": 0, "codes_typed": 0 }, "agent_turns": null, "measured_on": "2026-10-24", "cli_version": "1.3.5", "skill_version": "0.1.20", "result": "pass", "run_ref": "QA run cli135-p70, cell 3", "notes": "After sign-in the owner did nothing; the agent inserted the row (1 change)." },
+          "returning": null
+        },
+        {
+          "id": "read-back",
+          "task": "See today's meals",
+          "fresh": { "owner_interactions": { "total": 0, "openkey_approvals": 0, "pastes": 0, "choices": 0, "codes_typed": 0 }, "agent_turns": null, "measured_on": "2026-10-24", "cli_version": "1.3.5", "skill_version": "0.1.20", "result": "pass", "run_ref": "QA run cli135-p70, cell 3", "notes": "Read back the row and the day total with no owner action." },
+          "returning": null
+        },
+        {
+          "id": "undo",
+          "task": "Undo the setup",
+          "fresh": { "owner_interactions": { "total": null, "openkey_approvals": 1, "pastes": null, "choices": 2, "codes_typed": null }, "agent_turns": null, "measured_on": "2026-10-24", "cli_version": "1.3.5", "skill_version": "0.1.20", "result": "pass", "run_ref": "QA run cli135-p70, cell 3", "notes": "The owner ran the undo script: two y/n confirmations and one OpenKey approval. Undo removes the agent's access; it does not delete the logged row. Pastes and codes not tallied." },
+          "returning": null
+        }
+      ]
+    },
+    {
+      "name": "tc-publish",
+      "blurb": "Share documents and web pages",
+      "flows": [
+        { "id": "sign-in", "task": "Sign in", "fresh": null, "returning": null },
+        { "id": "owner-only", "task": "Share with only you", "fresh": null, "returning": null },
+        {
+          "id": "email-notify",
+          "task": "Share with one email address",
+          "fresh": { "owner_interactions": { "total": null, "openkey_approvals": null, "pastes": null, "choices": null, "codes_typed": null }, "agent_turns": null, "measured_on": "2026-10-24", "cli_version": "1.3.5", "skill_version": "0.5.13", "result": "pass", "run_ref": "QA run prompts63, control at 20:09Z", "notes": "With --notify the invitation email arrived. It passed only after a paste sign-in that includes the decrypt permission; the device-login sign-in the skill used first was refused with PERMISSION_DENIED. Step counts not tallied." },
+          "returning": null
+        },
+        { "id": "public-link", "task": "Share with anyone who has the link", "fresh": null, "returning": null },
+        { "id": "revoke", "task": "Revoke a link", "fresh": null, "returning": null }
+      ]
+    },
+    {
+      "name": "tc-secrets",
+      "blurb": "Give your agent passwords and keys safely",
+      "flows": [
+        { "id": "sign-in", "task": "Sign in", "fresh": null, "returning": null },
+        { "id": "fetch-requested", "task": "Fetch a secret your agent asked for", "fresh": null, "returning": null },
+        { "id": "fetch-new", "task": "Fetch a new secret", "fresh": null, "returning": null },
+        { "id": "check-cli", "task": "Check the CLI works", "fresh": null, "returning": null }
+      ]
+    }
+  ],
+  "flows_to_confirm": [
+    { "skill": "tc-cli", "flows": ["Sign in", "Read general data", "Pick up a user's apps / install a catalog app", "Publish and share"] },
+    { "skill": "courier", "flows": ["Run Courier", "Working a thread", "Replying", "Blocking on your human", "Sending a fresh request"] },
+    { "skill": "tinychat-retrieval", "flows": ["Set up and sign in", "Latest meeting recap", "Search transcript passages"] },
+    { "skill": "tinycloud-delegated-secrets", "flows": ["Account and KV exploration", "Secret workflow"] }
+  ]
+}

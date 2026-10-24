@@ -82,6 +82,10 @@ The installer checks every file against `/skills/index.json` before writing anyt
 | TinyChat retrieval pack | `0.1.1-onboarding.16` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
 
+## Release checklist
+
+- Update the matrix: re-run each flow, then record the new counts, the date and the versions in [`matrix/interactions.json`](matrix/interactions.json). It is served at `/matrix`; a value is `null` until a real QA run measured it, and every number needs `measured_on` and `run_ref`.
+
 ## Other files
 
 - [`prompt.txt`](prompt.txt) is the TinyChat test prompt. It points at `https://agents.tinycloud.xyz/chat`.
