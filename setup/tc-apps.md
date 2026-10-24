@@ -101,7 +101,7 @@ It takes about 30 s, almost all of it step 2.
 
 If something goes wrong:
 - **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
-- **Claude Code asks to confirm a step or the sign-in.** Show the owner the step and what it does: it installs the TinyCloud CLI and this skill for their user, or the sign-in saves a key and a 30-day session in their TinyCloud profile folder. Ask them to reply naming the step, as in <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it>, and run it again only once they agree. Don't edit their settings files, and don't run the step another way.
+- **Claude Code (or your client) denies a step or the sign-in, or asks to confirm it.** Show the owner the step and what it does: it installs the TinyCloud CLI and this skill for their user, or the sign-in saves a key and a 30-day session in their TinyCloud profile folder. Ask them to reply naming the step, as in <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it>, and run it again only once they agree. Don't edit their settings files, and don't run the step another way.
 - **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder.
 - **`agents.tinycloud.xyz` does not answer** (step 3 fails): stop and say so to the owner. Don't switch to another source.
 
@@ -131,7 +131,7 @@ Follow the skill now for the owner's request, from its §1.
 
 Claude Code can ask you to confirm a step before it runs. Reply with the step, for example: "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." Name the step, because a reply without it may not be enough.
 
-**For coding agents:** when Claude Code asks the owner to confirm a step, show them the step and the reply above, then wait for their answer.
+**For coding agents:** when Claude Code denies a step or asks the owner to confirm it, show them the step and the reply above, then wait for their answer.
 
 Owners can read about an optional Claude Code setting for the sign-in command at https://agents.tinycloud.xyz/owner.
 
