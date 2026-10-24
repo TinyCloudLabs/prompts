@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.14"
+  version: "0.5.15"
 ---
 
 # Publish documents and HTML with `tinycloud share`
@@ -42,27 +42,37 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 ## Choosing the link type
 
-When the owner doesn't say who the link is for, don't publish yet: ask the "only you" question in (2) and wait for their answer. Create a public link only when the owner's current request explicitly asks for a public or anyone-can-open link. Never decide on your own that content is shareable — if unsure, ask.
+With no audience named, make an owner-only link (only you). Make a public link only when the owner's current request explicitly asks for one. Never decide on your own that content is shareable; if unsure, ask.
 
 Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` is the person who may open the link. Never guess it:
 
 - the owner named an address in the request → use exactly that address;
 - the owner asked for a link for themselves → use `$TC_OWNER_EMAIL`; if it is unset, ask the owner;
-- anything else ("send it to the team", a name with no address, no audience) → ask the owner who should open it.
+- anything else ("send it to the team", a name with no address) → ask the owner who should open it.
 
-Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
+Never use a public link as a substitute for a private one, unless the owner replied "Yes, make an open link" to the choice in "When decryption is missing". The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-**(1) The owner names an email address:** say:
+**When decryption is missing.** Use these messages on `DECRYPT_DECLINED`, on `PERMISSION_DENIED` for an owner-only or email link, or on the device fallback.
 
-> I can't create a link that only {email} can open from this sign-in. Two ways to share it:
-> 1. Open https://share.tinycloud.xyz as yourself and share it with {email} there. It emails them the invitation.
-> 2. I make a link that anyone who has it can open, and you send it to them. Reply "Yes, make an open link" if you want that.
+**Named email:**
 
-**(2) "Only I can open it":** say:
+> I can't create a link that only {email} can open with this sign-in, because it doesn't include decryption. Three ways:
+> 1. Sign in again and leave decryption ticked in OpenKey. Reply "Sign in again".
+> 2. Open https://share.tinycloud.xyz as yourself and share it with {email} there. It emails them the invitation.
+> 3. I make a link that anyone who has it can open, and you send it to them. Reply "Yes, make an open link".
 
-> I can't create a link that only you can open from this sign-in. Two ways:
-> 1. Open https://share.tinycloud.xyz and share it with yourself there.
-> 2. I make a link that anyone who has it can open. Reply "Yes, make an open link" if you want that.
+**Only you:**
+
+> I can't create a link that only you can open with this sign-in, because it doesn't include decryption. Three ways:
+> 1. Sign in again and leave decryption ticked in OpenKey. Reply "Sign in again".
+> 2. Open https://share.tinycloud.xyz and share it with yourself there.
+> 3. I make a link that anyone who has it can open. Reply "Yes, make an open link".
+
+On the device fallback, drop choice 1 and renumber. On "Sign in again", run the decryption sign-in in §2 again, on the same profile.
+
+**A `did:` or `domain:` recipient:** say:
+
+> I can share with an email address, with only you, or as an open link. For other kinds of recipients, share from https://share.tinycloud.xyz.
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -87,7 +97,7 @@ else echo STALE; fi
 
 If the block prints `TC_NOT_FOUND`, `STALE` or `OWNER_EMAIL_UNSET`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. Never publish publicly as a fallback.
 
-## 2. Consent — only when there is no live session
+## 2. Sign in — only when there is no live session
 
 Start ONE login and wait for it to finish; never start a second login while one is running.
 
@@ -117,9 +127,160 @@ fi
 rm -f "$STATE/context.json" "$STATE/context.err"
 ```
 
-- `SESSION: present` → **skip to §3.** Come back here only when a publish returns `AUTH_REQUIRED` or `PERMISSION_DENIED`.
-- `SESSION: missing` / `expired` / `unknown-expiry` → start the waiter below.
+- `SESSION: present` → **skip to §3.** Come back here only when a publish returns `AUTH_REQUIRED`. On `PERMISSION_DENIED` for an owner-only or email link: This sign-in doesn't include decryption. Don't retry and don't re-run §2 on your own: give the owner the choice in "When decryption is missing".
+- `SESSION: missing` / `expired` / `unknown-expiry` → run the paste sign-in below.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
+
+**The sign-in: paste, with decryption.** Run it when there is no live session. The first time on a profile it is two approvals: the first records the owner's account, the second adds decryption, which owner-only and email links need. Later runs reuse the saved session, up to 30 days, and need neither. If the owner already gave their DID (`TC_OWNER_DID`), only the second runs. The approval is tied to this profile's key, which the check above creates (`init --name "$PROFILE" --key-only`; say nothing to the owner about it), so use the same `--profile "$PROFILE"` in every call.
+
+Each approval is: call 1 prints the approval link (it then stops with `PASTE_CODE_MISSING`, which is expected; the link is on its own line); you send the owner the message for that approval and wait for the code; you save the code; call 2 finishes the sign-in. Set `WHICH` to `plain` for the first approval and to `decrypt` for the second.
+
+Call 1:
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL TC_OWNER_DID
+mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # unless the owner names another profile
+WHICH='<plain or decrypt>'
+
+rm -f "$STATE/share-publishing-decrypt.json" "$STATE/approve.url" "$STATE/login.err"
+OWNER_DID=$("$TC_BIN" --profile "$PROFILE" auth status --json 2>/dev/null | python3 -c 'import json,sys;print((json.load(sys.stdin).get("ownerDid") or "").split("#")[0])' 2>/dev/null)
+[ -n "$OWNER_DID" ] || OWNER_DID=$TC_OWNER_DID
+if [ "$WHICH" = decrypt ] && ! printf '%s\n' "$OWNER_DID" | grep -qE '^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$'; then
+  echo "OWNER_DID_UNSET: no sign-in has recorded the owner yet; run the first approval (plain) first"
+else
+  if [ "$WHICH" = plain ]; then
+    timeout 60 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
+  else
+cat > "$STATE/share-publishing-decrypt.json" <<'JSON'
+{
+  "app_id": "xyz.tinycloud.share",
+  "name": "TinyCloud Share publishing",
+  "space": "default",
+  "permissions": [
+    { "service": "tinycloud.capabilities", "path": "", "skipPrefix": true, "actions": ["tinycloud.capabilities/read"] },
+    { "service": "tinycloud.kv", "path": "xyz.tinycloud.share/shares/", "skipPrefix": true, "actions": ["tinycloud.kv/get", "tinycloud.kv/put"] },
+    { "service": "tinycloud.kv", "path": "shares/", "skipPrefix": true, "actions": ["tinycloud.kv/get", "tinycloud.kv/metadata", "tinycloud.kv/put", "tinycloud.kv/list"] },
+    { "service": "tinycloud.kv", "path": "artifacts/", "skipPrefix": true, "actions": ["tinycloud.kv/get", "tinycloud.kv/metadata", "tinycloud.kv/put", "tinycloud.kv/list"] },
+    { "service": "tinycloud.encryption", "path": "urn:tinycloud:encryption:<ownerDid>:default", "actions": ["tinycloud.encryption/decrypt"] }
+  ]
+}
+JSON
+    python3 -c 'import sys;f=sys.argv[1];s=open(f).read();open(f,"w").write(s.replace("<ownerDid>",sys.argv[2]))' "$STATE/share-publishing-decrypt.json" "$OWNER_DID"
+    timeout 60 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest "$STATE/share-publishing-decrypt.json" --owner "$OWNER_DID" --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
+  fi
+  grep -E '^[[:space:]]*https://[^[:space:]]+[[:space:]]*$' "$STATE/login.err" | head -1 | tr -d '[:space:]' > "$STATE/approve.url"
+  [ -s "$STATE/approve.url" ] && echo APPROVE_URL_SAVED || { echo NO_URL; sed -E 's#https://[^ ]+#<link>#g' "$STATE/login.err" | head -3; }
+fi
+```
+
+- `APPROVE_URL_SAVED` → read `$STATE/approve.url` once, put the link in the message below that fits, and send it. Then wait for the code.
+- `OWNER_DID_UNSET` → run the first approval (`plain`) first. `NO_URL` → report it; don't retry in a loop.
+
+**First approval (`plain`).** Send exactly:
+
+> To publish for you, I need you to approve two quick sign-ins in OpenKey the first time. Here's the first:
+> 1. Open this link: {approveUrl}
+> 2. Approve, then copy the code OpenKey shows you.
+> 3. Paste the code here.
+
+**Second approval (`decrypt`), once the first has finished.** Send exactly:
+
+> Thanks. One more, so I can create links that only one person can open:
+> 1. Open this link: {approveUrl}
+> 2. Approve, then copy the code OpenKey shows you.
+> 3. Paste the code here.
+
+If the owner gave their DID up front, skip the first approval and send the second with its first line as "To publish for you, I need one approval in OpenKey:".
+
+Save the owner's code, exactly as received, to a fresh 0600 file (never print or repeat it, never pass it as an argument), as `tc-secrets` §3c does:
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077
+STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; mkdir -p "$STATE"; chmod 700 "$STATE"
+rm -f "$STATE/code"
+cat > "$STATE/code" <<'CODE'
+<code exactly as the owner sent it>
+CODE
+echo CODE_SAVED
+```
+
+Call 2 (finish the sign-in; `WHICH` as in call 1):
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
+STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; mkdir -p "$STATE"; chmod 700 "$STATE"
+PROFILE=publisher   # unless the owner names another profile
+WHICH='<plain or decrypt>'
+OWNER_DID=$("$TC_BIN" --profile "$PROFILE" auth status --json 2>/dev/null | python3 -c 'import json,sys;print((json.load(sys.stdin).get("ownerDid") or "").split("#")[0])' 2>/dev/null)
+[ -n "$OWNER_DID" ] || OWNER_DID=$TC_OWNER_DID
+if [ "$WHICH" = decrypt ] && ! printf '%s\n' "$OWNER_DID" | grep -qE '^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$'; then echo OWNER_DID_UNSET
+elif ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null; then echo NO_CODE
+elif [ "$WHICH" = decrypt ] && [ ! -s "$STATE/share-publishing-decrypt.json" ]; then echo NO_CODE
+else
+  printf '\n' >> "$STATE/code"
+  rm -f "$STATE/login.json" "$STATE/login.err"
+  if [ "$WHICH" = plain ]; then
+    timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
+  else
+    timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest "$STATE/share-publishing-decrypt.json" --owner "$OWNER_DID" --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
+  fi
+  python3 - "$?" "$STATE/login.json" "$STATE/login.err" <<'PY'
+import json, re, sys
+rc, out, err = int(sys.argv[1]), sys.argv[2], sys.argv[3]
+if rc == 124: sys.exit(print("LOGIN_TIMEOUT"))
+text = open(err, errors="replace").read()
+try: signed = bool(json.load(open(out)).get("authenticated"))
+except Exception: signed = False
+if signed:
+    lines, declined = text.splitlines(), []
+    for k, l in enumerate(lines):
+        if "Not granted in this session:" in l:
+            for m in lines[k + 1:]:
+                if m.strip() and m[:1].isspace(): declined.append(m.strip())
+                else: break
+            break
+    for d in declined: print("NOT_GRANTED", d)
+    sys.exit(print("DECRYPT_DECLINED") if any("tinycloud.encryption" in d for d in declined) else print("SIGNED_IN"))
+dec, i, last = json.JSONDecoder(), 0, {}
+while (m := re.compile(r"\{").search(text, i)):
+    try: o, i = dec.raw_decode(text, m.start()); last = o if isinstance(o, dict) and "error" in o else last
+    except ValueError: i = m.start() + 1
+e = last.get("error") or {}
+msg = e.get("message") or ""
+if re.search(r"not found|expired", msg, re.I) and re.search(r"code", msg, re.I): sys.exit(print("CODE_EXPIRED"))
+print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", msg)[:200])
+PY
+fi
+rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
+```
+
+- `SIGNED_IN` after the first approval (`plain`) → run call 1 again with `WHICH='decrypt'` and send the second message. `SIGNED_IN` after the second (`decrypt`) → go to §3: for a named email address run the owner-only block with `NOTIFY=--notify`; for "only you" with `NOTIFY` empty. A `NOT_GRANTED <entry>` line means the owner left that permission out: tell them which.
+- `DECRYPT_DECLINED` → give the owner the choice in "When decryption is missing".
+- `CODE_EXPIRED` → say exactly: "That short code has expired. Please paste the full code OpenKey shows instead." Then wait for the full code, save it, and run call 2 again.
+- `NO_CODE`, `OWNER_DID_UNSET` → fix the step before (save the code; run the first approval) and run call 2 again.
+- `LOGIN_TIMEOUT` or `LOGIN_FAILED <code>` → report the error code and ask the owner to paste their code again (save it and run call 2 again). The second `LOGIN_TIMEOUT` or `LOGIN_FAILED` for a sign-in means the paste sign-in isn't working here: offer the device sign-in below.
+
+**Renewing.** Renew by running the §2 sign-in again (the same profile). Don't use `--replace-session`; it drops decryption.
+
+**The fallback: the device sign-in (no decryption).** Offer it only when the owner says they can't paste a code, or when a paste sign-in ends with `LOGIN_TIMEOUT` or `LOGIN_FAILED` twice. Say exactly:
+
+> If pasting a code doesn't work for you, I can use a sign-in that needs no code. With it I can only make links that anyone who has them can open; to share privately, use https://share.tinycloud.xyz. Reply "Use the other sign-in" if you want that.
+
+Run the device sign-in only after that reply. Never switch on your own. The device sign-in uses the waiter below.
 
 **Consent is precious.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on it. Every launch counts — including relaunches after an expired or dead waiter. Never run two waiters at once, and never start a new request while a code is outstanding (waiter alive, deadline not passed).
 
@@ -270,7 +431,7 @@ Delete the waiter files once it has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/
 
 ## 3. Publish — run exactly one of the two blocks
 
-Publish with `--to anyone` for (1) or (2) only after the owner replies "Yes, make an open link". Never turn a named recipient or "only me" into an open link on its own, and don't publish anything else meanwhile.
+Publish with `--to anyone` for a named recipient or an "only you" link only after the owner replies "Yes, make an open link". Never turn either into an open link on your own, and don't publish anything else meanwhile.
 
 Always pass `--expires` — owner-only: the publisher session's remaining lifetime minus 1 h, computed by the owner-only block (`6d` only if the session's expiry can't be read); public: 24h — unless the owner says otherwise — and always tell the owner the expiry. `SESSION_LIFETIME_EXCEEDED` handling: see the error table below.
 
@@ -296,15 +457,16 @@ FILE='<absolute path of the file>'
 EXPIRES=6d          # fallback only when the session has no expiresAt
 SESSION_END=$("$TC_BIN" --profile "$PROFILE" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
 [ -n "$SESSION_END" ] && EXPIRES=$(python3 -c 'import sys,datetime as d;e=d.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00"));m=int((e-d.datetime.now(d.timezone.utc)).total_seconds()//60)-60;print(f"{m}m" if m>=2 else "")' "$SESSION_END" 2>/dev/null)
+NOTIFY=             # NOTIFY=--notify when the owner named an email address; leave it empty for "only you"
 TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
 if [ -z "$EXPIRES" ]; then
-  echo "SESSION_ENDING: about 1 h or less of session left; renew consent (§2) before publishing"
+  echo "SESSION_ENDING: about 1 h or less of session left; renew the sign-in before publishing"
 elif [ -z "$TC_SHARE_TO" ]; then
   echo "RECIPIENT_UNSET: ask the owner who should be able to open it"
 else
-  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" --json \
+  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" $NOTIFY --json \
     > "$STATE/publish.json" 2>"$STATE/publish.err"; rc=$?
   if { [ "$rc" = 0 ] || [ "$rc" = 9 ]; } && [ -s "$STATE/publish.json" ]; then
     id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
@@ -491,9 +653,13 @@ Report with the template for the link type — fill in the placeholders, keep th
 
 > **Owner-only:** Published `<file>` as an owner-only link. Only `<recipient email>` can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
 
+> **Owner-only, invitation sent:** Published `<file>` and TinyCloud emailed `<recipient email>` the invitation. Only they can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
+
 > **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>`, and I can revoke it any time before then. Verified: hash match. `<URL>`
 
-Hand the link to the owner in your reply, with the recipient and the expiry, and nowhere else: the owner decides how it reaches the recipient. Don't message the recipient or any other channel yourself.
+The invitation has gone to the recipient, so there's nothing for the owner to forward; the link at the end is for the owner's own record. When no invitation is sent ("only you", a public or open link, or the CLI exits 9 and prints `INVITE_NOT_SENT`: the share exists, but the invitation didn't go out, so give the owner the link), give the owner the link in your reply, ready to forward, with the recipient and the expiry. Never write steps for the owner to carry out (no "copy this and send it to…"): you send it, or you hand over the link. Don't message the recipient through any other channel yourself.
+
+For "only you", say: "Here's your link. Only your email address can open it; you'll get a one-time code there when you open it. It expires `<date>`, and I can revoke it any time before then." and put the URL last.
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
@@ -538,7 +704,8 @@ umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STA
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
-      "$STATE/inspect.json" "$STATE/show.json" "$STATE/context.json" "$STATE/context.err"
+      "$STATE/inspect.json" "$STATE/show.json" "$STATE/context.json" "$STATE/context.err" \
+      "$STATE/share-publishing-decrypt.json"
 ```
 
 ## Errors — `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text
@@ -548,8 +715,8 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | Code | Exit | Action |
 |---|---|---|
 | `AUTH_REQUIRED` | 3 | Session expired/invalid — return to §2 on the same profile (ignore the CLI's own `auth login`/`init` hint) |
-| `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On CLI `1.0.0-beta.17` a file name with spaces also gives this — see §3 **File names**, not §2 |
-| `SESSION_LIFETIME_EXCEEDED` | 2 | Two cases, told apart by the message. **"requested share lifetime exceeds session expiry"** → the share would outlive the login: use a SHORTER `--expires` (session end minus 1 hour), never a longer one. If the session has under 1 hour left, tell the owner the login is about to end and ask them to start ONE new login (§2). **"share expiry must be at least 60 seconds from now"** → use the smallest allowed value (`2m`), never beyond the session end minus 1 hour. |
+| `PERMISSION_DENIED` | 5 | On an owner-only or email link: This sign-in doesn't include decryption. Don't retry and don't re-run §2 on your own: give the owner the choice in "When decryption is missing". Otherwise: scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again. On CLI `1.0.0-beta.17` a file name with spaces also gives this — see §3 **File names**, not §2 |
+| `SESSION_LIFETIME_EXCEEDED` | 2 | Two cases, told apart by the message. **"requested share lifetime exceeds session expiry"** → the share would outlive the login: use a SHORTER `--expires` (session end minus 1 hour), never a longer one. If the session has under 1 hour left, tell the owner the login is about to end and ask them to renew the sign-in (see "Renewing" in §2). **"share expiry must be at least 60 seconds from now"** → use the smallest allowed value (`2m`), never beyond the session end minus 1 hour. |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
 | `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. |
 | `SESSION_IN_USE` | 2 | Live session would narrow — ask the owner; never `--replace-session` unprompted |
@@ -561,7 +728,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
 | `STORAGE_QUOTA_EXCEEDED` / `STORAGE_LIMIT_REACHED` | 10 (4 on CLIs before the TC-625 release) | The owner's TinyCloud storage is full, or this file is larger than what is left. Newer CLIs include the account's used and plan sizes. Nothing was shared. Tell the owner and point them to https://account.tinycloud.xyz/billing; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
-| exit 9, "partial share success" | 9 | Only with `--notify`: the share exists but the invite email failed — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, give the owner the link (§6) and tell the owner no invite went out |
+| exit 9, "partial share success" | 9 | The share exists but the invitation email wasn't sent — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, give the owner the link (§6) and tell the owner no invite went out |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
 | `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
