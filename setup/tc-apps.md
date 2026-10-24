@@ -38,7 +38,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or exactly `1.3.1` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as `1.3.0` or an older `1.2.5` from an earlier setup, means run all the steps of §2: step 2 installs `1.3.1` in place of it.
+- The last line prints a path (the owner set `TC_BIN`) or exactly `1.3.4` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as `1.3.0` or an older `1.2.5` from an earlier setup, means run all the steps of §2: step 2 installs `1.3.4` in place of it.
 - Anything else, such as `No such file or directory` → run all the steps of §2.
 
 ## 2. Install
@@ -56,7 +56,7 @@ mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/st
 **Step 2. The CLI,** unless §1 said it is ready. It goes into a private folder that only this skill uses.
 
 ```sh
-npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.3.1
+npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.3.4
 ```
 
 **Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files. Four are scripts: `tc-wrapper.sh`, which step 6 installs; `announce.sh`, which prints the owner's approval message; and `owner-grant.sh` and `owner-undo.sh`, which the owner runs in their own terminal for the approval and for Undo.
@@ -91,7 +91,7 @@ cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps"
 printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" && chmod 755 "$HOME/.local/share/tc-apps/tc"
 ```
 
-**Step 7. Check the CLI runs.** It prints `1.3.1`, or the version of the owner's `TC_BIN`.
+**Step 7. Check the CLI runs.** It prints `1.3.4`, or the version of the owner's `TC_BIN`.
 
 ```sh
 "$HOME/.local/share/tc-apps/tc" --version

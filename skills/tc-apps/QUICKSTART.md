@@ -7,7 +7,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.1` from a folder of its own.
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.4` from a folder of its own.
 
 A permission slip and the code OpenKey shows after you approve are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
@@ -36,7 +36,7 @@ Claude Code and Codex also ask whether you trust a folder the first time you sta
 Optional variables, set before you start the client:
 - `TC_HOME`: the CLI profile store. Without it the CLI uses `~/.tinycloud`.
 - `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
-- `TC_BIN`: the absolute path to another `tc`, CLI `1.3.1` or later. The skill then uses it instead of its own folder.
+- `TC_BIN`: the absolute path to another `tc`, CLI `1.3.4` or later. The skill then uses it instead of its own folder.
 
 ## What you see at sign-in
 
