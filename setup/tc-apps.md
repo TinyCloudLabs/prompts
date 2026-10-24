@@ -27,7 +27,7 @@ If the owner only asked for setup or named no record, save one default record wi
 
 Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode`.
 
-Run each block as one shell tool call from your project folder, exactly as written apart from `<client>`. Install nothing else: the only install is step 2's `npm install --prefix`; never `npm install -g`, `sudo` or `curl … | sh`. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
+Run each block as one shell tool call from your project folder, exactly as written. Where a step has a block for each client, run only the block for yours. Install nothing else: the only install is step 2's `npm install --prefix`; never `npm install -g`, `sudo` or `curl … | sh`. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
 
 ## 1. Check
 
@@ -43,7 +43,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --versi
 
 ## 2. Install
 
-Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written. The skill's files are fetched as plain files, checked against a checksum list and copied. Stop at the first step that fails.
+Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written, using only your client's block where a step has one for each client. The skill's files are fetched as plain files, checked against a checksum list and copied. Stop at the first step that fails.
 
 If `agents.tinycloud.xyz` does not answer, stop and say so, as described below.
 
@@ -71,7 +71,7 @@ cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud
 cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 256 -c SHA256SUMS; }
 ```
 
-**Step 5. Put the skill where your client looks for skills,** for your user, so every project folder sees it. Use the block for your client.
+**Step 5. Put the skill where your client looks for skills,** for your user, so every project folder sees it. Run only the block for your client. Don't copy the skill into both folders.
 
 Claude Code:
 
@@ -131,7 +131,7 @@ Follow the skill now for the owner's request, from its §1.
 
 Claude Code can ask you to confirm a step before it runs. Reply with the step, for example: "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." Name the step, because a reply without it may not be enough.
 
-**For coding agents:** when Claude Code denies a step or asks the owner to confirm it, show them the step and the reply above, then wait for their answer.
+**For coding agents:** when Claude Code denies a step or asks the owner to confirm it, show them the step and the exact "Go ahead: …" reply from above for them to send, then wait for their answer.
 
 Owners can read about an optional Claude Code setting for the sign-in command at https://agents.tinycloud.xyz/owner.
 
