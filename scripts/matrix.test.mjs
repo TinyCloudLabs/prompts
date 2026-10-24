@@ -1,19 +1,13 @@
-import { test, before } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderMatrix, NOT_MEASURED } from "./matrix.mjs";
+import { renderMatrix, cellModel, NOT_MEASURED } from "./matrix.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const data = JSON.parse(readFileSync(join(root, "matrix/interactions.json"), "utf8"));
 const variants = data.skills.flatMap((s) => s.flows.flatMap((f) => [f.fresh, f.returning])).filter(Boolean);
-
-before(() => {
-  const built = spawnSync(process.execPath, [join(root, "scripts/build-site.mjs")], { encoding: "utf8" });
-  assert.equal(built.status, 0, built.stderr);
-});
 
 test("every measured variant has a date and a run reference, and counts are whole numbers", () => {
   for (const v of variants) {
@@ -24,21 +18,49 @@ test("every measured variant has a date and a run reference, and counts are whol
       assert.ok(n === null || (Number.isInteger(n) && n >= 0), String(n));
     }
     assert.doesNotMatch(JSON.stringify(v), /\/home\/|~\/|@[a-z0-9-]+\.[a-z]/i, "no paths or emails in the data");
+    if (v.partial) assert.ok(!Object.values(v.owner_interactions).every(Number.isInteger), "partial only while a part is unobserved");
   }
 });
 
-test("/matrix is built, and a null count prints 'not measured yet'", () => {
-  const html = readFileSync(join(root, "_site/matrix.html"), "utf8");
+const cellsOf = (html, task) => {
+  const row = html.match(new RegExp(`<th scope="row">${task.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}</th>(.*?)</tr>`, "s"));
+  assert.ok(row, task);
+  return [...row[1].matchAll(/<td data-label="([^"]+)">(.*?)<\/td>/gs)].map((m) => [m[1], m[2].replace(/<[^>]+>/g, "|").replace(/\|+/g, "|").replace(/^\||\|$/g, "")]);
+};
+
+test("the page renders as one real table: every flow, header scopes, and 'not measured yet' for every unmeasured cell", () => {
+  const html = renderMatrix(data);
   assert.match(html, /How many steps each skill asks of you/);
-  const flows = data.skills.flatMap((s) => s.flows);
-  const nulls = flows.flatMap((f) => [f.fresh, f.returning]).filter((v) => !Number.isInteger(v?.owner_interactions?.total)).length;
-  assert.equal(html.split(NOT_MEASURED).length - 1, nulls + data.skills.filter((s) => !s.flows.some((f) => f.fresh || f.returning)).length);
-  for (const f of flows) assert.ok(html.includes(f.task), f.task);
+  for (const col of ["Skill", "Task", "New agent", "Returning agent"]) assert.match(html, new RegExp(`<th scope="col">${col}</th>`));
+  assert.equal(html.split("<table>").length, 2);
+  for (const s of data.skills) {
+    assert.match(html, new RegExp(`<th scope="rowgroup" colspan="4"><code>${s.name}</code>`));
+    for (const f of s.flows) {
+      const cells = cellsOf(html, f.task);
+      assert.deepEqual(cells.map((c) => c[0]), ["New agent", "Returning agent"]);
+      [f.fresh, f.returning].forEach((v, i) => {
+        const { total, parts } = cellModel(v);
+        assert.equal(cells[i][1], total === null ? NOT_MEASURED : `${total}|${parts.join(" · ")}`, `${s.name}/${f.task}`);
+      });
+    }
+  }
+});
+
+test("the page shows both a total and its breakdown, or neither; partial parts are never printed", () => {
+  const html = renderMatrix(data);
+  const sign = cellsOf(html, "Sign in")[0];
+  assert.equal(cellsOf(html, "Log a meal")[0][1], "0|OpenKey approvals 0 · codes pasted 0 · codes typed 0 · answers 0");
+  const partials = data.skills.flatMap((s) => s.flows.flatMap((f) => [f.fresh, f.returning])).filter((v) => v?.partial);
+  assert.ok(partials.length > 0);
+  assert.equal(sign[1], NOT_MEASURED);
+  assert.doesNotMatch(html, /OpenKey approvals [1-9]/);
+  const half = renderMatrix({ skills: [{ name: "x", blurb: "b", flows: [{ task: "t", fresh: { owner_interactions: { total: 3, openkey_approvals: 2, pastes: null, choices: null, codes_typed: 1 }, measured_on: "2026-10-24", cli_version: "1", skill_version: "2" }, returning: null }] }] });
+  assert.doesNotMatch(half, /OpenKey approvals|class="n"/);
 });
 
 test("a measured zero renders as 0, not as not measured", () => {
-  const html = renderMatrix({ skills: [{ name: "x", blurb: "b", flows: [{ task: "t", fresh: { owner_interactions: { total: 0, openkey_approvals: 0 }, measured_on: "2026-10-24", cli_version: "1", skill_version: "2" }, returning: null }] }] });
-  assert.match(html, /New agent<\/span> <span class="n">0</);
-  assert.match(html, /Returning agent<\/span> <span class="n none">not measured yet</);
+  const zero = { total: 0, openkey_approvals: 0, pastes: 0, choices: 0, codes_typed: 0 };
+  const html = renderMatrix({ skills: [{ name: "x", blurb: "b", flows: [{ task: "t", fresh: { owner_interactions: zero, measured_on: "2026-10-24", cli_version: "1", skill_version: "2" }, returning: null }] }] });
+  assert.deepEqual(cellsOf(html, "t"), [["New agent", "0|OpenKey approvals 0 · codes pasted 0 · codes typed 0 · answers 0"], ["Returning agent", NOT_MEASURED]]);
   assert.match(html, /Last measured 2026-10-24, CLI 1, skill 2\./);
 });

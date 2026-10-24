@@ -3,24 +3,29 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export const NOT_MEASURED = "not measured yet";
 export const TITLE = "How many steps each skill asks of you";
 export const INTRO =
-  "When your AI agent uses a TinyCloud skill, it sometimes needs you. You approve something in OpenKey, paste a code back, or answer a yes-or-no question. Each of those counts as one step here. A <strong>new agent</strong> is one using the skill for the first time on your computer. A <strong>returning agent</strong> has used it before and still has a valid sign-in. The table shows how many steps each task took in our latest test runs.";
+  "When your AI agent uses a TinyCloud skill, it sometimes needs you. You approve something in OpenKey, paste or type a code, or answer a yes-or-no question. Each of those counts as one step here. A <strong>new agent</strong> is one using the skill for the first time on your computer. A <strong>returning agent</strong> has used it before and still has a valid sign-in. The table shows how many steps each task took in our latest test runs.";
 
 const PARTS = [
   ["openkey_approvals", "OpenKey approvals"],
-  ["pastes", "pastes"],
-  ["choices", "choices"],
+  ["pastes", "codes pasted"],
   ["codes_typed", "codes typed"],
+  ["choices", "answers"],
 ];
 
+// A cell shows its total only with a fully observed breakdown; otherwise it shows nothing but "not measured yet".
+export const cellModel = (v) => {
+  const oi = v?.owner_interactions;
+  if (!oi || !Number.isInteger(oi.total) || !PARTS.every(([k]) => Number.isInteger(oi[k]))) return { total: null, parts: [] };
+  return { total: oi.total, parts: PARTS.map(([k, name]) => `${name} ${oi[k]}`) };
+};
+
 const cell = (label, v) => {
-  const total = v?.owner_interactions?.total;
-  const measured = Number.isInteger(total);
-  const parts = PARTS.filter(([k]) => Number.isInteger(v?.owner_interactions?.[k]))
-    .map(([k, name]) => `${name} ${v.owner_interactions[k]}`)
-    .join(" · ");
-  return `<div class="cell"><span class="who">${label}</span> <span class="n${measured ? "" : " none"}">${measured ? total : NOT_MEASURED}</span>${
-    parts ? `<small>${esc(parts)}</small>` : ""
-  }</div>`;
+  const { total, parts } = cellModel(v);
+  return `<td data-label="${label}">${
+    total === null
+      ? `<span class="none">${NOT_MEASURED}</span>`
+      : `<span class="n">${total}</span><small>${esc(parts.join(" · "))}</small>`
+  }</td>`;
 };
 
 // One line per distinct (date, CLI, skill) among the skill's measured flows.
@@ -38,21 +43,14 @@ export const footerLines = (skill) => {
 };
 
 export function renderMatrix(data, style = "") {
-  const cards = data.skills
+  const groups = data.skills
     .map((s) => {
       const foot = footerLines(s);
-      return `    <section class="skill">
-      <h2><code>${esc(s.name)}</code></h2>
-      <p class="blurb">${esc(s.blurb)}</p>
-      <ul class="flows">
-${s.flows
-  .map(
-    (f) => `        <li><div class="task">${esc(f.task)}</div>${cell("New agent", f.fresh)}${cell("Returning agent", f.returning)}</li>`,
-  )
-  .join("\n")}
-      </ul>
-      <p class="foot">${foot.length ? foot.map(esc).join("<br>") : NOT_MEASURED}</p>
-    </section>`;
+      return `      <tbody>
+        <tr class="group"><th scope="rowgroup" colspan="4"><code>${esc(s.name)}</code><span class="blurb">${esc(s.blurb)}</span></th></tr>
+${s.flows.map((f) => `        <tr><td class="sk"><code>${esc(s.name)}</code></td><th scope="row">${esc(f.task)}</th>${cell("New agent", f.fresh)}${cell("Returning agent", f.returning)}</tr>`).join("\n")}
+        <tr class="foot"><td colspan="4">${foot.length ? foot.map(esc).join("<br>") : NOT_MEASURED}</td></tr>
+      </tbody>`;
     })
     .join("\n");
   return `<!doctype html>
@@ -64,26 +62,40 @@ ${s.flows
   <meta name="description" content="${esc(TITLE)}">
 ${style}
   <style>
-    body { max-width: 40rem; }
-    .skill { border: 1px solid #ddd; border-radius: 6px; padding: 0.5rem 1rem 1rem; margin: 1.25rem 0; }
-    .skill h2 { margin: 0.5rem 0 0; }
-    .blurb { margin: 0.1rem 0 0.5rem; color: #555; }
-    ul.flows { list-style: none; padding: 0; margin: 0; }
-    ul.flows li { border-top: 1px solid #eee; padding: 0.6rem 0; }
-    .task { font-weight: 600; }
-    .cell { margin-top: 0.15rem; }
-    .who { display: inline-block; min-width: 9.5em; color: #555; }
-    .n.none { color: #777; }
-    small { display: block; color: #666; font-size: 0.78rem; margin-left: 0.2rem; }
-    .foot { margin: 0.75rem 0 0; color: #555; font-size: 0.85rem; }
-    @media (max-width: 420px) { body { margin: 1.25rem auto; padding: 0 0.75rem; } .who { display: block; min-width: 0; } .skill { padding: 0.25rem 0.75rem 0.75rem; } }
+    body { max-width: 60rem; }
+    table { border-collapse: collapse; width: 100%; }
+    thead th { text-align: left; border-bottom: 2px solid #ccc; padding: 0.4rem 0.5rem; }
+    tbody th, tbody td { text-align: left; padding: 0.5rem; border-top: 1px solid #eee; vertical-align: top; font-weight: normal; }
+    tr.group th { background: #f6f6f6; border-top: 2px solid #ccc; padding-top: 0.75rem; }
+    .blurb { display: block; color: #555; margin-top: 0.15rem; }
+    tbody th[scope="row"] { font-weight: 600; }
+    td.sk code { font-size: 0.8em; }
+    .none { color: #777; }
+    small { display: block; color: #666; font-size: 0.78rem; }
+    tr.foot td { color: #555; font-size: 0.85rem; }
+    @media (max-width: 767px) {
+      body { margin: 1.25rem auto; padding: 0 0.75rem; }
+      thead { position: absolute; left: -9999px; }
+      table, tbody, tr, th, td { display: block; }
+      tbody { border: 1px solid #ddd; border-radius: 6px; padding: 0.25rem 0.75rem 0.75rem; margin: 1.25rem 0; }
+      tr.group th { background: none; border-top: 0; padding: 0.5rem 0 0.25rem; }
+      tbody tr:not(.group):not(.foot) { border-top: 1px solid #eee; padding: 0.5rem 0; }
+      tbody th, tbody td { border: 0; padding: 0.1rem 0; }
+      td[data-label]::before { content: attr(data-label) ": "; color: #555; }
+      td[data-label] small { margin-left: 0.2rem; }
+      td.sk { display: none; }
+      tr.foot td { padding-top: 0.6rem; }
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>${esc(TITLE)}</h1>
     <p>${INTRO}</p>
-${cards}
+    <table>
+      <thead><tr><th scope="col">Skill</th><th scope="col">Task</th><th scope="col">New agent</th><th scope="col">Returning agent</th></tr></thead>
+${groups}
+    </table>
   </main>
   <footer><a href="/">All guides and skills</a></footer>
 </body>
