@@ -31,6 +31,8 @@ If the owner didn't say, ask. Never guess and never choose public yourself. The 
 
 The `email:` choices need the extra approval described above. `anyone` works right away.
 
+A bare address (`alex@example.com`) also works as `--to`; write the `email:` form so the intent is unambiguous. An invalid address is refused before anything is published, with `INVALID_ARGUMENT`.
+
 For HTML or JSX, ask the owner which they want: **anyone with the link** sees the page running; **someone you name by email** gets it as a download for now. Use the audience the owner picks.
 
 ### 2. Pick the content
