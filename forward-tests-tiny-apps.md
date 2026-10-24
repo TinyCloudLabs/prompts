@@ -6,7 +6,7 @@ Not published: the site build skips `forward-tests*.md`. Run these on the pull r
 
 - Three clients (Claude Code, Codex, OpenCode), each with a fresh home `$H` and an empty project folder (see `forward-tests-tc-apps.md`).
 - Two accounts: one with no Health Log app, one where Health Log is already installed.
-- CLI pin: `1.3.4` in `setup/tc-apps.md`, `skills/tc-apps/QUICKSTART.md` and `forward-tests-tc-apps.md`. The install stage is the `AGENT_INSTALL_ENABLED` switch in `skills/tc-apps/TINY-APPS.md` §3: run the Friday cases (TA6a, TA14) with `false`, the Monday cases (TA6b, TA10, TA15 to TA17, TA19) with `true`. TA18 and TA20 run on both stages.
+- CLI pin: `1.3.5` in `setup/tc-apps.md`, `skills/tc-apps/QUICKSTART.md` and `forward-tests-tc-apps.md`. The install stage is the `AGENT_INSTALL_ENABLED` switch in `skills/tc-apps/TINY-APPS.md` §3: run the Friday cases (TA6a, TA14) with `false`, the Monday cases (TA6b, TA10, TA15 to TA17, TA19) with `true`. TA18 and TA20 run on both stages.
 - Count the screens: every OpenKey or browser approval screen, and every chat question the agent asks before a write.
 
 ## Cases
