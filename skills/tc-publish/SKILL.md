@@ -484,7 +484,7 @@ Report with the template for the link type — fill in the placeholders, keep th
 
 > **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>`, and I can revoke it any time before then. Verified: hash match. `<URL>`
 
-With `--notify` the invitation has gone to the recipient: tell the owner who it was sent to and when it expires; there is nothing for the owner to forward. When no invitation is sent (a public link, a `did:` recipient, or the owner asked for no email), give the owner the link in your reply, ready to forward, with the recipient and the expiry. Never write steps for the owner to carry out (no "copy this and send it to…"): you send it, or you hand over the link. Don't message the recipient through any other channel yourself.
+With `--notify` the invitation has gone to the recipient: tell the owner who it was sent to and when it expires; there is nothing for the owner to forward. When no invitation is sent (a public link, a `did:` recipient, the owner asked for no email, or the CLI exits 9 and prints `INVITE_NOT_SENT`: the share exists, but the invitation didn't go out, so give the owner the link), give the owner the link in your reply, ready to forward, with the recipient and the expiry. Never write steps for the owner to carry out (no "copy this and send it to…"): you send it, or you hand over the link. Don't message the recipient through any other channel yourself.
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
