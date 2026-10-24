@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — private owner-only links, public bearer links, verification, and lifecycle.
 metadata:
-  version: "0.5.12"
+  version: "0.5.13"
 ---
 
 # Publish documents and HTML with `tinycloud share`
@@ -52,7 +52,7 @@ Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` i
 
 Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-`--notify` is optional: use it only when the owner asks for an emailed invite, and only on an owner-only publish (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails the recipient one invitation with the link. You still send the link yourself (§6). Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
+When the owner names a person's email address to share with, pass `--notify` (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails that person one invitation with the link, so you have sent it for the owner. Leave `--notify` out only when the owner asks you not to email them, on a public link, or for a `did:` recipient. Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -284,7 +284,7 @@ FILE='<absolute path of the file>'
 EXPIRES=6d          # fallback only when the session has no expiresAt
 SESSION_END=$("$TC_BIN" --profile "$PROFILE" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
 [ -n "$SESSION_END" ] && EXPIRES=$(python3 -c 'import sys,datetime as d;e=d.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00"));m=int((e-d.datetime.now(d.timezone.utc)).total_seconds()//60)-60;print(f"{m}m" if m>=2 else "")' "$SESSION_END" 2>/dev/null)
-NOTIFY=             # NOTIFY=--notify only if the owner asked for an emailed invite (CLI 1.0.1-beta.0 or newer)
+NOTIFY=             # NOTIFY=--notify when the owner named an email address to share with (CLI 1.0.1-beta.0 or newer); empty for a public link or when the owner asked for no email
 TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
@@ -340,7 +340,7 @@ else
 fi
 ```
 
-On `PUBLISH_FAILED`, stop and use the errors table. `INVITE_NOT_SENT` (exit 9, only with `--notify`) means the share was published but the invite email wasn't sent: don't publish again — verify (§4), deliver the link yourself (§6) and tell the owner no invite went out. Record the share id, file name and link type — never the URL. `--reveal-link` already prints JSON with `.link`; never combine it with `--json` (`INVALID_ARGUMENT`).
+On `PUBLISH_FAILED`, stop and use the errors table. If the CLI exits 9, the block prints `INVITE_NOT_SENT`: the share was created, but the invitation email wasn't sent. Don't publish again: verify (§4), give the owner the link (§6) and tell the owner no invite went out. Record the share id, file name and link type — never the URL. `--reveal-link` already prints JSON with `.link`; never combine it with `--json` (`INVALID_ARGUMENT`).
 
 ## 4. Verify — always, before reporting
 
@@ -480,13 +480,15 @@ Report with the template for the link type — fill in the placeholders, keep th
 
 > **Owner-only:** Published `<file>` as an owner-only link. Only `<recipient email>` can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
 
+> **Owner-only, invitation sent:** Published `<file>` and TinyCloud emailed `<recipient email>` the invitation. Only they can open it: the viewer emails them an 8-digit code, then shows the file as "Verified sender". It expires `<date>`, and I can revoke it any time before then. Verified: inspect matched. `<URL>`
+
 > **Public:** Published `<file>` as a public link. Anyone holding the link can open it without signing in. It expires `<date>`, and I can revoke it any time before then. Verified: hash match. `<URL>`
 
-Hand the link to the owner in your reply, with the recipient and the expiry, and nowhere else: the owner decides how it reaches the recipient. Don't message the recipient or any other channel yourself.
+With `--notify` the invitation has gone to the recipient: tell the owner who it was sent to and when it expires; there is nothing for the owner to forward. When no invitation is sent (a public link, a `did:` recipient, the owner asked for no email, or the CLI exits 9 and prints `INVITE_NOT_SENT`: the share exists, but the invitation didn't go out, so give the owner the link), give the owner the link in your reply, ready to forward, with the recipient and the expiry. Never write steps for the owner to carry out (no "copy this and send it to…"): you send it, or you hand over the link. Don't message the recipient through any other channel yourself.
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
-If you passed `--notify`, add: "TinyCloud also emailed `<recipient email>` an invitation." After `INVITE_NOT_SENT`, add instead: "The invitation email couldn't be sent."
+After `INVITE_NOT_SENT`, add: "The invitation email couldn't be sent."
 
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
@@ -550,7 +552,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
 | `STORAGE_QUOTA_EXCEEDED` / `STORAGE_LIMIT_REACHED` | 10 (4 on CLIs before the TC-625 release) | The owner's TinyCloud storage is full, or this file is larger than what is left. Newer CLIs include the account's used and plan sizes. Nothing was shared. Tell the owner and point them to https://account.tinycloud.xyz/billing; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
-| exit 9, "partial share success" | 9 | Only with `--notify`: the share exists but the invite email failed — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, send the link yourself (§6) and tell the owner no invite went out |
+| exit 9, "partial share success" | 9 | Only with `--notify`: the share exists but the invite email failed — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, give the owner the link (§6) and tell the owner no invite went out |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
 | `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
