@@ -59,7 +59,12 @@ Never use a public link as a substitute for a private one, unless the owner repl
 > 2. Open https://share.tinycloud.xyz as yourself and share it with {email} there. It emails them the invitation.
 > 3. I make a link that anyone who has it can open, and you send it to them. Reply "Yes, make an open link".
 
-**(2) "Only I can open it", or the owner doesn't say who it's for:** say the same three, with "only you" and no {email}. Option 2 reads: "Open https://share.tinycloud.xyz and share it with yourself there."
+**(2) "Only I can open it", or the owner doesn't say who it's for:** say:
+
+> I can't create a link that only you can open with the sign-in I have now. Three ways:
+> 1. Approve one more sign-in that lets me create links only one person can open. You approve it in OpenKey and paste back a code. Reply "Yes, one more approval".
+> 2. Open https://share.tinycloud.xyz and share it with yourself there.
+> 3. I make a link that anyone who has it can open. Reply "Yes, make an open link".
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -267,7 +272,7 @@ Delete the waiter files once it has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/
 
 ## 3. Publish — run exactly one of the two blocks
 
-Publish with `--to anyone` for (1) or (2) only after the owner replies "Yes, make an open link". Never turn a named recipient or "only me" into an open link on your own, and don't publish anything else meanwhile.
+Publish with `--to anyone` for (1) or (2) only after the owner replies "Yes, make an open link". Never turn a named recipient or an "only you" link into an open link on your own, and don't publish anything else meanwhile.
 
 Always pass `--expires` — owner-only: the publisher session's remaining lifetime minus 1 h, computed by the owner-only block (`6d` only if the session's expiry can't be read); public: 24h — unless the owner says otherwise — and always tell the owner the expiry. `SESSION_LIFETIME_EXCEEDED` handling: see the error table below.
 
