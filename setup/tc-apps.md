@@ -71,7 +71,7 @@ cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud
 cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 256 -c SHA256SUMS; }
 ```
 
-**Step 5. Put the skill where your client looks for skills,** for your user, so every project folder sees it. Use the block for your client.
+**Step 5. Put the skill where your client looks for skills,** for your user, so every project folder sees it. Run only the block for your client. Don't copy the skill into both folders.
 
 Claude Code:
 
