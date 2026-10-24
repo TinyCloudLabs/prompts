@@ -93,11 +93,11 @@ Three things get called `tc` or `tinycloud`. Don't mix them up.
 
 | What | How to find it | Expected |
 |---|---|---|
-| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tc" --version` | The version in the table's "CLI version installed" cell, currently `1.3.4` (the version `/apps` installs). |
+| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tinycloud" --version` | The version in the table's "CLI version installed" cell, currently `1.3.4` (the version `/apps` installs). |
 | **System `tc`** (Linux traffic control, in the clean-shell `PATH`) | `/usr/sbin/tc -V` | A line starting `tc utility, iproute2`. This is not TinyCloud. |
 | **Global TinyCloud CLI**, if the machine has one (npm global, `command -v tinycloud` or `command -v tc` outside the clean shell) | From a plain shell, not the test shell: `command -v tc; tc --version` | Any version; it must be **identical before and after** the run. The test must not touch it. |
 
-The page calls the CLI `tinycloud`; the skill's wrapper is named `tc`. Always call the wrapper by its full path as above, never `command -v tc`.
+The page calls the CLI `tinycloud`; the skill's wrapper is named `tinycloud`. Always call the wrapper by its full path as above, never `command -v tc`.
 
 ## How to run
 
@@ -112,7 +112,7 @@ The page calls the CLI `tinycloud`; the skill's wrapper is named `tc`. Always ca
 Coding agents, from the client's `$H` and `TC_HOME`:
 
 ```sh
-TC_BIN="$H/.local/share/tc-apps/tc"
+TC_BIN="$H/.local/share/tc-apps/tinycloud"
 "$TC_BIN" kv list --prefix xyz.tinycloud.agent-data/ --space default --json --profile agent-data
 "$TC_BIN" kv get '<key from the list>' --space default --json --profile agent-data
 ```

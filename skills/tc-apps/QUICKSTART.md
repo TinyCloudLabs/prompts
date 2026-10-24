@@ -19,7 +19,7 @@ Add the setup link to your first request:
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
-2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tc`, a short script that runs this CLI and retries when TinyCloud drops a connection.
+2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tinycloud`, a short script that runs this CLI and retries when TinyCloud drops a connection.
 3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
 4. It reads the skill and signs you in, as below.
 
@@ -103,8 +103,9 @@ Good to know:
 - **Stopping:** each command below clears the local session, with `TC_HOME` and `TC_BIN` set as when you started the client, so it uses the same CLI as the skill. The approvals stay valid on TinyCloud until they expire.
 
   ```sh
-  "${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data auth logout
-  "${TC_BIN:-$HOME/.local/share/tc-apps/tc}" --profile agent-data-sql auth logout
+  W=$HOME/.local/share/tc-apps; TC=${TC_BIN:-}; [ -n "$TC" ] || { TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; }
+  "$TC" --profile agent-data auth logout
+  "$TC" --profile agent-data-sql auth logout
   ```
 
   To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the `tc-apps` skill folders.
@@ -112,7 +113,7 @@ Good to know:
 ## Why it works this way
 
 - **One root, one approval.** Every app lives under one key root, so new apps and new kinds need no new approval. The price is that the one grant covers all of your agent-kept records.
-- **Phone-code approval for records.** `tc auth login --device` needs nothing to reach back to the machine the agent runs on, so it works over SSH and from your phone. OpenKey allows it only for key-value storage in an ordinary space, under an explicit path.
+- **Phone-code approval for records.** `tinycloud auth login --device` needs nothing to reach back to the machine the agent runs on, so it works over SSH and from your phone. OpenKey allows it only for key-value storage in an ordinary space, under an explicit path.
 - **KV first, SQL as a copy.** Key-value records work with the phone-code approval and survive agent mistakes, because each record is its own key. The SQL index is rebuildable, so it never holds the only copy of anything.
 - **Reads run side by side.** Each storage command takes 3–5 s against TinyCloud, so the agent fetches up to eight records at once.
 - **Literal paths in commands.** Claude Code can remember an approval only for a command it can work out from the text.

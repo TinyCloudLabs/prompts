@@ -3,7 +3,7 @@
 # Usage: sh owner-undo.sh
 # Each revoke asks [y/N] in this terminal. A logout or delete that reports PROFILE_NOT_FOUND is fine: you never signed in to it.
 set -u
-TC="${TC_BIN:-$HOME/.local/share/tc-apps/tc}"
+if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; else TC=$TC_BIN; fi
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 REVOKED=0
 cancel() { if [ "$REVOKED" -eq 0 ]; then echo "Cancelled. Your agent's local access is already removed, but the grant itself was not revoked. Run this again to finish." >&2; else echo 'Cancelled; some access was already revoked. Tell your agent.' >&2; fi; exit "$1"; }

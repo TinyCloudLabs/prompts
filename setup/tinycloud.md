@@ -1,6 +1,6 @@
 # Set up the TinyCloud CLI
 
-This module installs and verifies only the TinyCloud CLI and the CLI's core skill, `tc-cli`. The CLI's command is `tinycloud`; `tc` is the same CLI under a shorter name. App hosts, spaces, profiles, permission manifests, authorization and app behavior belong in the calling app guide.
+This module installs and verifies only the TinyCloud CLI and the CLI's core skill, `tc-cli`. The CLI's command is `tinycloud`. `tc` works too: the CLI installs both names. On Linux, `tc` may run the system's traffic-control tool instead, so use `tinycloud`. Needs @tinycloud/cli 1.2.3 or later (check with `tinycloud --version`). On older versions, use `tc` or reinstall the CLI. App hosts, spaces, profiles, permission manifests, authorization and app behavior belong in the calling app guide.
 
 ## For the owner
 

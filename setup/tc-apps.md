@@ -34,7 +34,7 @@ Run each block as one shell tool call from your project folder, exactly as writt
 ```sh
 node --version
 npm --version
-printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc" --version
+printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycloud" --version
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
@@ -85,16 +85,16 @@ Codex and OpenCode:
 cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh "$HOME/.agents/skills/tc-apps/"
 ```
 
-**Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tc` is the skill's `tc-wrapper.sh`, copied from the download: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
+**Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tinycloud` is the skill's `tc-wrapper.sh`, copied from the download: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. An earlier `tc` copy in that folder keeps working. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
 
 ```sh
-printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tc}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tc" && chmod 755 "$HOME/.local/share/tc-apps/tc"
+printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycloud}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tinycloud" && chmod 755 "$HOME/.local/share/tc-apps/tinycloud"
 ```
 
 **Step 7. Check the CLI runs.** It prints `1.3.4`, or the version of the owner's `TC_BIN`.
 
 ```sh
-"$HOME/.local/share/tc-apps/tc" --version
+"$HOME/.local/share/tc-apps/tinycloud" --version
 ```
 
 It takes about 30 s, almost all of it step 2.
