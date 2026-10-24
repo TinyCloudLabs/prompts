@@ -16,6 +16,7 @@
 // agent-skills discovery index are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
+import { renderMatrix } from "./matrix.mjs";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,7 +33,7 @@ const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
 // docs/: internal notes, kept in the repository, never published.
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills"]);
+const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
 
@@ -485,7 +486,7 @@ write(
     .join("\n"),
 );
 
-const sitemapPaths = ["", ...indexed.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+const sitemapPaths = ["", ...indexed.map((p) => p.url), "matrix", "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -614,12 +615,16 @@ ${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<co
     <ul>
 ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
+    <p><a href="/matrix">How many steps each skill asks of you</a></p>
   </main>
   <footer>Agents: start at <a href="/setup">/setup</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
 </body>
 </html>
 `,
 );
+
+// /matrix: steps each skill asks of the owner, from matrix/interactions.json.
+write("matrix.html", renderMatrix(JSON.parse(readFileSync(join(ROOT, "matrix/interactions.json"), "utf8")), style));
 
 // Without a 404 page, Pages serves index.html with 200 for missing paths.
 write(

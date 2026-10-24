@@ -1,0 +1,311 @@
+{
+  "about": "Steps each skill asks of the owner, per basic flow, measured on real QA runs. Unmeasured values are null and the page prints \"not measured yet\". Never fill a value from an estimate: every number needs measured_on and run_ref. Retries and extra steps go in notes, not in the counts. owner_interactions.total counts openkey_approvals + pastes + choices + codes_typed; leave total null unless all four were observed. Parts seen in a run whose total is unknown go in partial, which the page does not print.",
+  "skills": [
+    {
+      "name": "tc-apps",
+      "blurb": "Small apps your agent runs for you",
+      "flows": [
+        {
+          "id": "setup",
+          "task": "Set up the skill",
+          "fresh": {
+            "owner_interactions": {
+              "total": null,
+              "openkey_approvals": null,
+              "pastes": null,
+              "choices": null,
+              "codes_typed": null
+            },
+            "agent_turns": null,
+            "measured_on": "2026-10-24",
+            "cli_version": "1.3.5",
+            "skill_version": "0.1.20",
+            "result": "pass",
+            "run_ref": "QA run cli135-p70, cell 3",
+            "notes": "Install pinned CLI 1.3.5 and wrote the skill. The skill-copy step was blocked once by the agent's permission check; the owner replied with the page's 'Go ahead' line and it continued. Step counts not tallied for this flow."
+          },
+          "returning": null
+        },
+        {
+          "id": "sign-in",
+          "task": "Sign in",
+          "fresh": {
+            "owner_interactions": {
+              "total": 3,
+              "openkey_approvals": 2,
+              "pastes": 0,
+              "choices": 0,
+              "codes_typed": 1
+            },
+            "agent_turns": null,
+            "measured_on": "2026-10-24",
+            "cli_version": "1.3.5",
+            "skill_version": "0.1.20",
+            "result": "pass",
+            "run_ref": "QA run cli135-p70, cell 3",
+            "notes": "Two OpenKey approvals (the init sign-in, then the grant through the browser callback), one short code typed at the CLI's 'Enter short code' prompt, no pastes, no answers. Read from c3/own.log (one 'SENT 10 bytes' at the short-code prompt, no other input, no y/N prompts; the grant's second code prompt was not used) and c3/own.drv (APPROVAL #1 for the first page); the second approval is from RESULT.md ('2 OpenKey screens', cell 3), its per-page log was unreadable.",
+            "owner_kind": "scripted"
+          },
+          "returning": null
+        },
+        {
+          "id": "log-meal",
+          "task": "Log a meal",
+          "fresh": {
+            "owner_interactions": {
+              "total": 0,
+              "openkey_approvals": 0,
+              "pastes": 0,
+              "choices": 0,
+              "codes_typed": 0
+            },
+            "owner_kind": "scripted",
+            "agent_turns": null,
+            "measured_on": "2026-10-24",
+            "cli_version": "1.3.5",
+            "skill_version": "0.1.20",
+            "result": "pass",
+            "run_ref": "QA run cli135-p70, cell 3",
+            "notes": "After sign-in the owner did nothing; the agent inserted the row (1 change)."
+          },
+          "returning": null,
+          "caption": "Counted after sign-in. \"See today's meals\" is the agent reading the day's meals back while it logs one."
+        },
+        {
+          "id": "read-back",
+          "task": "See today's meals",
+          "fresh": {
+            "owner_interactions": {
+              "total": 0,
+              "openkey_approvals": 0,
+              "pastes": 0,
+              "choices": 0,
+              "codes_typed": 0
+            },
+            "owner_kind": "scripted",
+            "agent_turns": null,
+            "measured_on": "2026-10-24",
+            "cli_version": "1.3.5",
+            "skill_version": "0.1.20",
+            "result": "pass",
+            "run_ref": "QA run cli135-p70, cell 3",
+            "notes": "Read back the row and the day total with no owner action."
+          },
+          "returning": null,
+          "caption": "Counted after sign-in. \"See today's meals\" is the agent reading the day's meals back while it logs one."
+        },
+        {
+          "id": "undo",
+          "task": "Undo the setup",
+          "fresh": {
+            "owner_interactions": {
+              "total": 3,
+              "openkey_approvals": 1,
+              "pastes": 0,
+              "choices": 2,
+              "codes_typed": 0
+            },
+            "agent_turns": null,
+            "measured_on": "2026-10-24",
+            "cli_version": "1.3.5",
+            "skill_version": "0.1.20",
+            "result": "pass",
+            "run_ref": "QA run cli135-p70, cell 3",
+            "notes": "One OpenKey approval and two y/N answers ('Delete profile', 'Approve local-key delegation'), no codes. Read from c3/und.drv (APPROVAL #1, END approvals=1) and c3/und.log (two 'SENT 2 bytes' at the two [y/N] prompts, no other input). Undo removes the agent's access; it does not delete the logged row.",
+            "owner_kind": "scripted"
+          },
+          "returning": null
+        }
+      ]
+    },
+    {
+      "name": "tc-publish",
+      "blurb": "Share documents and web pages",
+      "flows": [
+        {
+          "id": "sign-in",
+          "task": "Sign in",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "owner-only",
+          "task": "Share with only you",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "email-notify",
+          "task": "Share with one email address",
+          "fresh": {
+            "owner_interactions": {
+              "total": null,
+              "openkey_approvals": null,
+              "pastes": null,
+              "choices": null,
+              "codes_typed": null
+            },
+            "agent_turns": null,
+            "measured_on": "2026-10-24",
+            "cli_version": "1.3.5",
+            "skill_version": "0.5.13",
+            "result": "control",
+            "run_ref": "QA run prompts63, control at 20:09Z",
+            "notes": "Hand-built control run, not the served flow: the served flow was blocked with PERMISSION_DENIED (device login without the decrypt permission). With a paste sign-in that includes decrypt, --notify published and the invitation email arrived. No step counts."
+          },
+          "returning": null
+        },
+        {
+          "id": "public-link",
+          "task": "Share with anyone who has the link",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "revoke",
+          "task": "Revoke a link",
+          "fresh": null,
+          "returning": null
+        }
+      ]
+    },
+    {
+      "name": "tc-secrets",
+      "blurb": "Give your agent passwords and keys safely",
+      "flows": [
+        {
+          "id": "check-cli",
+          "task": "Check the CLI works",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "ask-add",
+          "task": "Ask you to add a missing secret",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "approve-access",
+          "task": "Approve access",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "use-secret",
+          "task": "Use a secret",
+          "fresh": null,
+          "returning": null
+        }
+      ]
+    },
+    {
+      "name": "tc-cli",
+      "blurb": "TinyCloud's command-line tool",
+      "flows": [
+        {
+          "id": "sign-in",
+          "task": "Sign in",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "read-your-data",
+          "task": "Read your data",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "install-an-app-from-the-catalog",
+          "task": "Install an app from the catalog",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "share-a-file",
+          "task": "Share a file",
+          "fresh": null,
+          "returning": null
+        }
+      ]
+    },
+    {
+      "name": "courier",
+      "blurb": "Your agent and someone else's agent, working together over TinyCloud",
+      "flows": [
+        {
+          "id": "start-courier",
+          "task": "Start Courier",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "follow-a-conversation",
+          "task": "Follow a conversation",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "reply",
+          "task": "Reply",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "check-with-you-before-going-on",
+          "task": "Check with you before going on",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "send-a-new-request",
+          "task": "Send a new request",
+          "fresh": null,
+          "returning": null
+        }
+      ]
+    },
+    {
+      "name": "tinychat-retrieval",
+      "blurb": "Your TinyChat meetings, for your agent",
+      "flows": [
+        {
+          "id": "set-up-and-sign-in",
+          "task": "Set up and sign in",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "recap-your-latest-meeting",
+          "task": "Recap your latest meeting",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "search-what-was-said",
+          "task": "Search what was said",
+          "fresh": null,
+          "returning": null
+        }
+      ]
+    },
+    {
+      "name": "tinycloud-delegated-secrets",
+      "blurb": "Your data and secrets through TinyCloud's MCP tools",
+      "flows": [
+        {
+          "id": "explore-your-account-and-data",
+          "task": "Explore your account and data",
+          "fresh": null,
+          "returning": null
+        },
+        {
+          "id": "use-a-secret",
+          "task": "Use a secret",
+          "fresh": null,
+          "returning": null
+        }
+      ]
+    }
+  ]
+}
