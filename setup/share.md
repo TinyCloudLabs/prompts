@@ -7,8 +7,8 @@ Your agent publishes a document or web page from your computer to your own TinyC
 - **Paste into Claude Code, Codex or OpenCode:** `Share this with TinyCloud, and ask me who should be able to open it: https://agents.tinycloud.xyz/share`
 - You need a shell, Node.js 22.20 or later, and npm. A chat agent that can't run shell commands can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
 - **What it does:** installs the pinned TinyCloud CLI and the `tc-publish` skill, asks which audience you want, publishes, and returns the link.
-- **You approve:** one OpenKey request for standing publish access to your share folders, for up to 30 days. Setup alone grants nothing.
-- **Default is private.** With no audience named, the agent makes a link only your own email can open. It makes a public link only when you ask for one.
+- **You approve:** one OpenKey request for standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Owner-only and email links need one more approval, for decryption, which your agent asks for the first time.
+- **Ask first.** With no audience named, the agent asks who the link is for before it publishes. Owner-only and email links need one extra approval (decryption), which the agent asks for the first time. Public links work right away, and the agent makes one only when you ask for one.
 - **Undo:** see [Undo](#undo).
 
 ## For the agent
@@ -28,12 +28,8 @@ If the owner didn't say, ask. Never guess and never choose public yourself. The 
 | Anyone with the link | `anyone` (the default) |
 | Only me | `email:<owner email>` (`$TC_OWNER_EMAIL`) |
 | One other person | `email:<their address>`: the address the owner named in the request, used exactly; if the owner gave a name but no address, ask. In the skill's §3 block this is `TC_SHARE_TO`. |
-| Everyone at a company or school | `domain:<name>`, e.g. `domain:example.com` |
-| A specific TinyCloud identity | `did:pkh:eip155:1:0x…` |
 
-A bare address (`alex@example.com`) also works as `--to`; write the `email:` form so the intent is unambiguous. An invalid address is refused before anything is published, with `INVALID_ARGUMENT`.
-
-Anything else fails: `--to must be anyone, a did:, an email address, or domain:example.com`.
+The `email:` choices need the extra approval described above. `anyone` works right away.
 
 For HTML or JSX, ask the owner which they want: **anyone with the link** sees the page running; **someone you name by email** gets it as a download for now. Use the audience the owner picks.
 
@@ -71,9 +67,9 @@ Publish only through the skill's §3 blocks (`skills/tc-publish/SKILL.md`). They
 - `--json` prints redacted metadata with `metadata.shareId`; the link is not in it. Get the link as the skill does: `"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link`. Never combine `--reveal-link` with `--json`.
 - Everything after `#` in a link is the credential. Follow the skill's handling contract for storing and delivering it. Never retype or chunk a link.
 - Edit access for an addressed recipient: add `--action read edit`; it takes a list, so put it last, after the file and the other flags. Only use it when the owner asks and only with an addressed `--to`; the Markdown editor is the share viewer's. Never pass `--action edit` with `anyone`: the CLI release after 1.3.0-beta.30 refuses it (`INVALID_ARGUMENT`, exit 2: a link only reads), and earlier CLIs publish a read-only link without saying so.
-- Give the link to the owner in your reply, with the recipient and the expiry; don't send it anywhere else. The owner passes it on. When the recipient opens it, the viewer emails them a one-time code to prove the address is theirs.
+- When you share with an email address, pass `--notify`: TinyCloud emails the recipient the invitation, so the owner has nothing to forward. For "only you", or for a public link, give the owner the link in your reply, with the recipient and the expiry, ready to forward. Don't tell the owner to send it themselves. When the recipient opens the link, the viewer emails them a one-time code to prove the address is theirs.
 
-What the recipient does: opens the link; for `email:`/`domain:` links they prove the address with a code the viewer emails them. A bearer link opens without signing in.
+What the recipient does: opens the link; for `email:` links they prove the address with a code the viewer emails them. A bearer link opens without signing in.
 
 ### 4. List and look up shares
 
