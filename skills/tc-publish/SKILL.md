@@ -52,7 +52,17 @@ Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` i
 
 Never use a public link as a substitute for a private one. The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-`--notify` is optional: use it only when the owner asks for an emailed invite, and only on an owner-only publish (`NOTIFY=--notify` in §3). From CLI `1.0.1-beta.0`, TinyCloud then emails the recipient one invitation with the link. You still send the link yourself (§6). Before `1.0.1-beta.0` (for example `1.0.0-beta.21` and earlier, or `1.0.0`), `--notify` exits 9, "partial share success" (TC-571): the share is created but no email is sent. So read the version §1 printed; on an older CLI, publish without it and tell the owner the emailed invite needs CLI `1.0.1-beta.0` or newer. Either way, the recipient's viewer emails its own 8-digit code when they open the link.
+**(1) The owner names an email address:** say:
+
+> I can't create a link that only {email} can open from this sign-in. Two ways to share it:
+> 1. Open https://share.tinycloud.xyz as yourself and share it with {email} there. It emails them the invitation.
+> 2. I make a link that anyone who has it can open, and you send it to them. Reply "Yes, make an open link" if you want that.
+
+**(2) "Only I can open it":** say:
+
+> I can't create a link that only you can open from this sign-in. Two ways:
+> 1. Open https://share.tinycloud.xyz and share it with yourself there.
+> 2. I make a link that anyone who has it can open. Reply "Yes, make an open link" if you want that.
 
 ## 1. Check the CLI — feature probes, not version strings
 
@@ -260,6 +270,8 @@ Delete the waiter files once it has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/
 
 ## 3. Publish — run exactly one of the two blocks
 
+Publish with `--to anyone` for (1) or (2) only after the owner replies "Yes, make an open link". Never turn a named recipient or "only me" into an open link on its own, and don't publish anything else meanwhile.
+
 Always pass `--expires` — owner-only: the publisher session's remaining lifetime minus 1 h, computed by the owner-only block (`6d` only if the session's expiry can't be read); public: 24h — unless the owner says otherwise — and always tell the owner the expiry. `SESSION_LIFETIME_EXCEEDED` handling: see the error table below.
 
 **HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
@@ -284,7 +296,6 @@ FILE='<absolute path of the file>'
 EXPIRES=6d          # fallback only when the session has no expiresAt
 SESSION_END=$("$TC_BIN" --profile "$PROFILE" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
 [ -n "$SESSION_END" ] && EXPIRES=$(python3 -c 'import sys,datetime as d;e=d.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00"));m=int((e-d.datetime.now(d.timezone.utc)).total_seconds()//60)-60;print(f"{m}m" if m>=2 else "")' "$SESSION_END" 2>/dev/null)
-NOTIFY=             # NOTIFY=--notify only if the owner asked for an emailed invite (CLI 1.0.1-beta.0 or newer)
 TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
@@ -293,7 +304,7 @@ if [ -z "$EXPIRES" ]; then
 elif [ -z "$TC_SHARE_TO" ]; then
   echo "RECIPIENT_UNSET: ask the owner who should be able to open it"
 else
-  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" $NOTIFY --json \
+  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" --json \
     > "$STATE/publish.json" 2>"$STATE/publish.err"; rc=$?
   if { [ "$rc" = 0 ] || [ "$rc" = 9 ]; } && [ -s "$STATE/publish.json" ]; then
     id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
@@ -486,7 +497,7 @@ Hand the link to the owner in your reply, with the recipient and the expiry, and
 
 For owner-only HTML, add: "It downloads as a file rather than rendering in the viewer."
 
-If you passed `--notify`, add: "TinyCloud also emailed `<recipient email>` an invitation." After `INVITE_NOT_SENT`, add instead: "The invitation email couldn't be sent."
+After `INVITE_NOT_SENT`, add: "The invitation email couldn't be sent."
 
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
