@@ -17,7 +17,7 @@ You need a shell, Node.js 22.20 or later, and npm.
 
 - **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
 - **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
-- **You approve:** one OpenKey request for `put` on that bot's `applications` feed folder only. The exact CLI grant and conditional-write commands are still being verified; the guide names these limits.
+- **You approve:** one OpenKey request for `put` on that bot's `applications` feed folder only. The exact CLI grant hand-off is not verified; create-only card writes from the CLI await TC-2049.
 - **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
