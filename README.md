@@ -10,6 +10,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | --- | --- | --- |
 | `/setup` | The entry point: every ability, what to paste, what the owner approves, how to undo it | [`setup/README.md`](setup/README.md) |
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
+| `/feed` | Creating a post in TinyCloud Home (`tinycloud-feed`) | [`skills/tinycloud-feed/creating-a-post.md`](skills/tinycloud-feed/creating-a-post.md) |
 | `/connect` | One link for ChatGPT, Claude and coding agents: HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); coding agents follow the unchanged [`/apps` guide](setup/tc-apps.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
@@ -18,7 +19,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/courier` | Agent-to-agent threads (`courier`): owner setup | [`setup/courier.md`](setup/courier.md) |
 | `/cli` | Building block: the TinyCloud CLI, its `tinycloud` command and its `tc-cli` skill | [`setup/tinycloud.md`](setup/tinycloud.md) |
 | `/openkey` | Building block: the standalone OpenKey CLI | [`setup/openkey.md`](setup/openkey.md) |
-| `/skills/<skill>.md` | A skill's `SKILL.md` to read, for `apps`, `chat`, `publish`, `secrets`, `courier`, `cli` and `mcp`; its relative links point into `/skills/<skill>/` | see [Skills](#skills) |
+| `/skills/<skill>.md` | A skill's `SKILL.md` to read, for `apps`, `feed`, `chat`, `publish`, `secrets`, `courier`, `cli` and `mcp`; its relative links point into `/skills/<skill>/` | see [Skills](#skills) |
 | `/skills/<skill>/<file>` | The skill's files exactly as installed, `SKILL.md` included | |
 | `/skills/<skill>/SHA256SUMS` | The sha256 of each of the skill's files, in `sha256sum -c` format, the same values as `index.json`; the `/apps` setup checks its downloads against it | generated |
 | `/skills/index.json` | Every skill's name, short name, version, description, source, changed files, and files with sha256 checksums | generated |
@@ -47,6 +48,7 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | Skill | Short name | Source of truth |
 | --- | --- | --- |
 | `tc-apps` | `apps` | [`skills/tc-apps`](skills/tc-apps), in this repository |
+| `tinycloud-feed` | `feed` | [`skills/tinycloud-feed`](skills/tinycloud-feed), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
 | `tc-cli` | `cli` | `skills/tc-cli` in the npm package [`@tinycloud/cli@1.3.5`](https://www.npmjs.com/package/@tinycloud/cli/v/1.3.5) (js-sdk), unchanged |
