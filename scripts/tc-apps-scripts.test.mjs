@@ -181,7 +181,7 @@ const world = (applications = {}) => {
 const store = (h) => JSON.parse(readFileSync(join(h.dir, "kv-state.json"), "utf8"));
 const control = (h, c) => writeFileSync(join(h.dir, "control.json"), JSON.stringify(c));
 const cliCalls = (h) => (existsSync(join(h.dir, "calls.log")) ? readFileSync(join(h.dir, "calls.log"), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []);
-const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
+const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
 const receiptPath = (h, slug) => join(h.state, "migration", `${slug}.receipt.json`);
 const newKeys = (h, slug) => Object.keys(store(h).applications).filter((k) => k.startsWith(`${NEW(slug)}/`)).sort();
 const notSwitched = (h, out) => {
@@ -352,4 +352,133 @@ test("migrate.sh has one write command, it creates only, and it has no delete co
   assert.equal(writes.length, 1);
   assert.match(writes[0], /--if-none-match '\*'/);
   assert.equal(/\bkv (delete|del)\b|delegation revoke|\bsql\b/.test(text), false);
+});
+
+// ---- layout.sh: an app with old records and no verified move stays in the old layout ----
+const layout = join(skill, "layout.sh");
+const runLayout = (h, slug, env = {}) => run(["sh", layout, slug], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
+const writeReceipt = (h, slug, receipt) => {
+  mkdirSync(join(h.state, "migration"), { recursive: true });
+  writeFileSync(receiptPath(h, slug), JSON.stringify(receipt));
+};
+
+test("layout.sh: old records and no receipt stay in the old layout, with no new grant, profile or write", () => {
+  const h = world();
+  const out = runLayout(h, "fitness");
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(out.stdout.trim(), "legacy");
+  const calls = cliCalls(h);
+  assert.deepEqual(calls.map((c) => c.argv.slice(0, 2).join(" ")), ["kv list"]);
+  assert.equal(calls[0].profile, "agent-data");
+  assert.equal(calls[0].argv[calls[0].argv.indexOf("--space") + 1], "default");
+  assert.deepEqual(readdirSync(h.state), []);
+});
+
+test("layout.sh: a verified receipt for the app switches it to the new layout without asking the network", () => {
+  const h = world();
+  writeReceipt(h, "fitness", { v: 1, app: "fitness", id: NEW("fitness"), verified: true });
+  const out = runLayout(h, "fitness");
+  assert.equal(out.stdout.trim(), "new");
+  assert.equal(cliCalls(h).length, 0);
+});
+
+test("layout.sh: an app with no old records starts in the new layout", () => {
+  const h = world();
+  const out = runLayout(h, "books");
+  assert.equal(out.stdout.trim(), "new");
+  assert.deepEqual(cliCalls(h).map((c) => c.argv.slice(0, 2).join(" ")), ["kv list"]);
+});
+
+test("layout.sh: a successful migrate.sh without its receipt is still the old layout, and the receipt switches it", () => {
+  const h = world();
+  assert.equal(runMigrate(h, ["fitness"]).status, 0);
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
+  const receipt = readFileSync(receiptPath(h, "fitness"), "utf8");
+  rmSync(receiptPath(h, "fitness"));
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
+  writeFileSync(receiptPath(h, "fitness"), receipt);
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
+});
+
+test("layout.sh: a receipt that is unverified, damaged or for another app does not switch the app", () => {
+  for (const receipt of [{ app: "fitness", verified: false }, { app: "todos", verified: true }, { app: "fitness" }]) {
+    const h = world();
+    writeReceipt(h, "fitness", receipt);
+    assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy", JSON.stringify(receipt));
+  }
+  const h = world();
+  mkdirSync(join(h.state, "migration"), { recursive: true });
+  writeFileSync(receiptPath(h, "fitness"), "{not json");
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
+});
+
+test("layout.sh: with no usable earlier sign-in it says ask, and with another failure it says check-failed", () => {
+  const h = world();
+  control(h, { missingProfiles: ["agent-data"] });
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "ask");
+  const g = world();
+  const broken = join(g.dir, "broken-tinycloud");
+  writeFileSync(broken, "#!/bin/sh\necho '{\"error\":{\"code\":\"NETWORK_ERROR\"}}' >&2\nexit 7\n", { mode: 0o755 });
+  assert.equal(runLayout(g, "fitness", { TC_BIN: broken }).stdout.trim(), "check-failed");
+});
+
+test("layout.sh rejects a name that is not a plain slug or is reserved, before any CLI call", () => {
+  const h = world();
+  for (const slug of ["Fitness", "../x", "-x", "healthlog", "catalog", ""]) assert.equal(runLayout(h, slug).status, 2, slug);
+  assert.equal(cliCalls(h).length, 0);
+});
+
+// ---- layout.sh and migrate.sh: paged catalog, missing jq, local work copy, tab in a key ----
+test("layout.sh follows the old catalog's pages: an app whose key is on a later page is legacy", () => {
+  const h = world();
+  const paged = join(h.dir, "paged-tinycloud");
+  writeFileSync(paged, `#!/bin/sh
+case " $* " in
+  *" --all "*) echo '{"keys":["${OLD}/catalog/fitness","${OLD}/catalog/todos"],"count":2}' ;;
+  *) echo '{"keys":["${OLD}/catalog/fitness"],"count":1,"truncated":true,"nextCursor":"c1"}' ;;
+esac
+`, { mode: 0o755 });
+  assert.equal(runLayout(h, "todos", { TC_BIN: paged }).stdout.trim(), "legacy");
+  assert.equal(runLayout(h, "books", { TC_BIN: paged }).stdout.trim(), "new");
+});
+
+test("layout.sh and migrate.sh without jq say so and exit 3 before any CLI call or write", () => {
+  const h = world();
+  const empty = join(h.dir, "empty-bin");
+  mkdirSync(empty);
+  for (const args of [[layout, "fitness"], [migrate, "--dry-run", "fitness"], [migrate, "fitness"]]) {
+    const out = spawnSync("/bin/sh", args, { encoding: "utf8", timeout: 20000, env: { PATH: empty, HOME: h.dir, TC_BIN: h.bin, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state } });
+    assert.equal(out.status, 3, args.join(" "));
+    assert.match(out.stderr, /jq is needed/);
+    assert.equal(out.stdout, "");
+  }
+  assert.equal(cliCalls(h).length, 0);
+  assert.deepEqual(readdirSync(h.state), []);
+});
+
+test("migrate.sh removes its private copy of the records after a verified move and keeps it after a refusal", () => {
+  const ok = world();
+  const out = runMigrate(ok, ["fitness"]);
+  assert.equal(out.status, 0, out.stderr + out.stdout);
+  assert.equal(existsSync(join(ok.state, "migration", "fitness.work")), false);
+  assert.equal(existsSync(receiptPath(ok, "fitness")), true);
+  assert.ok(out.stdout.includes(`Receipt: ${receiptPath(ok, "fitness")}`), out.stdout);
+  const bad = world();
+  control(bad, { corruptRead: { [`${NEW("fitness")}/weight/2026-10/2026-10-07`]: weight(99) } });
+  assert.notEqual(runMigrate(bad, ["fitness"]).status, 0);
+  assert.equal(existsSync(join(bad.state, "migration", "fitness.work", "src")), true);
+});
+
+test("migrate.sh says plainly that a key contains a tab and changes nothing", () => {
+  const h = world();
+  const data = store(h);
+  data.default[`${OLD}/fitness/weight/2026-10/a\tb`] = "{}";
+  writeFileSync(join(h.dir, "kv-state.json"), JSON.stringify(data));
+  for (const args of [["fitness"], ["--dry-run", "fitness"]]) {
+    const out = runMigrate(h, args);
+    assert.notEqual(out.status, 0, args.join(" "));
+    assert.match(out.stderr, /a key contains a tab; nothing was changed/);
+  }
+  assert.equal(cliCalls(h).some((c) => c.argv[1] === "put"), false);
+  assert.deepEqual(readdirSync(h.state), []);
 });

@@ -74,6 +74,7 @@ The first line is the layout, the second is `<TC_BETA>`.
 - `new` → either a verified move exists on this computer (§9), or the old place holds no records for this app. Use §2 to §8 below, with `<TC_BETA>`.
 - `ask` → this computer can't see the old place (no earlier sign-in, or it expired). Ask the owner one question: "Did you keep <the thing they asked about> with an earlier version of this skill, in your TinyCloud?" If yes or not sure, treat the app as `legacy` and sign in as `LEGACY.md` §4 says; if its catalog then lacks the app, it's `new`. If no, it's `new`.
 - `check-failed` → the old place couldn't be checked (for example the network). Tell the owner in one line, write nothing, and try again on the next request.
+- Nothing printed before `TC_BETA is unset`, or `jq is needed` on stderr (exit 3) → `jq` isn't installed on this computer. Tell the owner in one line to install `jq`, write nothing for this app, and run §1a again after they say it's done. `migrate.sh` needs `jq` too.
 - `TC_BETA is unset` → in the `new` case, the setup hasn't installed it: stop, and ask the owner to send their request again with the setup link.
 
 Only a verified receipt switches an app: never switch because you moved, or think you moved, records yourself.
@@ -94,7 +95,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 - App, kind, state and slug names use lowercase `a-z`, `0-9` and `-`. An app name starts with a letter.
 - Field names use lowercase `a-z`, `0-9` and `_`.
 - `due` and `done` mean the same in every kind: the date something is due, and the date it was done, both `YYYY-MM-DD`. A month counts as its last day: "by December" is `2026-12-31`.
-- Keys hold only ASCII letters, digits and `/-._~:+@=,`. Never a space, `?`, `#` or a non-ASCII letter: a `?` silently cuts the key short and overwrites another record.
+- Keys hold only ASCII letters, digits and `/-._~:+@=,`. Never a space, `?`, `#` or a non-ASCII letter: a `?` cuts the key short without an error and overwrites another record.
 
 **Which `per` a log kind gets.**
 - `per: day` → a measurement taken at most once a day, such as body weight, sleep or steps.

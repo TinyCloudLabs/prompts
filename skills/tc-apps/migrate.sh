@@ -27,7 +27,7 @@ if [ -n "$SLUG" ]; then
   case "$SLUG" in *[!a-z0-9-]*) usage ;; esac
   case "$SLUG" in catalog|index-stale|healthlog|recipes) echo "'$SLUG' is a reserved name and cannot be a generic app." >&2; exit 2 ;; esac
 fi
-command -v jq > /dev/null 2>&1 || { echo 'jq is needed. Install it, then run this again.' >&2; exit 1; }
+command -v jq > /dev/null 2>&1 || { echo 'jq is needed. Install it, then run this again.' >&2; exit 3; }
 if command -v sha256sum > /dev/null 2>&1; then sha() { sha256sum | cut -d' ' -f1; }; else sha() { shasum -a 256 | cut -d' ' -f1; }; fi
 # The copy needs the create-only write of CLI 1.5.0-beta.2, which the setup installs in its own folder.
 TC_BIN=${TC_BETA_BIN:-$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud}
@@ -85,6 +85,7 @@ if [ -z "$KEYS" ]; then
   echo "Nothing to migrate: there are no old records for '$SLUG'. Nothing was written."
   exit 0
 fi
+case "$KEYS" in *"$TAB"*) refuse 'a key contains a tab; nothing was changed.' ;; esac
 while IFS= read -r k; do
   case "$k" in
     "$R/catalog/$SLUG" | "$R/catalog/$SLUG/"*) ;;
@@ -186,5 +187,7 @@ jq -n --arg app "$SLUG" --arg id "$ID" --arg at "$(date -u +%FT%TZ)" --arg root 
   > "$RECEIPT.tmp" && mv -f "$RECEIPT.tmp" "$RECEIPT" || refuse 'could not write the receipt.'
 echo "Moved and verified: $TOTAL records for '$SLUG' are in $ID/ in your applications space, and they read back the same."
 echo 'The old records in your default space were left as they are. Nothing was deleted.'
+case "$WORK" in "$STATE"/migration/*.work) rm -rf "$WORK" ;; esac
+echo 'The private working copy of the old records was removed; a refused run keeps it for diagnosis.'
 echo "Receipt: $RECEIPT"
 echo 'Tell your agent.'
