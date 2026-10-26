@@ -6,7 +6,7 @@ A TinyCloud Home feed card is one JSON record that an agent writes to its own fo
 
 ## Choose a bot and request permission
 
-Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Before the approval, tell the owner which folder you will write to (`xyz.tinycloud.tinychat/feed/<bot>/`). Ask the owner to approve write access to only that folder through the TinyCloud sign-in documented by the bot's client, in one approval. Request only `tinycloud.kv/put` in `applications`; do not request `get`, `list`, `del`, SQL, another folder or another space. OpenKey shows the folder path in the approval details. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. Do not treat a request artifact, a generic sign-in, or an owner-profile grant as the bot's posting authority. Wait for the bot-scoped delegation before writing.
+Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Before the approval, tell the owner which folder you will write to (`xyz.tinycloud.tinychat/feed/<bot>/`). Ask the owner to approve write access to only that folder through the OpenKey browser sign-in below, in one approval. Request only `tinycloud.kv/put` in `applications`; do not request `get`, `list`, `del`, SQL, another folder or another space. OpenKey shows the folder path in the approval details. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. Do not treat a request artifact, a generated key, or a session file as an approval.
 
 ### Install and sign in (weight bot example)
 
@@ -36,14 +36,14 @@ Save this as `feed-weight.manifest.json` in the current directory. For another b
 }
 ```
 
-`skipPrefix: true` keeps the folder path exact. The manifest requests no KV read, list or delete and no SQL. The CLI adds `tinycloud.capabilities/read` on the `applications` space root because OpenKey needs it to sign the approval; this does not grant KV read. Tell the owner the folder path **before** starting approval. Use a new bot-only profile and keep the command running while the owner opens the URL and enters the code shown by the CLI:
+`skipPrefix: true` keeps the folder path exact. The manifest requests no KV read, list or delete and no SQL. The CLI adds `tinycloud.capabilities/read` on the `applications` space root because OpenKey needs it to sign the approval; this does not grant KV read. Tell the owner the folder path **before** starting approval. Use a new bot-only profile and the browser/paste sign-in; leave the command running while the owner approves:
 
 ```sh
 tinycloud init --name feed-weight --key-only
-tinycloud --profile feed-weight auth login --device --manifest ./feed-weight.manifest.json --expiry 30d
+tinycloud --profile feed-weight auth login --method openkey --paste --manifest ./feed-weight.manifest.json --expiry 30d
 ```
 
-The owner approves the request once in OpenKey. Check that the approved permissions include `tinycloud.kv/put` on `xyz.tinycloud.tinychat/feed/weight/` in `applications` before posting. For a browser approval that returns a signed code to the terminal, use `tinycloud --profile feed-weight auth login --method openkey --paste --manifest ./feed-weight.manifest.json --expiry 30d` as an alternative to `--device`; paste the code into that running command. If the owner uses a nonprimary OpenKey key, add `--owner did:pkh:eip155:CHAIN:ADDRESS` with that owner's DID.
+The CLI prints an OpenKey URL. Send it to the owner; they open it in a browser, sign in, check that the approval shows `tinycloud.kv/put` on `xyz.tinycloud.tinychat/feed/weight/` in `applications`, and approve once. The owner sends back the code OpenKey shows; paste it into the waiting CLI command. Check the returned permissions before posting. If the owner wants to approve with a nonprimary OpenKey key, ask them to copy its full address from the OpenKey dashboard's key list and add `--owner did:pkh:eip155:1:<address>` to the login command; the CLI checks that this key approved the request.
 
 Create a bot profile at `<bot>/profile` (the full key includes the root):
 
