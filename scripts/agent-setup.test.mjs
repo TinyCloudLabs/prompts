@@ -215,3 +215,22 @@ for (const name of ["courier", "cli"]) {
     assert.doesNotMatch(overriddenLinked.stdout, /GLOBAL_1\.2\.1/);
   });
 }
+
+test("feed skill is listed and its published relative reference resolves", () => {
+  const site = join(root, "_site");
+  const index = readFileSync(join(site, "index.html"), "utf8");
+  const skills = JSON.parse(readFileSync(join(site, "skills/index.json"), "utf8"));
+  const skill = skills.skills.find((entry) => entry.name === "tinycloud-feed");
+  assert.ok(skill, "feed skill in install index");
+  assert.match(index, /href="\/feed"/);
+  assert.match(index, /href="\/skills\/feed\.md"/);
+  assert.ok(skill.files.some((file) => file.path === "creating-a-post.md" && file.url === "/skills/feed/creating-a-post.md"));
+  const published = readFileSync(join(site, "skills/feed.md"), "utf8");
+  assert.match(published, /\]\(feed\/creating-a-post\.md\)/);
+  const reference = readFileSync(join(site, "skills/feed/creating-a-post.md"), "utf8");
+  const guide = readFileSync(join(site, "feed"), "utf8");
+  assert.equal(guide, reference.replace(
+    "[creating-a-post.md](creating-a-post.md)",
+    "[creating-a-post.md](https://agents.tinycloud.xyz/skills/feed/creating-a-post.md)",
+  ));
+});

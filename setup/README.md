@@ -13,6 +13,13 @@ You need a shell, Node.js 22.20 or later, and npm.
 - **You approve:** one OpenKey screen for the app, or two the first time on this computer: your own 7-day sign-in, which lists your whole space, then the app. For a meal, the app screen gives your agent access to just Health Log, for 7 days; otherwise, your records, for 30 days. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
+## Home feed: [/feed](https://agents.tinycloud.xyz/feed)
+
+- **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
+- **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
+- **You approve:** one TinyCloud sign-in approval for `put` on that bot's `applications` feed folder only, following the agent client's documented flow. Create-only writes need `@tinycloud/cli@1.5.0-beta.2` or later (`beta` tag until `latest` includes it).
+- **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
+
 ## Meetings: [/chat](../apps/tinychat/setup.md)
 
 - **What it does:** your agent answers questions about your TinyChat meetings: recaps, follow-ups and what was said, with references to the transcript.
@@ -62,6 +69,6 @@ The pages install these for you. To install one yourself, replace `<skill>` and 
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <skill> --agent <client>
 ```
 
-`<skill>` is `apps`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/apps.md`](https://agents.tinycloud.xyz/skills/apps.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
+`<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
 
 `mcp` has no setup page: it's the skill that goes with the TinyCloud MCP server, `@tinycloud/mcp` 0.5.3, for agents that already run that server. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).

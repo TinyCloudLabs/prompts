@@ -47,6 +47,7 @@ const PAGES = [
   { url: "owner", src: "setup/owner.md", unlisted: true },
   { url: "connect", src: "setup/connect.md", html: true },
   { url: "chat", src: "apps/tinychat/setup.md" },
+  { url: "feed", src: "skills/tinycloud-feed/creating-a-post.md" },
   { url: "publish", src: "setup/publish.md" },
   { url: "share", src: "setup/share.md" },
   { url: "secrets", src: "setup/secrets.md" },
@@ -90,6 +91,7 @@ const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
 const SKILLS = [
   { short: "apps", dir: "skills/tc-apps" },
+  { short: "feed", dir: "skills/tinycloud-feed" },
   { short: "publish", dir: "skills/tc-publish" },
   { short: "secrets", dir: "skills/tc-secrets" },
   {
@@ -177,6 +179,12 @@ const ABILITIES = [
     text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go.",
     prompt: `Fetch ${BASE}/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`,
     whole: true,
+  },
+  {
+    title: "Home feed",
+    url: "feed",
+    text: "Let your agent post owner-requested cards to TinyCloud Home from its own folder.",
+    prompt: "Post the updates I ask for to my TinyCloud Home feed. Follow:",
   },
   {
     title: "Publish",
