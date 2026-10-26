@@ -6,7 +6,7 @@ A TinyCloud Home feed card is one JSON record that an agent writes to its own fo
 
 ## Choose a bot and request permission
 
-Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Before the approval, tell the owner which folder you will write to (`xyz.tinycloud.tinychat/feed/<bot>/`). Ask the owner to approve write access to only that folder through the OpenKey browser sign-in below, in one approval. Request only `tinycloud.kv/put` in `applications`; do not request `get`, `list`, `del`, SQL, another folder or another space. OpenKey shows the folder path in the approval details. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. Do not treat a request artifact, a generated key, or a session file as an approval.
+Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Before the approval, tell the owner which folder you will write to (`xyz.tinycloud.tinychat/feed/<bot>/`). Ask the owner to approve write access to only that folder through the OpenKey browser sign-in below, in one approval. Request only `tinycloud.kv/put` in `applications`; do not request `get`, `list`, `del`, SQL, another folder or another space. Before opening the approval, tell the owner: you will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinychat/feed/<bot>/` and the `put` permission. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. Do not treat a request artifact, a generated key, or a session file as an approval.
 
 ### Install and sign in (weight bot example)
 
@@ -43,7 +43,7 @@ tinycloud init --name feed-weight --key-only
 tinycloud --profile feed-weight auth login --method openkey --paste --manifest ./feed-weight.manifest.json --expiry 30d
 ```
 
-The CLI prints an OpenKey URL. Send it to the owner; they open it in a browser, sign in, check that the approval shows `tinycloud.kv/put` on `xyz.tinycloud.tinychat/feed/weight/` in `applications`, and approve once. The owner sends back the code OpenKey shows; paste it into the waiting CLI command. Check the returned permissions before posting. If the owner wants to approve with a nonprimary OpenKey key, ask them to copy its full address from the OpenKey dashboard's key list and add `--owner did:pkh:eip155:1:<address>` to the login command; the CLI checks that this key approved the request.
+The CLI prints an OpenKey URL. Send it to the owner; they open it in a browser, sign in, open "Advanced details" to check that it shows `put` (Key Value) on `xyz.tinycloud.tinychat/feed/weight/`, and approve once. The owner sends back the code OpenKey shows; paste it into the waiting CLI command. Check the returned permissions before posting. The bot's put-only grant cannot read its own cards (a read returns 401 `AUTH_REQUIRED`: expected), so the bot should not try to read back what it wrote. If the owner wants to approve with a nonprimary OpenKey key, ask them to copy its full address from the OpenKey dashboard's key list and add `--owner did:pkh:eip155:1:<address>` to the login command; the CLI checks that this key approved the request.
 
 Create a bot profile at `<bot>/profile` (the full key includes the root):
 
