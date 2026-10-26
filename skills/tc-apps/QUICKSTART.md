@@ -85,6 +85,8 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 
 Earlier versions of this skill kept all apps together in your `default` space, under `xyz.tinycloud.agent-data/`. Those records stay there; nothing deletes them unless you ask. An app that has records there keeps working exactly as before, with no new approval. The agent tells you once per conversation: "This app can move to its own folder: say "move my <app> records" when you want it (nothing is deleted)."
 
+If this computer has no current sign-in to the old place, the agent can't check it, so it asks whether you kept that app's records with an earlier version. Right after setup, the question comes in the same message as the app's approval link: if you did, say so instead of approving.
+
 When you ask, the agent requests the app's own approval and gives you a script to run in your own terminal:
 
 1. `sh migrate.sh --dry-run <app>` prints the plan and writes nothing.
