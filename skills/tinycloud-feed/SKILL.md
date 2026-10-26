@@ -5,13 +5,15 @@ metadata:
   version: "0.1.0"
 ---
 
+This is how an agent adds cards to your TinyCloud Home feed. It writes only to its own folder, and only what you asked it to post.
+
 # Creating a post
 
 A TinyCloud Home feed card is one JSON record that an agent adds to the owner's `applications` KV space. Home combines cards from bots under `xyz.tinycloud.tinychat/feed/`; it renders them but does not decide what to post. Post only what the owner requested, including any standing rule the owner gave that bot. Reading the owner's feed is not part of this skill.
 
 ## Choose a bot and request permission
 
-Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Ask the owner once through OpenKey for **only** `tinycloud.kv/put` on that folder. Do not request `get`, `list`, `del`, SQL, another folder or another space. Show the owner the folder and action on the approval screen. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. The exact CLI hand-off that grants the bot's own key this put-only prefix permission in one OpenKey approval is **[NOT VERIFIED]**. Do not treat a request artifact, a generic sign-in, or an owner-profile grant as the bot's posting authority. Wait for the bot-scoped delegation before writing.
+Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Before the approval, tell the owner which folder you will write to (`xyz.tinycloud.tinychat/feed/<bot>/`). Ask the owner to approve write access to only that folder through the TinyCloud sign-in documented by the bot's client, in one approval. Request only `tinycloud.kv/put` in `applications`; do not request `get`, `list`, `del`, SQL, another folder or another space. OpenKey shows the folder path in the approval details. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. Do not treat a request artifact, a generic sign-in, or an owner-profile grant as the bot's posting authority. Wait for the bot-scoped delegation before writing.
 
 Create a bot profile at `<bot>/profile` (the full key includes the root):
 
@@ -19,16 +21,16 @@ Create a bot profile at `<bot>/profile` (the full key includes the root):
 {"v":1,"name":"Weight bot","client":"claude-code","about":"Posts new weight records","avatar":"weight/avatar.png"}
 ```
 
-`avatar` is an optional key in the bot's own folder; write the media there first. A valid profile has `v:1` and nonempty `name`, `client` and `about`. The profile name is the author Home displays, not a card field. An absent or invalid profile is ignored and the card shows the bot slug; a malformed card is skipped. Limits apply per card and per bot; the numerical caps and their enforcement are **[NOT VERIFIED]**. Write the profile and any media only with the bot's authorized profile; do not use the owner's profile to post.
+`avatar` is an optional key in the bot's own folder; write the media there first. A valid profile has `v:1` and nonempty `name`, `client` and `about`. The profile name is the author Home displays, not a card field. An absent or invalid profile is ignored and the card shows the bot slug; a malformed card is skipped. Home may limit how many cards each bot can add. Write the profile and any media only with the bot's authorized profile; do not use the owner's profile to post.
 
 ## Card format and writing
 
 Use a new key `xyz.tinycloud.tinychat/feed/<bot>/<YYYY-MM>/<id>`. The month must equal the UTC month in `at`. Make `<id>` a UTC timestamp plus lowercase slug in the precise shape `YYYY-MM-DDTHHMMSSZ-[a-z0-9-]+`, for example `2026-10-25T074210Z-new-low`; choose a fresh id for each event. The full key contains only ASCII letters, digits and `/-._~:+@=,` (no spaces, `?`, `#` or non-ASCII characters). A card is one JSON object with `v:1`, `at` in UTC with a `Z` suffix and seconds (optional fractional seconds), `render` and required nonempty plain `lead.text`. Home's parser checks that `at` is a real UTC date and the month matches the key. `source` is optional: `{ "label": "...", "url": "https://..." }` for a web page, or `{ "label": "...", "ref": "<TinyCloud key>" }` for a TinyCloud record. A source needs a nonempty label; a ref uses the allowed key characters. Home displays `source.ref` as text, not a web link. The author comes from the bot profile and the card id comes from its key. Home's provisional order is newest first by `at`, then key.
 
-Use `tc kv put` with `--if-none-match '*'` for a new card. This needs `@tinycloud/cli@1.5.0-beta.2` or later (`beta` tag until it reaches `latest`); earlier versions have no such option. For example, after the weight bot has its own scoped posting authority, write its card with the bot's CLI profile:
+Use `tinycloud kv put` with `--if-none-match '*'` for a new card. This needs `@tinycloud/cli@1.5.0-beta.2` or later (`beta` tag until it reaches `latest`); earlier versions have no such option. For example, after the weight bot has its own scoped posting authority, write its card with the bot's CLI profile:
 
 ```sh
-tc --profile weight-feed kv put 'xyz.tinycloud.tinychat/feed/weight/2026-10/2026-10-25T074210Z-new-low' --space applications --if-none-match '*' --stdin <<'JSON'
+tinycloud --profile weight-feed kv put 'xyz.tinycloud.tinychat/feed/weight/2026-10/2026-10-25T074210Z-new-low' --space applications --if-none-match '*' --stdin <<'JSON'
 {"v":1,"at":"2026-10-25T07:42:10Z","render":"post","lead":{"text":"New low: 81.4 kg, 0.6 kg under your best (82.0 kg on 10-11)."},"source":{"label":"Fitness · weigh-ins","ref":"xyz.tinycloud.agent-data/fitness/weight/2026-10/2026-10-25"}}
 JSON
 ```
