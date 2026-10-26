@@ -92,3 +92,264 @@ test("the wrapper runs the CLI named in cli-path whatever its own file name is",
     assert.equal(out.stdout, "CLI --version\n");
   }
 });
+
+import { readdirSync } from "node:fs";
+// ---- migrate.sh: owner-device copy of one generic tiny app from `default` to its own `applications` root ----
+// A stand-in CLI keeps both spaces in one JSON file under the test home, records every call, and can be told to
+// misbehave (changed read-back, partial failure, late edits on the source).
+const standInCli = String.raw`#!/usr/bin/env node
+const fs = require("fs");
+const home = process.env.HOME;
+const kvPath = home + "/kv-state.json", ctlPath = home + "/control.json", putsPath = home + "/put-count";
+const argv = process.argv.slice(2);
+const opts = {}, pos = [];
+const withValue = new Set(["--profile", "--space", "--prefix", "--file", "--if-none-match", "--limit", "--cursor", "-o", "--output"]);
+for (let i = 0; i < argv.length; i++) { const a = argv[i]; if (withValue.has(a)) opts[a] = argv[++i]; else if (a.startsWith("--")) opts[a] = true; else pos.push(a); }
+fs.appendFileSync(home + "/calls.log", JSON.stringify({ profile: opts["--profile"], argv }) + "\n");
+const fail = (code, status) => { process.stderr.write(JSON.stringify({ error: { code } }) + "\n"); process.exit(status); };
+const ctl = fs.existsSync(ctlPath) ? JSON.parse(fs.readFileSync(ctlPath, "utf8")) : {};
+const kv = JSON.parse(fs.readFileSync(kvPath, "utf8"));
+const save = () => fs.writeFileSync(kvPath, JSON.stringify(kv));
+const profile = opts["--profile"] || "", space = opts["--space"] || "default";
+if ((ctl.missingProfiles || []).includes(profile) || !/^(agent-data|default|tinyapp-[a-z0-9-]+)$/.test(profile)) fail("PROFILE_NOT_FOUND", 3);
+const slug = (profile.match(/^tinyapp-(.*)$/) || [])[1];
+const allowed = (op, key) => {
+  if (!slug) return space === "default";
+  if (space !== "applications") return false;
+  const own = "xyz.tinycloud.tinyapps." + slug + "/", cat = "xyz.tinycloud.tinyapps.catalog/";
+  if (key.startsWith(own)) return true;
+  if (op === "get" || op === "list") return key.startsWith(cat);
+  return op === "put" && key.startsWith(cat + slug + "/");
+};
+if (pos[0] !== "kv") fail("USAGE_ERROR", 2);
+const op = pos[1], s = kv[space] || (kv[space] = {});
+if (op === "list") {
+  const prefix = opts["--prefix"] || "";
+  if (!allowed("list", prefix)) fail("PERMISSION_DENIED", 5);
+  const keys = Object.keys(s).filter((k) => k.startsWith(prefix)).sort();
+  console.log(JSON.stringify({ keys, count: keys.length, prefix }));
+} else if (op === "get") {
+  const key = pos[2];
+  if (!allowed("get", key)) fail("PERMISSION_DENIED", 5);
+  if (!(key in s)) fail("NOT_FOUND", 4);
+  const value = space === "applications" && ctl.corruptRead && ctl.corruptRead[key] !== undefined ? ctl.corruptRead[key] : s[key];
+  if (opts["--raw"]) process.stdout.write(value); else console.log(JSON.stringify({ key, data: value }));
+} else if (op === "put") {
+  const key = pos[2];
+  if (!allowed("put", key)) fail("PERMISSION_DENIED", 5);
+  if (ctl.failPut === key) fail("NETWORK_ERROR", 7);
+  if (opts["--if-none-match"] === "*" && key in s) fail("KV_ALREADY_EXISTS", 5);
+  s[key] = fs.readFileSync(opts["--file"], "utf8");
+  const n = (fs.existsSync(putsPath) ? Number(fs.readFileSync(putsPath, "utf8")) : 0) + 1;
+  fs.writeFileSync(putsPath, String(n));
+  if (ctl.late && n === ctl.late.afterPuts) kv.default[ctl.late.key] = ctl.late.value;
+  save();
+  console.log(JSON.stringify({ key, written: true }));
+} else if (op === "delete") {
+  delete s[pos[2]];
+  save();
+  console.log(JSON.stringify({ key: pos[2], deleted: true }));
+} else fail("USAGE_ERROR", 2);
+`;
+
+const migrate = join(skill, "migrate.sh");
+const OLD = "xyz.tinycloud.agent-data";
+const NEW = (slug) => `xyz.tinycloud.tinyapps.${slug}`;
+const weight = (kg) => JSON.stringify({ v: 1, at: "2026-10-06", data: { kg }, by: "codex" });
+const sourceRecords = () => ({
+  [`${OLD}/catalog/fitness`]: JSON.stringify({ app: "fitness", title: "Fitness", about: "Body weight.", created: "2026-10-06", by: "codex" }),
+  [`${OLD}/catalog/fitness/weight`]: JSON.stringify({ app: "fitness", kind: "weight", shape: "log", per: "day", v: 1, fields: { kg: "number" } }),
+  [`${OLD}/catalog/fitness-extra`]: JSON.stringify({ app: "fitness-extra", title: "Other" }),
+  [`${OLD}/catalog/todos`]: JSON.stringify({ app: "todos", title: "Todos" }),
+  [`${OLD}/fitness/weight/2026-10/2026-10-06`]: weight(80.5),
+  [`${OLD}/fitness/weight/2026-10/2026-10-07`]: weight(80.1),
+  [`${OLD}/fitness-extra/x/2026-10/a`]: "{}",
+});
+const FITNESS_KEYS = [
+  `${NEW("fitness")}/catalog`,
+  `${NEW("fitness")}/catalog/weight`,
+  `${NEW("fitness")}/weight/2026-10/2026-10-06`,
+  `${NEW("fitness")}/weight/2026-10/2026-10-07`,
+];
+const world = (applications = {}) => {
+  const h = fresh();
+  h.bin = join(h.dir, "stand-in-tinycloud");
+  writeFileSync(h.bin, standInCli, { mode: 0o755 });
+  writeFileSync(join(h.dir, "kv-state.json"), JSON.stringify({ default: sourceRecords(), applications }));
+  return h;
+};
+const store = (h) => JSON.parse(readFileSync(join(h.dir, "kv-state.json"), "utf8"));
+const control = (h, c) => writeFileSync(join(h.dir, "control.json"), JSON.stringify(c));
+const cliCalls = (h) => (existsSync(join(h.dir, "calls.log")) ? readFileSync(join(h.dir, "calls.log"), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []);
+const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
+const receiptPath = (h, slug) => join(h.state, "migration", `${slug}.receipt.json`);
+const newKeys = (h, slug) => Object.keys(store(h).applications).filter((k) => k.startsWith(`${NEW(slug)}/`)).sort();
+const notSwitched = (h, out) => {
+  assert.notEqual(out.status, 0, out.stdout);
+  assert.match(out.stderr + out.stdout, /NOT SWITCHED/);
+  assert.equal(existsSync(receiptPath(h, "fitness")), false);
+  assert.equal(`xyz.tinycloud.tinyapps.catalog/fitness/entry` in store(h).applications, false);
+  assert.deepEqual(Object.keys(store(h).default).sort(), Object.keys(sourceRecords()).sort(), "the old records are untouched");
+};
+
+test("migrate.sh --dry-run prints the plan and writes nothing, locally or remotely", () => {
+  const h = world();
+  const before = readFileSync(join(h.dir, "kv-state.json"), "utf8");
+  const out = runMigrate(h, ["--dry-run", "fitness"]);
+  assert.equal(out.status, 0, out.stderr + out.stdout);
+  assert.match(out.stdout, /xyz\.tinycloud\.tinyapps\.fitness/);
+  assert.match(out.stdout, /4 records/);
+  assert.match(out.stdout, /nothing was written/i);
+  assert.equal(readFileSync(join(h.dir, "kv-state.json"), "utf8"), before);
+  assert.deepEqual(cliCalls(h).filter((c) => c.argv[1] !== "list"), []);
+  assert.deepEqual(readdirSync(h.state), []);
+});
+
+test("migrate.sh --dry-run without an app lists the old catalog's apps", () => {
+  const h = world();
+  const out = runMigrate(h, ["--dry-run"]);
+  assert.equal(out.status, 0, out.stderr);
+  assert.deepEqual(out.stdout.split("\n").filter((l) => /^app: /.test(l)), ["app: fitness", "app: fitness-extra", "app: todos"]);
+});
+
+test("migrate.sh copies one app, reads it back, re-checks the source and only then records the move", () => {
+  const h = world({ "xyz.tinycloud.sample.healthlog/knowledge/index.md": "# pinned app" });
+  const sourceBefore = JSON.stringify(store(h).default);
+  const out = runMigrate(h, ["fitness"]);
+  assert.equal(out.status, 0, out.stderr + out.stdout);
+  const after = store(h);
+  assert.deepEqual(newKeys(h, "fitness"), [...FITNESS_KEYS].sort());
+  const from = {
+    [FITNESS_KEYS[0]]: `${OLD}/catalog/fitness`,
+    [FITNESS_KEYS[1]]: `${OLD}/catalog/fitness/weight`,
+    [FITNESS_KEYS[2]]: `${OLD}/fitness/weight/2026-10/2026-10-06`,
+    [FITNESS_KEYS[3]]: `${OLD}/fitness/weight/2026-10/2026-10-07`,
+  };
+  for (const key of FITNESS_KEYS) assert.equal(after.applications[key], after.default[from[key]], key);
+  assert.deepEqual(JSON.parse(after.applications["xyz.tinycloud.tinyapps.catalog/fitness/entry"]), { v: 1, app: "fitness", id: NEW("fitness"), title: "Fitness" });
+  assert.equal(after.applications["xyz.tinycloud.sample.healthlog/knowledge/index.md"], "# pinned app");
+  assert.equal(JSON.stringify(after.default), sourceBefore, "the old records are untouched");
+  assert.equal(Object.keys(after.applications).some((k) => k.includes("fitness-extra") || k.includes("todos")), false);
+  const receipt = JSON.parse(readFileSync(receiptPath(h, "fitness"), "utf8"));
+  assert.equal(receipt.verified, true);
+  assert.equal(receipt.id, NEW("fitness"));
+  assert.equal(receipt.counts.total, 4);
+  assert.match(receipt.digest, /^[0-9a-f]{64}$/);
+});
+
+test("migrate.sh never deletes or writes the old place and every new key is created, never overwritten", () => {
+  const h = world();
+  assert.equal(runMigrate(h, ["fitness"]).status, 0);
+  const calls = cliCalls(h);
+  assert.equal(calls.some((c) => c.argv.includes("delete") || c.argv.includes("del")), false);
+  const puts = calls.filter((c) => c.argv[1] === "put");
+  assert.equal(puts.length, FITNESS_KEYS.length + 1);
+  for (const c of puts) {
+    assert.equal(c.profile, "tinyapp-fitness");
+    assert.equal(c.argv[c.argv.indexOf("--space") + 1], "applications");
+    assert.equal(c.argv[c.argv.indexOf("--if-none-match") + 1], "*", c.argv.join(" "));
+  }
+  for (const c of calls.filter((c) => c.profile === "agent-data")) assert.equal(c.argv[1] === "list" || c.argv[1] === "get", true, c.argv.join(" "));
+});
+
+test("migrate.sh refuses to switch when a record reads back different from what was sent", () => {
+  const h = world();
+  control(h, { corruptRead: { [`${NEW("fitness")}/weight/2026-10/2026-10-07`]: weight(99) } });
+  notSwitched(h, runMigrate(h, ["fitness"]));
+});
+
+test("migrate.sh refuses to switch when the new place already holds a different record, and does not overwrite it", () => {
+  const key = `${NEW("fitness")}/weight/2026-10/2026-10-06`;
+  const h = world({ [key]: weight(70) });
+  notSwitched(h, runMigrate(h, ["fitness"]));
+  assert.equal(store(h).applications[key], weight(70));
+});
+
+test("migrate.sh refuses to switch when the new place holds a record the old place lacks", () => {
+  const h = world({ [`${NEW("fitness")}/weight/2026-10/2026-10-09`]: weight(79) });
+  notSwitched(h, runMigrate(h, ["fitness"]));
+});
+
+test("migrate.sh refuses to switch when a record is added to the old place during the copy", () => {
+  const h = world();
+  control(h, { late: { afterPuts: 2, key: `${OLD}/fitness/weight/2026-10/2026-10-08`, value: weight(79.9) } });
+  const out = runMigrate(h, ["fitness"]);
+  assert.notEqual(out.status, 0);
+  assert.match(out.stderr + out.stdout, /NOT SWITCHED/);
+  assert.equal(existsSync(receiptPath(h, "fitness")), false);
+  assert.equal("xyz.tinycloud.tinyapps.catalog/fitness/entry" in store(h).applications, false);
+});
+
+test("migrate.sh refuses to switch when a record in the old place changes during the copy", () => {
+  const h = world();
+  control(h, { late: { afterPuts: 2, key: `${OLD}/fitness/weight/2026-10/2026-10-06`, value: weight(81) } });
+  const out = runMigrate(h, ["fitness"]);
+  assert.notEqual(out.status, 0);
+  assert.match(out.stderr + out.stdout, /NOT SWITCHED/);
+  assert.equal(existsSync(receiptPath(h, "fitness")), false);
+  assert.equal("xyz.tinycloud.tinyapps.catalog/fitness/entry" in store(h).applications, false);
+});
+
+test("migrate.sh resumes after a failed write: copied records are recognised, nothing is overwritten, and it then switches", () => {
+  const h = world();
+  control(h, { failPut: FITNESS_KEYS[2] });
+  notSwitched(h, runMigrate(h, ["fitness"]));
+  assert.deepEqual(newKeys(h, "fitness"), FITNESS_KEYS.slice(0, 2));
+  control(h, {});
+  const again = runMigrate(h, ["fitness"]);
+  assert.equal(again.status, 0, again.stderr + again.stdout);
+  assert.deepEqual(newKeys(h, "fitness"), [...FITNESS_KEYS].sort());
+  const first = JSON.parse(readFileSync(receiptPath(h, "fitness"), "utf8"));
+  const third = runMigrate(h, ["fitness"]);
+  assert.equal(third.status, 0, third.stderr + third.stdout);
+  assert.equal(JSON.parse(readFileSync(receiptPath(h, "fitness"), "utf8")).digest, first.digest);
+});
+
+test("migrate.sh stops before writing when the app's profile has no approval yet", () => {
+  const h = world();
+  control(h, { missingProfiles: ["tinyapp-fitness"] });
+  const out = runMigrate(h, ["fitness"]);
+  assert.notEqual(out.status, 0);
+  assert.match(out.stderr + out.stdout, /NOT SWITCHED/);
+  assert.match(out.stderr + out.stdout, /approv/i);
+  assert.equal(cliCalls(h).some((c) => c.argv[1] === "put"), false);
+  assert.deepEqual(newKeys(h, "fitness"), []);
+});
+
+test("migrate.sh refuses a kind whose name would collide with the app's catalog folder", () => {
+  const h = world();
+  const data = store(h);
+  data.default[`${OLD}/fitness/catalog/2026-10/x`] = "{}";
+  writeFileSync(join(h.dir, "kv-state.json"), JSON.stringify(data));
+  const out = runMigrate(h, ["fitness"]);
+  assert.notEqual(out.status, 0);
+  assert.match(out.stderr + out.stdout, /NOT SWITCHED/);
+  assert.equal(cliCalls(h).some((c) => c.argv[1] === "put"), false);
+});
+
+test("migrate.sh with no old records for the app records nothing and switches nothing", () => {
+  const h = world();
+  const out = runMigrate(h, ["books"]);
+  assert.equal(out.status, 0, out.stderr);
+  assert.match(out.stdout, /nothing to migrate/i);
+  assert.equal(cliCalls(h).some((c) => c.argv[1] === "put"), false);
+  assert.equal(existsSync(receiptPath(h, "books")), false);
+});
+
+test("migrate.sh rejects app names that are not a plain slug or are reserved, before any CLI call", () => {
+  const h = world();
+  for (const slug of ["Fitness", "../x", "a b", "-x", "1x", "catalog", "index-stale", "healthlog", "recipes"]) {
+    const out = runMigrate(h, [slug]);
+    assert.equal(out.status, 2, `${slug}: ${out.stderr}`);
+  }
+  assert.equal(runMigrate(h, []).status, 2);
+  assert.equal(cliCalls(h).length, 0);
+});
+
+test("migrate.sh has one write command, it creates only, and it has no delete command", () => {
+  const text = readFileSync(migrate, "utf8");
+  const writes = text.split("\n").filter((l) => /\bkv put\b/.test(l));
+  assert.equal(writes.length, 1);
+  assert.match(writes[0], /--if-none-match '\*'/);
+  assert.equal(/\bkv (delete|del)\b|delegation revoke|\bsql\b/.test(text), false);
+});

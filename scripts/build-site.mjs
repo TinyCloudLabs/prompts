@@ -176,7 +176,7 @@ const ABILITIES = [
   {
     title: "Personal records",
     url: "apps",
-    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go.",
+    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go; each app has its own folder in your TinyCloud and its own approval.",
     prompt: `Fetch ${BASE}/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`,
     whole: true,
   },
@@ -359,16 +359,7 @@ for (const f of copied) {
 write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
 
 const pages = PAGES.map((p) => {
-  let text = render(p.src);
-  if (p.url === "connect") {
-    // Chat apps share the first-record recipe; coding agents fetch /apps unchanged.
-    const recipe = render("setup/tc-apps.md").match(/^If the owner only asked for setup or named no record,[^\n]+$/m)?.[0];
-    const marker = "<!-- setup-only-record -->";
-    if (!recipe || text.split(marker).length !== 2) {
-      throw new Error("connect: expected the /apps setup-only record recipe and one setup-only-record marker");
-    }
-    text = text.replace(marker, () => recipe);
-  }
+  const text = render(p.src);
   write(p.html ? `${p.url}.md` : p.url, text);
   return { ...p, text, ...describe(text, p.url) };
 });
