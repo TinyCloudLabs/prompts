@@ -17,7 +17,7 @@ Run the blocks as `SKILL.md` says: literal `<TC_BETA>` from its §1a and `<STATE
 
 `SKILL.md` §7 sends you here when an answer needed many records and the app's index is missing or expired, or when the owner asks about it. It takes two steps: you ask in 1a, and finish in 1b once the owner sends the code.
 
-When talking to the owner, it's "a fast, searchable copy of your records". Don't say "index", "SQL" or "database"; OpenKey's own page names it, and the message below tells them what they'll see there.
+When talking to the owner, it's "a fast, searchable copy of your records". Don't say "index", "SQL" or "database"; OpenKey's "Advanced details" name it, and the message below tells them what they'll see there.
 
 **1a. Get the approval link.** `<Title>` is the app's title: letters, digits and spaces only.
 
@@ -32,7 +32,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/tinyapp-<APP>-sql-login.err" | h
 
 - **The link, then `waiting for the code`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
 
-  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.tinyapps.<APP>/index` in your `applications` space for 30 days. Approve. If OpenKey shows a code, paste it here and I'll finish the sign-in, or paste it into your own terminal using the command I give you.
+  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; open "Advanced details" to see it listed as SQL access to `xyz.tinycloud.tinyapps.<APP>/index` in your `applications` space for 30 days. Approve. If OpenKey shows a code, paste it here and I'll finish the sign-in, or paste it into your own terminal using the command I give you.
 
   If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
 

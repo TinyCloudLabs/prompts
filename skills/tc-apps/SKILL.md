@@ -181,7 +181,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/tinyapp-<APP>-login.err" | head 
 
 - **The link, then `waiting for the code`** → expected. Send the owner this message, with the link, and end your turn:
 
-  > Open <link> and sign in to OpenKey. It asks you to approve key-value access to one folder, `xyz.tinycloud.tinyapps.<APP>/`, in your `applications` space for 30 days, plus reading the list of tiny apps and writing this app's entry in it. OpenKey also lists a read of your permissions, which doesn't read your data. Approve, then paste here the code OpenKey shows.
+  > Open <link> and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.<APP>/` in your `applications` space and the permissions: key-value access to that folder for 30 days, reading the list of tiny apps and writing this app's entry in it, and a read of your permissions, which doesn't read your data. Approve, then paste here the code OpenKey shows.
 
 - **Any other code** → §8; `SESSION_IN_USE` means this app is already signed in.
 
@@ -289,7 +289,7 @@ An app's index keeps a copy of every record of that app in a SQLite database, `x
 - first write your answer from the records you read;
 - only then run `SQL.md` §1a, and put its message after the answer, in the same reply.
 
-When talking to the owner, call it "a fast, searchable copy of your records". Never say "index", "SQL" or "database"; OpenKey's own page names it, and the message tells them what they'll see there. If they don't approve, carry on without it: everything still works, only slower.
+When talking to the owner, call it "a fast, searchable copy of your records". Never say "index", "SQL" or "database"; OpenKey's "Advanced details" name it, and the message tells them what they'll see there. If they don't approve, carry on without it: everything still works, only slower.
 
 Read `SQL.md` in full, at the install path shown below, when:
 - you ask for the fast copy as above, or the owner asks about it;
