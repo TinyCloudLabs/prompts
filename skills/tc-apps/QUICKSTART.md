@@ -45,9 +45,9 @@ Each app has its own approval, the first time you track something new, and it la
 1. You ask, for example "Add a todo: renew my passport." The agent checks whether the `todos` app is signed in, then starts the sign-in.
 2. The agent shows a link:
 
-   > Open https://openkey.so/delegate?… and sign in to OpenKey. It asks you to approve key-value access to one folder, `xyz.tinycloud.tinyapps.todos/`, in your `applications` space for 30 days, plus reading the list of tiny apps and writing this app's entry in it. Approve, then paste here the code OpenKey shows.
+   > Open https://openkey.so/delegate?… and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions: key-value access to that folder for 30 days, reading the list of tiny apps and writing this app's entry in it, and a read of your permissions, which doesn't read your data. Approve, then paste here the code OpenKey shows.
 
-3. Open the link, on this computer or your phone, and sign in to OpenKey. Check that it lists key-value access to `xyz.tinycloud.tinyapps.todos/` in your `applications` space, then approve. OpenKey also lists a read of your permissions; that doesn't read your data.
+3. Open the link, on this computer or your phone, and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions, key-value access to that folder and a read of your permissions (that doesn't read your data). Then approve.
 4. OpenKey shows a code. Paste it in the chat, and the agent finishes the sign-in and carries on. Or paste it into your own terminal with the command the agent gives you.
 
 One approval covers one app. A new app, such as `fitness`, asks once more; nothing covers all your apps at once. Every agent on this computer that uses the same `TC_HOME` shares the apps you've approved.
@@ -97,7 +97,7 @@ The app switches to its own folder only after step 2 printed success and its rec
 
 You don't need to set anything up. The first time a question needs many records of one app, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of that app's records:
 
-1. The agent shows an OpenKey link. Open it and sign in. OpenKey lists the request as SQL access to `xyz.tinycloud.tinyapps.fitness/index` in your `applications` space, for 30 days; that's the copy.
+1. The agent shows an OpenKey link. Open it and sign in. Open "Advanced details" to see the request listed as SQL access to `xyz.tinycloud.tinyapps.fitness/index` in your `applications` space, for 30 days; that's the copy.
 2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it in the chat and the agent finishes the sign-in, or paste it into your own terminal with the command the agent gives you. A short code works once and expires within minutes; if it has expired, paste the full code OpenKey also shows.
 3. The agent finishes, builds the copy from the app's records, and says when it's done. From then on it answers questions over many records of that app with one lookup, without reading every record. The agent's own thinking still takes most of the time.
 
