@@ -234,3 +234,34 @@ test("feed skill is listed and its published relative reference resolves", () =>
     "[creating-a-post.md](https://agents.tinycloud.xyz/skills/feed/creating-a-post.md)",
   ));
 });
+
+test("/connect sends a coding agent to the guide for its request and gives each chat app its own steps", () => {
+  const site = join(root, "_site");
+  const markdown = readFileSync(join(site, "connect.md"), "utf8");
+  const html = readFileSync(join(site, "connect.html"), "utf8");
+  const coding = markdown.split("\n## Coding agents\n")[1].split("\n## ChatGPT\n")[0];
+  for (const agent of ["Claude Code", "Codex", "OpenCode", "Cursor", "OpenClaw", "Hermes", "any agent with a shell"]) assert.ok(coding.includes(agent), agent);
+  for (const guide of ["apps", "secrets", "publish", "chat", "courier", "setup"]) {
+    assert.ok(coding.includes(`](https://agents.tinycloud.xyz/${guide})`), `Markdown routes to /${guide}`);
+    assert.ok(html.includes(`href="https://agents.tinycloud.xyz/${guide}"`), `HTML routes to /${guide}`);
+  }
+  for (const [app, id] of [["Grok", "grok"], ["Perplexity", "perplexity"], ["Gemini", "gemini"], ["Meta Muse", "meta-muse"]]) {
+    const section = markdown.split(`\n## ${app}\n`)[1]?.split("\n## ")[0];
+    assert.ok(section, `${app} section`);
+    assert.match(section, /`https:\/\/mcp\.tinycloud\.xyz\/mcp`/);
+    assert.match(section, /OAuth/);
+    assert.match(section, /\(#approve-access-and-continue\)/);
+    assert.match(html, new RegExp(`<h2 id="${id}">`));
+  }
+});
+
+test("a Markdown guide's URL with .md added redirects to the guide; /connect.md stays a file", () => {
+  const site = join(root, "_site");
+  const redirects = readFileSync(join(site, "_redirects"), "utf8").split("\n");
+  for (const guide of ["setup", "apps", "secrets", "publish", "chat", "courier"]) {
+    assert.ok(redirects.includes(`/${guide}.md /${guide} 301`), `/${guide}.md`);
+    assert.equal(existsSync(join(site, `${guide}.md`)), false);
+  }
+  assert.equal(redirects.some((line) => line.startsWith("/connect.md ")), false);
+  assert.equal(existsSync(join(site, "connect.md")), true);
+});

@@ -1,6 +1,6 @@
 # Set up TinyCloud
 
-Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in ChatGPT, Claude, Claude Code, Codex or OpenCode.
+Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in ChatGPT, Claude, Grok, Perplexity, Gemini or Meta Muse, or in an agent with a shell, such as Claude Code, Codex, OpenCode, Cursor, OpenClaw or Hermes.
 
 **Paste this into your app or agent:**
 
@@ -10,13 +10,15 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 ## Coding agents
 
-**Claude Code, Codex and OpenCode on the owner's computer:** fetch and read the [original coding-agent setup guide](tc-apps.md) in full, then follow it exactly for the owner's original request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
+**Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes, or any agent with a shell on the owner's computer:** fetch and read the coding-agent setup guide for the owner's original request in full, then follow it exactly for that request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
 
-The original guide is the authority for all prerequisites, installation commands, permissions, sign-in, first-record behavior, troubleshooting and cleanup. This page does not replace or modify any of those instructions. Do not reconstruct the setup from a summary or use the chat-app MCP instructions below for this route.
+**Which guide:** personal records or health (meals, weight, workouts, todos), or setup only → [/apps](tc-apps.md); API keys and other secrets → [/secrets](secrets.md); publishing or sharing a document or page → [/publish](publish.md); TinyChat meetings → [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent → [/courier](courier.md); anything else → [/setup](README.md), which lists every ability.
 
-**ChatGPT, Claude chat and other chat apps:** use the instructions below instead. Do not run the coding-agent setup in a chat app's temporary code sandbox.
+That guide is the authority for all prerequisites, installation commands, permissions, sign-in, first-record behavior, troubleshooting and cleanup. This page does not replace or modify any of those instructions. Do not reconstruct the setup from a summary or use the chat-app MCP instructions below for this route. If you are not Claude Code, Codex or OpenCode, use Codex's choice wherever the guide asks for your client or gives a step per client: Codex's skills go in `~/.agents/skills`.
 
-Jump to [ChatGPT](#chatgpt), [Claude](#claude), or [other chat apps](#other-chat-apps).
+**ChatGPT, Claude chat, Grok, Perplexity, Gemini, Meta Muse and other chat apps:** use the instructions below instead. Do not run the coding-agent setup in a chat app's temporary code sandbox.
+
+Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other chat apps](#other-chat-apps).
 
 ## ChatGPT
 
@@ -42,11 +44,54 @@ For a managed workspace, an owner or administrator may need to add the connector
 
 If you want to approve record-writing tools once rather than on every call, find `tinycloud_apps_write` in the connector's tool permissions and choose **Always allow**. Only do this if you trust it to write records without per-call confirmation. This does not replace the OpenKey access approval.
 
+## Grok
+
+Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+
+1. In a browser, open [grok.com/connectors](https://grok.com/connectors), click **New Connector**, then select **Custom**.
+2. Enter **`https://mcp.tinycloud.xyz/mcp`** and complete the authentication Grok asks for by signing in with OpenKey.
+3. In a conversation, make your original request. Grok makes the connector's tools available in your conversations.
+4. Follow [Approve access and continue](#approve-access-and-continue) below.
+
+On Grok Business or Enterprise, a team admin must add the connector first. See [xAI's connector instructions](https://docs.x.ai/grok/connectors).
+
+## Perplexity
+
+Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+
+1. On Perplexity, open **Account settings → Connectors**, click **+ Custom connector**, and select **Remote**.
+2. Enter **Name:** TinyCloud; **MCP Server URL:** `https://mcp.tinycloud.xyz/mcp`; **Authentication:** OAuth; **Transport:** Streamable HTTP. No client ID or secret is needed: TinyCloud registers the client itself.
+3. Check the acknowledgement box and click **Add**. Then click the TinyCloud connector card, sign in with OpenKey, and enable it.
+4. Make your original request, then follow [Approve access and continue](#approve-access-and-continue) below.
+
+In an Enterprise organization, an admin may need to allow members to add custom connectors. See [Perplexity's custom-connector instructions](https://www.perplexity.ai/help-center/en/articles/13915507-adding-custom-remote-connectors).
+
+## Gemini
+
+Use the hosted MCP connector as a Gemini custom app, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+
+1. On a computer, open [gemini.google.com](https://gemini.google.com), then **Settings → Connected Apps**.
+2. Under **Custom apps**, choose **Add a custom app** and enter **`https://mcp.tinycloud.xyz/mcp`**. TinyCloud supports dynamic client registration, so leave the credentials under **Advanced features** empty.
+3. Click **Next**, follow the on-screen instructions, and sign in with OpenKey.
+4. In a chat, enter **@**, select the TinyCloud app, and make your original request. Then follow [Approve access and continue](#approve-access-and-continue) below. Once connected, it also works in the Gemini mobile app.
+
+If **Custom apps** is missing: Google offers it to personal Google Accounts, 18 or over and in the US, with Keep Activity on. See [Google's custom-app instructions](https://support.google.com/gemini/answer/17209137).
+
+## Meta Muse
+
+Use a custom connector to the hosted MCP server, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey. Muse creates a custom connector when you ask for one in chat; Meta doesn't review custom connectors.
+
+1. Ask Muse: **“Create a custom connector for TinyCloud's remote MCP server, `https://mcp.tinycloud.xyz/mcp`, with OAuth sign-in.”**
+2. When the sign-in opens, sign in with OpenKey and approve.
+3. Make your original request, then follow [Approve access and continue](#approve-access-and-continue) below.
+
+**For Muse:** TinyCloud needs no API key, token or password. Don't ask the owner for one or store one. If you can't connect with OAuth, say so; don't substitute a key or the coding-agent setup. See [Meta's connector help](https://www.meta.com/help/artificial-intelligence/1687253048996149/).
+
 ## Other chat apps
 
 If your app supports remote MCP over HTTP with OAuth, add **`https://mcp.tinycloud.xyz/mcp`**, choose **OAuth**, and sign in with OpenKey. Enable the connection for your conversation, then make your request. Mobile support depends on the app.
 
-If the app has no custom remote MCP support, reading this page cannot add that capability. Say so and direct the owner to a supported ChatGPT web or Claude client. Do not suggest installing a CLI in a temporary chat sandbox as a substitute.
+If the app has no custom remote MCP support, reading this page cannot add that capability. Say so and direct the owner to one of the apps above. Do not suggest installing a CLI in a temporary chat sandbox as a substitute.
 
 ## Approve access and continue
 
