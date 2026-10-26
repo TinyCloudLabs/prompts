@@ -14,7 +14,7 @@ A domain is owned by a catalog app when one of its words matches the request. If
 ## 2. Routing rule
 
 1. A catalog app owns the domain: that app is the target. Set the app up if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
-2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §2 to §9). Each generic app has its own folder in the `applications` space, `xyz.tinycloud.tinyapps.<slug>/`, and its own approval; the catalog apps' ids in §1 are unchanged.
+2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §1a to §9). `SKILL.md` §1a decides the layout per app. New layout: each generic app has its own folder in the `applications` space, `xyz.tinycloud.tinyapps.<slug>/`, and its own approval. Legacy mode: an app whose records an earlier version kept in `default` stays in that layout (`LEGACY.md`) until the owner moves it and the move is verified. The catalog apps' ids in §1 are unchanged.
 3. The request is ambiguous between two catalog apps: ask one question that names both, then follow rule 1 for the answer.
 
 Never write a catalog app's data to the generic store, and never write generic records into a catalog app.
@@ -172,7 +172,7 @@ Keep the op id for the rest of the conversation. Use the same pattern for any ot
 
 ## 5. The generic store
 
-Use `SKILL.md` §2 to §9 only for a domain that no catalog app owns. Its records go to `xyz.tinycloud.tinyapps.<slug>/` in `applications`, one app per slug (`^[a-z][a-z0-9-]*$`; `catalog`, `index-stale`, `healthlog` and `recipes` are reserved), never to a catalog app's id. Records an earlier version kept in `default` under `xyz.tinycloud.agent-data/` stay there until the owner moves them (`SKILL.md` §9); a generic meal record found there is moved as it is, never imported into Health Log.
+Use `SKILL.md` §1a to §9 only for a domain that no catalog app owns. In the new layout its records go to `xyz.tinycloud.tinyapps.<slug>/` in `applications`, one app per slug (`^[a-z][a-z0-9-]*$`; `catalog`, `index-stale`, `healthlog` and `recipes` are reserved), never to a catalog app's id. Records an earlier version kept in `default` under `xyz.tinycloud.agent-data/` keep their app in the old layout until the owner moves it (`SKILL.md` §9); a generic meal record found there is moved as it is, never imported into Health Log.
 
 ## 6. Rules for app knowledge
 

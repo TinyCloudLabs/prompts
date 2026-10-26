@@ -13,7 +13,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** §2 step 4 prints `OK` for the nine files, step 7 prints `1.5.0-beta.2`, and `metadata.version` in the installed `SKILL.md` (`grep version <skill folder>/SKILL.md`) is the `tc-apps` version in that site's `/skills/index.json`.
+  - **Check the install:** §2 step 4 prints `OK` for the twelve files, step 7 prints `1.3.5` and `1.5.0-beta.2`, and `metadata.version` in the installed `SKILL.md` (`grep version <skill folder>/SKILL.md`) is the `tc-apps` version in that site's `/skills/index.json`.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -54,12 +54,12 @@ Each step is a **new conversation**. The first conversation in each client carri
 
 | # | Client | Prompt | Expected |
 |---|---|---|---|
-| 1 | OpenCode | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log my weight: 80.5 kg today." | Install. §3 shows `PROFILE_NOT_FOUND`; §3a finds no old records. §4 for `fitness`: **the first of the test's two approvals**. Then app `fitness` with kind `weight` (`per: day`): catalog records, the discovery entry `xyz.tinycloud.tinyapps.catalog/fitness/entry`, then the record `xyz.tinycloud.tinyapps.fitness/weight/<YYYY-MM>/<date>`, read back. The agent says it started a fitness app. |
+| 1 | OpenCode | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log my weight: 80.5 kg today." | Install. §1a prints `new` (no old records; `ask` is also fine on a home with no earlier sign-in, after the owner says no). §3 shows `PROFILE_NOT_FOUND`. §4 for `fitness`: **the first of the test's two approvals**. Then app `fitness` with kind `weight` (`per: day`): catalog records, the discovery entry `xyz.tinycloud.tinyapps.catalog/fitness/entry`, then the record `xyz.tinycloud.tinyapps.fitness/weight/<YYYY-MM>/<date>`, read back. The agent says it started a fitness app. |
 | 2 | Codex | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it. My goal is 78 kg by December." | Install (one escalation). **No sign-in**: §3 finds the entry and lists the catalog. An item kind for goals is added to `fitness` (its states are the agent's choice, e.g. `open`/`done`), and the goal is written under its first state. The agent announces the new kind. |
 | 3 | Claude Code | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Bench press, 3 sets of 8 at 60 kg." | Install. Kind `lift` or similar (`per: time`), key ending `-bench-press`, written with `--if-none-match '*'`. |
 | 4 | OpenCode | "Ran 5 km in 27 minutes this morning." | No link needed. One broad `per: time` kind for sports other than lifting, e.g. `session` with `sport`, `minutes`, `km`. Not a `run` kind (`SKILL.md` §2, rule 1). |
 | 5 | Codex | "Bouldering tonight: 90 minutes, hardest problem 6a." | The same kind with a new `sport` value, plus a new field for the grade, added to the kind's `fields` with "(added <date>)". |
-| 6 | Claude Code | "Add a todo: renew my passport." | §3 shows `PROFILE_NOT_FOUND` for `todos`; §3a finds no old records. §4 for `todos`: **the second approval**, and the owner is asked for nothing that covers `fitness`. App `todos` with kind `todo` (item: `open`, `done`), record under `xyz.tinycloud.tinyapps.todos/todo/open/`. |
+| 6 | Claude Code | "Add a todo: renew my passport." | §1a prints `new`; §3 shows `PROFILE_NOT_FOUND` for `todos`. §4 for `todos`: **the second approval**, and the owner is asked for nothing that covers `fitness`. App `todos` with kind `todo` (item: `open`, `done`), record under `xyz.tinycloud.tinyapps.todos/todo/open/`. |
 | 7 | OpenCode | "What do you keep for me?" | Lists the discovery entries and reads the catalogs: two apps and their kinds, with fields. |
 | 8 | Codex | "How far am I from my weight goal?" | Reads the open goal and the latest weight from `fitness`. |
 | 9 | Claude Code | "Passport renewed. And what did I train this week?" | Moves the todo to `done` (writes the new key, then deletes the old one). Answers the training question from KV. With no `tinyapp-fitness-sql` profile, no index step runs. |
@@ -94,19 +94,21 @@ Transcripts are in each client's stock home:
 
 ## Follow-up test: moving records from an earlier version
 
-This test proves the move rule: a reader is never switched to the new place while some records exist only in the old place. Run it on a test account, never on an owner's real records.
+This test proves the move rule: an app with old records keeps working in the old layout, and its readers switch to the new place only after the script printed success and its receipt exists, never while some records exist only in the old place. Run it on a test account, never on an owner's real records.
 
 **Precondition:** the test account's `default` space holds old-layout records for two apps: `fitness` (a catalog record, a `weight` kind record, at least three weights across two months) and `todos` (a catalog record, a `todo` kind record, one open and one done todo), seeded with the earlier skill version or with `kv put` under `xyz.tinycloud.agent-data/`. Keep the full old key list (`kv list --prefix xyz.tinycloud.agent-data/ --all`) for the comparisons. The new `fitness` folder in `applications` is empty. Install the new skill on two clients, `$H1` and `$H2`, sharing one `$SHARED`.
 
 | # | Who | Action | Expected |
 |---|---|---|---|
-| M1 | `$H1` agent | "Log my weight: 80.2 kg today." | §3 finds no entry; §3a finds `xyz.tinycloud.agent-data/catalog/fitness`. The app is **held**: nothing is read or written for `fitness` in either place. The agent tells the owner in plain words and offers the move. Re-list both places: unchanged. |
-| M2 | `$H1` agent | Gets the `fitness` approval (§4) | One approval. Still no records read or written. |
-| M3 | owner, own terminal | `sh migrate.sh --dry-run fitness` | Prints the plan: the app id, the number of records, the kinds. Writes nothing: the key lists of both places and `<STATE>` are unchanged. |
-| M4 | owner, own terminal | `sh migrate.sh fitness` | Copies, then reads back, then re-lists the old place, then prints `Moved and verified`. The new folder holds the same keys and contents as the old `fitness` records, the discovery entry exists, `<STATE>/migration/fitness.receipt.json` says `"verified": true`. The old key list is unchanged. |
-| M5 | `$H2` agent, new conversation | "What was my weight on <a seeded date>?" | §3 finds the entry. It answers from `applications`, and the answer matches the seeded value. |
+| M1 | `$H1` agent | "Log my weight: 80.2 kg today." | §1a prints `legacy`. The agent works in the old layout exactly as before (`LEGACY.md`): it writes `xyz.tinycloud.agent-data/fitness/weight/…` and asks for no new approval and creates no `tinyapp-fitness` profile. Once per conversation it says: "This app can move to its own folder: say "move my fitness records" when you want it (nothing is deleted)." Nothing is written under `xyz.tinycloud.tinyapps.fitness/`. |
+| M2 | `$H1` agent | "Move my fitness records." | The agent gets the `fitness` approval (§4, per-app CLI): one approval. It tells the owner to pause other writers, writes nothing for the app meanwhile, and gives the dry-run command. |
+| M3 | owner, own terminal | `sh migrate.sh --dry-run fitness` | Prints the plan: the app id, the number of records, the kinds. Writes nothing: the key lists of both places and `<STATE>` are unchanged. `layout.sh fitness` still prints `legacy`. |
+| M4 | owner, own terminal | `sh migrate.sh fitness` | Copies, then reads back, then re-lists the old place, then prints `Moved and verified`. The new folder holds the same keys and contents as the old `fitness` records, the discovery entry exists, `<STATE>/migration/fitness.receipt.json` says `"verified": true`. The old key list is unchanged. `layout.sh fitness` prints `new`. |
+| M5 | owner, then `$H2` agent, new conversation | Copy the receipt to `$H2`'s `<STATE>/migration/`. Ask "What was my weight on <a seeded date>?" | §1a prints `new`; §3 finds the entry. It answers from `applications`, and the answer matches the seeded value. Without the copied receipt, `$H2` stays in the old layout. |
 | M6 | `$H2` agent | "Log my weight: 80.0 kg today." | Written under `xyz.tinycloud.tinyapps.fitness/` only. The old place is unchanged. |
-| M7 | owner, own terminal | Re-run `sh migrate.sh fitness` | Recognises the copied records, writes nothing new and ends `Moved and verified`; the receipt digest is the same. The record from M6 is reported as a key the old place lacks: `NOT SWITCHED`, nothing changes. This is expected: a move is run before new writes. |
+| M7 | owner, own terminal | Re-run `sh migrate.sh fitness` | Recognises the copied records. The record from M6 is a key the old place lacks, so it prints `NOT SWITCHED` and changes nothing. This is expected: a move is run before new writes. |
+| M8 | `$H1` agent | Remove the receipt file, then "Log my weight: 79.5 kg today." | `layout.sh fitness` prints `legacy` again (a successful script run without its receipt is not a switch), and the record goes to the old layout. Restore the receipt afterwards. |
+| M9 | `$H1` agent | "Add a todo: renew my passport." on an account whose `default` space has no `todos` records | §1a prints `new`: the app starts directly in its own folder, with its own approval. |
 
 **Refusal cases** (each on a fresh copy of the precondition, for `fitness` or `todos`): the script must print `NOT SWITCHED`, write no discovery entry and no receipt, and leave the old key list unchanged.
 - A record with different content already sits at one of the new keys.
@@ -115,10 +117,11 @@ This test proves the move rule: a reader is never switched to the new place whil
 - The app's approval is missing or expired.
 
 **Pass:**
-- At every step, no record exists only in the old place for an app whose entry exists in `applications`.
+- At every step, an app with old records and no receipt reads and writes only the old layout, and no new grant or profile appears.
+- No record exists only in the old place for an app that has switched.
 - The script never deletes: the old key list is the same before and after every step.
 - Every write the script makes is a create (`--if-none-match '*'`): grep the transcript, and the CLI's calls, for `kv put` without it.
-- Not verified: the whole flow against production, a real OpenKey approval of the `applications` manifest with `--paste`, and the exact bytes the node returns for `kv get --raw`.
+- Not verified: the whole flow against production, a real OpenKey approval of the `applications` manifest with `--paste`, `migrate.sh` reading the earlier `agent-data` profile with the 1.5.0-beta.2 CLI, and the exact bytes the node returns for `kv get --raw`.
 
 ## Follow-up test: the fast copy
 

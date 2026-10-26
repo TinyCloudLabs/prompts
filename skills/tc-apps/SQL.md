@@ -7,7 +7,7 @@ Part of the `tc-apps` skill: read `SKILL.md` first. For one generic app, `<APP>`
 - **Lifetime:** 30 days.
 - **Scope:** the approval names one database. Don't rely on that name as a boundary: TinyCloud's node can also open other SQL databases in the same space, and the `applications` space holds the owner's other apps. Always pass exactly `--db xyz.tinycloud.tinyapps.<APP>/index`, never a longer or different name, and run only the statements in this file.
 
-Run the blocks as `SKILL.md` says: literal `<TC_BIN>` and `<STATE>` from its §1, values filled into `'<…>'`. Keep the SQL in double quotes, exactly as written. Only `$` needs a backslash: write it `\$`, and leave `%` and every other character as it is. Put every option before `--`, and the SQL after it.
+Run the blocks as `SKILL.md` says: literal `<TC_BETA>` from its §1a and `<STATE>` from its §1, values filled into `'<…>'`. Keep the SQL in double quotes, exactly as written. Only `$` needs a backslash: write it `\$`, and leave `%` and every other character as it is. Put every option before `--`, and the SQL after it.
 
 **Never run two SQL writes at the same time.** That includes another block of yours, and `xargs`. Parallel writes to one database can fail, or half-apply. Writes in this file run one after another; only reads run side by side.
 
@@ -22,7 +22,7 @@ When talking to the owner, it's "a fast, searchable copy of your records". Don't
 **1a. Get the approval link.** `<Title>` is the app's title: letters, digits and spaces only.
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+TC_BIN='<TC_BETA>'; STATE='<STATE>'; umask 077
 mkdir -p "$STATE"
 printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.tinyapps.<APP>","name":"<Title> fast copy (tiny app)","space":"applications","defaults":false,"permissions":[{"service":"tinycloud.sql","path":"xyz.tinycloud.tinyapps.<APP>/index","skipPrefix":true,"actions":["read","write","schema"]}]}' > "$STATE/tinyapp-<APP>-sql.json"
 "$TC_BIN" context --json --profile tinyapp-<APP>-sql 2>&1 | grep -q PROFILE_NOT_FOUND && "$TC_BIN" init --name tinyapp-<APP>-sql --key-only > /dev/null
@@ -42,25 +42,25 @@ Don't open the link yourself, and run 1a only once per approval.
 
 If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: get the approval link for the searchable copy of your records." Then wait. Don't edit their settings files or suggest changing them, and don't run it another way.
 
-**1b. Finish with the owner's code.** The code belongs to your own profile, `tinyapp-<APP>-sql`, so the owner can send it to you in the chat. Run the same sign-in with the code on stdin. The CLI reads only the first non-blank line, so the code must go on one line: remove any code fence, quotes or spaces around it, and join line breaks, before the heredoc. A quoted heredoc keeps every character of the code as it is; `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`, used on both marker lines. Fill `<TC_BIN>` and `<STATE>` as in 1a:
+**1b. Finish with the owner's code.** The code belongs to your own profile, `tinyapp-<APP>-sql`, so the owner can send it to you in the chat. Run the same sign-in with the code on stdin. The CLI reads only the first non-blank line, so the code must go on one line: remove any code fence, quotes or spaces around it, and join line breaks, before the heredoc. A quoted heredoc keeps every character of the code as it is; `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`, used on both marker lines. Fill `<TC_BETA>` and `<STATE>` as in 1a:
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+TC_BIN='<TC_BETA>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile tinyapp-<APP>-sql auth login --method openkey --paste --manifest "$STATE/tinyapp-<APP>-sql.json" --expiry 30d <<'CODE_<MARK>'
 <the code, on one line>
 CODE_<MARK>
 ```
 
-If the owner would rather use their own terminal, give them this command, with `<TC_BIN>` and `<STATE>` filled in:
+If the owner would rather use their own terminal, give them this command, with `<TC_BETA>` and `<STATE>` filled in:
 
 ```sh
-"<TC_BIN>" --profile tinyapp-<APP>-sql auth login --method openkey --paste --manifest "<STATE>/tinyapp-<APP>-sql.json" --expiry 30d
+"<TC_BETA>" --profile tinyapp-<APP>-sql auth login --method openkey --paste --manifest "<STATE>/tinyapp-<APP>-sql.json" --expiry 30d
 ```
 
 Say: "Run that in your own terminal, paste the code OpenKey shows when it asks, and tell me when it's done. Use the same `TC_HOME` as this conversation: unset, unless you set it." Then check the sign-in yourself:
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
+TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" --profile tinyapp-<APP>-sql auth status --json
 ```
 
@@ -76,7 +76,7 @@ TC_BIN='<TC_BIN>'; umask 077
 Run once, after the first sign-in. It's harmless to run again.
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
+TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql -- "CREATE TABLE IF NOT EXISTS records (key TEXT PRIMARY KEY, rec TEXT NOT NULL)"
 "$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql -- "CREATE VIEW IF NOT EXISTS entries AS SELECT key, kind, substr(r2, 1, instr(r2, '/') - 1) AS folder, substr(r2, instr(r2, '/') + 1) AS id, substr(r2, instr(r2, '/') + 1, 10) AS day, json_extract(rec, '\$.v') AS v, json_extract(rec, '\$.at') AS at, json_extract(rec, '\$.by') AS by, json_extract(rec, '\$.data') AS data, rec FROM (SELECT key, rec, substr(key, 1, instr(key, '/') - 1) AS kind, substr(key, instr(key, '/') + 1) AS r2 FROM records)"
 ```
@@ -92,7 +92,7 @@ Then fill the index: rebuild every kind the app's catalog lists (§6).
 Do this after every write, status change and delete in `SKILL.md` §6, whenever `SKILL.md` §3 showed the `tinyapp-<APP>-sql` profile. List every key you touched, relative to `xyz.tinycloud.tinyapps.<APP>/`: written, moved to and moved from, deleted. The block reads each key from KV and copies it into the index; a key that's gone from KV is removed from the index.
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+TC_BIN='<TC_BETA>'; STATE='<STATE>'; umask 077
 printf '%s\n' '<kind>/<folder>/<id>' '<kind>/<folder>/<id>' | xargs -P 8 -I{} sh -c 'R=$("$0" kv get "xyz.tinycloud.tinyapps.<APP>/$1" --raw --space applications --profile tinyapp-<APP> 2>/dev/null); c=$?; if [ $c -eq 0 ]; then printf "{\"k\":\"%s\",\"r\":%s}\n" "$1" "$R"; elif [ $c -eq 4 ]; then printf "{\"k\":\"%s\"}\n" "$1"; else printf "{\"k\":\"%s\",\"r\":}\n" "$1"; fi' "$TC_BIN" {} > "$STATE/rows"
 ROWS=$(sed 's/\\/\\\\/g; s/"/\\"/g' "$STATE/rows" | paste -s -d, -)
 "$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params "[\"[$ROWS]\"]" -- "INSERT OR REPLACE INTO records (key, rec) SELECT json_extract(value, '\$.k'), json_extract(value, '\$.r') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NOT NULL" && "$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params "[\"[$ROWS]\"]" -- "DELETE FROM records WHERE key IN (SELECT json_extract(value, '\$.k') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NULL)"
@@ -106,7 +106,7 @@ ROWS=$(sed 's/\\/\\\\/g; s/"/\\"/g' "$STATE/rows" | paste -s -d, -)
 If the block still fails, or `SKILL.md` §3 showed the index's session `"expired"`, mark the kind as behind, once per kind you touched, so the next agent with a working index rebuilds it:
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
+TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" kv put 'xyz.tinycloud.tinyapps.<APP>/index-stale/<kind>' --stdin --space applications --json --profile tinyapp-<APP> <<'EOF'
 {"since":"<today's date>","by":"<your client>"}
 EOF
@@ -117,7 +117,7 @@ EOF
 Before you answer from the index, check every kind the question covers. Repeat the `sql query` line and the second `kv list` line for each kind, keeping them in this order.
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
+TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/index-stale/' --space applications --all --json --profile tinyapp-<APP>
 "$TC_BIN" sql query --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params '["<kind>/"]' -- "SELECT count(*) AS n FROM records WHERE instr(key, ?) = 1"
 "$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/<kind>/' --space applications --all --json --profile tinyapp-<APP> | grep '"count"'
@@ -130,7 +130,7 @@ TC_BIN='<TC_BIN>'; umask 077
 ## 5. Query
 
 ```sh
-TC_BIN='<TC_BIN>'; umask 077
+TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" sql query --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params '[<values>]' -- "<SELECT …>"
 ```
 
@@ -156,7 +156,7 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
 2. Clear the kind's rows, unless the copy was created moments ago in §1b and is still empty:
 
    ```sh
-   TC_BIN='<TC_BIN>'; umask 077
+   TC_BIN='<TC_BETA>'; umask 077
    "$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params '["<kind>/"]' -- "DELETE FROM records WHERE instr(key, ?) = 1"
    ```
 
@@ -164,7 +164,7 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
 4. Remove the kind's mark, if §4 listed one:
 
    ```sh
-   TC_BIN='<TC_BIN>'; umask 077
+   TC_BIN='<TC_BETA>'; umask 077
    "$TC_BIN" kv delete 'xyz.tinycloud.tinyapps.<APP>/index-stale/<kind>' --space applications --json --profile tinyapp-<APP>
    ```
 

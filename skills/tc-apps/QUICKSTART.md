@@ -7,7 +7,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.5.0-beta.2` from a folder of its own.
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.5` from a folder of its own, and `@tinycloud/cli@1.5.0-beta.2` from a second folder for apps in their own folder (below).
 
 A permission slip and the code OpenKey shows after you approve are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
@@ -36,7 +36,7 @@ Claude Code and Codex also ask whether you trust a folder the first time you sta
 Optional variables, set before you start the client:
 - `TC_HOME`: the CLI profile store. Without it the CLI uses `~/.tinycloud`.
 - `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
-- `TC_BIN`: the absolute path to another `tc`, CLI `1.5.0-beta.2` or later. The skill then runs it, not the CLI in its own folder.
+- `TC_BIN`: the absolute path to another `tc`, CLI `1.3.4` or later. The skill then runs it, not the CLI in its own folder. `TC_BETA_BIN` does the same for the `1.5.0-beta.2` CLI.
 
 ## What you see at sign-in
 
@@ -83,13 +83,15 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 
 ## Records from an earlier version
 
-Earlier versions of this skill kept all apps together in your `default` space, under `xyz.tinycloud.agent-data/`. Those records stay there; nothing deletes them unless you ask. An app that has records there is held: the agent doesn't read or write it until you move it. You move one app at a time, in your own terminal, with the script the agent gives you:
+Earlier versions of this skill kept all apps together in your `default` space, under `xyz.tinycloud.agent-data/`. Those records stay there; nothing deletes them unless you ask. An app that has records there keeps working exactly as before, with no new approval. The agent tells you once per conversation: "This app can move to its own folder: say "move my <app> records" when you want it (nothing is deleted)."
+
+When you ask, the agent requests the app's own approval and gives you a script to run in your own terminal:
 
 1. `sh migrate.sh --dry-run <app>` prints the plan and writes nothing.
 2. `sh migrate.sh <app>` copies the records to the app's new folder, reads them back and compares them (the same keys, the same count, the same contents), checks the old place again for edits made meanwhile, and only then marks the app as moved and saves a receipt with counts and a digest.
-3. If anything differs, or is refused, it stops with `NOT SWITCHED`, and the old records are untouched. Fix the cause and run it again; keys that already match are recognised.
+3. If anything differs, or is refused, it stops with `NOT SWITCHED`, the old records are untouched, and the app keeps working in the old place. Fix the cause and run it again; keys that already match are recognised.
 
-Pause other agents that write the app while it runs, and update the skill on each of your computers first. A move doesn't import old meal records into Health Log; they are moved as they are.
+The app switches to its own folder only after step 2 printed success and its receipt exists. Pause other agents that write the app while it runs, and copy the receipt to your other computers before you use the app there. A move doesn't import old meal records into Health Log; they are moved as they are. An app with no old records starts in its own folder.
 
 ## Faster answers over many records
 
@@ -115,9 +117,9 @@ Good to know:
 - **Stopping:** each command below clears the local session for one app, with `TC_HOME` and `TC_BIN` set as when you started the client, so it uses the same CLI as the skill. The approvals stay valid on TinyCloud until they expire.
 
   ```sh
-  W=$HOME/.local/share/tc-apps; TC=${TC_BIN:-}; [ -n "$TC" ] || { TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; }
-  "$TC" --profile tinyapp-<app> auth logout
-  "$TC" --profile tinyapp-<app>-sql auth logout
+  B=${TC_BETA_BIN:-$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud}
+  "$B" --profile tinyapp-<app> auth logout
+  "$B" --profile tinyapp-<app>-sql auth logout
   ```
 
   To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the `tc-apps` skill folders.

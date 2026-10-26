@@ -29,7 +29,8 @@ if [ -n "$SLUG" ]; then
 fi
 command -v jq > /dev/null 2>&1 || { echo 'jq is needed. Install it, then run this again.' >&2; exit 1; }
 if command -v sha256sum > /dev/null 2>&1; then sha() { sha256sum | cut -d' ' -f1; }; else sha() { shasum -a 256 | cut -d' ' -f1; }; fi
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
+# The copy needs the create-only write of CLI 1.5.0-beta.2, which the setup installs in its own folder.
+TC_BIN=${TC_BETA_BIN:-$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud}
 STATE=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 R=xyz.tinycloud.agent-data
 TAB=$(printf '\t')
