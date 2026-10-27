@@ -14,8 +14,8 @@
 // - _redirects: the earlier repository-path URLs, redirected to the short ones,
 //   and each Markdown guide's URL with .md added (/apps.md → /apps).
 // Other repository files are copied at their repository path. index.html,
-// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
-// agent-skills discovery index are generated.
+// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers, the agent-skills
+// index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
 import { renderMatrix } from "./matrix.mjs";
@@ -535,6 +535,22 @@ write(
     2,
   ) + "\n",
 );
+// The public documentation host offers only signed-out web browsing under Poppy.
+write(
+  ".well-known/poppy.json",
+  JSON.stringify(
+    {
+      protocol_version: "0.1",
+      organization: {
+        name: "TinyCloud",
+        domain: new URL(BASE).hostname,
+      },
+      web: {},
+    },
+    null,
+    2,
+  ) + "\n",
+);
 
 // Earlier URLs (repository paths) keep working as redirects.
 const redirects = [
@@ -633,6 +649,9 @@ ${PAGES.filter((p) => !p.html).map((p) => p.url)
   Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
 
 /.well-known/ai-catalog.json
+  Content-Type: application/json
+
+/.well-known/poppy.json
   Content-Type: application/json
 
 `,
