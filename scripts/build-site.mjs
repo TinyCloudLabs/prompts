@@ -2,15 +2,17 @@
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Public URLs are short and flat; the repository layout is only for authoring:
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
-// - /connect: chat-app setup and a handoff to the unchanged /apps coding guide,
-//   as HTML by default or Markdown via Accept; /connect.md is the same entry page.
+// - /connect: chat-app setup and a handoff to the unchanged coding guide for the
+//   request (/apps, /secrets, /publish, /chat or /courier), as HTML by default or
+//   Markdown via Accept; /connect.md is the same entry page.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
 //   relative links pointed at /skills/<short>/;
 // - /skills/index.json: each skill's name, version, description and files with
 //   sha256 checksums, which /skills/install.js checks before installing;
-// - _redirects: the earlier repository-path URLs, redirected to the short ones.
+// - _redirects: the earlier repository-path URLs, redirected to the short ones,
+//   and each Markdown guide's URL with .md added (/apps.md → /apps).
 // Other repository files are copied at their repository path. index.html,
 // llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
 // agent-skills discovery index are generated.
@@ -441,6 +443,8 @@ const redirects = [
   "/setup/index.html /setup 301",
   "/README.md /setup 301",
   ...PAGES.flatMap((p) => [`/${p.url}/ /${p.url} 301`, ...(p.redirectFrom || []).flatMap((from) => [`/${from} /${p.url} 301`, `/${from}/ /${p.url} 301`])]),
+  // Agents guess a Markdown guide's URL with `.md` added (/apps.md). An html page's .md is a real file.
+  ...PAGES.filter((p) => !p.html).map((p) => `/${p.url}.md /${p.url} 301`),
   ...[...new Map(PAGES.map((p) => [p.src, p.url]))].map(([src, to]) => `/${src} /${to} 301`),
   ...skills.filter((s) => s.name !== s.short).map((s) => `/skills/${s.name}/* /skills/${s.short}/:splat 301`),
 ];

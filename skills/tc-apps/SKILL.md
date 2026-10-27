@@ -2,12 +2,12 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 # Personal apps in TinyCloud
 
-**Install rule: never run `npm install -g`, `npm i -g`, `sudo`, or `curl … | sh`. The only installs are the two `npm install --prefix` steps on the setup page. If you're about to install anything else, stop and tell the owner.**
+**Install rule: never run `npm install -g`, `npm i -g` or `sudo`, and never pipe a download into a shell. The only installs are the two `npm install --prefix` steps on the setup page. If you're about to install anything else, stop and tell the owner.**
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
@@ -49,8 +49,8 @@ The catalog in `TINY-APPS.md` (read first, per the top of this file) decides the
 ## 1. Read the paths and the time
 
 ```sh
-printenv TC_BIN || ls "$HOME/.local/share/tc-apps/tinycloud" 2>/dev/null || ls "$HOME/.local/share/tc-apps/tc" 2>/dev/null || echo 'TC_BIN is unset'
-printenv TC_APPS_STATE || echo "$HOME/.local/state/tc-apps"
+{ [ -n "${TC_BIN:-}" ] && echo "$TC_BIN"; } || ls "$HOME/.local/share/tc-apps/tinycloud" 2>/dev/null || ls "$HOME/.local/share/tc-apps/tc" 2>/dev/null || echo 'TC_BIN is unset'
+{ [ -n "${TC_APPS_STATE:-}" ] && echo "$TC_APPS_STATE"; } || echo "$HOME/.local/state/tc-apps"
 date +%Y-%m-%dT%H:%M%z | sed 's/..$/:&/'
 date -u +%FT%TZ
 ```
@@ -66,13 +66,15 @@ Do this first for every app you are about to read or write, once per conversatio
 
 ```sh
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/layout.sh" ]; then sh "$d/layout.sh" '<APP>'; break; fi; done
-printenv TC_BETA_BIN || ls "$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud" 2>/dev/null || echo 'TC_BETA is unset'
+{ [ -n "${TC_BETA_BIN:-}" ] && echo "$TC_BETA_BIN"; } || ls "$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud" 2>/dev/null || echo 'TC_BETA is unset'
 ```
 
 The first line is the layout, the second is `<TC_BETA>`.
 - `legacy` → the app has records in `default` and no verified move exists on this computer. **Keep reading and writing the old layout exactly as before:** read `LEGACY.md` in full and follow its §2 to §8, with `<TC_BIN>`. Request no new approval, create no new profile, and don't use §3 to §9 for this app. Once per conversation, tell the owner: "This app can move to its own folder: say "move my <APP> records" when you want it (nothing is deleted)." When the owner says it, follow §9. Until the move is verified, nothing about this app changes.
 - `new` → either a verified move exists on this computer (§9), or the old place holds no records for this app. Use §2 to §8 below, with `<TC_BETA>`.
-- `ask` → this computer can't see the old place (no earlier sign-in, or it expired). Ask the owner one question: "Did you keep <the thing they asked about> with an earlier version of this skill, in your TinyCloud?" If yes or not sure, treat the app as `legacy` and sign in as `LEGACY.md` §4 says; if its catalog then lacks the app, it's `new`. If no, it's `new`.
+- `ask` → this computer can't see the old place (no earlier sign-in, or it expired). The owner answers one question: "Did you keep <the thing they asked about> with an earlier version of this skill, in your TinyCloud?" If yes or not sure, treat the app as `legacy` and sign in as `LEGACY.md` §4 says; if its catalog then lacks the app, it's `new`. If no, it's `new`. How to get the answer:
+  - The setup page (`agents.tinycloud.xyz/apps`) ran in this conversation, or the request is setup only → don't stop to ask first. Treat the app as `new` up to its approval: run §3, then §4a, and end §4a's message with this line: "If you kept <the thing they asked about> with an earlier version of this skill, don't approve: tell me, and I'll use those records instead." A code from the owner is a no: finish with §4b. A yes or not sure is `legacy`: don't use that link (the `tinyapp-<APP>` profile it made stays unused), and sign in as `LEGACY.md` §4 says. Write nothing for this app until the owner has answered one way or the other.
+  - Otherwise → ask the question, and wait for the answer before §3.
 - `check-failed` → the old place couldn't be checked (for example the network). Tell the owner in one line, write nothing, and try again on the next request.
 - Nothing printed before `TC_BETA is unset`, or `jq is needed` on stderr (exit 3) → `jq` isn't installed on this computer. Tell the owner in one line to install `jq`, write nothing for this app, and run §1a again after they say it's done. `migrate.sh` needs `jq` too.
 - `TC_BETA is unset` → in the `new` case, the setup hasn't installed it: stop, and ask the owner to send their request again with the setup link.
@@ -312,6 +314,7 @@ The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `NETWORK_ERROR` → TinyCloud didn't answer, even after `<TC_BIN>`'s own retries. Run the command once more. If it fails again, tell the owner that TinyCloud isn't reachable right now. Ignore the error's hint to switch profiles: the profiles are right.
 - `OPENKEY_OWNER_MISMATCH` → they approved with a different account or key than this profile's. Ask them to use the same one as before, and run §4 again when they're ready.
 - `SPACE_NOT_HOSTED` → handle it as in §3.
+- `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` (exit 10) → nothing was saved. Tell the owner their TinyCloud storage is full, their records are still readable, and they can upgrade at https://account.tinycloud.xyz/storage. Don't retry, and don't delete records to make room.
 - `SESSION_IN_USE` → ask the owner. Never pass `--replace-session`.
 - Anything else → report the code.
 

@@ -52,6 +52,53 @@ test("SKILL §1 names the tinycloud script, then an earlier tc script, then repo
   assert.equal(old.line, join(old.h.work, "tc"));
   assert.equal(first(() => {}).line, "TC_BIN is unset");
   assert.equal(first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "/opt/own/cli" }).line, "/opt/own/cli");
+  const empty = first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "" });
+  assert.equal(empty.line, join(empty.h.work, "tinycloud"));
+});
+
+test("SKILL §1 prints TC_APPS_STATE if set, else the default state folder", () => {
+  const second = (extra = {}) => {
+    const h = fresh();
+    const out = run(["sh", "-c", firstBlock], { HOME: h.dir, ...extra });
+    assert.equal(out.status, 0, out.stderr);
+    return { line: out.stdout.split("\n")[1], h };
+  };
+  const unset = second();
+  assert.equal(unset.line, join(unset.h.dir, ".local/state/tc-apps"));
+  const empty = second({ TC_APPS_STATE: "" });
+  assert.equal(empty.line, join(empty.h.dir, ".local/state/tc-apps"));
+  assert.equal(second({ TC_APPS_STATE: "/opt/own/state" }).line, "/opt/own/state");
+});
+
+test("SKILL §1a's second line is TC_BETA_BIN if set, else the setup's beta CLI, else unset", () => {
+  const layoutSection = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 1a. Which layout does this app use?")[1];
+  const betaLine = layoutSection.match(/```sh\n([\s\S]*?)\n```/)[1].split("\n")[1];
+  const beta = (setup, extra = {}) => {
+    const h = fresh();
+    setup(h);
+    const out = run(["sh", "-c", betaLine], { HOME: h.dir, ...extra });
+    assert.equal(out.status, 0, out.stderr);
+    return { line: out.stdout.trim(), h };
+  };
+  const installed = ({ work }) => {
+    mkdirSync(join(work, "cli-beta/node_modules/.bin"), { recursive: true });
+    writeFileSync(join(work, "cli-beta/node_modules/.bin/tinycloud"), "");
+  };
+  const found = beta(installed);
+  assert.equal(found.line, join(found.h.work, "cli-beta/node_modules/.bin/tinycloud"));
+  assert.equal(beta(() => {}).line, "TC_BETA is unset");
+  assert.equal(beta(() => {}, { TC_BETA_BIN: "" }).line, "TC_BETA is unset");
+  assert.equal(beta(installed, { TC_BETA_BIN: "/opt/own/beta" }).line, "/opt/own/beta");
+});
+
+// Hermes installs a skill from its SKILL.md URL only if its skills guard passes the file. The guard
+// blocks `printenv` (dump_all_env) and a curl command piped into a shell (curl_pipe_shell), even in prose.
+test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no curl piped into a shell", () => {
+  const dumpEnv = /printenv|(?<![A-Za-z0-9_])env\s*\|(?!\|)(?!\s*[{(])/;
+  const curlShell = /curl\s+[^|\s][^\n]*\|\s*(?:sudo\s+(?:-\S+\s+)*)?(?:ba|z|da|k|c|tc|fi)?sh\b/;
+  const lines = readFileSync(join(skill, "SKILL.md"), "utf8").split("\n");
+  const flagged = lines.flatMap((line, i) => (dumpEnv.test(line) || curlShell.test(line) ? [`${i + 1}: ${line}`] : []));
+  assert.deepEqual(flagged, []);
 });
 
 for (const [name, argv, expected] of [

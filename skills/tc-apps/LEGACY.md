@@ -221,5 +221,6 @@ The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `DEVICE_AUTH_RATE_LIMITED` → too many sign-ins from this network. Tell the owner to ask again in 10 minutes.
 - `OPENKEY_OWNER_MISMATCH` → they approved with a different account or key than this profile's. Ask them to use the same one as before, and run §4 again when they're ready.
 - `SPACE_NOT_HOSTED` → handle it as in §3.
+- `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` (exit 10) → nothing was saved. Tell the owner their TinyCloud storage is full, their records are still readable, and they can upgrade at https://account.tinycloud.xyz/storage. Don't retry, and don't delete records to make room.
 - `SESSION_IN_USE` → ask the owner. Never pass `--replace-session`.
 - Anything else → report the code.

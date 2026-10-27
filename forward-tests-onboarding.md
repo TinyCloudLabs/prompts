@@ -15,7 +15,7 @@ Coding-agent rows are run by QA with test accounts. Chat-app rows need a person 
 
 Keep the `/apps` prompts and results below as the baseline. Separately paste **`Set up TinyCloud using https://agents.tinycloud.xyz/connect`** into each fresh chat-app and coding-agent conversation, using the branch's Pages preview host before deployment. Use exactly the same prompt and URL for every client; do not supply a `.md` suffix or coach the assistant to pick a format.
 
-Apply the existing client-specific approval and first-record checks. Chat apps must receive the complete MCP connection instructions in their first successful fetch. Coding agents must fetch the unchanged `/apps` guide from the handoff link and follow it in full for the original request, without asking the owner to paste another URL or reconstructing the installation from a summary. Both HTML and Markdown versions of `/connect` give the same handoff; format preference must not select a different setup workflow. A plain request must get readable HTML, not raw Markdown. Record both page retrievals, route selection, approval and record read-back separately; local browser rendering is not evidence that a coding agent followed the handoff or that ChatGPT or Claude retrieved the page.
+Apply the existing client-specific approval and first-record checks. Chat apps must receive the complete MCP connection instructions in their first successful fetch. Coding agents must fetch the unchanged guide for their request from the handoff links (`/apps` for setup only) and follow it in full for the original request, without asking the owner to paste another URL or reconstructing the installation from a summary. Both HTML and Markdown versions of `/connect` give the same handoff; format preference must not select a different setup workflow. A plain request must get readable HTML, not raw Markdown. Record both page retrievals, route selection, approval and record read-back separately; local browser rendering is not evidence that a coding agent followed the handoff or that ChatGPT or Claude retrieved the page.
 
 After deployment, fetch HTML from the production hostname without executing JavaScript and compare it to the generated HTML. Follow the coding-agent link and confirm that `/apps` still matches its pre-change Markdown bytes. `/connect` must include `Cache-Control: no-transform` to prevent the custom domain's Cloudflare features from rewriting guide text, even when the `pages.dev` preview is correct.
 
@@ -43,15 +43,33 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 - Three further Markdown response smokes handled a missing option with a targeted menu question, respected a reported administrator-policy block, and accepted reported connection success without reinstallation.
 - Already-enabled tool execution, live ChatGPT fetching/behavior, OAuth and record writes were not exercised. No production deployment was performed. Browser tabs and the local preview were closed.
 
+### Router and added chat apps
+
+`/connect` routes coding agents by request and has sections for Grok, Perplexity, Gemini and Meta Muse. Run each row in a fresh conversation against the branch preview, with the prompt `Read <preview>/connect and follow it to set up TinyCloud for me, including the install and sign-in it describes.` followed by the request in the row, if any. Don't coach.
+
+| Client | Request | Required behavior |
+| --- | --- | --- |
+| Claude Code, Codex | none (setup only) | Fetches `/apps`, not `/apps.md` first; installs; one OpenKey approval for `todos`; the default todo in `applications`, read back. On a home with no earlier sign-in, no separate "earlier version?" stop: the question ends the approval message, and the code is the answer. |
+| Claude Code, Codex | `Turn this script into a voiceover with ElevenLabs: "Hello from TinyCloud." Get the key from TinyCloud.` | Fetches `/secrets`, not `/apps`. Never asks for or prints the value. |
+| Claude Code, Codex | `Publish this report and send me a private link: ./report.md` | Fetches `/publish`; an owner-only link. |
+| Claude Code, Codex | `How did my last meeting go?` | Fetches `/chat`; the TinyChat sign-in. |
+| Claude Code, Codex | `Set up Courier so my agent can trade tasks with another person's agent.` | Fetches `/courier`. |
+| Cursor, OpenClaw, Hermes | none | Takes the coding route, not a connector; installs into `~/.agents/skills`. |
+| Grok, Perplexity, Gemini, Meta Muse | none | That app's own section: `https://mcp.tinycloud.xyz/mcp`, OAuth, OpenKey. No shell, CLI or sandbox; no plan caveat; never asks for a key or token. |
+| ChatGPT | the regression cases above | Unchanged: four steps, at most 120 words. |
+
+Also check `curl -sI <preview>/apps.md`: a 301 to `/apps`. The Grok, Perplexity, Gemini and Muse steps were written from each vendor's documentation and have not been run with an account.
+
 ## Routing being tested
 
 From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for a password, private key, session key, recovery phrase, API key, secret value or access token in chat.
 
-- **Chat apps (ChatGPT web, Claude web, Desktop, mobile):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
+- **Chat apps (ChatGPT web, Claude web, Desktop, mobile, Grok, Perplexity, Gemini, Meta Muse):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
   - ChatGPT: Plugins → Add → Add custom MCP server, web only.
   - Claude: Connectors → Add custom connector, on web or Desktop; it then works on mobile.
-- **Coding agents with a shell (Claude Code, Codex, OpenCode):** CLI + skill, the install flow from `/apps` unchanged. Codex asks for a sandbox escalation; OpenCode needs a restart.
-- **Other MCP clients (Cursor, VS Code, Gemini CLI):** hosted URL with OAuth if remote MCP is supported, else local stdio. Not tested here.
+  - Grok: grok.com/connectors → New Connector → Custom. Perplexity: Account settings → Connectors → + Custom connector → Remote. Gemini: Settings → Connected Apps → Custom apps (personal account, US). Meta Muse: ask Muse to create a custom connector.
+- **Coding agents with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes):** CLI + skill, the install flow from the guide for the request unchanged: `/apps` for records or setup only, `/secrets`, `/publish`, `/chat` or `/courier` otherwise. Codex asks for a sandbox escalation; OpenCode needs a restart. Agents other than Claude Code, Codex and OpenCode install into `~/.agents/skills`, as Codex does.
+- **Other MCP clients (VS Code, Gemini CLI):** hosted URL with OAuth if remote MCP is supported, else local stdio. Not tested here.
 - **Neither shell nor connectors:** say so in one line and point the person to the hosted route.
 
 ## Prompts
