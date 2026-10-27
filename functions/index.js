@@ -1,7 +1,13 @@
 // Markdown for agents: / with Accept: text/markdown returns llms.txt
 // (already Markdown) instead of the HTML front page. Only "/" runs this.
-const LINK =
-  '</llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </sitemap.xml>; rel="sitemap"; type="application/xml"';
+const LINK = [
+  '</llms.txt>; rel="describedby"; type="text/plain"',
+  '</.well-known/agent-skills/index.json>; rel="describedby"; type="application/json"',
+  '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727"',
+  '</.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json"',
+  '</auth.md>; rel="describedby"; type="text/markdown"',
+  '</sitemap.xml>; rel="sitemap"; type="application/xml"',
+].join(", ");
 
 // Quality of a media type in an Accept header (0 when absent or refused).
 function quality(accept, type) {
