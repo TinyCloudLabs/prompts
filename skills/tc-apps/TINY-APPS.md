@@ -16,6 +16,7 @@ A domain is owned by a catalog app when one of its words matches the request. If
 1. A catalog app owns the domain: that app is the target. Set the app up if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
 2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §1a to §9). `SKILL.md` §1a decides the layout per app. New layout: each generic app has its own folder in the `applications` space, `xyz.tinycloud.tinyapps.<slug>/`, and its own approval. Legacy mode: an app whose records an earlier version kept in `default` stays in that layout (`LEGACY.md`) until the owner moves it and the move is verified. The catalog apps' ids in §1 are unchanged.
 3. The request is ambiguous between two catalog apps: ask one question that names both, then follow rule 1 for the answer.
+4. Something to remember about the owner, a question about what they told an agent before, or "continue" / "pick up where I left off": the context app (`CONTEXT.md`), unless a catalog app owns the domain (rule 1) or it is sensitive (`CONTEXT.md` §1).
 
 Never write a catalog app's data to the generic store, and never write generic records into a catalog app.
 

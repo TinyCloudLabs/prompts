@@ -1,6 +1,6 @@
 # Personal records in TinyCloud (`tc-apps`)
 
-Your agent keeps your records, like meals, weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Each app has its own folder and its own approval. Any agent on this computer, in any conversation, can find and read them.
+Your agent keeps your records, like meals, weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Each app has its own folder and its own approval. Any agent on this computer, in any conversation, can find and read them. It also keeps your context, what you told an agent about yourself, so the next agent can carry on.
 
 ## For the owner
 
@@ -8,7 +8,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 - **Paste into Claude Code, Codex or OpenCode:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may ask you to confirm a step. See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
-- **You approve:** for Health Log or Recipes, one OpenKey screen for the app, or two the first time on this computer. The first is your own sign-in to TinyCloud on this computer, for 7 days, so it lists access to your whole space: your data, and the delegations you've given. The second gives your agent access to just Health Log, for 7 days. Your agent tells you before they open. For any other record you track, such as workouts, goals or todos, one OpenKey screen per app, the first time you use it. It lets the agents on this computer keep that app's records in its own folder of your `applications` space, for 30 days, and nothing else; the next app asks again. An app that already keeps records from an earlier version needs no new approval until you ask to move it (see [Moving records from an earlier version](#moving-records-from-an-earlier-version)). OpenKey shows a code: paste it in the chat, or into your own terminal. If you later ask questions over many records of one app, the agent may ask for one more approval, for a fast, searchable copy of that app's records. If your browser asks to connect to devices on your network, choose Allow. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat.
+- **You approve:** for Health Log or Recipes, one OpenKey screen for the app, or two the first time on this computer. The first is your own sign-in to TinyCloud on this computer, for 7 days, so it lists access to your whole space: your data, and the delegations you've given. The second gives your agent access to just Health Log, for 7 days. Your agent tells you before they open. For any other record you track, such as workouts, goals or todos, one OpenKey screen per app, the first time you use it. It lets the agents on this computer keep that app's records in its own folder of your `applications` space, for 30 days, and nothing else; the next app asks again. An app that already keeps records from an earlier version needs no new approval until you ask to move it (see [Moving records from an earlier version](#moving-records-from-an-earlier-version)). OpenKey shows a code: paste it in the chat, or into your own terminal. If you later ask questions over many records of one app, the agent may ask for one more approval, for a fast, searchable copy of that app's records. If your browser asks to connect to devices on your network, choose Allow. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat. Something you ask an agent to remember goes to your context app, which asks for its own approval the first time. At the end of setup, one yes/no question: should new sessions of your agents on this computer check your TinyCloud context first? Yes adds one marked line to their instructions and, if your context app isn't approved yet, shows one more OpenKey screen for it, for 30 days; no is remembered, and you aren't asked again.
 - **Undo:** see [Undo](#undo).
 
 ## Use it in Claude (web, iOS, Android)
@@ -65,10 +65,10 @@ npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tiny
 B="$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud"; { [ -x "$B" ] && [ "$("$B" --version)" = 1.5.0-beta.2 ]; } || npm install --prefix "$HOME/.local/share/tc-apps/cli-beta" --no-audit --no-fund @tinycloud/cli@1.5.0-beta.2
 ```
 
-**Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files. Six are scripts: `tc-wrapper.sh`, which step 6 installs; `announce.sh`, which prints the owner's approval message; `layout.sh`, which tells the skill which layout an app uses; and `owner-grant.sh`, `owner-undo.sh` and `migrate.sh`, which the owner runs in their own terminal for the approval, for Undo and for moving an app from the old layout.
+**Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files. Seven are scripts: `tc-wrapper.sh`, which step 6 installs; `announce.sh`, which prints the owner's approval message; `layout.sh`, which tells the skill which layout an app uses; `session-check.sh`, which adds or removes the session-check line (§4); and `owner-grant.sh`, `owner-undo.sh` and `migrate.sh`, which the owner runs in their own terminal for the approval, for Undo and for moving an app from the old layout.
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud.xyz/skills/apps/SHA256SUMS" -O "https://agents.tinycloud.xyz/skills/apps/SKILL.md" -O "https://agents.tinycloud.xyz/skills/apps/LEGACY.md" -O "https://agents.tinycloud.xyz/skills/apps/LEGACY-SQL.md" -O "https://agents.tinycloud.xyz/skills/apps/QUICKSTART.md" -O "https://agents.tinycloud.xyz/skills/apps/SQL.md" -O "https://agents.tinycloud.xyz/skills/apps/TINY-APPS.md" -O "https://agents.tinycloud.xyz/skills/apps/tc-wrapper.sh" -O "https://agents.tinycloud.xyz/skills/apps/announce.sh" -O "https://agents.tinycloud.xyz/skills/apps/owner-grant.sh" -O "https://agents.tinycloud.xyz/skills/apps/owner-undo.sh" -O "https://agents.tinycloud.xyz/skills/apps/migrate.sh" -O "https://agents.tinycloud.xyz/skills/apps/layout.sh"
+cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud.xyz/skills/apps/SHA256SUMS" -O "https://agents.tinycloud.xyz/skills/apps/SKILL.md" -O "https://agents.tinycloud.xyz/skills/apps/CONTEXT.md" -O "https://agents.tinycloud.xyz/skills/apps/LEGACY.md" -O "https://agents.tinycloud.xyz/skills/apps/LEGACY-SQL.md" -O "https://agents.tinycloud.xyz/skills/apps/QUICKSTART.md" -O "https://agents.tinycloud.xyz/skills/apps/SQL.md" -O "https://agents.tinycloud.xyz/skills/apps/TINY-APPS.md" -O "https://agents.tinycloud.xyz/skills/apps/tc-wrapper.sh" -O "https://agents.tinycloud.xyz/skills/apps/announce.sh" -O "https://agents.tinycloud.xyz/skills/apps/owner-grant.sh" -O "https://agents.tinycloud.xyz/skills/apps/owner-undo.sh" -O "https://agents.tinycloud.xyz/skills/apps/migrate.sh" -O "https://agents.tinycloud.xyz/skills/apps/layout.sh" -O "https://agents.tinycloud.xyz/skills/apps/session-check.sh"
 ```
 
 **Step 4. Check them.** Every file must print `OK`. Anything else: stop.
@@ -82,13 +82,13 @@ cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 
 Claude Code:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md CONTEXT.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh session-check.sh "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
 ```
 
 Codex and OpenCode:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh "$HOME/.agents/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md CONTEXT.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh session-check.sh "$HOME/.agents/skills/tc-apps/"
 ```
 
 **Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tinycloud` is the skill's `tc-wrapper.sh`, copied from the download: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. An earlier `tc` copy in that folder keeps working. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
@@ -128,9 +128,30 @@ cat "$HOME/.agents/skills/tc-apps/SKILL.md"
 
 The first is for Claude Code, the second for Codex and OpenCode. Your client may not list the new skill until it restarts; you don't need it to.
 
-Follow the skill now for the owner's request, from its §1.
+Follow the skill now for the owner's request, from its §1. When you've finished it, end your last message with §4's question.
 
 **OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
+
+## 4. One question: check context in every session
+
+Ask this once, at the end of your last message, after the owner's request is done; don't hold up the request for it. First run the check, with your client as `<client>` (`claude-code`, `codex` or `opencode`):
+
+```sh
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" status '<client>'; break; fi; done
+```
+
+- `on` or `declined` → don't ask. Don't ask either if this conversation's context key list (`CONTEXT.md` §3) has `preference/session-check`.
+- `off` → end your last message with this question, naming the agents on its `clients:` line:
+
+  > One question: should new sessions of <Codex and Claude Code> on this computer check your TinyCloud context first, so they know what you've told any of your agents? Yes adds one marked line to their instructions; Undo removes it.
+
+When the owner answers:
+- **Yes** → run the same block with `add '<client>'` in place of `status '<client>'`. It adds one line, ending with `<!-- tinycloud-context -->`, at the end of each agent's instructions file, and changes no other line; it prints each file it changed. Never edit those files yourself.
+  - **Codex:** the files are outside the workspace, so run it with `sandbox_permissions: "require_escalated"` and the justification "Add the TinyCloud context line to your agents' instructions".
+  - It prints `could not change`, or your client blocks the step → don't run it another way. Give the owner the command for their own terminal: `sh "$HOME/.local/share/tc-apps/skill/session-check.sh" add <client>`.
+  - Then, if the context app isn't approved on this computer yet (`CONTEXT.md` §3's list prints `PROFILE_NOT_FOUND`), get its approval: skill §4 with `context` and `Context`. Tell the owner in one line which files changed.
+- **No** → run the same block with `decline` in place of `status '<client>'`. If the context app is approved on this computer, also save `preference/session-check`, "No session check", as `CONTEXT.md` §4 says, without a line to the owner. Don't ask again.
+- Anything else → don't ask again in this conversation.
 
 <a id="if-claude-code-still-blocks-it"></a>
 
@@ -173,4 +194,12 @@ for p in $("$B" profile list 2>/dev/null | grep -o 'tinyapp-[a-z0-9-]*'); do "$B
 
 `PROFILE_NOT_FOUND` means you never signed in to that one; that's fine. Without `jq`, copy the `delegationCid` from `meal-grant.json`, then run `delegation revoke -- <cid>` with the same client, in the same terminal. If `meal-grant.json` is gone, the Health Log grant still ends on its own after 7 days, and so does a grant that a renewal replaced. If the agent gave you a different state folder or client path, set `TC_APPS_STATE` or `TC_BIN` to those before running the helper.
 
+To stop new sessions checking your TinyCloud context, run this before you delete the folders below. It removes only the lines that end with `<!-- tinycloud-context -->`, from `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` (or `AGENTS.override.md`) and `~/.config/opencode/AGENTS.md`, and changes nothing else. You can also delete that line yourself.
+
+```sh
+sh "$HOME/.local/share/tc-apps/skill/session-check.sh" remove
+```
+
 To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
+
+To delete context records, ask an agent: "Forget my coffee order", or "Clear my TinyCloud context". Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until history collapse ships (TC-1470), so don't put anything in context you'd need erased.

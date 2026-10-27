@@ -287,3 +287,14 @@ test("a Markdown guide's URL with .md added redirects to the guide; /connect.md 
   assert.equal(redirects.some((line) => line.startsWith("/connect.md ")), false);
   assert.equal(existsSync(join(site, "connect.md")), true);
 });
+
+test("/connect's ChatGPT section is byte-identical to the verified one, and the coding route sends context requests to /apps", () => {
+  const markdown = readFileSync(join(root, "_site", "connect.md"), "utf8");
+  const chatgpt = markdown.split("\n## ChatGPT\n")[1].split("\n## Claude\n")[0];
+  // ChatGPT's four-step reply of at most 120 words was verified against exactly this text; change it only with a new ChatGPT run.
+  assert.equal(createHash("sha256").update(chatgpt).digest("hex"), "f160335270dfa6b2432b3c6b63a13183252b7a12ef012edb45f11ade31b09a76");
+  const coding = markdown.split("\n## Coding agents\n")[1].split("\n## ChatGPT\n")[0];
+  const context = coding.split("\n").filter((line) => line.startsWith("**Context:**"));
+  assert.equal(context.length, 1);
+  assert.ok(context[0].includes("](https://agents.tinycloud.xyz/apps)"), context[0]);
+});

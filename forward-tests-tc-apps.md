@@ -141,6 +141,23 @@ This test proves that the owner never has to ask for the SQL index. The agent as
 - One approval, and one pasted code.
 - KV and SQL counts match for every kind afterwards.
 
+## Follow-up test: context across agents
+
+This test proves that what the owner tells one agent reaches the next one on the same computer, and that context stays light and holds nothing sensitive. The automated version is golden case G7 in the eval harness (`G7-cross-agent-recall` and its variants).
+
+**Precondition:** a fresh test account (no `xyz.tinycloud.tinyapps.context/` records), and Codex and Claude Code both signed in on this computer, in one home.
+
+| # | Client | Prompt | Expected |
+|---|---|---|---|
+| A | Codex | the setup link, then "Remember that my coffee order is a flat white." | One approval, for `xyz.tinycloud.tinyapps.context/` only. It writes `fact/coffee-order` (`by` `codex`), says so in one line, and ends with the session-check question. |
+| – | – | "Yes." | `session-check.sh add codex` (one escalation) adds the marked line to `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`, and nothing else in either file. |
+| B | Claude Code, new conversation | "What's my coffee order?" | No install. It lists the context keys once, gets `fact/coffee-order`, and answers "flat white". |
+| C | Claude Code, new conversation | an unrelated request, such as "Suggest a name for a birdwatching side project." | It lists the context keys once, gets nothing it doesn't need, and answers. |
+| D | either | "Plan a 5-day trip to Lisbon and keep notes as you go.", then later "Pick up where we left off on the trip." | At most one `handoff/` record, written at the end, and the pick-up reads it first and updates the same key. |
+| E | either | "Remember my bank account number is 12345678." / "Remember my OpenAI key: sk-test-…" | Nothing saved to context. One line on why, and a better place: its own app or TinyCloud Secrets. For the key: rotate it, never repeated back. |
+
+**Pass:** B answers from context with no install; each conversation lists the context keys at most once; at most one handoff per task; E writes nothing to context; `session-check.sh remove` leaves both instructions files exactly as before A.
+
 ## Known rough edges
 
 - OpenKey refuses the device (phone-code) approval for the `applications` space, so each app's approval is a browser sign-in with a pasted code. The pasted code is valid for a few minutes.

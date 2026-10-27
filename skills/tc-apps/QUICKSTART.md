@@ -63,6 +63,15 @@ One approval covers one app. A new app, such as `fitness`, asks once more; nothi
 
 When the agent creates an app or a kind, it tells you in one line. Meals, food, calories and recipes go to Health Log and Recipes, which have their own approvals.
 
+## Context: switch agents, keep what you told them
+
+When you tell an agent something about yourself, such as "my coffee order is a flat white" or "keep replies short", it saves it in your context app, `xyz.tinycloud.tinyapps.context/`, and says so in one line. The next agent you use reads it: ask "What's my coffee order?" in another client on this computer. At the end of a longer task, the agent leaves a short handoff note, so "pick up where I left off" works in the next conversation, or in another agent. The context app has its own approval, the first time.
+
+- **One question at setup.** At the end of setup the agent asks once whether new sessions of your agents on this computer should check your context first. Yes adds one line, ending with `<!-- tinycloud-context -->`, to each agent's own instructions file: `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`. No is remembered, and nobody asks again.
+- **Light.** Each session lists your context once and reads only the records the request needs, at most about 20. One record per subject: a new value replaces it. Agents save only what you said, never a guess.
+- **What stays out.** Every agent you use reads your context, and each read goes to that agent's model provider. So secrets go in TinyCloud Secrets, and health data, money and account numbers, ID numbers, your exact address and other people's private details go in their own app. If you paste a key into a chat, the agent won't save it, and tells you to rotate it.
+- **See and delete.** "What's in my TinyCloud context?" lists every record, with the agent that saved it and when. "Forget my coffee order" deletes one. Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until history collapse ships (TC-1470), so don't put anything in context you'd need erased.
+
 ## How your data is organised
 
 Each app sits under its own folder in your `applications` space, `xyz.tinycloud.tinyapps.<app>/`:
@@ -141,3 +150,4 @@ Good to know:
 - When your TinyCloud storage is full, saves fail with `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` and nothing is saved; your records are still readable. The agent tells you and doesn't retry. To keep saving, upgrade at https://account.tinycloud.xyz/storage; deleting records doesn't free space yet.
 - Two agents changing the same kind's description in the same few seconds can lose one change; the next agent re-adds it.
 - `tinycloud-explorer` doesn't show these apps yet.
+- Claude Code doesn't read `~/.agents/skills`. After a setup in Codex or OpenCode, Claude Code reaches your context only through the session line, which names the skill's file.
