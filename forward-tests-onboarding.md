@@ -55,10 +55,29 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 | Claude Code, Codex | `How did my last meeting go?` | Fetches `/chat`; the TinyChat sign-in. |
 | Claude Code, Codex | `Set up Courier so my agent can trade tasks with another person's agent.` | Fetches `/courier`. |
 | Cursor, OpenClaw, Hermes | none | Takes the coding route, not a connector; installs into `~/.agents/skills`. |
-| Grok, Perplexity, Gemini, Meta Muse | none | That app's own section: `https://mcp.tinycloud.xyz/mcp`, OAuth, OpenKey. No shell, CLI or sandbox; no plan caveat; never asks for a key or token. |
+| Grok, Perplexity, Gemini | none | That app's own section: `https://mcp.tinycloud.xyz/mcp`, OAuth, OpenKey. No shell, CLI or sandbox; no plan caveat; never asks for a key or token. |
+| Meta Muse | none | Executes native connector setup from the original prompt, without asking for another “create a connector” prompt. Requests `tinycloud:mcp offline_access` and resource `https://mcp.tinycloud.xyz/mcp` on the first OAuth flow; pauses for owner consent; verifies live tools and connection, then completes the setup-only record recipe and read-back. No local TinyCloud CLI substitution or owner-supplied credentials. |
 | ChatGPT | the regression cases above | Unchanged: four steps, at most 120 words. |
 
-Also check `curl -sI <preview>/apps.md`: a 301 to `/apps`. The Grok, Perplexity, Gemini and Muse steps were written from each vendor's documentation and have not been run with an account.
+Also check `curl -sI <preview>/apps.md`: a 301 to `/apps`. The Grok, Perplexity and Gemini steps were written from each vendor's documentation and have not been run with an account.
+
+### Muse one-prompt regressions
+
+One prompt means one setup request, not zero owner consent. Record any approval-confirmation turns separately from a repeated setup instruction. Use the actual Muse app, not a model API or a simulated connector.
+
+- **Working return visit:** the existing connector passes live `tools/list` and `tinycloud_connect`; Muse reuses it and continues the original request without disconnecting it or requesting another sign-in. A connection-only request must not create the default todo or read personal records.
+- **Stale credential:** an authenticated call fails while the card says “Added.” Muse reports the actual error, does not infer expiry from HTTP 401 alone, and does not repeat the same ineffective link. It obtains permission before disconnecting only TinyCloud, preserves connector/skill files and records, and uses both scopes and the resource on the fresh OAuth flow.
+- **Incomplete authorization:** a closed sign-in tab, a Connect card, or `missing access_token surrogate` is not a successful connection. Muse checks the actual credential/tool outcome, pauses for required owner action, and neither asks for a token nor claims setup is complete.
+- **Sustained authentication:** after initial success, leave the credential unchanged and repeat one read-only connection call beyond the access-token lifetime, without another owner sign-in. Record actual call times and results; do not infer refresh from the scope request or first successful call. Do not print credentials or token values.
+
+Native recovery evidence, 2026-10-27: an existing account's original Muse OAuth request had only `tinycloud:mcp`; later links requested `offline_access` but reused the stale “Added” connection. After an owner-approved disconnect and fresh authorization with both scopes and the MCP resource, live discovery listed 22 tools and `tinycloud_connect` returned `connected: true`. The same connection passed another actual call more than six minutes later without another requested sign-in. The recorded 401 said `invalid_token`, not specifically “expired”; refresh-token contents were not inspected. No personal-record operations were performed.
+
+That recovery used diagnostic and repair prompts, not the revised page as a fresh user's single prompt. It does not establish a fresh-account, consent-resumption or saved-record pass for this candidate, and does not populate the public interaction counts.
+
+Candidate returning-user smoke, 2026-10-27: the site built successfully, and a local Wrangler Pages preview served `/connect` as both HTML and negotiated Markdown with HTTP 200; the rendered Muse section was inspected in Chromium. In a new, empty Muse side chat, one connection-only request included the candidate Muse section verbatim. Native activity showed the tool-discovery process completing with exit code 0 and `tinycloud_connect` returning `connected: true`. Muse reused the working connector without another setup prompt, disconnect or sign-in, and no personal-record tools were called. Its response repeated an expiry explanation for the old failure; the captured `invalid_token` error does not establish that cause.
+
+This was a supplied-guide smoke on an already connected account with retained memory, not a fresh user's bare-link run. First-time connector creation, owner-consent resumption and the setup-only saved-record recipe remain unverified for this candidate; public interaction counts remain unchanged.
+
 
 ## Routing being tested
 
@@ -67,7 +86,8 @@ From TC-1278 (the routing spec is not in this repo). Every client starts from th
 - **Chat apps (ChatGPT web, Claude web, Desktop, mobile, Grok, Perplexity, Gemini, Meta Muse):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
   - ChatGPT: Plugins → Add → Add custom MCP server, web only.
   - Claude: Connectors → Add custom connector, on web or Desktop; it then works on mobile.
-  - Grok: grok.com/connectors → New Connector → Custom. Perplexity: Account settings → Connectors → + Custom connector → Remote. Gemini: Settings → Connected Apps → Custom apps (personal account, US). Meta Muse: ask Muse to create a custom connector.
+  - Grok: grok.com/connectors → New Connector → Custom. Perplexity: Account settings → Connectors → + Custom connector → Remote. Gemini: Settings → Connected Apps → Custom apps (personal account, US).
+  - Meta Muse: performs native custom-connector setup from the original request; requests `tinycloud:mcp offline_access` and the MCP resource, resumes after owner approval, then verifies real tools and completes the original task.
 - **Coding agents with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes):** CLI + skill, the install flow from the guide for the request unchanged: `/apps` for records or setup only, `/secrets`, `/publish`, `/chat` or `/courier` otherwise. Codex asks for a sandbox escalation; OpenCode needs a restart. Agents other than Claude Code, Codex and OpenCode install into `~/.agents/skills`, as Codex does.
 - **Other MCP clients (VS Code, Gemini CLI):** hosted URL with OAuth if remote MCP is supported, else local stdio. Not tested here.
 - **Neither shell nor connectors:** say so in one line and point the person to the hosted route.
