@@ -168,3 +168,25 @@ test("setup downloads and copies the helper into both installed skill paths", ()
   assert.match(catalog(), /TC_APPS_OWNER_DID/);
   assert.match(catalog(), /TC_APPS_TIMEZONE/);
 });
+
+test("helper uses the onboarded profile saved by TINY-APPS step 0 and still enforces the expected owner", () => {
+  const ownerSpace = (did) => did.replace(/^did:/, "tinycloud:") + ":default";
+  const ok = world({ saved: space(A), context: { ownerDid: A, spaceId: ownerSpace(A) } });
+  writeFileSync(join(ok.dir, "meal-profile.txt"), "default\n");
+  const r = run(ok);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(r.stdout).spaceId, space(A));
+  assert.deepEqual(ok.calls().map((args) => args.slice(0, 2)), [["--profile", "default"]]);
+  const other = world({ saved: space(A), context: { ownerDid: B, spaceId: ownerSpace(B) } });
+  writeFileSync(join(other.dir, "meal-profile.txt"), "default\n");
+  const bad = run(other);
+  assert.notEqual(bad.status, 0);
+  assert.equal(bad.stderr, ACCOUNT);
+});
+
+test("helper ignores a saved profile name that is not a plain name and uses agent-meal", () => {
+  const w = world();
+  writeFileSync(join(w.dir, "meal-profile.txt"), "a b;x\n");
+  assert.equal(run(w).status, 0);
+  assert.deepEqual(w.calls().map((args) => args.slice(0, 2)), [["--profile", "agent-meal"]]);
+});
