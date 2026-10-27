@@ -174,7 +174,7 @@ const SKILLS = [
       "SKILL.md": [
         [
           "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
-          "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts or elicitation.",
+          "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts, elicitation, a generic permission grant, or a secret mutation tool.",
         ],
         [
           "## Account and KV exploration",
