@@ -168,7 +168,7 @@ TC_BIN='<TC_BETA>'; umask 077
 
 ## 4. Sign in to one app
 
-Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval through the browser sign-in with a pasted code. It prints a link and returns; the owner approves on OpenKey and sends you the code OpenKey shows (4b).
+Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval through the browser sign-in with a pasted code. It prints a link and returns; the owner approves on OpenKey and sends you the code OpenKey shows (4b). This paste flow is the default for remote agents, including Paseo, SSH and cloud environments: a browser callback to `127.0.0.1` reaches the owner's computer, not the remote CLI. If setup also offers a detached callback and a paste command, use the paste command remotely. When the CLI and browser are on the same computer, the local callback remains available.
 
 **4a. Get the approval link.** `<Title>` is the app's title: letters, digits and spaces only.
 

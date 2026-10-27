@@ -101,6 +101,21 @@ test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no cur
   assert.deepEqual(flagged, []);
 });
 
+test("remote app approval uses paste; the catalog grant remains an owner-terminal flow", () => {
+  const skillText = readFileSync(join(skill, "SKILL.md"), "utf8");
+  const signInSection = skillText.split("## 4. Sign in to one app")[1].split("## 5. Read")[0];
+  assert.match(signInSection, /paste flow is the default for remote agents/i);
+  assert.match(signInSection, /127\.0\.0\.1|loopback/i);
+  assert.match(signInSection, /auth login --method openkey --paste/);
+
+  const setupGuide = readFileSync(join(root, "setup/tc-apps.md"), "utf8");
+  assert.match(setupGuide, /if the agent is remote[\s\S]*callback to `127\.0\.0\.1` reaches your computer, not the remote CLI/i);
+
+  const catalogFlow = readFileSync(join(skill, "TINY-APPS.md"), "utf8");
+  assert.match(catalogFlow, /owner's terminal/);
+  assert.match(readFileSync(join(skill, "owner-grant.sh"), "utf8"), /"\$TC_BIN" auth grant/);
+});
+
 for (const [name, argv, expected] of [
   ["owner-grant.sh", ["healthlog"], ["profile show", "auth grant"]],
   ["owner-undo.sh", [], ["--profile agent-data auth logout", "--profile agent-data-sql auth logout", "profile delete agent-meal"]],
