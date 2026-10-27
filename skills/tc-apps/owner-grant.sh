@@ -63,4 +63,8 @@ if [ ! -s "$TMP" ]; then
 fi
 DONE=1
 mv -f "$TMP" "$DIR/$GRANT"
+# Record this terminal's IANA timezone as the owner's fallback until the Health Log page saves theirs. A UTC machine is skipped: it says nothing about the owner.
+OWNER_TZ=${TZ:-}
+case "$OWNER_TZ" in */*) ;; *) OWNER_TZ=$(readlink /etc/localtime 2>/dev/null | sed -n 's|.*/zoneinfo/||p'); [ -n "$OWNER_TZ" ] || OWNER_TZ=$(cat /etc/timezone 2>/dev/null) || true ;; esac
+case "$OWNER_TZ" in ""|UTC|Etc/UTC|Etc/*|*[!A-Za-z0-9_+/-]*) ;; *) printf '%s\n' "$OWNER_TZ" > "$DIR/owner-timezone.txt" ;; esac
 echo 'Done: tell your agent'

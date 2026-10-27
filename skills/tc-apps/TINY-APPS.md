@@ -29,7 +29,14 @@ The owner runs the sign-in and the grant in their own terminal (step 3); the age
 
 Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent starts no browser and waits for no code: the owner's sign-in and grant are in step 3, the import in step 4.
 
-**Health Log account and timezone.** Require independently supplied `TC_APPS_OWNER_DID` (the owner's expected `did:pkh:eip155:<chain>:0x…` address) and `TC_APPS_TIMEZONE` (their IANA timezone, such as `Pacific/Kiritimati`). The owner explicitly confirms both values; pass them in the shell environment for the blocks below, using shell-safe quoting. Preserve any values already supplied by the operator. Never infer either from the grant, saved space, session, or this computer's timezone, or change the expected owner to match a grant. If missing or invalid, stop and say exactly: "Ask the owner for their TinyCloud address and timezone." Ask for these before continuing, even when a grant is live. The owner should open Health Log using this same account; its Today card follows their browser's timezone.
+**Health Log account and timezone.** Never ask the owner for their TinyCloud address or timezone. The expected owner is the address of the explicit `owner` profile, saved once in `$STATE/owner-did.txt` by the block below. The owner's timezone is the IANA zone the Health Log page saves on open in the app's own space (`xyz.tinycloud.sample.healthlog/settings/timezone`); `owner-grant.sh` also records the owner terminal's zone in `$STATE/owner-timezone.txt` for use until the page has been opened. Never use this computer's timezone, and never change the saved owner to match a grant. Save the owner address once per computer (it keeps an existing value, so a later grant for another account is refused, not adopted):
+
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+[ -s "$STATE/owner-did.txt" ] || "$TC_BIN" --profile owner context --json 2>/dev/null | jq -r '.ownerDid // empty' > "$STATE/owner-did.txt"; test -s "$STATE/owner-did.txt" && echo OWNER_SAVED || echo OWNER_MISSING
+```
+
+On `OWNER_MISSING` the helper below refuses with its one line; say it and run no SQL.
 
 Resolve the installed helper's absolute path once per conversation:
 
@@ -37,7 +44,7 @@ Resolve the installed helper's absolute path once per conversation:
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/healthlog-context.mjs" ]; then printf '%s/healthlog-context.mjs\n' "$d"; break; fi; done
 ```
 
-Copy that path exactly as `<HEALTHLOG_CONTEXT>` in the blocks below. If no path prints, stop and ask the owner to rerun the setup to install the helper. Before selecting a meal's slot, and before every meal query or write, run `node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"`. It reads only `meal-space.txt` and the agent's `context --json` metadata, compares both full applications space IDs with the independent expected owner (address case is ignored), and returns JSON `{spaceId,day,now,utc,timeZone}` using a fresh clock in the explicit owner timezone. It never reads the owner's profile. A failure prints one plain instruction on stderr: stop, pass that instruction to the owner, and run no SQL. A mismatch or missing session metadata says: "Ask the owner to confirm their TinyCloud address and approve Health Log for that account." Never repair a mismatch by changing the expected owner or copying the session's address into it.
+Copy that path exactly as `<HEALTHLOG_CONTEXT>` in the blocks below. If no path prints, stop and ask the owner to rerun the setup to install the helper. Before selecting a meal's slot, and before every meal query or write, run `node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"`. It reads `meal-space.txt`, `owner-did.txt`, the agent's `context --json` metadata and the page's timezone key, compares both full applications space IDs with the saved owner (address case is ignored), and returns JSON `{spaceId,day,now,utc,timeZone}` using a fresh clock in the owner's timezone. It never reads the owner's profile. It asks nothing and prints nothing when all is well. A failure prints one plain line on stderr: stop, pass that line to the owner, and run no SQL. Never repair a mismatch by changing the saved owner or copying the session's address into it.
 
 0. **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database. It fails with `AUTH_REQUIRED` or `PROFILE_NOT_FOUND` when there is no live grant, and with another error for anything else.
 

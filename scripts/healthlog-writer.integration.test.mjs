@@ -110,25 +110,17 @@ test("agent meals use the intended owner and owner day, and agree with the page 
       assert.equal(context.spaceId, owners[profile].spaceId);
     };
     await importGrant("other-owner");
-    env.TC_APPS_OWNER_DID = owners["page-owner"].ownerDid;
-    env.TC_APPS_TIMEZONE = "Pacific/Kiritimati";
+    // The saved owner is account A; the grant is account B. Nothing is configured by the owner or the operator.
+    const OWNER_ZONE = "Pacific/Kiritimati";
+    await writeFile(join(env.TC_APPS_STATE, "owner-did.txt"), owners["page-owner"].ownerDid + "\n");
     const wrongOwner = await writeMeal("Wrong account must not receive this meal", 600);
     assert.notEqual(wrongOwner.code, 0, "grant B / expected page owner A must stop before INSERT");
     assert.equal(wrongOwner.stderr.trim().split("\n").length, 1);
-    assert.match(wrongOwner.stderr, /Ask the owner/);
+    assert.match(wrongOwner.stderr, /different TinyCloud account/);
     assert.deepEqual((await owners["other-owner"].bridge.sql.query("healthlog", "SELECT COUNT(*) FROM meal")).rows, [[0]]);
 
-    // Match the independent expected owner to the grant; host stays UTC.
-    env.TC_APPS_OWNER_DID = owners["other-owner"].ownerDid;
-    for (const [name, kcal] of [["Eggs and toast", 350], ["Banana and yogurt", 250]]) {
-      const result = await writeMeal(name, kcal);
-      assert.equal(result.code, 0, result.stderr);
-    }
+    // The page of account B opens in a non-UTC browser and saves its timezone; the agent host stays UTC.
     bridge = owners["other-owner"].bridge;
-    const rows = await bridge.sql.query(`/${db}`, "SELECT day, name, kcal, source FROM meal ORDER BY id");
-    assert.equal(rows.ok, true);
-    assert.equal(rows.rows.length, 2);
-    assert.deepEqual(rows.rows.map((r) => r.slice(1)), [["Eggs and toast", 350, "agent"], ["Banana and yogurt", 250, "agent"]]);
     const bundle = await build({ entryPoints: [join(sample, "dev/browser-entry.jsx")], bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic",
       alias: { "@tinycloud/app": join(sample, "dev/browser-bridge.mjs") }, define: { "process.env.NODE_ENV": '"development"' }, logLevel: "silent" });
     server = createServer(async (req, res) => {
@@ -143,8 +135,32 @@ test("agent meals use the intended owner and owner day, and agree with the page 
     });
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
     browser = await chromium.launch({ headless: true, executablePath: process.env.TC_CHROMIUM_BIN });
-    const context = await browser.newContext({ timezoneId: env.TC_APPS_TIMEZONE });
+    const context = await browser.newContext({ timezoneId: OWNER_ZONE });
     const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await page.locator('[data-testid="today-card"]').waitFor();
+    const savedZone = await (async () => {
+      for (let n = 0; n < 50; n += 1) {
+        const r = await bridge.kv.get("settings/timezone");
+        if (r.ok) return new TextDecoder().decode(r.bytes);
+        await new Promise((r2) => setTimeout(r2, 100));
+      }
+      return null;
+    })();
+    assert.equal(savedZone, OWNER_ZONE, "the page saves the browser's IANA timezone on open");
+
+    // The saved owner now matches the grant.
+    await writeFile(join(env.TC_APPS_STATE, "owner-did.txt"), owners["other-owner"].ownerDid + "\n");
+    for (const [name, kcal] of [["Eggs and toast", 350], ["Banana and yogurt", 250]]) {
+      const result = await writeMeal(name, kcal);
+      assert.equal(result.code, 0, result.stderr);
+      assert.equal(result.stderr, "", "no question or message on a fresh conversation");
+    }
+    bridge = owners["other-owner"].bridge;
+    const rows = await bridge.sql.query(`/${db}`, "SELECT day, name, kcal, source FROM meal ORDER BY id");
+    assert.equal(rows.ok, true);
+    assert.equal(rows.rows.length, 2);
+    assert.deepEqual(rows.rows.map((r) => r.slice(1)), [["Eggs and toast", 350, "agent"], ["Banana and yogurt", 250, "agent"]]);
     const checkPage = async () => {
       await page.locator('[data-testid="today-card"]').waitFor();
       const day = await page.locator('[data-testid="today-day"]').innerText();
@@ -157,14 +173,14 @@ test("agent meals use the intended owner and owner day, and agree with the page 
       assert.deepEqual(card.rows, [[600, 2]]);
       return day;
     };
-    await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await page.reload();
     const day = await checkPage();
     await page.reload(); await checkPage();
     // The independently signed-in account A remains empty.
     bridge = owners["page-owner"].bridge;
     await page.reload(); await page.locator('[data-testid="today-card"]').waitFor();
     assert.equal(await page.locator('[data-testid="today-kcal"]').innerText(), "0");
-    console.log(JSON.stringify({ host: node.host, appId: manifest.app_id, db, table: "meal", view: "day_card", expectedOwner: env.TC_APPS_OWNER_DID, pageSpace: owners["other-owner"].spaceId, hostTimezone: "UTC", ownerTimezone: env.TC_APPS_TIMEZONE, day, meals: 2, kcal: 600, afterReload: true }));
+    console.log(JSON.stringify({ host: node.host, appId: manifest.app_id, db, table: "meal", view: "day_card", expectedOwner: owners["other-owner"].ownerDid, pageSpace: owners["other-owner"].spaceId, hostTimezone: "UTC", ownerTimezone: OWNER_ZONE, day, meals: 2, kcal: 600, afterReload: true }));
   } finally {
     await browser?.close();
     if (server) await new Promise((r) => server.close(r));

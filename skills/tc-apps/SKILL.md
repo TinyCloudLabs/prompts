@@ -35,7 +35,7 @@ Operator-set, never change or unset:
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
-Health Log also requires `TC_APPS_OWNER_DID` and `TC_APPS_TIMEZONE` in its shell environment: the expected owner DID and IANA timezone explicitly supplied by the owner/operator. Preserve operator-provided values; otherwise ask the owner for them. Never derive them from a grant, session, saved space or host timezone. Follow `TINY-APPS.md` for the account and clock guard before accessing meal rows.
+Health Log never asks the owner for an address or timezone: the expected owner address is saved at setup and the timezone is the owner's own, saved by the Health Log page. Follow `TINY-APPS.md` for the account and clock guard before accessing meal rows.
 
 How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes. `<APP>` is the app's name: lowercase `a-z`, `0-9` and `-`, starting with a letter, such as `fitness`.
