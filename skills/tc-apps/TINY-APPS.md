@@ -142,7 +142,7 @@ OP_ID='<OP_ID>'; DAY='<DAY>'; SLOT='<SLOT>'; KCAL=<KCAL>; UTC='<UTC>'
 PARAMS=$(jq -cn --arg op "$OP_ID" --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" --argjson kcal "$KCAL" --arg utc "$UTC" '[$op,$day,$slot,$name,$kcal,$utc]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
 ```
 
-If `jq` or the insert fails, stop and report the error. If the shell prints `EMPTY_NAME`, the meal name was empty: tell the owner in one line and stop. Don't retry with other options.
+If `jq` or the insert fails, stop and report the error; for `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED`, tell the owner as `SKILL.md` §8 says. If the shell prints `EMPTY_NAME`, the meal name was empty: tell the owner in one line and stop. Don't retry with other options.
 
 Read back the row you wrote, and today's totals from the app's `day_card` view:
 

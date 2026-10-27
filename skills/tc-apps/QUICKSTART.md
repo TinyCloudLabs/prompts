@@ -138,5 +138,6 @@ Good to know:
 
 - If you approve with a different account or key than the profile's first sign-in, the sign-in fails with `OPENKEY_OWNER_MISMATCH`. Ask again and use the same one.
 - A brand-new account's space finishes setting up a minute or two after the first approval. Until then reads and writes fail with `SPACE_NOT_HOSTED`: the agent tells you it's still being set up and retries for about two minutes. If it's still not ready, the agent says so and stops; try again in a few minutes. It never asks for a second sign-in to fix this.
+- When your TinyCloud storage is full, saves fail with `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` and nothing is saved; your records are still readable. The agent tells you and doesn't retry. To keep saving, upgrade at https://account.tinycloud.xyz/storage; deleting records doesn't free space yet.
 - Two agents changing the same kind's description in the same few seconds can lose one change; the next agent re-adds it.
 - `tinycloud-explorer` doesn't show these apps yet.

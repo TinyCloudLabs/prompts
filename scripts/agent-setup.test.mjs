@@ -255,6 +255,28 @@ test("/connect sends a coding agent to the guide for its request and gives each 
   }
 });
 
+test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {
+  const site = join(root, "_site");
+  const storage = "https://account.tinycloud.xyz/storage";
+  const lines = (file) => readFileSync(join(site, file), "utf8").split("\n");
+  const approve = readFileSync(join(site, "connect.md"), "utf8").split("\n## Approve access and continue\n")[1].split("\n### ")[0];
+  const errors = (file) => lines(file).slice(lines(file).indexOf("## 8. Errors"));
+  for (const [file, rows] of [
+    ["connect.md", approve.split("\n")],
+    ["skills/apps/SKILL.md", errors("skills/apps/SKILL.md")],
+    ["skills/apps/LEGACY.md", errors("skills/apps/LEGACY.md")],
+    ["skills/publish/SKILL.md", lines("skills/publish/SKILL.md")],
+  ]) {
+    const row = rows.filter((line) => line.includes("`STORAGE_QUOTA_EXCEEDED`") && line.includes("`STORAGE_LIMIT_REACHED`"));
+    assert.equal(row.length, 1, file);
+    assert.ok(row[0].includes(storage), file);
+    assert.match(row[0], /[Dd]on't retry|Do not retry/, file);
+  }
+  const guides = readdirSync(site, { recursive: true }).filter((file) => /^(connect\.md|skills\/(apps|publish|secrets|feed)\/.*\.md)$/.test(file));
+  assert.ok(guides.includes("skills/apps/QUICKSTART.md") && guides.includes("skills/publish/SKILL.md"));
+  for (const file of guides) assert.doesNotMatch(readFileSync(join(site, file), "utf8"), /account\.tinycloud\.xyz\/billing/, file);
+});
+
 test("a Markdown guide's URL with .md added redirects to the guide; /connect.md stays a file", () => {
   const site = join(root, "_site");
   const redirects = readFileSync(join(site, "_redirects"), "utf8").split("\n");

@@ -101,6 +101,8 @@ With TinyCloud enabled, make your original request, or ask: **“What personal a
 
 A brand-new account's storage can take a minute or two to finish setting up after the first approval. If a tool reports `SPACE_NOT_HOSTED`, tell the owner it is still being set up and retry with backoff for about two minutes. Do not ask for another or broader sign-in to fix it.
 
+If a tool, or the CLI in a coding agent, reports `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED`, nothing was saved. Tell the owner their TinyCloud storage is full, their records are still readable, and they can upgrade at https://account.tinycloud.xyz/storage. Do not retry.
+
 To disconnect a chat app, remove or disconnect TinyCloud in that app's plugin or connector settings. Disconnecting does not delete your stored records. Local CLI cleanup remains in the original [coding-agent guide's Undo section](tc-apps.md#undo).
 
 ### Setup-only requests in chat apps
