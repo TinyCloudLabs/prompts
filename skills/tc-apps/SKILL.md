@@ -1,8 +1,8 @@
 ---
 name: tc-apps
-description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
+description: Keep the owner's personal records and context (facts and preferences, decisions, handoffs between agents) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, tells you to remember something about them, asks about something they told an agent before, or asks you to continue or pick up an earlier task, even if they don't mention TinyCloud. The owner approves any missing access through OpenKey; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.13"
+  version: "0.4.0"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/apps.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -14,6 +14,12 @@ metadata:
 **Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
+
+**Context: what the owner told an agent before.** When the owner asks you to remember something about them, asks about something they told an agent before ("what's my …", "as usual"), asks you to continue or pick up an earlier task, or a line in your instructions asks you to check their TinyCloud context, read `CONTEXT.md` in full and follow it. It needs no catalog read. Read whichever path exists:
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/CONTEXT.md" "$HOME/.agents/skills/tc-apps/CONTEXT.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+```
 
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in or access request, including the per-app sign-in in §4. Read the catalog now and follow it, with these two shell calls in order; together they are the whole file:
 
@@ -85,7 +91,7 @@ It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per l
 
 ## 1a. Which layout does this app use?
 
-Do this first for every app you are about to read or write, once per conversation. `<APP>` is the app's name. It prints one word and creates no profile, grant or record:
+Do this first for every app you are about to read or write, once per conversation, except `context`, which is always in the new layout (`CONTEXT.md`). `<APP>` is the app's name. It prints one word and creates no profile, grant or record:
 
 ```sh
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/layout.sh" ]; then sh "$d/layout.sh" '<APP>'; break; fi; done
@@ -121,7 +127,7 @@ Only a verified receipt or the app's discovery entry switches an app: never swit
 
 ## 2. How the records are organised
 
-Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>`, and every key of that app starts with `<ID>/`. The app names `catalog`, `index-stale`, `healthlog` and `recipes` are reserved, and a kind is never named `catalog` or `index-stale`.
+Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>`, and every key of that app starts with `<ID>/`. The app names `catalog`, `index-stale`, `healthlog` and `recipes` are reserved, and a kind is never named `catalog` or `index-stale`. The app `context` is the owner's context: use it only as `CONTEXT.md` says.
 
 | Key (in the `applications` space) | Holds |
 |---|---|
@@ -129,6 +135,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 | `<ID>/catalog/<kind>` | a catalog record for each kind of thing the app holds |
 | `<ID>/<kind>/<YYYY-MM>/<id>` | records of a **log** kind: things that happen, such as a weigh-in or a run |
 | `<ID>/<kind>/<state>/<id>` | records of an **item** kind: things with a status, such as a todo or a goal |
+| `<ID>/<kind>/<subject>` | records of a **subject** kind: one record per subject, which a new value replaces, such as the context app's facts (`CONTEXT.md`) |
 | `xyz.tinycloud.tinyapps.catalog/<APP>/entry` | the app's discovery entry: its name and title, no records |
 
 **Names and keys.**
@@ -164,7 +171,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 **A discovery entry:** `{"v":1,"app":"fitness","id":"xyz.tinycloud.tinyapps.fitness","title":"Fitness"}`. It holds only these four fields, with the title from the app record.
 
 **A kind record:** `{"app":"fitness","kind":"lift","about":"Strength training: one record per exercise per workout.","shape":"log","per":"time","v":1,"fields":{"exercise":"text: lowercase name, e.g. bench press","sets":"integer","reps":"integer: reps per set","kg":"number: load in kilograms"},"notes":"Volume = sets x reps x kg. The id ends with the exercise slug.","created":"2026-10-06","by":"claude-code"}`
-- `shape`: `log`, with `per` (`day` or `time`), or `item`, with `states`. New items start in the first state, e.g. `["open","done"]`.
+- `shape`: `log`, with `per` (`day` or `time`), or `item`, with `states`. New items start in the first state, e.g. `["open","done"]`; or `subject`, one record per subject, named by a slug of what it's about.
 - `fields`: name → `"type: meaning"`. A field with a unit names it: `kg`, `km`, `minutes`. When you create a kind, each meaning states the value's form with one example (`"text: sphere name as the owner says it, e.g. Life's Work"`), so the next agent writes the same form.
 - Optional: `notes` (how to read or sum up the records), `history` (how to read records with an older `v`), `updated`.
 
@@ -284,7 +291,7 @@ To answer a question:
 
 ## 6. Write
 
-One record, in the app's own folder. The same block writes catalog records. Use `--if-none-match '*'` whenever the key must be new: a catalog record, a `per: time` record, an item. If the key exists, the CLI writes nothing and exits 5 with `KV_ALREADY_EXISTS`. Leave the flag out only when the owner's new value should replace the record: a `per: day` record, or a change to a catalog record you read fresh (§2 rule 7).
+One record, in the app's own folder. The same block writes catalog records. Use `--if-none-match '*'` whenever the key must be new: a catalog record, a `per: time` record, an item. If the key exists, the CLI writes nothing and exits 5 with `KV_ALREADY_EXISTS`. Leave the flag out only when the owner's new value should replace the record: a `per: day` record, a `subject` record (`CONTEXT.md` §4), or a change to a catalog record you read fresh (§2 rule 7).
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077

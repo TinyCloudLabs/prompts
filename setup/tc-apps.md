@@ -101,6 +101,27 @@ sed -n '/^## 4\. Request only missing access$/,$p' "$HOME/.agents/skills/tc-apps
 
 Read the installed skill directly for this request, even if the client has not refreshed its skill list. Follow it now from §1. No restart is needed. In a future conversation that has not discovered the skill, the owner can paste the setup link again; read the existing installed skill and carry on.
 
+## 4. One question: check context in every session
+
+Ask this once, at the end of your last message, after the owner's request is done; don't hold up the request for it. First run the check, with your client as `<client>` (`claude-code`, `codex` or `opencode`):
+
+```sh
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" status '<client>'; break; fi; done
+```
+
+- `on` or `declined` → don't ask. Don't ask either if this conversation's context key list (`CONTEXT.md` §3) has `preference/session-check`.
+- `off` → end your last message with this question, naming the agents on its `clients:` line:
+
+  > One question: should new sessions of <Codex and Claude Code> on this computer check your TinyCloud context first, so they know what you've told any of your agents? Yes adds one marked line to their instructions; Undo removes it.
+
+When the owner answers:
+- **Yes** → run the same block with `add '<client>'` in place of `status '<client>'`. It adds one line, ending with `<!-- tinycloud-context -->`, at the end of each agent's instructions file, and changes no other line; it prints each file it changed. Never edit those files yourself.
+  - **Codex:** the files are outside the workspace, so run it with `sandbox_permissions: "require_escalated"` and the justification "Add the TinyCloud context line to your agents' instructions".
+  - It prints `could not change`, or your client blocks the step → don't run it another way. Give the owner the command for their own terminal: `sh "$HOME/.local/share/tc-apps/skill/session-check.sh" add <client>`.
+  - Then, if the context app isn't approved on this computer yet (`CONTEXT.md` §3's list prints `PROFILE_NOT_FOUND`), get its approval: skill §4 with `context` and `Context`. Tell the owner in one line which files changed.
+- **No** → run the same block with `decline` in place of `status '<client>'`. If the context app is approved on this computer, also save `preference/session-check`, "No session check", as `CONTEXT.md` §4 says, without a line to the owner. Don't ask again.
+- Anything else → don't ask again in this conversation.
+
 <a id="if-claude-code-still-blocks-it"></a>
 
 ## Confirming a step in Claude Code
@@ -154,4 +175,12 @@ for p in $("$B" profile list 2>/dev/null | grep -o 'tinyapp-[a-z0-9-]*'); do "$B
 
 `PROFILE_NOT_FOUND` means that profile is already absent. If `meal-grant.json` is gone, the grant still ends after 7 days, as does a replaced grant. Per-app approvals remain valid on TinyCloud until they expire; clearing a local session is not revocation. The `default` sign-in stays because other tools use it.
 
-If the owner asks to uninstall too, the agent removes this skill's install, state and client skill folder. The owner's records stay in TinyCloud.
+To stop new sessions checking your TinyCloud context, run this before you delete the folders below. It removes only the lines that end with `<!-- tinycloud-context -->`, from `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` (or `AGENTS.override.md`) and `~/.config/opencode/AGENTS.md`, and changes nothing else. You can also delete that line yourself.
+
+```sh
+sh "$HOME/.local/share/tc-apps/skill/session-check.sh" remove
+```
+
+To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
+
+To delete context records, ask an agent: "Forget my coffee order", or "Clear my TinyCloud context". Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until history collapse ships (TC-1470), so don't put anything in context you'd need erased.
