@@ -86,7 +86,7 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 ## Release checklist
 
-- Update the matrix: re-run each flow, then record the new counts, the date and the versions in [`matrix/interactions.json`](matrix/interactions.json). It is served at `/matrix`; a value is `null` until a real QA run measured it, and every number needs `measured_on` and `run_ref`.
+- Update the matrix: re-run each flow, then record the new counts, the date and the versions in [`matrix/interactions.json`](matrix/interactions.json). It is served at `/matrix`; a value is `null` until a real QA run measured it, and every number needs `measured_on` and `run_ref`. Per-agent cells go under each flow's `by_agent`, one per id in `agents`; the onboarding eval writes them from passing runs with `node run.mjs --matrix --base matrix/interactions.json`, and a person's scored runs feed the same cells with `owner_kind` "human".
 
 ## Other files
 
