@@ -465,6 +465,45 @@ write(
     2,
   ) + "\n",
 );
+const skillQueries = {
+  index: [
+    "Which public TinyCloud agent skills are available?",
+    "What files, versions, and checksums does each TinyCloud skill include?",
+  ],
+  apps: [
+    "How can my agent log a meal or workout in my TinyCloud records?",
+    "How do I create and extend an app for tracking personal records?",
+  ],
+  feed: [
+    "How can my agent post an owner-requested card to TinyCloud Home?",
+    "How do I add an update to my TinyCloud Home feed?",
+  ],
+  publish: [
+    "How can my agent publish a report and return a private link?",
+    "How can I make a published document public when I ask?",
+  ],
+  secrets: [
+    "How can my agent use a stored API key without showing its value?",
+    "How do I ask the owner to add a missing secret?",
+  ],
+  cli: [
+    "How do I install TinyCloud CLI and access authorized data?",
+    "How can I store or share data with the TinyCloud CLI?",
+  ],
+  courier: [
+    "How can two paired agents exchange a request using Courier?",
+    "How do I track a Courier task and assess a peer's request?",
+  ],
+  chat: [
+    "How can my agent recap a TinyChat meeting?",
+    "How do I find a phrase in my connected meeting transcripts?",
+  ],
+  mcp: [
+    "How can a remote client connect to hosted TinyCloud MCP?",
+    "Which delegated TinyCloud tools are available over MCP?",
+  ],
+};
+
 write(
   ".well-known/ai-catalog.json",
   JSON.stringify(
@@ -478,13 +517,17 @@ write(
       entries: [
         {
           identifier: "urn:air:agents.tinycloud.xyz:skills:index",
+          displayName: "TinyCloud Agent Skills Index",
           type: "application/json",
           url: url("skills/index.json"),
+          representativeQueries: skillQueries.index,
         },
         ...skills.map((s) => ({
           identifier: `urn:air:agents.tinycloud.xyz:skill:${s.short}`,
+          displayName: s.title,
           type: "text/markdown",
           url: url(`skills/${s.short}.md`),
+          representativeQueries: skillQueries[s.short],
         })),
       ],
     },
@@ -562,6 +605,7 @@ write(
     "# These pages are written for AI agents. Fetch them freely.",
     ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /", ...disallow]),
     "",
+    `Agentmap: ${url(".well-known/ai-catalog.json")}`,
     `Sitemap: ${url("sitemap.xml")}`,
     "",
   ].join("\n"),
@@ -573,7 +617,7 @@ write(
   Access-Control-Allow-Origin: *
   X-Content-Type-Options: nosniff
   Cache-Control: public, max-age=300
-  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json", </auth.md>; rel="describedby"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"
+  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/ai-catalog.json>; rel="describedby"; type="application/json", </sitemap.xml>; rel="sitemap"; type="application/xml"
   Agentmap: ${url(".well-known/ai-catalog.json")}
 
 /*.md
@@ -589,10 +633,8 @@ ${PAGES.filter((p) => !p.html).map((p) => p.url)
   Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
 
 /.well-known/ai-catalog.json
-  Content-Type: application/ai-catalog+json
+  Content-Type: application/json
 
-/auth.md
-  Content-Type: text/markdown; charset=utf-8
 `,
 );
 
@@ -653,7 +695,7 @@ write(
   <title>Give your agent abilities · TinyCloud</title>
   <meta name="description" content="${esc(desc)}">
   <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
-  <link rel="ai-catalog" type="application/ai-catalog+json" href="${esc(url(".well-known/ai-catalog.json"))}">
+  <link rel="ai-catalog" type="application/json" href="${esc(url(".well-known/ai-catalog.json"))}">
 ${style}
 </head>
 <body>

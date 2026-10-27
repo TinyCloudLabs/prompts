@@ -4,8 +4,7 @@ const LINK = [
   '</llms.txt>; rel="describedby"; type="text/plain"',
   '</.well-known/agent-skills/index.json>; rel="describedby"; type="application/json"',
   '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727"',
-  '</.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json"',
-  '</auth.md>; rel="describedby"; type="text/markdown"',
+  '</.well-known/ai-catalog.json>; rel="describedby"; type="application/json"',
   '</sitemap.xml>; rel="sitemap"; type="application/xml"',
 ].join(", ");
 
