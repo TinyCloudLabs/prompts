@@ -472,14 +472,14 @@ write(
       specVersion: "1.0",
       host: {
         displayName: "TinyCloud",
-        identifier: "agents.tinycloud.xyz",
+        identifier: BASE,
         documentationUrl: url("setup"),
       },
       entries: [
         {
-          identifier: "urn:air:agents.tinycloud.xyz:mcp:tinycloud",
-          type: "application/mcp-server-card+json",
-          url: url(".well-known/mcp/server-card.json"),
+          identifier: "urn:air:agents.tinycloud.xyz:skills:index",
+          type: "application/json",
+          url: url("skills/index.json"),
         },
         ...skills.map((s) => ({
           identifier: `urn:air:agents.tinycloud.xyz:skill:${s.short}`,
@@ -509,13 +509,6 @@ write("_redirects", redirects.join("\n") + "\n");
 const indexed = pages.filter((p) => !p.unlisted);
 const listedPages = indexed.filter((p) => p.url !== "setup");
 
-write(
-  "search-index.json",
-  JSON.stringify([
-    ...indexed.map((p) => ({ title: p.title, url: `/${p.url}`, text: p.text })),
-    ...skills.map((s) => ({ title: s.name, url: `/skills/${s.short}.md`, text: s.text })),
-  ]) + "\n",
-);
 const llms = [
   "# TinyCloud agent abilities",
   "",
@@ -580,7 +573,8 @@ write(
   Access-Control-Allow-Origin: *
   X-Content-Type-Options: nosniff
   Cache-Control: public, max-age=300
-  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/mcp/server-card.json>; rel="service-desc"; type="application/mcp-server-card+json", </.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json", </auth.md>; rel="describedby"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"
+  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json", </auth.md>; rel="describedby"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"
+  Agentmap: ${url(".well-known/ai-catalog.json")}
 
 /*.md
   Content-Type: text/markdown; charset=utf-8
@@ -594,15 +588,8 @@ ${PAGES.filter((p) => !p.html).map((p) => p.url)
 /.well-known/api-catalog
   Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
 
-/.well-known/mcp/server-card.json
-  Content-Type: application/mcp-server-card+json
-  Access-Control-Allow-Origin: *
-
 /.well-known/ai-catalog.json
   Content-Type: application/ai-catalog+json
-
-/.well-known/poppy.json
-  Content-Type: application/json
 
 /auth.md
   Content-Type: text/markdown; charset=utf-8
@@ -666,6 +653,7 @@ write(
   <title>Give your agent abilities · TinyCloud</title>
   <meta name="description" content="${esc(desc)}">
   <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+  <link rel="ai-catalog" type="application/ai-catalog+json" href="${esc(url(".well-known/ai-catalog.json"))}">
 ${style}
 </head>
 <body>
@@ -674,16 +662,6 @@ ${style}
     <p>${esc(desc)}</p>
     <p>Works with agents that can run commands: Claude Code, Codex and OpenCode. Needs Node.js 22.20 or later.</p>
     <p>Everything starts at <a href="/setup"><code>${esc(url("setup"))}</code></a>: what each ability does, what to paste, what you approve and how to undo it.</p>
-
-    <section aria-labelledby="guide-search-heading">
-      <h2 id="guide-search-heading">Search TinyCloud guides and skills</h2>
-      <form id="guide-search">
-        <label for="guide-search-query">Search public setup guides and skills</label>
-        <input id="guide-search-query" name="query" type="search" required>
-        <button type="submit">Search</button>
-      </form>
-      <ol id="guide-search-results" aria-live="polite"></ol>
-    </section>
 
     <h2>How it works</h2>
     <ol>
@@ -709,7 +687,6 @@ ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a
     </ul>
     <p><a href="/matrix">How many steps each skill asks of you</a></p>
   </main>
-  <script src="/webmcp.js" defer></script>
   <footer>Agents: start at <a href="/setup">/setup</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
 </body>
 </html>
