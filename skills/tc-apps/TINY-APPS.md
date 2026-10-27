@@ -71,8 +71,8 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 
    The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
 
-   - Wait until the owner says it's done. If the grant prints `Run "…" auth login --paste`, this computer's sign-in needs renewing: the owner runs that line in their terminal, chooses 1) OpenKey, then runs the grant again. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on. The owner's grant command already has the absolute CLI path; use it, never a bare `tinycloud` (it isn't on the owner's PATH).
-   - The agent never reads the owner's profile to decide this: the owner's grant script checks the sign-in itself and prints the line to run.
+   - Wait until the owner says it's done. If the grant prints `Run "…" --profile owner auth login --paste`, the owner's profile needs signing in again: the owner runs that line in their terminal, chooses 1) OpenKey, then runs the grant again. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on. The owner's grant command already has the absolute CLI path; use it, never a bare `tinycloud` (it isn't on the owner's PATH).
+   - The agent never reads the owner's profile to decide this: the grant script checks the explicit `owner` profile and prints the line to run.
    - **If the owner declines, cancels, or the grant fails** (anything other than the sign-in line above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
    - If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: run announce.sh for Health Log." Then wait. Don't edit their settings files or suggest changing them, and don't run it another way.
 
@@ -182,7 +182,7 @@ Use `SKILL.md` §1a to §9 only for a domain that no catalog app owns. In the ne
 
 ## 7. Profiles
 
-The agent uses one profile, `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. The owner's sign-in keys stay in the owner's default profile: the agent only gets a limited permission slip for its own profile, never reads or uses the owner's profile directory or session, and never passes an owner profile to any command.
+The agent uses one profile, `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. The owner uses a separate profile, `owner`, for the grant in step 3. The agent only gets a limited permission slip for its own profile; it never reads or uses the owner's profile directory or session, or passes the owner profile to an agent command.
 
 The agent never runs `delegation revoke`, `owner-undo.sh`, or the Undo block in `setup/tc-apps.md`: a revoke needs a terminal for its OpenKey approval, and the agent has none.
 
