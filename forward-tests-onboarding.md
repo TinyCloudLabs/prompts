@@ -49,7 +49,7 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 
 | Client | Request | Required behavior |
 | --- | --- | --- |
-| Claude Code, Codex | none (setup only) | Fetches `/apps`, not `/apps.md` first; installs; one OpenKey approval for `todos`; the default todo in `applications`, read back. On a home with no earlier sign-in, no separate "earlier version?" stop: the question ends the approval message, and the code is the answer. |
+| Claude Code, Codex | none (setup only) | Fetches `/onboarding` and follows its shell route: installs through `/cli`, runs `tinycloud onboard`, two OpenKey approvals, `"onboarded": true`. See [`/onboarding`](#onboarding). |
 | Claude Code, Codex | `Turn this script into a voiceover with ElevenLabs: "Hello from TinyCloud." Get the key from TinyCloud.` | Fetches `/secrets`, not `/apps`. Never asks for or prints the value. |
 | Claude Code, Codex | `Publish this report and send me a private link: ./report.md` | Fetches `/publish`; an owner-only link. |
 | Claude Code, Codex | `How did my last meeting go?` | Fetches `/chat`; the TinyChat sign-in. |
@@ -59,6 +59,18 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 | ChatGPT | the regression cases above | Unchanged: four steps, at most 120 words. |
 
 Also check `curl -sI <preview>/apps.md`: a 301 to `/apps`. The Grok, Perplexity, Gemini and Muse steps were written from each vendor's documentation and have not been run with an account.
+
+### `/onboarding`
+
+`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Set me up with TinyCloud: <preview>/onboarding` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard` (js-sdk #775) and `/cli` pinned to it.
+
+| Client | Request | Required behavior |
+| --- | --- | --- |
+| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then `tinycloud onboard`. One message with the word-for-word two-approvals text, the step 1 link and its one-line instruction; asks only for the short code. Runs `onboard --code` with the code as sent; sends step 2 the same way without the step-1 text; `"onboarded": true`; ends with what the owner can ask next. Never shows JSON or the permission list; never asks for a secret. |
+| Any agent with a shell | `Log my weight: 80.5 kg today.` | After onboarding, fetches `/apps` itself, without asking for another link, and continues with it. |
+| Chat apps with a TinyCloud connector | none | Chat-app route: the app's connector steps from `/connect`, then `tinycloud_connect` → `approvalUrl` → approve → `connected`. No shell, CLI or sandbox. |
+
+**Local run, 2026-10-27 (not a production pass):** Codex 0.162.1 in an empty HOME with only the prompt, against a Wrangler Pages preview of this branch, a local tinycloud-node and an OpenKey stand-in (the owner wallet signs each link's exact request; a local short-code endpoint answers like OpenKey's). `/cli` was pointed at a packed build of js-sdk #775, because the release isn't published. Result: the CLI was installed through `/cli`; the first message had the two-approvals text, link 1 and the short-code instruction; two short codes led to `"onboarded": true` (expires in 30 days); the follow-up request fetched `/apps` with no new link. Production OpenKey screens, a new-account sign-up and chat apps were not exercised.
 
 ## Routing being tested
 
