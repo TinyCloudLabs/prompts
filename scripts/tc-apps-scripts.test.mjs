@@ -673,3 +673,157 @@ test("deleting a context record is described the same way in CONTEXT.md, QUICKST
   const undo = readFileSync(join(root, "setup/tc-apps.md"), "utf8").split("\n## Undo\n")[1];
   assert.ok(undo.includes(facts) && undo.includes("session-check.sh\" remove"));
 });
+
+// Setup step 5 copies the skill for every supported agent on this computer, the agents session-check.sh's
+// clients() finds, so a setup in one agent is seen by the others; each copy is checked against SHA256SUMS.
+import { createHash } from "node:crypto";
+const appsGuide = readFileSync(join(root, "setup/tc-apps.md"), "utf8");
+const step5 = appsGuide.split("**Step 5.")[1].split("**Step 6.")[0];
+const [claudeBlock, agentsBlock] = [...step5.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((m) => m[1]);
+const step5Files = claudeBlock.match(/ cp ((?:[\w.-]+ )+)"/)[1].trim().split(" ");
+const download = (h, corrupt) => {
+  const dir = join(h.dir, ".local/share/tc-apps/skill");
+  mkdirSync(dir, { recursive: true });
+  const sums = step5Files.map((f) => {
+    copyFileSync(join(skill, f), join(dir, f));
+    return `${createHash("sha256").update(readFileSync(join(dir, f))).digest("hex")}  ${f}\n`;
+  });
+  writeFileSync(join(dir, "SHA256SUMS"), sums.join(""));
+  if (corrupt) writeFileSync(join(dir, corrupt), "changed after the check\n");
+  return dir;
+};
+const step5Run = (h, block, client, extra = {}) => run(["sh", "-c", block.replaceAll("'<client>'", `'${client}'`)], { HOME: h.dir, ...extra });
+
+test("setup step 5 copies the skill for exactly the agents session-check.sh clients finds, and checks each copy", () => {
+  assert.ok(step5Files.includes("SKILL.md") && step5Files.includes("session-check.sh"));
+  assert.ok(!/Don't copy the skill into both folders|Run only the block for your client/.test(step5));
+  for (const client of ["claude-code", "codex", "opencode"]) {
+    for (let mask = 0; mask < 8; mask++) {
+      const h = fresh();
+      const dl = download(h);
+      [".claude", ".codex", ".config/opencode"].forEach((d, i) => mask & (1 << i) && mkdirSync(join(h.dir, d), { recursive: true }));
+      const found = run(["sh", join(dl, "session-check.sh"), "clients", client], { HOME: h.dir }).stdout.trim().split("\n");
+      assert.equal(found[0], client);
+      for (const block of [claudeBlock, agentsBlock]) {
+        const out = step5Run(h, block, client);
+        assert.equal(out.status, 0, `${client} ${mask}: ${out.stdout}${out.stderr}`);
+      }
+      const label = `${client}, folders ${mask}`;
+      const claudeCopy = join(h.dir, ".claude/skills/tc-apps");
+      const agentsCopy = join(h.dir, ".agents/skills/tc-apps");
+      assert.equal(existsSync(join(claudeCopy, "SKILL.md")), found.includes("claude-code"), label);
+      assert.equal(existsSync(join(agentsCopy, "SKILL.md")), found.includes("codex") || found.includes("opencode"), label);
+      for (const copy of [claudeCopy, agentsCopy].filter((d) => existsSync(d))) {
+        assert.deepEqual(readdirSync(copy).sort(), [...step5Files].sort(), label);
+      }
+    }
+  }
+});
+
+test("setup step 5 uses CLAUDE_CONFIG_DIR for Claude Code's copy, and fails on a copy that doesn't match SHA256SUMS", () => {
+  const h = fresh();
+  download(h);
+  const config = join(h.dir, "claude-config");
+  mkdirSync(config);
+  const out = step5Run(h, claudeBlock, "codex", { CLAUDE_CONFIG_DIR: config });
+  assert.equal(out.status, 0, out.stderr);
+  assert.match(out.stdout, /SKILL\.md: OK/);
+  assert.equal(existsSync(join(config, "skills/tc-apps/CONTEXT.md")), true);
+  assert.equal(existsSync(join(h.dir, ".claude")), false);
+  const skipped = step5Run(h, agentsBlock, "claude-code", { CLAUDE_CONFIG_DIR: config });
+  assert.equal(skipped.status, 0);
+  assert.match(skipped.stdout, /^skipped: /);
+  const bad = fresh();
+  download(bad, "TINY-APPS.md");
+  const failed = step5Run(bad, agentsBlock, "codex");
+  assert.notEqual(failed.status, 0);
+  assert.match(failed.stdout + failed.stderr, /TINY-APPS\.md: FAILED/);
+});
+
+test("session-check.sh clients lists the running agent first, then each agent found, as status's clients line does", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, ".config/opencode"), { recursive: true });
+  assert.equal(sc(h, ["clients", "codex"]).stdout, "codex\nopencode\n");
+  assert.equal(sc(h, ["status", "codex"]).stdout.split("\n")[1], "clients: codex opencode");
+  const config = join(h.dir, "elsewhere");
+  mkdirSync(config);
+  assert.equal(sc(h, ["clients", "opencode"], { CLAUDE_CONFIG_DIR: config }).stdout, "opencode\nclaude-code\n");
+  for (const args of [["clients"], ["clients", "cursor"]]) assert.equal(sc(h, args).status, 2, args.join(" "));
+});
+
+test("session-check.sh names a set CLAUDE_SKILL_DIR's CONTEXT.md in Claude Code's line, and skips it when empty", () => {
+  const h = fresh();
+  const agents = withSkill(h);
+  const plugin = withSkill(h, "plugin/skills/tc-apps");
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".codex"));
+  assert.equal(sc(h, ["add", "codex"], { CLAUDE_SKILL_DIR: plugin }).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(plugin)}\n`);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.md"), "utf8"), `${lineFor(agents)}\n`, "Codex keeps its own copy");
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(sc(h, ["add", "claude-code"], { CLAUDE_SKILL_DIR: "" }).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(agents)}\n`);
+});
+
+// Claude Code replaces the exact text ${CLAUDE_SKILL_DIR} in a SKILL.md it loads, for a personal, project or
+// plugin skill (https://code.claude.com/docs/en/skills#available-string-substitutions), but not ${CLAUDE_SKILL_DIR:-},
+// and it doesn't set it in the shell. So SKILL.md's loops use the exact text, and the loops in files read with
+// cat (TINY-APPS.md, CONTEXT.md, the setup page) read the variable with :- and skip it when it's empty.
+const skillDirLoops = (text) => text.split("\n").filter((l) => /^\s*for d in .*tc-apps/.test(l));
+test("SKILL.md's folder loops start with Claude Code's ${CLAUDE_SKILL_DIR}, then the installs, then the download folder", () => {
+  const skillMd = readFileSync(join(skill, "SKILL.md"), "utf8");
+  const loops = skillDirLoops(skillMd);
+  assert.equal(loops.length, 5);
+  const dirs = '"${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"';
+  for (const loop of loops) assert.ok(loop.startsWith(`for d in ${dirs}; do if [ -n "$d" ] && [ -f "$d/`), loop);
+  assert.ok(!skillMd.includes("CLAUDE_SKILL_DIR:-"), "Claude Code doesn't fill in ${CLAUDE_SKILL_DIR:-}");
+  const contextLoop = loops[0].replace('cat "$d/CONTEXT.md"', 'echo "$d"');
+  const where = (h, loop, extra = {}) => run(["sh", "-c", loop], { HOME: h.dir, ...extra }).stdout.trim();
+  const h = fresh();
+  const agents = withSkill(h);
+  const plugin = withSkill(h, "plugin/skills/tc-apps");
+  assert.equal(where(h, contextLoop), agents, "not filled in, and unset in the shell: skipped");
+  withSkill(h, ".claude/skills/tc-apps");
+  assert.equal(where(h, contextLoop.replace("${CLAUDE_SKILL_DIR}", plugin)), plugin, "filled in by Claude Code: first");
+  const only = fresh();
+  const dl = withSkill(only, ".local/share/tc-apps/skill");
+  assert.equal(where(only, contextLoop), dl);
+});
+
+test("the folder loops in TINY-APPS.md, CONTEXT.md and the setup page try a set CLAUDE_SKILL_DIR first and skip it when empty", () => {
+  const loops = [join(skill, "TINY-APPS.md"), join(skill, "CONTEXT.md"), join(root, "setup/tc-apps.md")].flatMap((f) => skillDirLoops(readFileSync(f, "utf8")));
+  assert.equal(loops.length, 3);
+  const dirs = '"${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"';
+  for (const loop of loops) assert.ok(loop.trim().startsWith(`for d in ${dirs}; do if [ -n "$d" ] && [ -f "$d/`), loop);
+  const probe = loops[0].trim().replace(/then sh "\$d\/announce\.sh" healthlog/, 'then echo "$d"').replace('[ -f "$d/announce.sh" ]', '[ -f "$d/CONTEXT.md" ]');
+  const h = fresh();
+  const agents = withSkill(h);
+  const plugin = withSkill(h, "plugin/skills/tc-apps");
+  assert.equal(run(["sh", "-uc", probe], { HOME: h.dir }).stdout.trim(), agents);
+  assert.equal(run(["sh", "-c", probe], { HOME: h.dir, CLAUDE_SKILL_DIR: "" }).stdout.trim(), agents);
+  assert.equal(run(["sh", "-c", probe], { HOME: h.dir, CLAUDE_SKILL_DIR: plugin }).stdout.trim(), plugin);
+});
+
+test("setup step 5 skips Claude Code's copy when the TinyCloud plugin provides the skill, and Undo removes each copy", () => {
+  assert.match(step5, /`tinycloud:tc-apps`[^\n]*skip the Claude Code block/);
+  assert.match(step5, /A copy your client doesn't allow[^\n]*don't run it another way[^\n]*one command to run in their own terminal/);
+  const undo = appsGuide.split("\n## Undo\n")[1];
+  assert.ok(undo.includes("`${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` for Claude Code and `~/.agents/skills/tc-apps` for Codex and OpenCode"));
+  assert.match(undo, /delete both folders if both exist/);
+});
+
+// Two agents once filed the same coffee order as fact/coffee-order and preference/coffee-order.
+test("CONTEXT.md files a coffee order as a preference, a birthday or home city as a fact, and updates a subject under any kind", () => {
+  const context = readFileSync(join(skill, "CONTEXT.md"), "utf8");
+  const boundary = context.split("\n").find((l) => l.startsWith("- **Fact or preference.**"));
+  assert.ok(boundary, "CONTEXT.md §2 defines fact and preference");
+  assert.ok(boundary.includes("coffee order (`preference/coffee-order`)"), boundary);
+  assert.ok(boundary.includes("birthday (`fact/birthday`)") && boundary.includes("home city (`fact/home-city`)"), boundary);
+  const write = context.split("## 4. Write")[1].split("## 5.")[0];
+  assert.match(write, /same subject under every kind/);
+  assert.match(write, /never write a second record for the same subject/);
+  const runbook = readFileSync(join(root, "forward-tests-tc-apps.md"), "utf8").split("## Follow-up test: context across agents")[1];
+  assert.match(runbook, /\| A \|[^\n]*writes `preference\/coffee-order`/);
+  assert.match(runbook, /\| B \|[^\n]*gets `preference\/coffee-order`/);
+});

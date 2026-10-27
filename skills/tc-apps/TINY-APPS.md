@@ -65,7 +65,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 3. **The owner's approval (the owner's terminal).** Run this one command. It prints the approval state and the owner's message; the agent runs nothing else for this step:
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
    Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, copied exactly, character for character, once, in one code fence, with nothing before it. Do not reword any line of it. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.

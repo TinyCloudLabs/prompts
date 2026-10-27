@@ -20,7 +20,7 @@ Add the setup link to your first request:
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
 2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tinycloud`, a short script that runs this CLI and retries when TinyCloud drops a connection.
-3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
+3. It installs the skill for your user, for each coding agent it finds on this computer, so every project folder and every agent sees it, not only the one you set it up in: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode. If your agent isn't allowed to copy it for one of them, it gives you the command to run yourself. If Claude Code has the skill from the TinyCloud plugin, a setup in Claude Code doesn't copy it there.
 4. It reads the skill and signs you in, as below.
 
 No shell profile to edit, and nothing to restart except OpenCode, once (see below). Afterwards, any new conversation in any folder can use your apps without the link.
@@ -150,4 +150,4 @@ Good to know:
 - When your TinyCloud storage is full, saves fail with `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` and nothing is saved; your records are still readable. The agent tells you and doesn't retry. To keep saving, upgrade at https://account.tinycloud.xyz/storage; deleting records doesn't free space yet.
 - Two agents changing the same kind's description in the same few seconds can lose one change; the next agent re-adds it.
 - `tinycloud-explorer` doesn't show these apps yet.
-- Claude Code doesn't read `~/.agents/skills`. After a setup in Codex or OpenCode, Claude Code reaches your context only through the session line, which names the skill's file.
+- Claude Code doesn't read `~/.agents/skills`, so the setup copies the skill into the folder of each agent it finds. An agent you install after the setup doesn't have the skill until you run the setup again in any agent. OpenCode reads both folders and logs a duplicate-name warning; the two copies are the same.

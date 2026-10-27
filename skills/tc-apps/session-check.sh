@@ -3,6 +3,8 @@
 # computer, asking each new session to check the owner's TinyCloud context first (CONTEXT.md). It only
 # ever adds, finds or removes lines that end with the marker below, and never changes another line.
 #   sh session-check.sh status <client>   prints on, declined or off, then "clients: …", the agents `add` covers
+#   sh session-check.sh clients <client>  prints those agents, one per line, <client> first: the setup (step 5)
+#                                         copies the skill for each of them, so a setup in one is seen by all
 #   sh session-check.sh add <client>      adds the line for <client> (the agent running it) and every other agent found here
 #   sh session-check.sh remove            removes the marked line from every file that has it
 #   sh session-check.sh decline           records the owner's "no" on this computer, so the setup doesn't ask again
@@ -21,7 +23,7 @@ CODEX_DIR=${CODEX_HOME:-$HOME/.codex}
 OPENCODE_DIR=$HOME/.config/opencode
 SELF=$(cd "$(dirname "$0")" && pwd)
 
-usage() { echo 'usage: sh session-check.sh status|add <claude-code|codex|opencode>, or remove, or decline' >&2; exit 2; }
+usage() { echo 'usage: sh session-check.sh status|add|clients <claude-code|codex|opencode>, or remove, or decline' >&2; exit 2; }
 client_ok() { case "${1:-}" in claude-code|codex|opencode) ;; *) usage ;; esac; }
 
 file_for() {
@@ -32,11 +34,14 @@ file_for() {
   esac
 }
 dir_for() { case "$1" in claude-code) echo "$CLAUDE_DIR" ;; codex) echo "$CODEX_DIR" ;; opencode) echo "$OPENCODE_DIR" ;; esac; }
-# The skill folder whose CONTEXT.md the line names: the agent's own install, else any install, else this script's folder.
+# The skill folder whose CONTEXT.md the line names: the agent's own install, else any install, else this script's
+# folder. CLAUDE_SKILL_DIR, if set and not empty, names a Claude Code skill folder, such as the TinyCloud plugin's,
+# so it comes first for Claude Code, and after the agent's own install for the others. Claude Code fills in that
+# name only in a SKILL.md it loads, not in the shell, so here it is empty unless the caller sets it.
 skill_for() {
-  case "$1" in claude-code) own=$CLAUDE_DIR/skills/tc-apps ;; *) own=$HOME/.agents/skills/tc-apps ;; esac
-  for d in "$own" "$CLAUDE_DIR/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$SELF"; do
-    if [ -f "$d/CONTEXT.md" ]; then echo "$d"; return; fi
+  case "$1" in claude-code) set -- "${CLAUDE_SKILL_DIR:-}" "$CLAUDE_DIR/skills/tc-apps" ;; *) set -- "$HOME/.agents/skills/tc-apps" "${CLAUDE_SKILL_DIR:-}" ;; esac
+  for d in "$@" "$CLAUDE_DIR/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$SELF"; do
+    if [ -n "$d" ] && [ -f "$d/CONTEXT.md" ]; then echo "$d"; return; fi
   done
   echo "$SELF"
 }
@@ -59,6 +64,10 @@ case "$cmd" in
     elif [ "$(cat "$STATE/session-check" 2>/dev/null)" = no ]; then echo declined
     else echo off; fi
     echo "clients: $(clients "$2" | tr '\n' ' ' | sed 's/ $//')"
+    ;;
+  clients)
+    client_ok "${2:-}"
+    clients "$2"
     ;;
   add)
     client_ok "${2:-}"

@@ -4,11 +4,11 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI into a folder only this skill uses, and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
+- **What it does:** installs the TinyCloud CLI into a folder only this skill uses, and the `tc-apps` skill for your user, for each of your coding agents on this computer (Claude Code, Codex, OpenCode), so a setup in one is seen by the others. Then it carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into Claude Code, Codex or OpenCode:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may ask you to confirm a step. See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox blocks network access and writes outside the project, so the install can't run there. Approve the one escalation Codex asks for, or start Codex with full access (`codex --sandbox danger-full-access`).
-- **You approve:** for Health Log or Recipes, one OpenKey screen for the app, or two the first time on this computer. The first is your own sign-in to TinyCloud on this computer, for 7 days, so it lists access to your whole space: your data, and the delegations you've given. The second gives your agent access to just Health Log, for 7 days. Your agent tells you before they open. For any other record you track, such as workouts, goals or todos, one OpenKey screen per app, the first time you use it. It lets the agents on this computer keep that app's records in its own folder of your `applications` space, for 30 days, and nothing else; the next app asks again. An app that already keeps records from an earlier version needs no new approval until you ask to move it (see [Moving records from an earlier version](#moving-records-from-an-earlier-version)). OpenKey shows a code: paste it in the chat, or into your own terminal. If you later ask questions over many records of one app, the agent may ask for one more approval, for a fast, searchable copy of that app's records. If your browser asks to connect to devices on your network, choose Allow. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat. Something you ask an agent to remember goes to your context app, which asks for its own approval the first time. At the end of setup, one yes/no question: should new sessions of your agents on this computer check your TinyCloud context first? Yes adds one marked line to their instructions and, if your context app isn't approved yet, shows one more OpenKey screen for it, for 30 days; no is remembered, and you aren't asked again.
+- **You approve:** for Health Log or Recipes, one OpenKey screen for the app, or two the first time on this computer. The first is your own sign-in to TinyCloud on this computer, for 7 days, so it lists access to your whole space: your data, and the delegations you've given. The second gives your agent access to just Health Log, for 7 days. Your agent tells you before they open. For any other record you track, such as workouts, goals or todos, one OpenKey screen per app, the first time you use it. It lets the agents on this computer keep that app's records in its own folder of your `applications` space, for 30 days, and nothing else; the next app asks again. An app that already keeps records from an earlier version needs no new approval until you ask to move it (see [Moving records from an earlier version](#moving-records-from-an-earlier-version)). OpenKey shows a code: paste it in the chat, or into your own terminal. If you later ask questions over many records of one app, the agent may ask for one more approval, for a fast, searchable copy of that app's records. If your browser asks to connect to devices on your network, choose Allow. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat. Copying the skill for your other agents needs no approval; if your agent isn't allowed to copy it for one of them, it gives you the one command to run in your own terminal. Something you ask an agent to remember goes to your context app, which asks for its own approval the first time. At the end of setup, one yes/no question: should new sessions of your agents on this computer check your TinyCloud context first? Yes adds one marked line to their instructions and, if your context app isn't approved yet, shows one more OpenKey screen for it, for 30 days; no is remembered, and you aren't asked again.
 - **Undo:** see [Undo](#undo).
 
 ## Use it in Claude (web, iOS, Android)
@@ -27,7 +27,7 @@ If the owner only asked for setup or named no record, save one default record wi
 
 Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode`.
 
-Run each block as one shell tool call from your project folder, exactly as written. Where a step has a block for each client, run only the block for yours. Install nothing else: the only installs are step 2's and step 2b's `npm install --prefix`; never `npm install -g`, `sudo` or `curl … | sh`. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
+Run each block as one shell tool call from your project folder, exactly as written. Where a step has a block for each client, run only the block for yours; step 5 is the exception, as it says. Install nothing else: the only installs are step 2's and step 2b's `npm install --prefix`; never `npm install -g`, `sudo` or `curl … | sh`. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
 
 ## 1. Check
 
@@ -43,7 +43,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycloud" 
 
 ## 2. Install
 
-Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written, using only your client's block where a step has one for each client. The skill's files are fetched as plain files, checked against a checksum list and copied. Stop at the first step that fails.
+Tell the owner in one line that you're installing the TinyCloud CLI and the `tc-apps` skill. Then run these steps in order, each as its own shell call, exactly as written, using only your client's block where a step has one for each client (step 5 runs both). The skill's files are fetched as plain files, checked against a checksum list and copied. Stop at the first step that fails.
 
 If `agents.tinycloud.xyz` does not answer, stop and say so, as described below.
 
@@ -77,19 +77,22 @@ cd "$HOME/.local/share/tc-apps/skill" && curl -fsSL -O "https://agents.tinycloud
 cd "$HOME/.local/share/tc-apps/skill" && { sha256sum -c SHA256SUMS || shasum -a 256 -c SHA256SUMS; }
 ```
 
-**Step 5. Put the skill where your client looks for skills,** for your user, so every project folder sees it. Run only the block for your client. Don't copy the skill into both folders.
+**Step 5. Put the skill where each of your agents looks for skills,** for your user, so every project folder sees it, in every supported agent on this computer, not only yours. Claude Code reads only its own folder; Codex and OpenCode read `~/.agents/skills`. Run both blocks, your own client's first. Each one copies the skill if one of its agents is yours or is on this computer (the agents that `session-check.sh clients` lists, which §4's question names too), and checks the copy against the checksum list: every file must print `OK`. Otherwise it prints `skipped: …`.
 
 Claude Code:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md CONTEXT.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh session-check.sh "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && if sh session-check.sh clients '<client>' | grep -qw claude-code; then mkdir -p "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && cp SKILL.md CONTEXT.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh session-check.sh "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/" && cd "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" && { sha256sum -c "$HOME/.local/share/tc-apps/skill/SHA256SUMS" || shasum -a 256 -c "$HOME/.local/share/tc-apps/skill/SHA256SUMS"; }; else echo 'skipped: no Claude Code on this computer'; fi
 ```
 
 Codex and OpenCode:
 
 ```sh
-cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md CONTEXT.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh session-check.sh "$HOME/.agents/skills/tc-apps/"
+cd "$HOME/.local/share/tc-apps/skill" && if sh session-check.sh clients '<client>' | grep -qwE 'codex|opencode'; then mkdir -p "$HOME/.agents/skills/tc-apps" && cp SKILL.md CONTEXT.md LEGACY.md LEGACY-SQL.md QUICKSTART.md SQL.md TINY-APPS.md tc-wrapper.sh announce.sh owner-grant.sh owner-undo.sh migrate.sh layout.sh session-check.sh "$HOME/.agents/skills/tc-apps/" && cd "$HOME/.agents/skills/tc-apps" && { sha256sum -c "$HOME/.local/share/tc-apps/skill/SHA256SUMS" || shasum -a 256 -c "$HOME/.local/share/tc-apps/skill/SHA256SUMS"; }; else echo 'skipped: no Codex or OpenCode on this computer'; fi
 ```
+
+- **The TinyCloud plugin:** if Claude Code's skill list already has `tinycloud:tc-apps`, from the [TinyCloud plugin](https://github.com/TinyCloudLabs/claude-code-plugins), skip the Claude Code block, and in §3 load that skill instead: the plugin provides it, and a second copy would load twice.
+- **A copy your client doesn't allow,** for example in Claude Code's auto mode: don't run it another way, and don't stop the setup. Carry on with the other block and §3, and tell the owner, in your last message, that block with `<client>` filled in, as the one command to run in their own terminal so that agent has the skill in later sessions. If it was your own client's copy, read the skill from the download folder in §3, for this conversation only.
 
 **Step 6. The helper script.** `cli-path` names the CLI (`TC_BIN` if the owner set it, otherwise the one from step 2). `tinycloud` is the skill's `tc-wrapper.sh`, copied from the download: a short script that runs that CLI and quietly retries when TinyCloud drops a connection. An earlier `tc` copy in that folder keeps working. The skill uses it when `TC_BIN` isn't set; with `TC_BIN` set, it runs that CLI directly.
 
@@ -107,16 +110,16 @@ printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycl
 It takes about 30 s, almost all of it step 2.
 
 If something goes wrong:
-- **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
-- **Claude Code (or your client) denies a step or the sign-in, or asks to confirm it.** Show the owner the step and what it does: it installs the TinyCloud CLI and this skill for their user, or the sign-in saves a key and a 30-day session in their TinyCloud profile folder. Ask them to reply naming the step, as in <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it>, and run it again only once they agree. Don't edit their settings files, and don't run the step another way.
-- **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder.
+- **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 fail there. Run steps 1 to 7 as one shell call, with both step 5 blocks, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If Codex can't escalate (for example a read-only sandbox with approvals off), stop and tell the owner to start Codex with `--sandbox danger-full-access` and send the request again.
+- **Claude Code (or your client) denies a step or the sign-in, or asks to confirm it.** Show the owner the step and what it does: it installs the TinyCloud CLI and this skill for their user, or the sign-in saves a key and a 30-day session in their TinyCloud profile folder. Ask them to reply naming the step, as in <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it>, and run it again only once they agree. Don't edit their settings files, and don't run the step another way. This doesn't cover the step 5 copies: see step 5.
+- **A step fails, or step 4 or a step 5 copy doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder. A copy your client doesn't allow is covered in step 5, not here.
 - **`agents.tinycloud.xyz` does not answer** (step 3 fails): stop and say so to the owner. Don't switch to another source.
 
 Wait until step 7 has printed its version before §3: the skill doesn't exist until then.
 
 ## 3. Carry on with the skill
 
-Read the installed skill in full, with the line for your client:
+Read the installed skill in full, with the line for your client. If your client didn't allow its own copy in step 5, read the download folder's copy with the last line:
 
 ```sh
 cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"
@@ -126,7 +129,11 @@ cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"
 cat "$HOME/.agents/skills/tc-apps/SKILL.md"
 ```
 
-The first is for Claude Code, the second for Codex and OpenCode. Your client may not list the new skill until it restarts; you don't need it to.
+```sh
+cat "$HOME/.local/share/tc-apps/skill/SKILL.md"
+```
+
+The first is for Claude Code, the second for Codex and OpenCode, and the third is the download folder's copy, for this conversation only. Your client may not list the new skill until it restarts; you don't need it to.
 
 Follow the skill now for the owner's request, from its §1. When you've finished it, end your last message with §4's question.
 
@@ -137,7 +144,7 @@ Follow the skill now for the owner's request, from its §1. When you've finished
 Ask this once, at the end of your last message, after the owner's request is done; don't hold up the request for it. First run the check, with your client as `<client>` (`claude-code`, `codex` or `opencode`):
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" status '<client>'; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" status '<client>'; break; fi; done
 ```
 
 - `on` or `declined` → don't ask. Don't ask either if this conversation's context key list (`CONTEXT.md` §3) has `preference/session-check`.
@@ -200,6 +207,6 @@ To stop new sessions checking your TinyCloud context, run this before you delete
 sh "$HOME/.local/share/tc-apps/skill/session-check.sh" remove
 ```
 
-To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
+To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and each copy of the skill: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` for Claude Code and `~/.agents/skills/tc-apps` for Codex and OpenCode. The setup copies it for every agent it finds on this computer, so delete both folders if both exist. If Claude Code has the skill from the TinyCloud plugin, run `/plugin uninstall tinycloud@tinycloudlabs` there too. Your records stay in your TinyCloud.
 
 To delete context records, ask an agent: "Forget my coffee order", or "Clear my TinyCloud context". Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until history collapse ships (TC-1470), so don't put anything in context you'd need erased.
