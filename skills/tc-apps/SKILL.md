@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.2.1"
+  version: "0.2.2"
 ---
 
 # Personal apps in TinyCloud
@@ -35,6 +35,8 @@ Operator-set, never change or unset:
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
+Health Log also requires `TC_APPS_OWNER_DID` and `TC_APPS_TIMEZONE` in its shell environment: the expected owner DID and IANA timezone explicitly supplied by the owner/operator. Preserve operator-provided values; otherwise ask the owner for them. Never derive them from a grant, session, saved space or host timezone. Follow `TINY-APPS.md` for the account and clock guard before accessing meal rows.
+
 How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes. `<APP>` is the app's name: lowercase `a-z`, `0-9` and `-`, starting with a letter, such as `fitness`.
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly; `<TC_BETA>` is the line §1a prints. Don't put `$TC_BIN` back, and keep the assignments first, before `umask 077`: Claude Code can remember an approval only for commands whose paths it can work out from the block itself. Blocks of the new layout start `TC_BIN='<TC_BETA>'`; blocks of `LEGACY.md` start `TC_BIN='<TC_BIN>'`. Never mix them for one app.
@@ -56,7 +58,7 @@ date -u +%FT%TZ
 ```
 
 It prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`, one per line.
-- `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id.
+- `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id, for generic apps. Health Log instead uses its validated owner timezone and fresh clock from `healthlog-context.mjs` (`TINY-APPS.md` §4).
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
 - `TC_BIN is unset` → the setup hasn't run on this computer, or ran before it installed `~/.local/share/tc-apps/tinycloud`: stop, and ask the owner to send their request again with the setup link.
 
@@ -168,7 +170,7 @@ TC_BIN='<TC_BETA>'; umask 077
 
 ## 4. Sign in to one app
 
-Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval through the browser sign-in with a pasted code. It prints a link and returns; the owner approves on OpenKey and sends you the code OpenKey shows (4b).
+Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval through the browser sign-in with a pasted code. It prints a link and returns; the owner approves on OpenKey and sends you the code OpenKey shows (4b). This paste flow is the default for remote agents, including Paseo, SSH and cloud environments: a browser callback to `127.0.0.1` reaches the owner's computer, not the remote CLI. If setup also offers a detached callback and a paste command, use the paste command remotely. When the CLI and browser are on the same computer, the local callback remains available.
 
 **4a. Get the approval link.** `<Title>` is the app's title: letters, digits and spaces only.
 
