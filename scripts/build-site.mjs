@@ -178,7 +178,7 @@ const SKILLS = [
         ],
         [
           "## Account and KV exploration",
-          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, authenticate through OpenKey using `tinycloud_connect`: open its returned `approvalUrl`, approve, then call `tinycloud_connect` again. For operation authorization, proceed only when the result includes `approval.url`; if it does not, stop and report the result. The `tc auth request` / `tc auth import` and `tinycloud_auth_import` instructions below are for local stdio. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
+          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for their approval, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route. The `tc auth request` / `tc auth import` and `tinycloud_auth_import` instructions below are for local stdio only. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
         ],
       ],
     },
