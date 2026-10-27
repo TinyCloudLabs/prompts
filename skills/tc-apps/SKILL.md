@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.2.2"
+  version: "0.3.0"
 ---
 
 # Personal apps in TinyCloud
@@ -27,11 +27,11 @@ for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOM
 
 If a catalog app owns the domain, follow its fast path in that file: it checks the saved grant first, and no approval screen opens while the grant is live. Don't start the per-app sign-in (§3, §4 below) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
 
-An app is in one of two layouts, and §1a decides which, per app. **New layout:** the records are in the owner's `applications` space, one app per area of life (`fitness`, `todos`, …), each under its own key root, `xyz.tinycloud.tinyapps.<app>/`, with its own CLI profile, `tinyapp-<app>`, and its own approval: the owner approves one app at a time, for 30 days, from an OpenKey link and code you show them, and the approval covers only that app's folder. A catalog inside each app describes it, and a small discovery entry for each app lets any agent in any conversation find what exists. An optional SQL index answers questions over many records of one app at once (§7). **Legacy mode:** the app's records are in the `default` space under `xyz.tinycloud.agent-data/`, written by an earlier version of this skill. It keeps working exactly as before, through `LEGACY.md`, until the owner moves the app (§9) and the move is verified. You never move records yourself and never delete them.
+An app is in one of two layouts, and §1a decides which, per app. **New layout:** the records are in the owner's `applications` space, one app per area of life (`fitness`, `todos`, …), each under its own key root, `xyz.tinycloud.tinyapps.<app>/`, with the owner's onboarded CLI profile (`tinycloud onboard`: 30 days, read and change the whole `applications` space) when it covers the app, with no new approval (§3); otherwise with its own CLI profile, `tinyapp-<app>`, and its own approval: the owner approves that one app, for 30 days, from an OpenKey link and a short code you show them, and the approval covers only that app's folder. A catalog inside each app describes it, and a small discovery entry for each app lets any agent in any conversation find what exists. An optional SQL index answers questions over many records of one app at once (§7). **Legacy mode:** the app's records are in the `default` space under `xyz.tinycloud.agent-data/`, written by an earlier version of this skill. It keeps working exactly as before, through `LEGACY.md`, until the owner moves the app (§9) and the move is verified. You never move records yourself and never delete them.
 
 Operator-set, never change or unset:
 - `TC_BIN`: absolute path to the TinyCloud CLI (`tinycloud`), CLI `1.3.4` or newer, used for Health Log, Recipes and legacy mode. Optional: without it, §1 finds `~/.local/share/tc-apps/tinycloud` (or an earlier install's `tc` in the same folder), the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
-- `TC_BETA_BIN`: absolute path to TinyCloud CLI `1.5.0-beta.2` or newer, used only for the new layout (§3 to §9 and `SQL.md`), because the create-only write and the browser sign-in of the new layout need it. Optional: without it, §1a finds the copy the setup installs in `~/.local/share/tc-apps/cli-beta`. It has no retry script: if a command fails with `NETWORK_ERROR`, run it once more.
+- `TC_BETA_BIN`: absolute path to TinyCloud CLI `1.5.0-beta.20` or newer, used only for the new layout (§3 to §9 and `SQL.md`), because the create-only write, the paste-code sign-in and the onboarded-grant check of the new layout need it. Optional: without it, §1a finds the copy the setup installs in `~/.local/share/tc-apps/cli-beta`. It has no retry script: if a command fails with `NETWORK_ERROR`, run it once more.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
@@ -46,7 +46,7 @@ How to run the blocks:
 
 ## 0. Route the request
 
-The catalog in `TINY-APPS.md` (read first, per the top of this file) decides the target for any request about the owner's data: if a catalog app owns the domain, its routing there decides, and you log and show the result as it says. Use this skill's §1 to §9 only for a domain no catalog app owns. The owner's profile is never yours to read or use.
+The catalog in `TINY-APPS.md` (read first, per the top of this file) decides the target for any request about the owner's data: if a catalog app owns the domain, its routing there decides, and you log and show the result as it says. Use this skill's §1 to §9 only for a domain no catalog app owns. The owner's profile is never yours to read or use, except the onboarded profile that §3's check names, and only through the blocks of this skill.
 
 ## 1. Read the paths and the time
 
@@ -138,7 +138,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
    - Name a kind for the category and put the specifics in fields: `session` with a `sport` field, not `run` and `bouldering`. The next sport is then a new value, not a new kind.
    - Make a new kind only when the records have a different shape, meaning other main fields, not just another subject. Running and bouldering share `session` (`sport`, `minutes`, `km`); strength exercises with `sets`, `reps` and `kg` are their own kind, like `lift` above.
    - Ask the owner only when two apps fit, or when nothing clearly fits and the request is ambiguous.
-   - Otherwise create what's missing, and tell the owner in one line, e.g. "I started a `books` app." or "I added a `goal` kind to `fitness`." A new app needs its own approval first (§4), and only after §3 found no entry and no old records.
+   - Otherwise create what's missing, and tell the owner in one line, e.g. "I started a `books` app." or "I added a `goal` kind to `fitness`." A new app needs the per-app approval (§4) first only when the owner isn't onboarded (§3), and only after §3 found no entry and no old records.
 2. **Catalog first.** Write a new app's catalog record and its first kind record, then its discovery entry, or a new kind record, before the first record that uses them.
 3. **New details become new fields.** When the owner gives a detail the kind doesn't have yet, add it to the kind's `fields` with "(added <date>)", then use it. Older records simply lack it.
 4. **Never rename a field or change its unit or meaning.** Add a new field instead. Convert the owner's units to the kind's (pounds to `kg`), and say so. If a kind truly has to change shape, raise its `v` and describe the old version under `history`; never rewrite old records to match.
@@ -150,18 +150,26 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 
 Run this for an app that §1a says is `new`, once per conversation. It checks the app's own sign-in, then looks for the app's discovery entry.
 
+First check whether the owner's onboarded profile covers the app (`tinycloud onboard`: 30 days, read and change the whole `applications` space). It only reads and opens no screen. It prints `ONBOARDED <name> <space>` or `NOT_ONBOARDED <reason>`.
+
+```sh
+TC_BETA_BIN='<TC_BETA>' sh "$HOME/.local/share/tc-apps/skill/onboarded.sh" 'tinycloud.kv:applications:xyz.tinycloud.tinyapps.<APP>/:get,put,list,del' 'tinycloud.kv:applications:xyz.tinycloud.tinyapps.catalog/:get,list' 'tinycloud.kv:applications:xyz.tinycloud.tinyapps.catalog/<APP>/:put'
+```
+
+`ONBOARDED …` → `<PROFILE>` is the second word, `<name>`, for every block of this app, and no approval is needed: skip §4. `NOT_ONBOARDED …` → `<PROFILE>` is `tinyapp-<APP>`, and §4 is its approval. Don't run `tinycloud onboard` yourself, and don't print the reason to the owner.
+
 ```sh
 TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" --version
-"$TC_BIN" kv get 'xyz.tinycloud.tinyapps.catalog/<APP>/entry' --space applications --json --profile tinyapp-<APP>
-"$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/catalog/' --space applications --all --json --profile tinyapp-<APP>
+"$TC_BIN" kv get 'xyz.tinycloud.tinyapps.catalog/<APP>/entry' --space applications --json --profile <PROFILE>
+"$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/catalog/' --space applications --all --json --profile <PROFILE>
 "$TC_BIN" context --json --profile tinyapp-<APP>-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.5.0-beta.2` or newer. Otherwise stop and tell the owner that `<TC_BETA>` must be TinyCloud CLI `1.5.0-beta.2` or newer: for the setup's own copy, they send their request with the setup link again, which installs it; a `TC_BETA_BIN` they set themselves, they update.
-- `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the entry read, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4 for this app, then run this block again.
+- The first line must be `1.5.0-beta.20` or newer. Otherwise stop and tell the owner that `<TC_BETA>` must be TinyCloud CLI `1.5.0-beta.20` or newer: for the setup's own copy, they send their request with the setup link again, which installs it; a `TC_BETA_BIN` they set themselves, they update.
+- `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the entry read, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → for `<PROFILE>` = `tinyapp-<APP>`, §4 for this app, then run this block again; for an onboarded profile, run the check above again, which then says `NOT_ONBOARDED`.
 - The entry prints a record, and the list prints `"keys"` → the app exists in `applications`: use it. The keys are the app's kind records, `<ID>/catalog/<kind>`; `"keys": []` means no kinds yet. Read the app record `<ID>/catalog` and the kind records you need with §5's blocks. For "what do you keep for me?", list the entries under `xyz.tinycloud.tinyapps.catalog/` with any app's profile (`"$TC_BIN" profile list` names them: `tinyapp-<app>`), then read each app's catalog records the same way; also list the old catalog (`LEGACY.md` §3) for apps still in legacy mode.
-- The entry says `NOT_FOUND` → this app has no entry in `applications` yet: a new app (§1a found no old records, or the owner's move is verified and the entry is being read for the first time). Continue with §4 (its approval) if the sign-in is missing, then rule 1 and rule 2 of §2. If a verified receipt exists for this app but the entry is missing, write nothing and tell the owner.
+- The entry says `NOT_FOUND` → this app has no entry in `applications` yet: a new app (§1a found no old records, or the owner's move is verified and the entry is being read for the first time). Continue with §4 (its approval) if `<PROFILE>` is `tinyapp-<APP>` and the sign-in is missing, then rule 1 and rule 2 of §2. If a verified receipt exists for this app but the entry is missing, write nothing and tell the owner.
 - `SPACE_NOT_HOSTED` → a new account's space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or more powerful sign-in, `--replace-session` or `tc space host`.
 - The last line is the fast copy's state (§7). Carry on whatever it says:
   - `"state": "present"` → the fast copy is signed in.
@@ -170,7 +178,7 @@ TC_BIN='<TC_BETA>'; umask 077
 
 ## 4. Sign in to one app
 
-Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval through the browser sign-in with a pasted code. It prints a link and returns; the owner approves on OpenKey and sends you the code OpenKey shows (4b). This paste flow is the default for remote agents, including Paseo, SSH and cloud environments: a browser callback to `127.0.0.1` reaches the owner's computer, not the remote CLI. If setup also offers a detached callback and a paste command, use the paste command remotely. When the CLI and browser are on the same computer, the local callback remains available.
+Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval with a pasted code. It is for an owner who is not onboarded (§3). It prints a link and returns; the owner approves on OpenKey and sends you the code OpenKey shows (4b). Pasting the short code is the only way this sign-in returns, on every computer and for every agent.
 
 **4a. Get the approval link.** `<Title>` is the app's title: letters, digits and spaces only.
 
@@ -189,7 +197,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/tinyapp-<APP>-login.err" | head 
 
 - **Any other code** → §8; `SESSION_IN_USE` means this app is already signed in.
 
-Don't open the link yourself, and run 4a only once per approval. Each app has its own approval: never ask for one that covers several apps, and never ask for access to the whole `applications` space.
+Don't open the link yourself, and run 4a only once per approval. This approval covers one app: never ask for one that covers several apps, and never ask for access to the whole `applications` space. An owner who ran `tinycloud onboard` has already given it (§3).
 
 **4b. Finish with the owner's code.** The code belongs to this app's own profile, so the owner can send it to you in the chat. The CLI reads only the first non-blank line, so the code must go on one line: remove any code fence, quotes or spaces around it, and join line breaks, before the heredoc. A quoted heredoc keeps every character of the code as it is; `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`, used on both marker lines.
 
@@ -217,7 +225,7 @@ One record:
 
 ```sh
 TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" kv get '<key>' --space applications --json --profile tinyapp-<APP>
+"$TC_BIN" kv get '<key>' --space applications --json --profile <PROFILE>
 ```
 
 It prints `{"key": …, "data": <record>, …}`. `NOT_FOUND` → there's no record at that key.
@@ -226,7 +234,7 @@ What's in one or more folders, side by side:
 
 ```sh
 TC_BIN='<TC_BETA>'; umask 077
-printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} "$TC_BIN" kv list --prefix {} --space applications --all --json --profile tinyapp-<APP>
+printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} "$TC_BIN" kv list --prefix {} --space applications --all --json --profile <PROFILE>
 ```
 
 A prefix ends with `/`: a month folder (`<ID>/lift/2026-10/`), a whole kind (`<ID>/lift/`), or an item state (`<ID>/todo/open/`). Each prints `{"keys": […], "count": …, "prefix": …}`.
@@ -235,7 +243,7 @@ Several records, side by side:
 
 ```sh
 TC_BIN='<TC_BETA>'; umask 077
-printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} "$TC_BIN" kv get {} --space applications --json --profile tinyapp-<APP>
+printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} "$TC_BIN" kv get {} --space applications --json --profile <PROFILE>
 ```
 
 It prints one JSON object per key, in any order, so match them by `"key"`. A key you asked for that's missing from the output failed, and its error is printed instead:
@@ -255,10 +263,10 @@ One record, in the app's own folder. The same block writes catalog records. Use 
 
 ```sh
 TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" kv put '<key>' --stdin --space applications --if-none-match '*' --json --profile tinyapp-<APP> <<'EOF'
+"$TC_BIN" kv put '<key>' --stdin --space applications --if-none-match '*' --json --profile <PROFILE> <<'EOF'
 <record>
 EOF
-"$TC_BIN" kv get '<key>' --space applications --json --profile tinyapp-<APP>
+"$TC_BIN" kv get '<key>' --space applications --json --profile <PROFILE>
 ```
 
 - Always write the record through `--stdin` like this. Never pass it as an argument: it would be stored as text and read back as a string.
@@ -272,11 +280,11 @@ An item's status changes (a todo is done, a goal is reached): write the record u
 
 ```sh
 TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" kv put '<new key>' --stdin --space applications --if-none-match '*' --json --profile tinyapp-<APP> <<'EOF' &&
+"$TC_BIN" kv put '<new key>' --stdin --space applications --if-none-match '*' --json --profile <PROFILE> <<'EOF' &&
 <record>
 EOF
-"$TC_BIN" kv get '<new key>' --space applications --json --profile tinyapp-<APP> &&
-"$TC_BIN" kv delete '<old key>' --space applications --json --profile tinyapp-<APP>
+"$TC_BIN" kv get '<new key>' --space applications --json --profile <PROFILE> &&
+"$TC_BIN" kv delete '<old key>' --space applications --json --profile <PROFILE>
 ```
 
 The old key is deleted only after the new record was written and read back. If the block stops before the delete, the old record is still there: report the error and don't delete it some other way. If the new key already exists (`KV_ALREADY_EXISTS`), the item is already in that state: read the new key, and delete the old one only when the new record is the one you meant to write.

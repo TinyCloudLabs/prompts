@@ -53,13 +53,22 @@ function main() {
     if (!cli || !state || extra.length || !isAbsolute(cli) || !isAbsolute(state)) throw new Error(CONFIG);
     const file = join(state, "meal-space.txt");
     const savedSpace = readFileSync(file, "utf8").trim();
-    const result = spawnSync(cli, ["--profile", "agent-meal", "context", "--json"], {
+    let profile = "agent-meal"; // the onboarded profile's plain name, when step 0 of TINY-APPS §3 saved one
+    try {
+      const saved = readFileSync(join(state, "meal-profile.txt"), "utf8").trim();
+      if (/^[A-Za-z0-9_-]+$/.test(saved)) profile = saved;
+    } catch { /* no saved profile: agent-meal */ }
+    const result = spawnSync(cli, ["--profile", profile, "context", "--json"], {
       encoding: "utf8", timeout: 30_000, maxBuffer: 64 * 1024, stdio: ["ignore", "pipe", "pipe"],
     });
     if (result.error || result.status !== 0 || readFileSync(file, "utf8").trim() !== savedSpace) {
       throw new Error(ACCOUNT);
     }
     const context = JSON.parse(result.stdout);
+    // An owner profile's own space is `default`; the applications space is the same owner's, so the same owner check applies.
+    if (profile !== "agent-meal" && typeof context.ownerDid === "string") {
+      context.spaceId = context.ownerDid.replace(/^did:/, "tinycloud:") + ":applications";
+    }
     const output = validateContext({ ownerDid, timeZone, savedSpace, context, now: new Date() });
     process.stdout.write(JSON.stringify(output) + "\n");
   } catch (error) {

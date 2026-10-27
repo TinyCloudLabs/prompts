@@ -10,7 +10,7 @@ You need a shell, Node.js 22.20 or later, and npm.
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-- **You approve:** one OpenKey screen for the app, or two the first time on this computer: your own 7-day sign-in, which lists your whole space, then the app. For a meal, the app screen gives your agent access to just Health Log, for 7 days; otherwise, one screen per app, for 30 days, covering only that app's folder in your `applications` space. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat.
+- **You approve:** nothing, if you ran `tinycloud onboard` on this computer and its 30-day sign-in still covers the app. Otherwise one OpenKey screen for the app, or two the first time on this computer: your own 7-day sign-in, which lists your whole space, then the app. For a meal, the app screen gives your agent access to just Health Log, for 7 days; otherwise, one screen for the app, for 30 days, covering only that app's folder in your `applications` space. If OpenKey shows a code, paste it into the terminal where the sign-in is running. If your agent asks you for the code, you can paste it in the chat.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Home feed: [/feed](https://agents.tinycloud.xyz/feed)

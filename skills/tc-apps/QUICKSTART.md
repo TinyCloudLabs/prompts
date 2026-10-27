@@ -7,7 +7,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.5` from a folder of its own, and `@tinycloud/cli@1.5.0-beta.2` from a second folder for apps in their own folder (below).
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.5` from a folder of its own, and `@tinycloud/cli@1.5.0-beta.20` from a second folder for apps in their own folder (below).
 
 A permission slip and the code OpenKey shows after you approve are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
@@ -40,7 +40,7 @@ Optional variables, set before you start the client:
 
 ## What you see at sign-in
 
-Each app has its own approval, the first time you track something new, and it lasts 30 days.
+If you ran `tinycloud onboard` on this computer and its 30-day sign-in is still valid, the agent uses it and no approval screen opens: the steps below don't happen. Otherwise each app has its own approval, the first time you track something new, and it lasts 30 days.
 
 1. You ask, for example "Add a todo: renew my passport." The agent checks whether the `todos` app is signed in, then starts the sign-in.
 2. The agent shows a link:
@@ -50,7 +50,7 @@ Each app has its own approval, the first time you track something new, and it la
 3. Open the link, on this computer or your phone, and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions, key-value access to that folder and a read of your permissions (that doesn't read your data). Then approve.
 4. OpenKey shows a code. Paste it in the chat, and the agent finishes the sign-in and carries on. Or paste it into your own terminal with the command the agent gives you.
 
-One approval covers one app. A new app, such as `fitness`, asks once more; nothing covers all your apps at once. Every agent on this computer that uses the same `TC_HOME` shares the apps you've approved.
+Without onboarding, one approval covers one app, and a new app, such as `fitness`, asks once more. With onboarding, its one sign-in covers the folders of all your apps in `applications`. Every agent on this computer that uses the same `TC_HOME` shares the apps you've approved.
 
 ## What you can ask
 
@@ -61,7 +61,7 @@ One approval covers one app. A new app, such as `fitness`, asks once more; nothi
 - "Add a todo: renew my passport." This starts a `todos` app. "Passport renewed" marks the todo done.
 - "What do you keep for me?", "How far am I from my goal?", "My bench volume last week?"
 
-When the agent creates an app or a kind, it tells you in one line. Meals, food, calories and recipes go to Health Log and Recipes, which have their own approvals.
+When the agent creates an app or a kind, it tells you in one line. Meals, food, calories and recipes go to Health Log and Recipes, which ask for their own approval unless your onboarding sign-in covers them.
 
 ## How your data is organised
 
@@ -128,8 +128,8 @@ Good to know:
 
 ## Why it works this way
 
-- **One folder and one approval per app.** Each app has its own key root, so an approval for `todos` can't read `fitness`, and a new app asks for its own approval. The price is one more approval per app.
-- **Browser approval with a pasted code.** OpenKey allows the phone-code (device) approval only for the `default` space, so apps in `applications` use the browser approval, where you paste a code back.
+- **One folder per app.** Each app has its own key root, so an approval for `todos` can't read `fitness`. Without onboarding a new app asks for its own approval; the onboarding sign-in is one approval for all of them.
+- **Approval with a pasted code.** OpenKey allows the phone-code (device) approval only for the `default` space, so apps in `applications` use an approval where you paste a short code back.
 - **KV first, SQL as a copy.** Key-value records survive agent mistakes, because each record is its own key. The SQL index is rebuildable, so it never holds the only copy of anything.
 - **Reads run side by side.** Each storage command takes 3–5 s against TinyCloud, so the agent fetches up to eight records at once.
 - **Literal paths in commands.** Claude Code can remember an approval only for a command it can work out from the text.

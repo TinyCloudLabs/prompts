@@ -13,8 +13,7 @@ esac
 if [ ! -f "$DIR/$MARK" ]; then KIND=FIRST; elif [ "$AGENT_INSTALL_ENABLED" = true ]; then KIND=APPROVED-ON; else KIND=APPROVED-OFF; fi
 FOLDER=$(cd "$(dirname "$0")" && pwd)
 GRANT_CMD="sh \"$FOLDER/owner-grant.sh\" $1"
-ALLOW='# If your browser asks to connect to devices on your network, choose Allow.'
-CANCEL="# If you cancel a screen or the terminal doesn't return, press Ctrl-C and tell me. If the page shows a code, paste it into this terminal."
+CANCEL="# If you cancel or the terminal doesn't return, press Ctrl-C and tell me. Each approval ends with a short code on the page: paste it into this terminal."
 echo "STATE: $KIND"
 echo 'BEGIN OWNER MESSAGE'
 echo '```text'
@@ -22,24 +21,21 @@ echo '# Verbatim: copy this message exactly as printed, character for character,
 case "$KIND" in
   FIRST) cat <<EOF
 # TinyCloud is a place you control. Setup takes two steps: first you sign in to, or create, your OpenKey so I know who you are; then you give me permission to do what you asked.
-# Run this in your own terminal. Approve each browser screen that opens; you may see one or two, one at a time.
+# Run this in your own terminal. It prints a link for each approval: open it, approve, and paste the short code OpenKey shows back into the terminal. You may see one or two, one at a time.
 # If you see two, the first is your own sign-in and doesn't give me access. The last one is the permission: it lets me work in your $NAME app for 7 days: $ACCESS.
-$ALLOW
 $CANCEL
 $GRANT_CMD
 EOF
   ;;
   APPROVED-OFF) cat <<EOF
-# Run this in your own terminal. A browser approval screen will open: approve it.
+# Run this in your own terminal. It prints an approval link: open it, approve, and paste the short code OpenKey shows back into the terminal.
 # It lets me work in your $NAME app for 7 days: $ACCESS.
-$ALLOW
 $CANCEL
 $GRANT_CMD
 EOF
   ;;
   APPROVED-ON) cat <<EOF
-# Run this in your own terminal. A browser approval screen will open: approve it. It installs this app's notes and tables in your TinyCloud, adds entries, and lets me work in your $NAME app for 7 days: $ACCESS.
-$ALLOW
+# Run this in your own terminal. It prints an approval link: open it, approve, and paste the short code OpenKey shows back into the terminal. It installs this app's notes and tables in your TinyCloud, adds entries, and lets me work in your $NAME app for 7 days: $ACCESS.
 $CANCEL
 $GRANT_CMD
 EOF

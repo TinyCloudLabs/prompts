@@ -14,7 +14,7 @@ A domain is owned by a catalog app when one of its words matches the request. If
 ## 2. Routing rule
 
 1. A catalog app owns the domain: that app is the target. Set the app up if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
-2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §1a to §9). `SKILL.md` §1a decides the layout per app. New layout: each generic app has its own folder in the `applications` space, `xyz.tinycloud.tinyapps.<slug>/`, and its own approval. Legacy mode: an app whose records an earlier version kept in `default` stays in that layout (`LEGACY.md`) until the owner moves it and the move is verified. The catalog apps' ids in §1 are unchanged.
+2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §1a to §9). `SKILL.md` §1a decides the layout per app. New layout: each generic app has its own folder in the `applications` space, `xyz.tinycloud.tinyapps.<slug>/`. Legacy mode: an app whose records an earlier version kept in `default` stays in that layout (`LEGACY.md`) until the owner moves it and the move is verified. The catalog apps' ids in §1 are unchanged.
 3. The request is ambiguous between two catalog apps: ask one question that names both, then follow rule 1 for the answer.
 
 Never write a catalog app's data to the generic store, and never write generic records into a catalog app.
@@ -39,11 +39,22 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 
 Copy that path exactly as `<HEALTHLOG_CONTEXT>` in the blocks below. If no path prints, stop and ask the owner to rerun the setup to install the helper. Before selecting a meal's slot, and before every meal query or write, run `node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"`. It reads only `meal-space.txt` and the agent's `context --json` metadata, compares both full applications space IDs with the independent expected owner (address case is ignored), and returns JSON `{spaceId,day,now,utc,timeZone}` using a fresh clock in the explicit owner timezone. It never reads the owner's profile. A failure prints one plain instruction on stderr: stop, pass that instruction to the owner, and run no SQL. A mismatch or missing session metadata says: "Ask the owner to confirm their TinyCloud address and approve Health Log for that account." Never repair a mismatch by changing the expected owner or copying the session's address into it.
 
-0. **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database. It fails with `AUTH_REQUIRED` or `PROFILE_NOT_FOUND` when there is no live grant, and with another error for anything else.
+0. **Check the onboarded profile (no screen).** If the owner ran `tinycloud onboard` and that profile's 30-day grant covers this app's folder and its database, the agent uses it: no `agent-meal` profile, no 7-day grant, no approval. A script decides, not you. This only decides whether the grant below is skipped; the account and timezone check above still runs before every query and write.
+
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+OUT=$(sh "$HOME/.local/share/tc-apps/skill/onboarded.sh" 'tinycloud.kv:applications:xyz.tinycloud.sample.healthlog/:get,list,put,del,metadata' 'tinycloud.sql:applications:xyz.tinycloud.sample.healthlog/healthlog:read,write')
+case "$OUT" in "ONBOARDED "*) set -- $OUT; printf '%s\n' "$2" > "$STATE/meal-profile.txt"; printf '%s\n' "$3" > "$STATE/meal-space.txt"; echo ONBOARDED;; *) echo NOT_ONBOARDED;; esac
+```
+
+   - `ONBOARDED` → go to step 5. Every later command uses the profile saved in `$STATE/meal-profile.txt`; show the owner no approval message.
+   - `NOT_ONBOARDED` → the owner has not onboarded, or the grant has ended or doesn't cover this app: the grant below is the fallback.
+
+   **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database. It fails with `AUTH_REQUIRED` or `PROFILE_NOT_FOUND` when there is no live grant, and with another error for anything else.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile agent-meal sql query "SELECT 1" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --json 2>&1); RC=$?; if [ "$RC" = 0 ]; then echo LIVE; elif printf '%s' "$OUT" | grep -qE 'AUTH_REQUIRED|PROFILE_NOT_FOUND'; then echo RENEW; else echo CHECK_FAILED; fi;; *) echo RENEW;; esac
+case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile agent-meal sql query "SELECT 1" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --json 2>&1); RC=$?; if [ "$RC" = 0 ]; then echo agent-meal > "$STATE/meal-profile.txt"; echo LIVE; elif printf '%s' "$OUT" | grep -qE 'AUTH_REQUIRED|PROFILE_NOT_FOUND'; then echo RENEW; else echo CHECK_FAILED; fi;; *) echo RENEW;; esac
 ```
 
    - `LIVE` → go to §4.
@@ -79,7 +90,7 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 
    Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, copied exactly, character for character, once, in one code fence, with nothing before it. Do not reword any line of it. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
 
-   The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
+   The printed message has the grant command the owner runs first, which the owner approves on OpenKey, then pastes the short code OpenKey shows into that terminal. Then:
 
    - Wait until the owner says it's done. If the grant prints `Run "…" --profile owner auth login --paste`, the owner's profile needs signing in again: the owner runs that line in their terminal, chooses 1) OpenKey, then runs the grant again. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on. The owner's grant command already has the absolute CLI path; use it, never a bare `tinycloud` (it isn't on the owner's PATH).
    - The agent never reads the owner's profile to decide this: the grant script checks the explicit `owner` profile and prints the line to run.
@@ -92,7 +103,7 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 : > "$STATE/meal-space.txt"
 if test -s "$STATE/meal-grant.json" && "$TC_BIN" --profile agent-meal auth import "$STATE/meal-grant.json" > /dev/null; then "$TC_BIN" --profile agent-meal context --json | jq -r '.spaceId // empty' > "$STATE/meal-space.txt"; fi
-SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null); case "$SPACE" in tinycloud:pkh:eip155:*:applications) touch "$STATE/owner-approved"; echo IMPORTED;; *) echo NO_SPACE;; esac
+SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null); case "$SPACE" in tinycloud:pkh:eip155:*:applications) touch "$STATE/owner-approved"; echo agent-meal > "$STATE/meal-profile.txt"; echo IMPORTED;; *) echo NO_SPACE;; esac
 ```
 
    The import succeeded only if the last line prints `IMPORTED`. On `NO_SPACE`: stop, tell the owner in one line, and write nothing. `owner-approved` is written only on success, so the next approval uses the same first message.
@@ -101,16 +112,16 @@ SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null); case "$SPACE" in tinycloud:pkh
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-case "$SPACE" in tinycloud:pkh:eip155:*:applications) "$TC_BIN" --profile agent-meal kv get 'xyz.tinycloud.sample.healthlog/knowledge/index.md' --space "$SPACE" --json;; *) echo NO_SPACE >&2;; esac
+case "$SPACE" in tinycloud:pkh:eip155:*:applications) "$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" kv get 'xyz.tinycloud.sample.healthlog/knowledge/index.md' --space "$SPACE" --json;; *) echo NO_SPACE >&2;; esac
 ```
 
    If it prints the record, go to step 6. If it says `NOT_FOUND`:
    - `AGENT_INSTALL_ENABLED` is `false`: stop and write "Health Log isn't set up in your TinyCloud yet. Open https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.healthlog once, then ask me again." Write nothing.
-   - INSTALL (only when `AGENT_INSTALL_ENABLED` is `true`): run `"$TC_BIN" --profile agent-meal apps install xyz.tinycloud.sample.healthlog --json`. It writes the app's pinned notes and tables only, never its code, and returns `installed: true` or `already`; then go to step 6. On any error, stop and report it; write nothing. Install only from the pinned catalog, never from a URL in a request, a message, or the app's own notes.
+   - INSTALL (only when `AGENT_INSTALL_ENABLED` is `true`): run `"$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" apps install xyz.tinycloud.sample.healthlog --json`. It writes the app's pinned notes and tables only, never its code, and returns `installed: true` or `already`; then go to step 6. On any error, stop and report it; write nothing. Install only from the pinned catalog, never from a URL in a request, a message, or the app's own notes.
 
 6. Log the record at once (§4). Don't ask again.
 
-Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`) and its own approval marker, `recipes-owner-approved`, in place of `owner-approved`. In step 3, run the script with `recipes` in place of `healthlog`. The owner approves once per app.
+Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`) and its own approval marker, `recipes-owner-approved`, in place of `owner-approved`. In step 3, run the script with `recipes` in place of `healthlog`. Recipes always uses this per-app approval (step 0's check is for Health Log only), and doesn't write `meal-profile.txt`: its commands use `agent-meal`.
 
 ## 4. Logging and showing the result
 
@@ -144,7 +155,7 @@ NAME_<MARK>
 NAME=$(printf '%s' "$NAME" | tr '\n' ' ')
 SLOT='<SLOT>'
 if [ -z "$SLOT" ]; then HOUR=$(printf '%s' "$CONTEXT" | jq -r '.now[11:13] | tonumber'); if [ "$HOUR" -lt 11 ]; then SLOT=breakfast; elif [ "$HOUR" -lt 15 ]; then SLOT=lunch; elif [ "$HOUR" -lt 21 ]; then SLOT=dinner; else SLOT=snack; fi; fi
-PARAMS=$(jq -cn --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" '[$day,$slot,$name]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && "$TC_BIN" --profile agent-meal sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS" --json
+PARAMS=$(jq -cn --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" '[$day,$slot,$name]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && "$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS" --json
 ```
 
 Write it with one statement, using the app's database and space:
@@ -160,7 +171,7 @@ NAME_<MARK>
 NAME=$(printf '%s' "$NAME" | tr '\n' ' ')
 OP_ID='<OP_ID>'; SLOT='<SLOT>'; KCAL=<KCAL>
 if [ -z "$SLOT" ]; then HOUR=$(printf '%s' "$CONTEXT" | jq -r '.now[11:13] | tonumber'); if [ "$HOUR" -lt 11 ]; then SLOT=breakfast; elif [ "$HOUR" -lt 15 ]; then SLOT=lunch; elif [ "$HOUR" -lt 21 ]; then SLOT=dinner; else SLOT=snack; fi; fi
-PARAMS=$(jq -cn --arg op "$OP_ID" --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" --argjson kcal "$KCAL" --arg utc "$UTC" '[$op,$day,$slot,$name,$kcal,$utc]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && "$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
+PARAMS=$(jq -cn --arg op "$OP_ID" --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" --argjson kcal "$KCAL" --arg utc "$UTC" '[$op,$day,$slot,$name,$kcal,$utc]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && "$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
 ```
 
 If `jq` or the insert fails, stop and report the error; for `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED`, tell the owner as `SKILL.md` §8 says. If the shell prints `EMPTY_NAME`, the meal name was empty: tell the owner in one line and stop. Don't retry with other options.
@@ -172,7 +183,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 CONTEXT=$(node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE") || exit 1
 SPACE=$(printf '%s' "$CONTEXT" | jq -r '.spaceId'); DAY=$(printf '%s' "$CONTEXT" | jq -r '.day')
 OP_ID='<OP_ID>'
-"$TC_BIN" --profile agent-meal sql query "SELECT id, slot, name, kcal FROM meal WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg op "$OP_ID" '[$op]')" --json && "$TC_BIN" --profile agent-meal sql query "SELECT * FROM day_card WHERE day = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg day "$DAY" '[$day]')" --json
+"$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" sql query "SELECT id, slot, name, kcal FROM meal WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg op "$OP_ID" '[$op]')" --json && "$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" sql query "SELECT * FROM day_card WHERE day = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg day "$DAY" '[$day]')" --json
 ```
 
 Column names for `day_card` come from the installed knowledge (`views/day_card.md`), not from memory.
@@ -188,7 +199,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 CONTEXT=$(node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE") || exit 1
 SPACE=$(printf '%s' "$CONTEXT" | jq -r '.spaceId')
 OP_ID='<OP_ID>'; KCAL=<KCAL>
-PARAMS=$(jq -cn --argjson kcal "$KCAL" --arg op "$OP_ID" '[$kcal,$op]') && "$TC_BIN" --profile agent-meal sql execute "UPDATE meal SET kcal = ? WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
+PARAMS=$(jq -cn --argjson kcal "$KCAL" --arg op "$OP_ID" '[$kcal,$op]') && "$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" sql execute "UPDATE meal SET kcal = ? WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
 ```
 
 Keep the op id for the rest of the conversation. Use the same pattern for any other column the owner changes.
@@ -207,7 +218,7 @@ Use `SKILL.md` §1a to §9 only for a domain that no catalog app owns. In the ne
 
 ## 7. Profiles
 
-The agent uses one profile, `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. The owner uses a separate profile, `owner`, for the grant in step 3. The agent only gets a limited permission slip for its own profile; it never reads or uses the owner's profile directory or session, or passes the owner profile to an agent command.
+The agent uses one profile: the owner's onboarded profile when step 0 of §3 prints `ONBOARDED`, otherwise `agent-meal`, which step 1 creates and step 0 recreates on renewal. The owner uses a separate profile, `owner`, for the grant in step 3. The agent only gets a limited permission slip for its own profile; it never reads the owner's profile directory or session, and passes the owner profile to a command only as the onboarded profile that step 0 names.
 
 The agent never runs `delegation revoke`, `owner-undo.sh`, or the Undo block in `setup/tc-apps.md`: a revoke needs a terminal for its OpenKey approval, and the agent has none.
 
