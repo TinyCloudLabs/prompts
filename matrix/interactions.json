@@ -1,5 +1,5 @@
 {
-  "about": "Steps each skill asks of the owner, per basic flow, measured on real QA runs. Unmeasured values are null and the page prints \"not measured yet\". Never fill a value from an estimate: every number needs measured_on and run_ref. Retries and extra steps go in notes, not in the counts. owner_interactions.total counts openkey_approvals + pastes + choices + codes_typed; leave total null unless all four were observed. Parts seen in a run whose total is unknown go in partial, which the page does not print.",
+  "about": "Steps each skill asks of the owner, per basic flow, measured on real QA runs. Unmeasured values are null and the page prints \"not measured yet\". Never fill a value from an estimate: every number needs measured_on and run_ref. Retries and extra steps go in notes, not in the counts. owner_interactions.total counts openkey_approvals + pastes + choices + codes_typed; leave total null unless all four were observed. Parts seen in a run whose total is unknown go in partial, which the page does not print. agents lists every agent the page tracks, in column order (ids as in the onboarding eval and PR #61). A flow's own fresh and returning cells are \"any agent\": runs that did not record the agent. by_agent.<agent id>.fresh and .returning are the same cells for one agent; the onboarding eval writes them with `node run.mjs --matrix`, from passing runs only (failing runs go in notes, never in numbers). Those cells add case (the golden case), runs (passing runs used) and timing, in whole seconds, medians over those runs: time_to_approval_s (run start to the first OpenKey link), approver_s (the test approver, from opening the link to handing the code over), time_after_approval_s (code handed over to the agent's last reply), total_s (run start to the agent's last reply), link_to_done_s (first link to last reply, approver included), code_copy_s (the gap before the agent's command that carries the pasted code: the test approver hands over OpenKey's full code, a person pastes the short one), agent_tool_calls and agent_turns (for the whole run). timing describes the whole run the cell was measured in; a value the run did not record is null. A skill's time_to_done names the flow whose agents' timing.total_s the page shows in its \"Time to done\" row.",
   "skills": [
     {
       "name": "tc-apps",
@@ -24,7 +24,64 @@
             "run_ref": "QA run cli135-p70, cell 3",
             "notes": "Install pinned CLI 1.3.5 and wrote the skill. The skill-copy step was blocked once by the agent's permission check; the owner replied with the page's 'Go ahead' line and it continued. Step counts not tallied for this flow."
           },
-          "returning": null
+          "returning": null,
+          "by_agent": {
+            "claude-code": {
+              "fresh": {
+                "owner_interactions": {
+                  "total": null,
+                  "openkey_approvals": null,
+                  "pastes": null,
+                  "choices": null,
+                  "codes_typed": null
+                },
+                "owner_kind": "scripted",
+                "agent_turns": null,
+                "measured_on": "2026-10-27",
+                "cli_version": "1.3.5, 1.5.0-beta.2",
+                "skill_version": "0.2.0",
+                "result": "fail",
+                "run_ref": "results/2026-10-27T12-10-00/golden/G2-coding-setup-claude-code-v4-{1,2,3}",
+                "case": "G2-coding-setup",
+                "runs": 0,
+                "timing": null,
+                "notes": "0/3 runs passed (G2-coding-setup, prompt v4). Rep 1 failed at stage installed: no approval link shown; end state: read failed: AUTH_REQUIRED; read failed: AUTH_REQUIRED. Rep 2 failed at stage approved: record not read back; end state: read failed: NOT_FOUND; read failed: NOT_FOUND. Rep 3 failed at stage installed: no approval link shown; end state: read failed: AUTH_REQUIRED; read failed: AUTH_REQUIRED. Earlier batch results/2026-10-27T11-49-23: 0/2 passed, not pooled."
+              },
+              "returning": null
+            },
+            "codex": {
+              "fresh": {
+                "owner_interactions": {
+                  "total": 0,
+                  "openkey_approvals": 0,
+                  "pastes": 0,
+                  "choices": 0,
+                  "codes_typed": 0
+                },
+                "owner_kind": "scripted",
+                "agent_turns": null,
+                "measured_on": "2026-10-27",
+                "cli_version": "1.3.5, 1.5.0-beta.2",
+                "skill_version": "0.2.0",
+                "result": "pass",
+                "run_ref": "results/2026-10-27T11-12-33/golden/G2-coding-setup-codex-v4-{1,2,3}",
+                "case": "G2-coding-setup",
+                "runs": 3,
+                "timing": {
+                  "time_to_approval_s": 143,
+                  "approver_s": null,
+                  "time_after_approval_s": null,
+                  "total_s": 339,
+                  "link_to_done_s": 198,
+                  "code_copy_s": 125,
+                  "agent_tool_calls": 26,
+                  "agent_turns": 2
+                },
+                "notes": "3/3 runs passed (G2-coding-setup, prompt v4). Steps derived from meta.json (no owner replies; one OpenKey delegate approval, then its code pasted back), not from recorded owner steps. Times are medians over 3 passing runs; spread: time_to_approval_s 2 min 21 s to 2 min 28 s; total_s 5 min 36 s to 6 min 0 s; link_to_done_s 3 min 13 s to 3 min 32 s; code_copy_s 1 min 50 s to 2 min 11 s. approver_s and time_after_approval_s were not recorded for these runs (the harness records them from 2026-10-27); link_to_done_s (3 min 18 s) includes the approver. Time after approval is not agent speed alone: the approver hands over OpenKey's full delegation code, and the agent took 2 min 5 s (median) before the command that carries it; a person pastes the short code."
+              },
+              "returning": null
+            }
+          }
         },
         {
           "id": "sign-in",
@@ -46,7 +103,128 @@
             "notes": "Two OpenKey approvals (the init sign-in, then the grant through the browser callback), one short code typed at the CLI's 'Enter short code' prompt, no pastes, no answers. Read from c3/own.log (one 'SENT 10 bytes' at the short-code prompt, no other input, no y/N prompts; the grant's second code prompt was not used) and c3/own.drv (APPROVAL #1 for the first page); the second approval is from RESULT.md ('2 OpenKey screens', cell 3), its per-page log was unreadable.",
             "owner_kind": "scripted"
           },
-          "returning": null
+          "returning": null,
+          "by_agent": {
+            "claude-code": {
+              "fresh": {
+                "owner_interactions": {
+                  "total": null,
+                  "openkey_approvals": null,
+                  "pastes": null,
+                  "choices": null,
+                  "codes_typed": null
+                },
+                "owner_kind": "scripted",
+                "agent_turns": null,
+                "measured_on": "2026-10-27",
+                "cli_version": "1.3.5, 1.5.0-beta.2",
+                "skill_version": "0.2.0",
+                "result": "fail",
+                "run_ref": "results/2026-10-27T12-10-00/golden/G2-coding-setup-claude-code-v4-{1,2,3}",
+                "case": "G2-coding-setup",
+                "runs": 0,
+                "timing": null,
+                "notes": "0/3 runs passed (G2-coding-setup, prompt v4). Rep 1 failed at stage installed: no approval link shown; end state: read failed: AUTH_REQUIRED; read failed: AUTH_REQUIRED. Rep 2 failed at stage approved: record not read back; end state: read failed: NOT_FOUND; read failed: NOT_FOUND. Rep 3 failed at stage installed: no approval link shown; end state: read failed: AUTH_REQUIRED; read failed: AUTH_REQUIRED. Earlier batch results/2026-10-27T11-49-23: 0/2 passed, not pooled."
+              },
+              "returning": null
+            },
+            "codex": {
+              "fresh": {
+                "owner_interactions": {
+                  "total": 2,
+                  "openkey_approvals": 1,
+                  "pastes": 1,
+                  "choices": 0,
+                  "codes_typed": 0
+                },
+                "owner_kind": "scripted",
+                "agent_turns": null,
+                "measured_on": "2026-10-27",
+                "cli_version": "1.3.5, 1.5.0-beta.2",
+                "skill_version": "0.2.0",
+                "result": "pass",
+                "run_ref": "results/2026-10-27T11-12-33/golden/G2-coding-setup-codex-v4-{1,2,3}",
+                "case": "G2-coding-setup",
+                "runs": 3,
+                "timing": {
+                  "time_to_approval_s": 143,
+                  "approver_s": null,
+                  "time_after_approval_s": null,
+                  "total_s": 339,
+                  "link_to_done_s": 198,
+                  "code_copy_s": 125,
+                  "agent_tool_calls": 26,
+                  "agent_turns": 2
+                },
+                "notes": "3/3 runs passed (G2-coding-setup, prompt v4). Steps derived from meta.json (no owner replies; one OpenKey delegate approval, then its code pasted back), not from recorded owner steps. Sign-in: the test approver approved the OpenKey screen with the test key and handed OpenKey's full delegation code back as one owner message (a paste). After sign-in the agent saved the starter todo \"Try my personal apps\" with 0 owner steps (not a row). Times are medians over 3 passing runs; spread: time_to_approval_s 2 min 21 s to 2 min 28 s; total_s 5 min 36 s to 6 min 0 s; link_to_done_s 3 min 13 s to 3 min 32 s; code_copy_s 1 min 50 s to 2 min 11 s. approver_s and time_after_approval_s were not recorded for these runs (the harness records them from 2026-10-27); link_to_done_s (3 min 18 s) includes the approver. Time after approval is not agent speed alone: the approver hands over OpenKey's full delegation code, and the agent took 2 min 5 s (median) before the command that carries it; a person pastes the short code."
+              },
+              "returning": null
+            }
+          }
+        },
+        {
+          "id": "add-todo",
+          "task": "Add a todo",
+          "fresh": null,
+          "returning": null,
+          "caption": "Counted after sign-in, from a first message that asks for the todo.",
+          "by_agent": {
+            "claude-code": {
+              "fresh": {
+                "owner_interactions": {
+                  "total": null,
+                  "openkey_approvals": null,
+                  "pastes": null,
+                  "choices": null,
+                  "codes_typed": null
+                },
+                "owner_kind": "scripted",
+                "agent_turns": null,
+                "measured_on": "2026-10-27",
+                "cli_version": "1.3.5, 1.5.0-beta.2",
+                "skill_version": "0.2.0",
+                "result": "fail",
+                "run_ref": "results/2026-10-27T12-10-00/golden/G3-apps-todo-claude-code-v4-{1,2,3}",
+                "case": "G3-apps-todo",
+                "runs": 0,
+                "timing": null,
+                "notes": "0/3 runs passed (G3-apps-todo, prompt v4). Rep 1 failed at stage installed: no approval link shown; end state: list failed: AUTH_REQUIRED; read failed: NO_MATCHING_KEY; not collected. Rep 2 failed at stage approved: record not read back; end state: no key matches /$RUN_DATE-renew(-my)?-passport$; read failed: NO_MATCHING_KEY. Rep 3 failed at stage page-read: pinned install not confirmed; no approval link shown; end state: list failed: ERROR; read failed: NO_MATCHING_KEY; not collected."
+              },
+              "returning": null
+            },
+            "codex": {
+              "fresh": {
+                "owner_interactions": {
+                  "total": 0,
+                  "openkey_approvals": 0,
+                  "pastes": 0,
+                  "choices": 0,
+                  "codes_typed": 0
+                },
+                "owner_kind": "scripted",
+                "agent_turns": null,
+                "measured_on": "2026-10-27",
+                "cli_version": "1.3.5, 1.5.0-beta.2",
+                "skill_version": "0.2.0",
+                "result": "pass",
+                "run_ref": "results/2026-10-27T11-12-33/golden/G3-apps-todo-codex-v4-{1,2,3}",
+                "case": "G3-apps-todo",
+                "runs": 3,
+                "timing": {
+                  "time_to_approval_s": 132,
+                  "approver_s": null,
+                  "time_after_approval_s": null,
+                  "total_s": 345,
+                  "link_to_done_s": 202,
+                  "code_copy_s": 131,
+                  "agent_tool_calls": 27,
+                  "agent_turns": 2
+                },
+                "notes": "3/3 runs passed (G3-apps-todo, prompt v4). Steps derived from meta.json (no owner replies; one OpenKey delegate approval, then its code pasted back), not from recorded owner steps. Times are medians over 3 passing runs; spread: time_to_approval_s 2 min 12 s to 2 min 27 s; total_s 5 min 22 s to 5 min 49 s; link_to_done_s 3 min 10 s to 3 min 33 s; code_copy_s 1 min 51 s to 2 min 12 s. approver_s and time_after_approval_s were not recorded for these runs (the harness records them from 2026-10-27); link_to_done_s (3 min 22 s) includes the approver. Time after approval is not agent speed alone: the approver hands over OpenKey's full delegation code, and the agent took 2 min 11 s (median) before the command that carries it; a person pastes the short code."
+              },
+              "returning": null
+            }
+          }
         },
         {
           "id": "log-meal",
@@ -116,7 +294,11 @@
           },
           "returning": null
         }
-      ]
+      ],
+      "time_to_done": {
+        "flow": "add-todo",
+        "caption": "From the first message to the saved todo: set up, sign in and add a todo."
+      }
     },
     {
       "name": "tc-publish",
@@ -306,6 +488,56 @@
           "returning": null
         }
       ]
+    }
+  ],
+  "agents": [
+    {
+      "id": "chatgpt",
+      "name": "ChatGPT"
+    },
+    {
+      "id": "claude",
+      "name": "Claude"
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini"
+    },
+    {
+      "id": "grok",
+      "name": "Grok"
+    },
+    {
+      "id": "perplexity",
+      "name": "Perplexity"
+    },
+    {
+      "id": "muse",
+      "name": "Muse"
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor"
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw"
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes"
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code"
+    },
+    {
+      "id": "codex",
+      "name": "Codex"
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode"
     }
   ]
 }
