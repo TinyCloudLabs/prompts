@@ -170,6 +170,18 @@ const SKILLS = [
     tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.3.tgz",
     integrity: "sha512-DRCQ7qDZUTIH2fK+6WJUQYY2krNQI+i3LE5AN/JNnGY8W70JHLfB2aH0R5xV96RCFUtgFqUDiY8ryRyFO0dMEQ==",
     dir: "package/skills/tinycloud-delegated-secrets",
+    changes: {
+      "SKILL.md": [
+        [
+          "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
+          "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts, elicitation, a generic permission grant, or a secret mutation tool.",
+        ],
+        [
+          "## Account and KV exploration",
+          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for their approval, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route. The `tc auth request` / `tc auth import` and `tinycloud_auth_import` instructions below are for local stdio only. The `tc auth grant --stdin --yes` artifact, import, restart, and retry steps below apply to local stdio only; hosted operations use a returned `approval.url` as described above. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
+        ],
+      ],
+    },
   },
 ];
 
