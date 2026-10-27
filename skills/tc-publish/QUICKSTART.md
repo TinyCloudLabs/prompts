@@ -7,7 +7,7 @@ Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.3.5
+npm install --prefix <dir> @tinycloud/cli@1.5.0-beta.20
 export TC_BIN=<dir>/node_modules/.bin/tinycloud
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
