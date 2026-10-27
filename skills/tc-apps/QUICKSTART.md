@@ -130,4 +130,4 @@ Good to know:
 - When your TinyCloud storage is full, saves fail with `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` and nothing is saved; your records are still readable. The agent tells you and doesn't retry. To keep saving, upgrade at https://account.tinycloud.xyz/storage; deleting records doesn't free space yet.
 - Two agents changing the same kind's description in the same few seconds can lose one change; the next agent re-adds it.
 - `tinycloud-explorer` doesn't show these apps yet.
-- Claude Code doesn't read `~/.agents/skills`. After a setup in Codex or OpenCode, Claude Code reaches your context only through the session line, which names the skill's file.
+- Claude Code doesn't read `~/.agents/skills`, so the setup copies the skill into the folder of each agent it finds. An agent you install after the setup doesn't have the skill until you run the setup again in any agent. OpenCode reads both folders and logs a duplicate-name warning; the two copies are the same.

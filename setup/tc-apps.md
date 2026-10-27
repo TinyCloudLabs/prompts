@@ -99,14 +99,22 @@ sed '/^## 4\. Request only missing access$/,$d' "$HOME/.agents/skills/tc-apps/SK
 sed -n '/^## 4\. Request only missing access$/,$p' "$HOME/.agents/skills/tc-apps/SKILL.md"
 ```
 
-Read the installed skill directly for this request, even if the client has not refreshed its skill list. Follow it now from §1. No restart is needed. In a future conversation that has not discovered the skill, the owner can paste the setup link again; read the existing installed skill and carry on.
+```sh
+cat "$HOME/.local/share/tc-apps/skill/SKILL.md"
+```
+
+The first is for Claude Code, the second for Codex and OpenCode, and the third is the download folder's copy, for this conversation only. Your client may not list the new skill until it restarts; you don't need it to.
+
+Follow the skill now for the owner's request, from its §1. When you've finished it, end your last message with §4's question.
+
+**OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
 
 ## 4. One question: check context in every session
 
 Ask this once, at the end of your last message, after the owner's request is done; don't hold up the request for it. First run the check, with your client as `<client>` (`claude-code`, `codex` or `opencode`):
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" status '<client>'; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" status '<client>'; break; fi; done
 ```
 
 - `on` or `declined` → don't ask. Don't ask either if this conversation's context key list (`CONTEXT.md` §3) has `preference/session-check`.
@@ -181,6 +189,6 @@ To stop new sessions checking your TinyCloud context, run this before you delete
 sh "$HOME/.local/share/tc-apps/skill/session-check.sh" remove
 ```
 
-To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the skill folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` or `~/.agents/skills/tc-apps`. Your records stay in your TinyCloud.
+To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and each copy of the skill: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` for Claude Code and `~/.agents/skills/tc-apps` for Codex and OpenCode. The setup copies it for every agent it finds on this computer, so delete both folders if both exist. If Claude Code has the skill from the TinyCloud plugin, run `/plugin uninstall tinycloud@tinycloudlabs` there too. Your records stay in your TinyCloud.
 
 To delete context records, ask an agent: "Forget my coffee order", or "Clear my TinyCloud context". Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until history collapse ships (TC-1470), so don't put anything in context you'd need erased.

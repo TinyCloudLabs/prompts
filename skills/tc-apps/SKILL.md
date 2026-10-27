@@ -18,13 +18,13 @@ metadata:
 **Context: what the owner told an agent before.** When the owner asks you to remember something about them, asks about something they told an agent before ("what's my …", "as usual"), asks you to continue or pick up an earlier task, or a line in your instructions asks you to check their TinyCloud context, read `CONTEXT.md` in full and follow it. It needs no catalog read. Read whichever path exists:
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/CONTEXT.md" "$HOME/.agents/skills/tc-apps/CONTEXT.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/CONTEXT.md" ]; then cat "$d/CONTEXT.md"; break; fi; done
 ```
 
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in or access request, including the per-app sign-in in §4. Read the catalog now and follow it, with these two shell calls in order; together they are the whole file:
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then sed '/^## 4\. Logging/,$d' "$f"; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/TINY-APPS.md" ]; then sed '/^## 4\. Logging/,$d' "$d/TINY-APPS.md"; break; fi; done
 ```
 
 ```sh
@@ -35,7 +35,7 @@ for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOM
 
 Sections 1 to 9 below apply only to a request that no catalog app owns (`TINY-APPS.md` §2). Which layout an app uses is decided by §1a.
 
-**For any request about the owner's data, read the catalog first:** the two `TINY-APPS.md` reads above, unless you already ran them in this conversation.
+**For any request about the owner's data, read the catalog first:** use the two `TINY-APPS.md` shell calls above, unless you already ran them in this conversation.
 
 If a catalog app owns the domain, follow its fast path in that file: it checks the saved grant first, and no approval screen opens while the grant is live. Don't start the per-app sign-in (§3, §4 below) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
 
@@ -54,6 +54,7 @@ How to run the blocks:
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly. Keep the literal assignments before `umask 077` so clients can approve the actual executable. For generic app operations, copy `<APP_PROFILE>`, `<APP_HOST>` and `<APP_SPACE>` from §3 and use them unchanged for that request.
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s.
 - Write files only through these blocks, never with a file-editing tool. Don't run `tinycloud` commands that aren't here.
+- The blocks that find this skill's own files look first in the folder that Claude Code fills in for this skill, including a plugin's; in other clients that first folder is empty and skipped. Run them as written.
 - Run §1 once per conversation, and §1a and §3 once per app per conversation.
 
 ## 0. Route the request
@@ -341,8 +342,10 @@ Read `SQL.md` in full, at the install path shown below, when:
 - an index exists and a question needs more than about 40 records.
 
 For example, with the shell, never the file-read tool:
+- Claude Code with the TinyCloud plugin: `cat "${CLAUDE_SKILL_DIR}/SQL.md"`.
 - Claude Code with the user-level install: `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SQL.md"`.
 - Codex and OpenCode with the user-level install: `cat "$HOME/.agents/skills/tc-apps/SQL.md"`.
+- The setup's download folder, when the copy into your client's skills folder wasn't allowed: `cat "$HOME/.local/share/tc-apps/skill/SQL.md"`.
 
 ## 8. Errors
 

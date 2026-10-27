@@ -27,11 +27,12 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 | `<C>/catalog` | the app record |
 | `<C>/catalog/<kind>` | a kind record for each kind below |
 | `<C>/fact/<subject>` | something true about the owner that they told an agent |
-| `<C>/preference/<subject>` | how they like things done |
+| `<C>/preference/<subject>` | what they like or choose, and how they like things done |
 | `<C>/decision/<subject>` | a choice made in a task that a later task needs |
 | `<C>/handoff/<YYYY-MM-DD>-<task>` | a short note at the end of a task: what was done and what's next |
 
-- **One record per subject.** `<subject>` names what it's about, never its value: `coffee-order`, not `flat-white`; `reply-length`; for a decision, the task and topic, `lisbon-trip-hotel`. A new value for the same subject replaces the record. Before you make a new subject, look in the key list (§3) for one that already covers it, such as `coffee` for a coffee order, and use that key.
+- **Fact or preference.** A fact is true about the owner whatever they'd choose today: their birthday (`fact/birthday`), their home city (`fact/home-city`), the languages they speak. A preference is something they like or choose, and could choose differently tomorrow: their coffee order (`preference/coffee-order`), short replies (`preference/reply-length`), metric units, an aisle seat. If they'd put it as "I like …", "I prefer …" or "I usually …", it's a preference.
+- **One record per subject, whatever its kind.** `<subject>` names what it's about, never its value: `coffee-order`, not `flat-white`; `reply-length`; for a decision, the task and topic, `lisbon-trip-hotel`. A new value for the same subject replaces the record. Before you write, look in the key list (§3) for the same subject under any kind, such as `fact/coffee-order` or `preference/coffee` for a coffee order, and update that record, under its key, instead of making a second one (§4).
 - **A handoff's key** is the task's start date, the local date from `<NOW>`, and a slug of the task: `handoff/2026-10-27-lisbon-trip`. Picking the task up later updates the same key.
 - Slugs follow `SKILL.md` §2: lowercase `a-z`, `0-9` and `-`.
 
@@ -94,8 +95,8 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 
 **How:**
 1. Run `SKILL.md` §1 for `<UTC>` and `<NOW>`, and get `<TC_BETA>` as in §3.
-2. Use this session's key list (§3). If you haven't listed yet, list now; that is the session's one list.
-3. **A new key:** write it with `SKILL.md` §6's block, with `--if-none-match '*'`. Put any catalog records it still needs (§2) first, in the same block.
+2. Use this session's key list (§3). If you haven't listed yet, list now; that is the session's one list. Look in it for the same subject under every kind, `fact/`, `preference/`, `decision/`: another agent may have filed it under a kind you wouldn't pick. If one is there, that is the key to update, in step 4; keep its kind, and never write a second record for the same subject.
+3. **A new key**, only when no kind has the subject: write it with `SKILL.md` §6's block, with `--if-none-match '*'`. Put any catalog records it still needs (§2) first, in the same block.
 4. **A key that exists:** get it. If the value is the same, write nothing. If it changed, write the new record without `--if-none-match`, which replaces the old one.
 5. **Write rarely.** Storage counts every write, and overwrites and deletes don't free space today. One write per new fact; never rewrite a record only to change its `at`.
 6. If the list's second line showed the fast copy (`present` or `expired`), follow `SQL.md` §3 afterwards, as for any app.
@@ -119,7 +120,7 @@ The setup's one question (setup §4) may have added this line, ending with `<!--
 - If the owner asks you to stop it, run the script in the skill's folder and tell them which files it changed:
 
   ```sh
-  for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" remove; break; fi; done
+  for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" remove; break; fi; done
   ```
 
   It removes only the lines that end with `<!-- tinycloud-context -->`. If the step is blocked, give the owner the same command to run in their own terminal.
