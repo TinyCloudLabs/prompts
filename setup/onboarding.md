@@ -6,7 +6,7 @@ Give any AI agent or chat app this page, and it sets you up so it can act for yo
 
 > Set me up with TinyCloud: https://agents.tinycloud.xyz/onboarding
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read and change your apps' data, in your `applications` space, for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
+- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read and change your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
@@ -27,7 +27,7 @@ Follow these on every TinyCloud page.
 2. **Ask as few times as you can.** Ask for what the task needs in one request, and tell the owner up front how many approvals are coming.
 3. **The owner never sees raw permissions.** Give them the OpenKey link; OpenKey shows the request in plain words. Never show them a delegation, a permission list or JSON to approve.
 4. **Every paste comes with its link.** When you ask the owner to paste something, give the link where they get it and one line saying what to do, in the same message.
-5. **Codes are fine; secrets are not.** The code OpenKey shows after an approval, and a delegation, work only for the one they were made for, so the owner can paste them to you. Never ask for a password, private key, session key, recovery phrase, API key or secret value, and never read out or copy a profile's `key.json` or `session.json`, or the part of a share link after `#`.
+5. **Codes are fine; secrets are not.** The code OpenKey shows after an approval, and a delegation, only work for the agent they were made for, so the owner can paste them to you. Never ask for a password, private key, session key, recovery phrase, API key or secret value, and never read out or copy a profile's `key.json` or `session.json`, or the part of a share link after `#`.
 6. **Send only links you started.** Give the owner only OpenKey links that your own command or tool returned in this conversation.
 7. **No account needed first.** The owner doesn't need to have used TinyCloud before: OpenKey creates their account during the first approval.
 
@@ -50,7 +50,7 @@ No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again.
 
 It prints JSON on stdout:
 
-- **Exit 8, `"onboarded": false`:** the owner needs to approve. Send them one message with `approvalUrl` and this line, filling in `asks`: "Open this link, sign in or create your account, and check that it says: <asks>. Approve, then send me the short code OpenKey shows (like ABCD-EFGH)." For step 1, start that message with this text, word for word:
+- **Exit 8, `"onboarded": false`:** the owner needs to approve. Send them one message with `approvalUrl` and this line, filling in `asks` with its first letter in lower case: "Open this link and sign in or create your account. It lets me <asks> Approve, then send me the short code OpenKey shows (like ABCD-EFGH)." For step 1, start that message with this text, word for word:
 
   > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read and change your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
@@ -68,7 +68,7 @@ The owner can open the link on any device, their phone included; OpenKey shows t
 **If something goes wrong:**
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
-- **`SPACE_SETUP_PENDING`:** a new account's storage takes a minute or two after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
+- **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
 - **The code is refused:** each code works once, for the link it came from. Send the latest `approvalUrl` again and ask for the new code.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
@@ -96,7 +96,7 @@ Fetch the guide for what the owner asked for yourself and follow it from the sta
 | Let you work with another person's agent | [/courier](courier.md) |
 | Something not listed here | The ability list at [/setup](README.md) |
 
-In a chat app, the connected tools cover records and apps; for the other guides, tell the owner they need an agent with a shell on their computer.
+In a chat app, use the connected TinyCloud tools for the goal. If they don't cover it, tell the owner they need an agent with a shell on their computer.
 
 ### Asking for more later
 

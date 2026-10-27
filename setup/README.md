@@ -2,7 +2,7 @@
 
 Give your coding agent (Claude Code, Codex or OpenCode) abilities that keep your data in your own TinyCloud space. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.
 
-**New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). It works in any agent or chat app: you sign in or create an account with OpenKey, approve a starting permission, and your agent carries on with your request.
+**New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). It works in any agent or chat app: you sign in or create an account with OpenKey, approve two OpenKey screens, and your agent carries on with your request.
 
 You need a shell, Node.js 22.20 or later, and npm.
 
