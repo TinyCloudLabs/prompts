@@ -543,7 +543,7 @@ write(
       protocol_version: "0.1",
       organization: {
         name: "TinyCloud",
-        domain: new URL(BASE).hostname,
+        domain: new URL(SITE).hostname,
       },
       web: {},
     },
