@@ -14,8 +14,8 @@
 // - _redirects: the earlier repository-path URLs, redirected to the short ones,
 //   and each Markdown guide's URL with .md added (/apps.md → /apps).
 // Other repository files are copied at their repository path. index.html,
-// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
-// agent-skills discovery index are generated.
+// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers, the agent-skills
+// index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
 import { renderMatrix } from "./matrix.mjs";
@@ -449,6 +449,121 @@ write(
   ) + "\n",
 );
 
+write(
+  ".well-known/api-catalog",
+  JSON.stringify(
+    {
+      linkset: [
+        {
+          anchor: url(""),
+          item: [
+            {
+              href: "https://mcp.tinycloud.xyz/mcp",
+              title: "TinyCloud hosted MCP service",
+              type: "application/json",
+            },
+          ],
+          "service-doc": [
+            {
+              href: "https://docs.tinycloud.xyz/cli/mcp",
+              type: "text/html",
+              title: "TinyCloud MCP connection guide",
+            },
+          ],
+        },
+      ],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+const skillQueries = {
+  index: [
+    "Which public TinyCloud agent skills are available?",
+    "What files, versions, and checksums does each TinyCloud skill include?",
+  ],
+  apps: [
+    "How can my agent log a meal or workout in my TinyCloud records?",
+    "How do I create and extend an app for tracking personal records?",
+  ],
+  feed: [
+    "How can my agent post an owner-requested card to TinyCloud Home?",
+    "How do I add an update to my TinyCloud Home feed?",
+  ],
+  publish: [
+    "How can my agent publish a report and return a private link?",
+    "How can I make a published document public when I ask?",
+  ],
+  secrets: [
+    "How can my agent use a stored API key without showing its value?",
+    "How do I ask the owner to add a missing secret?",
+  ],
+  cli: [
+    "How do I install TinyCloud CLI and access authorized data?",
+    "How can I store or share data with the TinyCloud CLI?",
+  ],
+  courier: [
+    "How can two paired agents exchange a request using Courier?",
+    "How do I track a Courier task and assess a peer's request?",
+  ],
+  chat: [
+    "How can my agent recap a TinyChat meeting?",
+    "How do I find a phrase in my connected meeting transcripts?",
+  ],
+  mcp: [
+    "How can a remote client connect to hosted TinyCloud MCP?",
+    "Which delegated TinyCloud tools are available over MCP?",
+  ],
+};
+
+write(
+  ".well-known/ai-catalog.json",
+  JSON.stringify(
+    {
+      specVersion: "1.0",
+      host: {
+        displayName: "TinyCloud",
+        identifier: BASE,
+        documentationUrl: url("setup"),
+      },
+      entries: [
+        {
+          identifier: "urn:air:agents.tinycloud.xyz:skills:index",
+          displayName: "TinyCloud Agent Skills Index",
+          type: "application/json",
+          url: url("skills/index.json"),
+          representativeQueries: skillQueries.index,
+        },
+        ...skills.map((s) => ({
+          identifier: `urn:air:agents.tinycloud.xyz:skill:${s.short}`,
+          displayName: s.title,
+          type: "text/markdown",
+          url: url(`skills/${s.short}.md`),
+          representativeQueries: skillQueries[s.short],
+        })),
+      ],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+// The public documentation host offers only signed-out web browsing under Poppy.
+write(
+  ".well-known/poppy.json",
+  JSON.stringify(
+    {
+      protocol_version: "0.1",
+      organization: {
+        name: "TinyCloud",
+        domain: new URL(BASE).hostname,
+      },
+      web: {},
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
 // Earlier URLs (repository paths) keep working as redirects.
 const redirects = [
   "/setup/index.md /setup 301",
@@ -464,6 +579,7 @@ write("_redirects", redirects.join("\n") + "\n");
 
 const indexed = pages.filter((p) => !p.unlisted);
 const listedPages = indexed.filter((p) => p.url !== "setup");
+
 const llms = [
   "# TinyCloud agent abilities",
   "",
@@ -517,6 +633,7 @@ write(
     "# These pages are written for AI agents. Fetch them freely.",
     ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /", ...disallow]),
     "",
+    `Agentmap: ${url(".well-known/ai-catalog.json")}`,
     `Sitemap: ${url("sitemap.xml")}`,
     "",
   ].join("\n"),
@@ -528,6 +645,8 @@ write(
   Access-Control-Allow-Origin: *
   X-Content-Type-Options: nosniff
   Cache-Control: public, max-age=300
+  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/ai-catalog.json>; rel="describedby"; type="application/json", </sitemap.xml>; rel="sitemap"; type="application/xml"
+  Agentmap: ${url(".well-known/ai-catalog.json")}
 
 /*.md
   Content-Type: text/markdown; charset=utf-8
@@ -537,8 +656,16 @@ write(
 ${PAGES.filter((p) => !p.html).map((p) => p.url)
   .map((name) => `\n/${name}\n  Content-Type: text/markdown; charset=utf-8\n`)
   .join("")}
-/
-  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </sitemap.xml>; rel="sitemap"; type="application/xml"
+
+/.well-known/api-catalog
+  Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
+
+/.well-known/ai-catalog.json
+  Content-Type: application/json
+
+/.well-known/poppy.json
+  Content-Type: application/json
+
 `,
 );
 
@@ -599,6 +726,7 @@ write(
   <title>Give your agent abilities · TinyCloud</title>
   <meta name="description" content="${esc(desc)}">
   <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+  <link rel="ai-catalog" type="application/json" href="${esc(url(".well-known/ai-catalog.json"))}">
 ${style}
 </head>
 <body>
