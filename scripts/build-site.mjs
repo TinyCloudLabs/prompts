@@ -2,9 +2,10 @@
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Public URLs are short and flat; the repository layout is only for authoring:
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
-// - /connect: chat-app setup and a handoff to the unchanged coding guide for the
-//   request (/apps, /secrets, /publish, /chat or /courier), as HTML by default or
-//   Markdown via Accept; /connect.md is the same entry page.
+// - /onboarding and /connect (the `html` pages): HTML by default, Markdown via
+//   Accept or at /<page>.md. /onboarding sets up the owner's profile, sign-in and
+//   starting grant, then routes to the goal guide; /connect gives each chat app
+//   its connector steps and hands coding agents the guide for their request.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
@@ -43,6 +44,7 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
 // `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
+  { url: "onboarding", src: "setup/onboarding.md", html: true },
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
@@ -98,9 +100,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.3.5",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.5.tgz",
-    integrity: "sha512-pVym0zg04yVvyIimZN4bVjWqApzKeiwToJyvgQ+yYGXL2VkehPiaVFR13TT5lVmxTqswC/tI8+ei5YutcZ8zGA==",
+    version: "1.5.0-beta.20",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0-beta.20.tgz",
+    integrity: "sha512-f1WDrOFzoaY74s72e4boy2wZ+J+YFD8FyQ0zO3Mb3MK35vGMGishO1yQouXqaX68g3R7rDqCIQSqkCOZ0876wg==",
     dir: "package/skills/tc-cli",
     checkCli: true,
   },
@@ -583,9 +585,9 @@ const listedPages = indexed.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /connect serves HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
+  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("connect")} for personal records in ChatGPT, Claude or a coding agent. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
+  `Start at ${url("onboarding")} to set up TinyCloud for the owner, in a chat app or an agent with a shell; it then sends you to the guide for the owner's goal. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
   "",
   "## Abilities",
   "",
@@ -678,19 +680,20 @@ const style = `  <style>
     a { color: #0b57d0; }
     footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
   </style>`;
-const connect = page("connect");
+// Each html page: rendered HTML at /<url>, its Markdown at /<url>.md (functions/<url>.js negotiates).
 const markdownRenderer = new Marked(gfmHeadingId());
-write(
-  "connect.html",
-  `<!doctype html>
+for (const p of pages.filter((p) => p.html)) {
+  write(
+    `${p.url}.html`,
+    `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${esc(connect.title)} · TinyCloud</title>
-  <meta name="description" content="${esc(connect.desc)}">
-  <link rel="canonical" href="${esc(url("connect"))}">
-  <link rel="alternate" type="text/markdown" href="/connect.md">
+  <title>${esc(p.title)} · TinyCloud</title>
+  <meta name="description" content="${esc(p.desc)}">
+  <link rel="canonical" href="${esc(url(p.url))}">
+  <link rel="alternate" type="text/markdown" href="/${p.url}.md">
 ${style}
   <style>
     h2 { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; }
@@ -699,16 +702,19 @@ ${style}
     pre code { padding: 0; }
     blockquote { margin: 1rem 0; padding: 0.25rem 1rem; border-left: 3px solid #0b57d0; background: #f2f2f2; overflow-wrap: anywhere; }
     li { margin: 0.4rem 0; }
+    table { border-collapse: collapse; }
+    th, td { border-top: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
   </style>
 </head>
 <body>
   <main>
-${markdownRenderer.parse(connect.text)}
+${markdownRenderer.parse(p.text)}
   </main>
 </body>
 </html>
 `,
-);
+  );
+}
 
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
