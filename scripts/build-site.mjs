@@ -170,6 +170,14 @@ const SKILLS = [
     tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.3.tgz",
     integrity: "sha512-DRCQ7qDZUTIH2fK+6WJUQYY2krNQI+i3LE5AN/JNnGY8W70JHLfB2aH0R5xV96RCFUtgFqUDiY8ryRyFO0dMEQ==",
     dir: "package/skills/tinycloud-delegated-secrets",
+    changes: {
+      "SKILL.md": [
+        [
+          "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
+          "TinyCloud MCP offers hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp with OpenKey OAuth, as well as local stdio. For current tool details and setup see https://docs.tinycloud.xyz/cli/mcp. The hosted service is not a public ChatGPT app. Neither transport has resources, prompts, or elicitation.\n\nDetails: TC-1362",
+        ],
+      ],
+    },
   },
 ];
 
