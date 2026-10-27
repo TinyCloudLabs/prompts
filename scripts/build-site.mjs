@@ -437,6 +437,62 @@ write(
   ) + "\n",
 );
 
+write(
+  ".well-known/api-catalog",
+  JSON.stringify(
+    {
+      linkset: [
+        {
+          anchor: url(""),
+          item: [
+            {
+              href: "https://mcp.tinycloud.xyz/mcp",
+              title: "TinyCloud hosted MCP service",
+              type: "application/json",
+            },
+          ],
+          "service-doc": [
+            {
+              href: "https://docs.tinycloud.xyz/cli/mcp",
+              type: "text/html",
+              title: "TinyCloud MCP connection guide",
+            },
+          ],
+        },
+      ],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+write(
+  ".well-known/ai-catalog.json",
+  JSON.stringify(
+    {
+      specVersion: "1.0",
+      host: {
+        displayName: "TinyCloud",
+        identifier: "agents.tinycloud.xyz",
+        documentationUrl: url("setup"),
+      },
+      entries: [
+        {
+          identifier: "urn:air:agents.tinycloud.xyz:mcp:tinycloud",
+          type: "application/mcp-server-card+json",
+          url: url(".well-known/mcp/server-card.json"),
+        },
+        ...skills.map((s) => ({
+          identifier: `urn:air:agents.tinycloud.xyz:skill:${s.short}`,
+          type: "text/markdown",
+          url: url(`skills/${s.short}.md`),
+        })),
+      ],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
 // Earlier URLs (repository paths) keep working as redirects.
 const redirects = [
   "/setup/index.md /setup 301",
@@ -524,6 +580,7 @@ write(
   Access-Control-Allow-Origin: *
   X-Content-Type-Options: nosniff
   Cache-Control: public, max-age=300
+  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/mcp/server-card.json>; rel="service-desc"; type="application/mcp-server-card+json", </.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json", </auth.md>; rel="describedby"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"
 
 /*.md
   Content-Type: text/markdown; charset=utf-8
@@ -549,8 +606,6 @@ ${PAGES.filter((p) => !p.html).map((p) => p.url)
 
 /auth.md
   Content-Type: text/markdown; charset=utf-8
-/
-  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/mcp/server-card.json>; rel="mcp"; type="application/mcp-server-card+json", </.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json", </auth.md>; rel="describedby"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"
 `,
 );
 
