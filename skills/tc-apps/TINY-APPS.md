@@ -21,13 +21,23 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 ## 3. Installing a catalog app and getting approval
 
-The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. A code OpenKey shows during the owner's sign-in goes into the terminal where that sign-in is running; if the owner pastes one in the chat, say where it goes and carry on. Don't ask any question in chat before that, and don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the full space id `$SPACE` saved in step 4.
+The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. A code OpenKey shows during the owner's sign-in goes into the terminal where that sign-in is running; if the owner pastes one in the chat, say where it goes and carry on. Apart from the account and timezone check below, don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the validated full space id `$SPACE`.
 
 **Say the two steps first.** The owner signs in to, or creates, their OpenKey, then gives you permission for what they asked; signing in is not what gives you access. The `FIRST` message from `announce.sh` says this: copy that message into your reply exactly, character for character, once, and do not reword any line of it. If the action skill's own message already opens with this, don't repeat it. Call it "permission", not "delegation", "DID" or "capability".
 
 `AGENT_INSTALL_ENABLED` is `false` now: the agent logs into a Health Log that is already set up. Set it to `true` once `tinycloud apps install` ships. The same switch is set in `announce.sh`; change both together. Only the step marked INSTALL depends on it.
 
 Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent starts no browser and waits for no code: the owner's sign-in and grant are in step 3, the import in step 4.
+
+**Health Log account and timezone.** Require independently supplied `TC_APPS_OWNER_DID` (the owner's expected `did:pkh:eip155:<chain>:0x…` address) and `TC_APPS_TIMEZONE` (their IANA timezone, such as `Pacific/Kiritimati`). The owner explicitly confirms both values; pass them in the shell environment for the blocks below, using shell-safe quoting. Preserve any values already supplied by the operator. Never infer either from the grant, saved space, session, or this computer's timezone, or change the expected owner to match a grant. If missing or invalid, stop and say exactly: "Ask the owner for their TinyCloud address and timezone." Ask for these before continuing, even when a grant is live. The owner should open Health Log using this same account; its Today card follows their browser's timezone.
+
+Resolve the installed helper's absolute path once per conversation:
+
+```sh
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/healthlog-context.mjs" ]; then printf '%s/healthlog-context.mjs\n' "$d"; break; fi; done
+```
+
+Copy that path exactly as `<HEALTHLOG_CONTEXT>` in the blocks below. If no path prints, stop and ask the owner to rerun the setup to install the helper. Before selecting a meal's slot, and before every meal query or write, run `node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"`. It reads only `meal-space.txt` and the agent's `context --json` metadata, compares both full applications space IDs with the independent expected owner (address case is ignored), and returns JSON `{spaceId,day,now,utc,timeZone}` using a fresh clock in the explicit owner timezone. It never reads the owner's profile. A failure prints one plain instruction on stderr: stop, pass that instruction to the owner, and run no SQL. A mismatch or missing session metadata says: "Ask the owner to confirm their TinyCloud address and approve Health Log for that account." Never repair a mismatch by changing the expected owner or copying the session's address into it.
 
 0. **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database. It fails with `AUTH_REQUIRED` or `PROFILE_NOT_FOUND` when there is no live grant, and with another error for anything else.
 
@@ -104,42 +114,53 @@ Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using it
 
 ## 4. Logging and showing the result
 
-**Health Log, meals.** Log one `meal` row. Build the values from the owner's words, using `<NOW>` and `<UTC>` from `SKILL.md` §1:
+**Health Log, meals.** Log one `meal` row. Use the owner's words and the validated helper clock, never the host-local `<NOW>` from `SKILL.md` §1. Check the account and get the owner-local time before choosing values:
+
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"
+```
 
 - `op_id`: a new UUID per write, from `node -e 'console.log(require("crypto").randomUUID())'`.
-- `day`: the local date from `<NOW>`, `YYYY-MM-DD`.
-- `slot`: `breakfast`, `lunch`, `dinner` or `snack`, from the owner's words. If not named, use the time of day in `<NOW>`: before 11:00 breakfast, before 15:00 lunch, before 21:00 dinner, otherwise snack. Say which one you used.
+- `day`: the helper's owner-local `day`, `YYYY-MM-DD`, refreshed in each block. These blocks log the current owner day.
+- `slot`: `breakfast`, `lunch`, `dinner` or `snack`, from the owner's words. If not named, fill `<SLOT>` with an empty string: the blocks use the helper's fresh owner-local hour, before 11:00 breakfast, before 15:00 lunch, before 21:00 dinner, otherwise snack. Say which one you used.
 - `name`: the owner's meal description, 1 to 200 characters. Line breaks are joined with spaces when the value is read; an empty name is not logged.
-- `kcal`: the owner's number, a whole number from 0 to 5000. If the owner gave no calories, estimate a reasonable whole number for the portion described. Never ask for calories, and never ask any other question before the write.
-- `source`: `agent`. `logged_at`: `<UTC>`.
+- `kcal`: the owner's number, a whole number from 0 to 5000. If the owner gave no calories, estimate a reasonable whole number for the portion described. Never ask for calories; only an account or timezone guard failure needs an owner answer before the write.
+- `source`: `agent`. `logged_at`: the helper's fresh `utc`.
 - Leave `protein_g`, `carbs_g`, `fat_g` at their defaults unless the owner gave them or the app's `knowledge/app.md` rules say otherwise. Fill any other column from those rules, never by a question. Don't invent macros.
 
-**Passing values to the shell.** The owner's meal name reaches the shell only inside a quoted heredoc, and the SQL parameters are built with `jq`, which escapes them. Never put the name inside a double-quoted or single-quoted argument. The heredoc's end marker is `NAME_<MARK>`, where `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`. Use the same value on both marker lines of a block. Owner text can't end the heredoc early, because it can't contain that value. The shell joins line breaks into spaces, and a name that is empty or only spaces is not written (`EMPTY_NAME`). The other values are yours: `<OP_ID>` (a UUID), `<DAY>` (`YYYY-MM-DD`), `<SLOT>` (one of the four words), `<UTC>` (from `SKILL.md` §1), and `<KCAL>` (digits only, 0 to 5000). Write each one as shown in the blocks below. Each block runs the space guard first and stops if the space is not the saved full id.
+**Passing values to the shell.** The owner's meal name reaches the shell only inside a quoted heredoc, and the SQL parameters are built with `jq`, which escapes them. Never put the name inside a double-quoted or single-quoted argument. The heredoc's end marker is `NAME_<MARK>`, where `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`. Use the same value on both marker lines of a block. Owner text can't end the heredoc early, because it can't contain that value. The shell joins line breaks into spaces, and a name that is empty or only spaces is not written (`EMPTY_NAME`). Fill `<OP_ID>` (a UUID), `<SLOT>` (one of the four words, or empty to infer it), and `<KCAL>` (digits only, 0 to 5000). Each block reruns the helper first; its validated space and clock supply `SPACE`, `DAY` and `UTC`. Never replace those assignments with a saved or host-local value.
 
 Check for a duplicate first: if today's row with the same slot and name already exists, don't insert. Report it: "Already logged today: <name>, <kcal> kcal."
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+CONTEXT=$(node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE") || exit 1
+SPACE=$(printf '%s' "$CONTEXT" | jq -r '.spaceId'); DAY=$(printf '%s' "$CONTEXT" | jq -r '.day')
 NAME=$(cat <<'NAME_<MARK>'
 <the owner's meal name, exactly as typed (line breaks allowed)>
 NAME_<MARK>
 )
 NAME=$(printf '%s' "$NAME" | tr '\n' ' ')
-DAY='<DAY>'; SLOT='<SLOT>'
-PARAMS=$(jq -cn --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" '[$day,$slot,$name]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS" --json
+SLOT='<SLOT>'
+if [ -z "$SLOT" ]; then HOUR=$(printf '%s' "$CONTEXT" | jq -r '.now[11:13] | tonumber'); if [ "$HOUR" -lt 11 ]; then SLOT=breakfast; elif [ "$HOUR" -lt 15 ]; then SLOT=lunch; elif [ "$HOUR" -lt 21 ]; then SLOT=dinner; else SLOT=snack; fi; fi
+PARAMS=$(jq -cn --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" '[$day,$slot,$name]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && "$TC_BIN" --profile agent-meal sql query "SELECT id, op_id, slot, name, kcal FROM meal WHERE day = ? AND slot = ? AND name = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS" --json
 ```
 
 Write it with one statement, using the app's database and space:
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+CONTEXT=$(node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE") || exit 1
+SPACE=$(printf '%s' "$CONTEXT" | jq -r '.spaceId'); DAY=$(printf '%s' "$CONTEXT" | jq -r '.day'); UTC=$(printf '%s' "$CONTEXT" | jq -r '.utc')
 NAME=$(cat <<'NAME_<MARK>'
 <the owner's meal name, exactly as typed (line breaks allowed)>
 NAME_<MARK>
 )
 NAME=$(printf '%s' "$NAME" | tr '\n' ' ')
-OP_ID='<OP_ID>'; DAY='<DAY>'; SLOT='<SLOT>'; KCAL=<KCAL>; UTC='<UTC>'
-PARAMS=$(jq -cn --arg op "$OP_ID" --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" --argjson kcal "$KCAL" --arg utc "$UTC" '[$op,$day,$slot,$name,$kcal,$utc]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
+OP_ID='<OP_ID>'; SLOT='<SLOT>'; KCAL=<KCAL>
+if [ -z "$SLOT" ]; then HOUR=$(printf '%s' "$CONTEXT" | jq -r '.now[11:13] | tonumber'); if [ "$HOUR" -lt 11 ]; then SLOT=breakfast; elif [ "$HOUR" -lt 15 ]; then SLOT=lunch; elif [ "$HOUR" -lt 21 ]; then SLOT=dinner; else SLOT=snack; fi; fi
+PARAMS=$(jq -cn --arg op "$OP_ID" --arg day "$DAY" --arg slot "$SLOT" --arg name "$NAME" --argjson kcal "$KCAL" --arg utc "$UTC" '[$op,$day,$slot,$name,$kcal,$utc]') && case "$NAME" in *[![:space:]]*) true;; *) echo EMPTY_NAME >&2; false;; esac && "$TC_BIN" --profile agent-meal sql execute "INSERT INTO meal (op_id, day, slot, name, kcal, source, logged_at) VALUES (?, ?, ?, ?, ?, 'agent', ?)" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
 ```
 
 If `jq` or the insert fails, stop and report the error; for `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED`, tell the owner as `SKILL.md` §8 says. If the shell prints `EMPTY_NAME`, the meal name was empty: tell the owner in one line and stop. Don't retry with other options.
@@ -147,9 +168,11 @@ If `jq` or the insert fails, stop and report the error; for `STORAGE_QUOTA_EXCEE
 Read back the row you wrote, and today's totals from the app's `day_card` view:
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-OP_ID='<OP_ID>'; DAY='<DAY>'
-case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql query "SELECT id, slot, name, kcal FROM meal WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg op "$OP_ID" '[$op]')" --json && "$TC_BIN" --profile agent-meal sql query "SELECT * FROM day_card WHERE day = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg day "$DAY" '[$day]')" --json
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+CONTEXT=$(node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE") || exit 1
+SPACE=$(printf '%s' "$CONTEXT" | jq -r '.spaceId'); DAY=$(printf '%s' "$CONTEXT" | jq -r '.day')
+OP_ID='<OP_ID>'
+"$TC_BIN" --profile agent-meal sql query "SELECT id, slot, name, kcal FROM meal WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg op "$OP_ID" '[$op]')" --json && "$TC_BIN" --profile agent-meal sql query "SELECT * FROM day_card WHERE day = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$(jq -cn --arg day "$DAY" '[$day]')" --json
 ```
 
 Column names for `day_card` come from the installed knowledge (`views/day_card.md`), not from memory.
@@ -161,9 +184,11 @@ Column names for `day_card` come from the installed knowledge (`views/day_card.m
 **Correct a row.** If the owner changes a value afterwards ("make that 150"), update that row by its op id, then say so in one line, for example "Updated to 150 kcal.":
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+CONTEXT=$(node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE") || exit 1
+SPACE=$(printf '%s' "$CONTEXT" | jq -r '.spaceId')
 OP_ID='<OP_ID>'; KCAL=<KCAL>
-PARAMS=$(jq -cn --argjson kcal "$KCAL" --arg op "$OP_ID" '[$kcal,$op]') && case "$SPACE" in tinycloud:pkh:eip155:*:applications) true;; *) echo NO_SPACE >&2; false;; esac && "$TC_BIN" --profile agent-meal sql execute "UPDATE meal SET kcal = ? WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
+PARAMS=$(jq -cn --argjson kcal "$KCAL" --arg op "$OP_ID" '[$kcal,$op]') && "$TC_BIN" --profile agent-meal sql execute "UPDATE meal SET kcal = ? WHERE op_id = ?" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --params "$PARAMS"
 ```
 
 Keep the op id for the rest of the conversation. Use the same pattern for any other column the owner changes.
