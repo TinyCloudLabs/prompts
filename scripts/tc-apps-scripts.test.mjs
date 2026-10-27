@@ -597,3 +597,58 @@ test("migrate.sh says plainly that a key contains a tab and changes nothing", ()
   assert.equal(cliCalls(h).some((c) => c.argv[1] === "put"), false);
   assert.deepEqual(readdirSync(h.state), []);
 });
+
+// ---- onboarded.sh: the onboarded profile's grant is reused only when it is live and covers every capability ----
+const onboarded = join(skill, "onboarded.sh");
+// A stand-in CLI that answers like `auth status --json` and `auth caps --diff`: STUB_STATE is the session state,
+// STUB_COVERS holds the capability specs the grant covers (one per line), STUB_PROFILE the profile it reports.
+const onboardCli = (h) => {
+  const path = join(h.work, "cli-beta/node_modules/.bin/tinycloud");
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `#!/bin/sh
+case "$*" in
+  *"auth status"*) [ "\${STUB_STATE:-}" = none ] && { echo '{"error":{"code":"PROFILE_NOT_FOUND"}}'; exit 1; }
+    printf '{"authenticated":%s,"profile":"%s","ownerDid":"did:pkh:eip155:1:0xabc","session":{"state":"%s"}}\\n' "$([ "$STUB_STATE" = present ] && echo true || echo false)" "\${STUB_PROFILE:-default}" "$STUB_STATE" ;;
+  *"auth caps --diff"*) for last; do :; done
+    if printf '%s\\n' "$STUB_COVERS" | grep -qxF -- "$last"; then echo '{"covered":true}'; else echo '{"covered":false}'; fi ;;
+esac
+`, { mode: 0o755 });
+};
+const ONB_KV = "tinycloud.kv:applications:xyz.tinycloud.tinyapps.todos/:get,put,list,del";
+const ONB_SQL = "tinycloud.sql:applications:xyz.tinycloud.sample.healthlog/healthlog:read,write";
+const runOnboarded = (env, caps) => {
+  const h = fresh();
+  onboardCli(h);
+  const out = run(["sh", onboarded, ...caps], { HOME: h.dir, ...env });
+  assert.equal(out.status, 0, out.stderr);
+  return out.stdout.trim();
+};
+
+test("onboarded.sh: a live session that covers every capability is ONBOARDED, with the profile and its applications space", () => {
+  assert.equal(
+    runOnboarded({ STUB_STATE: "present", STUB_COVERS: `${ONB_KV}\n${ONB_SQL}`, STUB_PROFILE: "owner-1" }, [ONB_KV, ONB_SQL]),
+    "ONBOARDED owner-1 tinycloud:pkh:eip155:1:0xabc:applications",
+  );
+});
+
+test("onboarded.sh: one uncovered capability falls back, even when the others are covered", () => {
+  const out = runOnboarded({ STUB_STATE: "present", STUB_COVERS: ONB_KV }, [ONB_KV, ONB_SQL]);
+  assert.match(out, /^NOT_ONBOARDED the grant does not cover tinycloud\.sql:/);
+});
+
+test("onboarded.sh: an expired or missing session, or a missing profile, falls back", () => {
+  for (const state of ["expired", "missing", "none"]) {
+    assert.match(runOnboarded({ STUB_STATE: state, STUB_COVERS: ONB_KV }, [ONB_KV]), /^NOT_ONBOARDED /, state);
+  }
+});
+
+test("onboarded.sh: a profile name that is not a plain name is never passed on", () => {
+  assert.match(runOnboarded({ STUB_STATE: "present", STUB_COVERS: ONB_KV, STUB_PROFILE: "a b; rm" }, [ONB_KV]), /^NOT_ONBOARDED /);
+});
+
+test("onboarded.sh: with no capability it is a usage error and with no CLI it falls back", () => {
+  const h = fresh();
+  assert.equal(run(["sh", onboarded], { HOME: h.dir }).status, 2);
+  const out = run(["sh", onboarded, ONB_KV], { HOME: h.dir });
+  assert.equal(out.stdout.trim(), "NOT_ONBOARDED the CLI is missing");
+});
