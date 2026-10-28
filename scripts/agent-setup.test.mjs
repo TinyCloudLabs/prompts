@@ -255,6 +255,46 @@ test("/connect sends a coding agent to the guide for its request and gives each 
   }
 });
 
+test("onboarding explains the payoff, environment route, real grant scope and CLI recovery", () => {
+  const site = join(root, "_site");
+  const connect = readFileSync(join(site, "connect.md"), "utf8");
+  const onboarding = readFileSync(join(site, "onboarding.md"), "utf8");
+  const cli = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  for (const page of [connect, onboarding]) {
+    assert.match(page, /Shell agents use the CLI; chat apps use hosted MCP/);
+    assert.match(page, /outlast a conversation or work across agents/);
+    assert.match(page, /secrets are encrypted before storage/);
+  }
+  assert.match(onboarding, /read, list, change, delete and see metadata for all KV data in your whole `applications` space/);
+  assert.match(onboarding, /read and write SQL data across the whole `applications` space, including Health Log's database/);
+  assert.match(onboarding, /does not grant SQL-schema permissions/);
+  assert.match(onboarding, /After setup, try logging a meal in Health Log/);
+  assert.match(onboarding, /tc-cli` skill status is unavailable, the CLI remains usable and onboarding continues/);
+  assert.match(onboarding, /Do not claim onboarding succeeded or ask the owner to rerun `\/cli`/);
+  assert.match(cli, /TC_SKILL_STATUS unavailable/);
+  assert.match(cli, /TC_SKILL_STATUS installed/);
+  assert.match(cli, /Do not ask them to edit a shell profile or rerun `\/cli`/);
+  assert.match(cli, /If a shell-tool denial prevents this optional command from running/);
+  assert.match(cli, /An unavailable status means the core skill could not be installed or verified/);
+  assert.match(cli, /the `tc-cli` skill could not be installed or verified; do not claim otherwise/);
+});
+test("CLI setup reports an optional tc-cli install failure and keeps onboarding usable", () => {
+  const dir = home();
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const cli = join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tc");
+  mkdirSync(dirname(cli), { recursive: true });
+  executable(cli, 'case "$*" in "--version") echo 1.5.0-beta.20 ;; "onboard --help") echo help ;; esac');
+  executable(join(bin, "curl"), "exit 22");
+  const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  const result = shell(`${block(guide, "## Install the core skill")}\n"$TC_BIN" onboard --help >/dev/null && echo ONBOARD_READY`, {
+    HOME: dir, CLIENT: "codex", TC_BIN: cli, PATH: `${bin}:${process.env.PATH}`,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /TC_SKILL_STATUS unavailable/);
+  assert.match(result.stdout, /ONBOARD_READY/);
+});
+
 test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {
   const site = join(root, "_site");
   const storage = "https://account.tinycloud.xyz/storage";

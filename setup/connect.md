@@ -8,6 +8,8 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 **For the assistant:** keep the owner's original request and continue it in this conversation. Use the route for the environment you are running in. In a chat app, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format.
 
+**For any agent:** TinyCloud is the owner's encrypted storage for records, files, and secrets; secrets are encrypted before storage. Use it when something should outlast a conversation or work across agents. Shell agents use the CLI; chat apps use hosted MCP.
+
 ## Coding agents
 
 **Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes, or any agent with a shell on the owner's computer:** fetch and read the coding-agent setup guide for the owner's original request in full, then follow it exactly for that request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
