@@ -1,13 +1,13 @@
-# tc-publish forward-test runbook
+# tinycloud-publish forward-test runbook
 
-The coordinator runs each sequence with a **fresh agent that has only the `tc-publish` skill** — OMP SWE-2, `omp-private` DeepSeek on Tinfoil, and Codex are the target matrix. Tests 1–6 and 13 share one setup per agent; Tests 7–12 are additional sequences.
+The coordinator runs each sequence with a **fresh agent that has only the `tinycloud-publish` skill** — OMP SWE-2, `omp-private` DeepSeek on Tinfoil, and Codex are the target matrix. Tests 1–6 and 13 share one setup per agent; Tests 7–12 are additional sequences.
 
 ## Preconditions
 
 - **Released CLI only.** Install the exact pin `npm install --prefix <dir> @tinycloud/cli@1.3.5`. No interim builds. (beta.16 has the owner-only fix but not TC-540's device login; the probe prints `STALE` on it.)
 - **The skill** comes from the site, as owners get it: `curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - publish --agent <client>` with the agent's home as `HOME`. Before merge, use the pull request's Pages preview URL instead; its installer installs that branch's skill.
 - `TC_BIN` = the absolute path to that executable, exported into the agent's environment. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent must never change or unset them.
-- **One `TC_HOME` and one `TC_PUBLISH_STATE` per agent/model sequence**, both exported — fresh scratch directories per sequence, never `~/.tinycloud` or the default `~/.local/state/tc-publish`. Reuse them across Tests 1–6 of that sequence. Separate state directories let sequences run in parallel on one machine without sharing a waiter log or link file.
+- **One `TC_HOME` and one `TC_PUBLISH_STATE` per agent/model sequence**, both exported — fresh scratch directories per sequence, never `~/.tinycloud` or the default `~/.local/state/tinycloud-publish`. Reuse them across Tests 1–6 of that sequence. Separate state directories let sequences run in parallel on one machine without sharing a waiter log or link file.
 - `TC_OWNER_EMAIL` exported = a coordinator-controlled **mailinator** (or equivalent public) inbox, so the coordinator can read the 8-digit mailbox code in Test 4. Never Sam's real mailbox.
 - A TinyCloud test account the coordinator controls, and a browser session where the coordinator approves on `openkey.so/device` as that account.
 - **Consent pacing.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every sequence on the machine and by the coordinator. Keep a log of start times and schedule consent (Tests 2, 8, 9, 10, 11, 12 and any relaunch) so that no 10-minute window holds more than 5 starts across all parallel sequences.
@@ -54,7 +54,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 ## Test 1 — CLI discovery and checks
 
-**Prompt:** "Read the tc-publish skill. Verify the CLI is usable for publishing and report what you checked. Don't publish anything."
+**Prompt:** "Read the tinycloud-publish skill. Verify the CLI is usable for publishing and report what you checked. Don't publish anything."
 
 **Expected:** the agent runs the feature probe (`enable share --help` → `--replace-session`, `auth login --help` → `--expiry`) and prints `CLI_OK`, reports `"$TC_BIN" --version`, and echoes `TC_HOME`. It does not run bare `command -v tc` or trust PATH.
 

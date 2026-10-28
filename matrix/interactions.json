@@ -119,7 +119,7 @@
       ]
     },
     {
-      "name": "tc-publish",
+      "name": "tinycloud-publish",
       "blurb": "Share documents and web pages",
       "flows": [
         {

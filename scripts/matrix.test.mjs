@@ -50,7 +50,7 @@ test("the page renders as one real table: every flow, header scopes, and 'not me
 
 test("the page shows both a total and its breakdown, or neither; partial parts are never printed", () => {
   const html = renderMatrix(data);
-  const sign = cellsOf(html, "Sign in", "tc-publish")[0];
+  const sign = cellsOf(html, "Sign in", "tinycloud-publish")[0];
   assert.equal(cellsOf(html, "Log a meal", "tc-apps")[0][1], "0|OpenKey approvals 0 · codes pasted 0 · codes typed 0 · answers 0 · scripted owner");
   assert.equal(sign[1], NOT_MEASURED);
     const half = renderMatrix({ skills: [{ name: "x", blurb: "b", flows: [{ task: "t", fresh: { owner_interactions: { total: 3, openkey_approvals: 2, pastes: null, choices: null, codes_typed: 1 }, owner_kind: "scripted", measured_on: "2026-10-24", run_ref: "r", cli_version: "1", skill_version: "2" }, returning: null }] }] });
@@ -78,7 +78,7 @@ test("'Last measured' appears only for a skill with at least one number, from it
   assert.match(html, /Last measured 2026-10-24, CLI 1\.3\.4, 1\.3\.5, skill 0\.1\.1, 0\.1\.2\./);
   assert.doesNotMatch(html, /0\.5\.13|2026-10-30/);
   const page = renderMatrix(data);
-  const publish = page.slice(page.indexOf("<code>tc-publish</code>"), page.indexOf("<code>tc-secrets</code>"));
+  const publish = page.slice(page.indexOf("<code>tinycloud-publish</code>"), page.indexOf("<code>tc-secrets</code>"));
   assert.doesNotMatch(publish, /Last measured/);
 });
 

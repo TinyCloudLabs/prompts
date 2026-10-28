@@ -154,21 +154,11 @@ for (const scenario of ["parent-link", "destination-link", "moved-temp-parent", 
   });
 }
 
-test("CLI setup respects an operator binary without replacing a conflicting tc", () => {
-  const dir = home();
-  const bin = join(dir, "bin");
-  mkdirSync(bin);
-  const selected = join(bin, "custom-cli");
-  const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.2.3');
-  executable(conflicting, 'echo unrelated');
-  const original = readFileSync(conflicting);
+test("CLI setup installs the pinned published package and uses tinycloud directly", () => {
   const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  const result = shell(block(guide, "## Install the CLI"), { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /TC_CONFLICT tc other/);
-  assert.deepEqual(readFileSync(conflicting), original);
-  assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
+  assert.match(guide, /npm install --global @tinycloud\/cli@1\.5\.0-beta\.20/);
+  assert.match(guide, /tinycloud --version/);
+  assert.doesNotMatch(guide, /TC_BIN|@latest/);
 });
 
 before(() => {
@@ -255,7 +245,7 @@ test("/connect sends a coding agent to the guide for its request and gives each 
   }
 });
 
-test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {
+test("a full storage sends the owner to the storage page from /connect, tc-apps and tinycloud-publish", () => {
   const site = join(root, "_site");
   const storage = "https://account.tinycloud.xyz/storage";
   const lines = (file) => readFileSync(join(site, file), "utf8").split("\n");
