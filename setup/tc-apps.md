@@ -116,7 +116,7 @@ If something goes wrong:
 - **A step fails, or step 4 or a step 5 copy doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder. A copy your client doesn't allow is covered in step 5, not here.
 - **`agents.tinycloud.xyz` does not answer** (step 3 fails): stop and say so to the owner. Don't switch to another source.
 
-Wait until step 7 has printed its version before §3: the skill doesn't exist until then.
+Wait until step 7 has printed its version before §3: the skill's commands need the CLI until then.
 
 ## 3. Carry on with the skill
 
