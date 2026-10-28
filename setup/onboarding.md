@@ -14,11 +14,9 @@ Give any AI agent or chat app this page, and it sets you up so it can act for yo
 
 Onboarding has two OpenKey approvals, and each one shows the owner what it grants before they approve. On a computer where the agent can run commands, OpenKey then shows a short code like `ABCD-EFGH`. The owner pastes it into this chat, and the agent runs `tinycloud onboard` with it on that computer to set up the profile and grant there. Chat apps approve by link only; no code is involved.
 
-Why it's safe to paste that code into chat:
+Codes expire 10 minutes after OpenKey shows them, and an expired code is refused. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
-- The code only points to a grant. OpenKey releases it to the CLI key that started the sign-in, and the CLI rejects any grant bound to a different key. A copied code isn't a usable login.
-- That key is made on the owner's computer and stays there. Chat never sees it, or the profile files.
-- Codes expire, and an expired code is refused. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
+The key that signs the owner's requests is made on their computer and stays there. OpenKey receives only its public half.
 
 ## For the agent
 
@@ -80,7 +78,7 @@ The owner can open the link on any device, their phone included; OpenKey shows t
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
-- **The code is refused:** each code works once, for the link it came from. Send the latest `approvalUrl` again and ask for the new code.
+- **The code is refused:** codes expire 10 minutes after OpenKey shows them. Send the latest `approvalUrl` again and ask for the new code.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 
 ## Chat app
