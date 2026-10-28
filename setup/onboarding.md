@@ -6,15 +6,15 @@ Give any AI agent or chat app this page, and it sets you up so it can act for yo
 
 > Set me up with TinyCloud: https://agents.tinycloud.xyz/onboarding
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read and change your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
+- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
 ## How this works
 
-The agent's TinyCloud CLI makes a key on the owner's computer. The owner approves two OpenKey screens. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. Chat apps approve by link only; no code is involved.
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. Chat apps approve by link only; no code is involved.
 
-**Why the code is safe to send in chat:** it isn't a password, and it isn't the grant. It only lets the CLI collect a grant that is useless without the key on the owner's computer, and that key never leaves it. TinyCloud refuses any request not signed by that key. Each code also works once and expires after 5 minutes. If someone else uses a code first, the owner's CLI is refused and the agent asks for a new one. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
+**Why the code is safe to send in chat:** it isn't a password, and it isn't the grant. It only lets the CLI collect a grant that is useless without the CLI's key, and that key never leaves the computer it was made on. TinyCloud refuses any request not signed by that key. Each code also works once and expires after 5 minutes. If someone else uses a code first, the owner's CLI is refused and the agent asks for a new one. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
 ## For the agent
 
@@ -22,7 +22,7 @@ The person you are talking to is the **owner**. Onboarding sets up three things 
 
 Pick the route for where you run:
 
-- **You can run shell commands on the owner's computer** (a coding agent, or any agent with a workspace): follow [Shell](#shell).
+- **You can run shell commands, on the owner's computer or in your own workspace** (a coding agent, or any agent with a workspace): follow [Shell](#shell).
 - **You can't** (a chat app such as ChatGPT, Claude, Gemini, Grok or Perplexity): follow [Chat app](#chat-app).
 
 ### Principles
@@ -58,7 +58,7 @@ It prints JSON on stdout:
 
 - **Exit 8, `"onboarded": false`:** the owner needs to approve. Send them one message with `approvalUrl` and this line, filling in `asks` with its first letter in lower case: "Open this link and sign in or create your account. It lets me <asks> Approve, then send me the short code OpenKey shows (like ABCD-EFGH)." For step 1, start that message with this text, word for word:
 
-  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read and change your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
+  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
   When they reply with the code, run this with the code exactly as they sent it:
 
