@@ -26,6 +26,8 @@ After an interruption, rerun the same command with the same profile to resume th
 
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
 
+**What/when:** TinyCloud is the owner's encrypted storage for records, files, and secrets; secrets are encrypted before storage. Use it when something should outlast a conversation or work across agents. Shell agents use the CLI; chat apps use hosted MCP.
+
 Pick the route for where you run:
 
 - **You can install and run the TinyCloud CLI**, on the owner's computer or in your own workspace: follow [CLI](#cli). This is the preferred route.

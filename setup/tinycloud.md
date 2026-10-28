@@ -10,7 +10,7 @@ This module installs and verifies only the TinyCloud CLI and its core skill, `ti
 - **Paste into an agent that can run shell commands:** `Fetch https://agents.tinycloud.xyz/cli with curl and follow it, including running its installer. Set up the TinyCloud CLI.` `/chat`, `/apps`, `/publish`, `/secrets` and `/courier` use this shared selection instead of installing an app-specific CLI.
 - **If your agent app blocks the install:** your agent sends you one line naming the npm package and the folder. Reply "Go ahead: install the TinyCloud CLI" and it installs it once more; if that fails too, it stops and tells you.
 - **You approve:** nothing. It doesn't sign in or request any access.
-- **Then:** in a new terminal, `tinycloud --help` lists the commands.
+- **Then:** use `tinycloud --help` or the verified `TC_BIN` path. Skill installation status is reported separately from CLI readiness.
 - **Undo:** see [Undo](#undo).
 
 ## Caller contract
@@ -218,11 +218,11 @@ The installer downloads `tinycloud-cli` from `@tinycloud/cli@1.6.2` with this si
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
-## Verify and return
+Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --version` reports `1.5.0-beta.23` (or the version of the owner's `TC_BIN`), and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. If `TC_SKILL_STATUS` is `installed` or `reused`, check that the selected client's `tc-cli/SKILL.md` is readable and matches the pinned skill. If it is `unavailable`, tell the owner the CLI is ready but the `tc-cli` skill could not be installed; do not claim otherwise. A caller such as `/onboarding` must continue using the CLI.
 
 Verify the selected absolute path from `TC_SELECTED`: `"<TC_BIN>" --version` in POSIX or `& "<TC_BIN>" --version` in PowerShell. New and upgraded installs report `1.6.2`; a newer or operator-selected CLI keeps its version. A selection that reports no version is an error, never replaced. If `tinycloud` was `TC_READY` or `TC_LINKED`, verify `tinycloud --version` after refreshing PATH or restarting the terminal. Check the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile or host, or request permissions here.
 
-Return to the exact recorded app-guide heading and continue there without another user prompt.
+Return to the exact recorded app-guide heading and continue the original task in the same conversation. Do not ask the owner to restart the flow or paste another prompt.
 
 ## Exit codes and owner lines
 
