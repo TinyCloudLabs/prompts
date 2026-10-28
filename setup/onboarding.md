@@ -10,6 +10,16 @@ Give any AI agent or chat app this page, and it sets you up so it can act for yo
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
+## How this works
+
+Onboarding has two OpenKey approvals, and each one shows the owner what it grants before they approve. On a computer where the agent can run commands, OpenKey then shows a short code like `ABCD-EFGH`. The owner pastes it into this chat, and the agent runs `tinycloud onboard` with it on that computer to set up the profile and grant there. Chat apps approve by link only; no code is involved.
+
+Why it's safe to paste that code into chat:
+
+- The code only points to a grant. OpenKey releases it to the CLI key that started the sign-in, and the CLI rejects any grant bound to a different key. A copied code isn't a usable login.
+- That key is made on the owner's computer and stays there. Chat never sees it, or the profile files.
+- Codes expire, and an expired code is refused. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
+
 ## For the agent
 
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
