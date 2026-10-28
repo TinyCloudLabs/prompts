@@ -48,7 +48,7 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
 
 ## Why not the phone code?
 
-OpenKey's device flow (the code you approve on your phone, used by `tc-publish`) deliberately rejects the `secrets` space and decryption. Anyone can start a device request and send its code to someone else, and a secret is the worst thing to phish. Secret access therefore goes through the OpenKey approval page. That page signs a delegation for this profile's key only, and returns it as a code the owner hands back to the agent.
+OpenKey's device flow (the code you approve on your phone, used by `tinycloud-publish`) deliberately rejects the `secrets` space and decryption. Anyone can start a device request and send its code to someone else, and a secret is the worst thing to phish. Secret access therefore goes through the OpenKey approval page. That page signs a delegation for this profile's key only, and returns it as a code the owner hands back to the agent.
 
 ## What the owner sees
 

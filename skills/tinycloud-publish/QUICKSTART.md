@@ -2,19 +2,19 @@
 
 Background and walkthrough for the `tinycloud-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` ≥ `1.0.0-beta.18` (TC-540 device login and `enable share`, TC-556 owner-only links, TC-577 file names with spaces). The `tinycloud` command needs 1.2.3 or later; on older versions, run the same commands as `tc`. Install the exact pin below, never `@latest`. The skill's feature probe is authoritative: betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and the published `@tinycloud/cli@1.5.0-beta.20` pin used by this skill. The user-facing CLI command is `tinycloud`.
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.5.0-beta.20
-export TC_BIN=<dir>/node_modules/.bin/tinycloud
+npm install --global @tinycloud/cli@1.5.0-beta.20
+tinycloud --version
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
 export TC_PUBLISH_STATE=<state dir for this agent>       # optional; default $HOME/.local/state/tinycloud-publish
 ```
 
-Install this `tinycloud-publish` directory into the agent's skill path (`~/.agents/skills/tinycloud-publish/` for Codex and OpenCode, `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tinycloud-publish/` for Claude Code). The `tc-cli` core skill is a separate install. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent never changes or unsets them. Set `TC_PUBLISH_STATE` (and `TC_HOME`) per agent when several agents share one machine and `$HOME` — for example the owner's agent alongside test agents — so their state files and waiters can't collide. `command -v tc` is not reliable — it can resolve to `/usr/sbin/tc`.
+Install this `tinycloud-publish` skill into the agent's skill path (`~/.agents/skills/tinycloud-publish/` for Codex and OpenCode, `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tinycloud-publish/` for Claude Code). The `tc-cli` core skill is a separate install. The agent uses the installed `tinycloud` command directly. `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent never changes or unsets them. Set `TC_PUBLISH_STATE` (and `TC_HOME`) per agent when several agents share one machine and `$HOME` — for example the owner's agent alongside test agents — so their state files and waiters can't collide.
 
 ## Why every block starts with a preamble
 
@@ -91,5 +91,5 @@ Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option er
 - Never retype, reassemble, or chunk a link.
 - Never report a publish without verification.
 - Never publish publicly unless the owner explicitly asked, and never substitute a public link for a private one.
-- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, start a new consent request while a code is outstanding, retry a rate-limited request in a loop, make an open link for a named recipient or an "only you" link before the owner replies "Yes, make an open link", or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
+- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, start a new consent request while a code is outstanding, retry a rate-limited request in a loop, make an open link for a named recipient or an "only you" link before the owner replies "Yes, make an open link", or change `TC_HOME`/`TC_PUBLISH_STATE`.
 - Never publish HTML that fails the self-contained check unless the owner, told what will break, explicitly says to publish anyway.
