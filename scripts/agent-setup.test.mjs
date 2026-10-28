@@ -158,7 +158,8 @@ test("CLI setup installs the pinned published package and uses tinycloud directl
   const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
   assert.match(guide, /npm install --global @tinycloud\/cli@1\.5\.0-beta\.20/);
   assert.match(guide, /tinycloud --version/);
-  assert.doesNotMatch(guide, /TC_BIN|@latest/);
+  assert.doesNotMatch(guide, /TC_BIN/);
+  assert.doesNotMatch(guide, /npm install --global @tinycloud\/cli@latest/);
 });
 
 before(() => {
@@ -172,11 +173,16 @@ for (const name of ["courier", "cli"]) {
     mkdirSync(bin);
     const selected = join(bin, "selected-cli");
     executable(selected, 'case "$*" in "--version") echo 1.2.3 ;; "courier --help") echo COURIER_SELECTED_1.2.3 ;; esac');
-    executable(join(bin, "tc"), 'echo GLOBAL_1.2.1');
+    executable(join(bin, "tinycloud"), 'echo GLOBAL_1.2.1');
     const selectedEnv = join(dir, "owner/agent.env");
-    const persisted = shell(helperInstall(), { HOME: dir, TC_BIN: selected, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}` });
+    const installed = shell(helperInstall(), { HOME: dir, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}` });
+    assert.equal(installed.status, 0, installed.stderr);
+    const persisted = shell('node "$HOME/.config/tinycloud/agent-env.mjs" set TC_BIN "$CLI"', {
+      HOME: dir, CLI: selected, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}`,
+    });
     assert.equal(persisted.status, 0, persisted.stderr);
     const skill = readFileSync(join(root, `_site/skills/${name}/SKILL.md`), "utf8");
+    if (name === "cli") assert.doesNotMatch(skill, /set `?TC_BIN`?/);
     const result = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
       HOME: dir, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}`,
     });

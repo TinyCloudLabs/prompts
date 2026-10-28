@@ -8,7 +8,7 @@ This module installs the published TinyCloud CLI and its core `tc-cli` skill. Th
 - **Verify:** run `tinycloud --version`; it should print `1.5.0-beta.20`.
 - **Paste into Claude Code, Codex or OpenCode:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`.
 - **You approve:** nothing. This setup does not sign in or request access.
-- **Undo:** run `npm uninstall --global @tinycloud/cli` and remove the installed `tc-cli` skill folder if you no longer need it.
+- **Undo:** remove the installed `tc-cli` skill folder if you no longer need it. If no other installed skill uses the TinyCloud CLI, uninstall it with `npm uninstall --global @tinycloud/cli`.
 
 ## Caller contract
 

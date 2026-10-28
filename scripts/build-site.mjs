@@ -86,9 +86,9 @@ const RESOLVER = [
   'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
   '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
   'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"',
-  '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
+  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
+  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
+  '[ -x "$TC" ] || { echo "TinyCloud CLI not found: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli" >&2; exit 1; }',
 ].join("\n");
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
@@ -104,6 +104,12 @@ const SKILLS = [
     tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0-beta.20.tgz",
     integrity: "sha512-f1WDrOFzoaY74s72e4boy2wZ+J+YFD8FyQ0zO3Mb3MK35vGMGishO1yQouXqaX68g3R7rDqCIQSqkCOZ0876wg==",
     dir: "package/skills/tc-cli",
+    changes: {
+      "SKILL.md": [[
+        "Use the installed `@tinycloud/cli` executable, `tinycloud`. Its older name `tc` clashes with `/usr/sbin/tc` (iproute2 traffic control) on many Linux hosts. Call the CLI by path and check it first; set `TC_BIN` to use a specific one:",
+        "Use the installed TinyCloud CLI through its current `tinycloud` executable. Setup places it in a private CLI directory; check the installed version before running commands:",
+      ]],
+    },
     checkCli: true,
   },
   {
