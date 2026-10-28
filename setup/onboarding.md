@@ -12,11 +12,9 @@ Give any AI agent or chat app this page, and it sets you up so it can act for yo
 
 ## How this works
 
-Onboarding has two OpenKey approvals, and each one shows the owner what it grants before they approve. On a computer where the agent can run commands, OpenKey then shows a short code like `ABCD-EFGH`. The owner pastes it into this chat, and the agent runs `tinycloud onboard` with it on that computer to set up the profile and grant there. Chat apps approve by link only; no code is involved.
+The agent's TinyCloud CLI makes a key on the owner's computer. The owner approves two OpenKey screens. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. Chat apps approve by link only; no code is involved.
 
-Codes expire 10 minutes after OpenKey shows them, and an expired code is refused. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
-
-The key that signs the owner's requests is made on their computer and stays there. OpenKey receives only its public half.
+**Why the code is safe to send in chat:** it isn't a password, and it isn't the grant. It only lets the CLI collect a grant that is useless without the key on the owner's computer, and that key never leaves it. TinyCloud refuses any request not signed by that key. Each code also works once and expires after 5 minutes. If someone else uses a code first, the owner's CLI is refused and the agent asks for a new one. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
 ## For the agent
 
@@ -78,7 +76,7 @@ The owner can open the link on any device, their phone included; OpenKey shows t
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
-- **The code is refused:** codes expire 10 minutes after OpenKey shows them. Send the latest `approvalUrl` again and ask for the new code.
+- **The code is refused:** each code works once and expires after 5 minutes. Send the latest `approvalUrl` again and ask for the new code.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 
 ## Chat app
