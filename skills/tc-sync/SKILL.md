@@ -59,7 +59,7 @@ TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" auth request $(node '<SYNC>' "$TC" caps '<SNAPSHOT>' | sed 's/^/--cap /') --grant --paste --expiry 30d < /dev/null
 ```
 
-Before sending the link, use the missing-cap list from `caps` and explain its exact scope. Owner message: "Open this link and approve. It lets me copy <app> into your TinyCloud for up to 30 days. It includes only these uncovered permissions: <plain-language list>. If Wabi schema is listed, it permits table creation across `applications:xyz.tinycloud.sync.wabi/`, not only for imported rows. If Health Log SQL is listed, it permits writes to `xyz.tinycloud.sample.healthlog/healthlog`. Then send me the short code OpenKey shows (like ABCD-EFGH)."
+Build `<plain-language list>` from the missing caps only. For Wabi schema, describe table creation under `applications:xyz.tinycloud.sync.wabi/` across the whole connector prefix, not only imported rows. For Health Log SQL, describe read and write access to `xyz.tinycloud.sample.healthlog/healthlog`. Omit covered entries. Owner message: "Open this link and approve. It lets me copy <app> into your TinyCloud for up to 30 days. It includes only these uncovered permissions: <plain-language list>. Then send me the short code OpenKey shows (like ABCD-EFGH)."
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
