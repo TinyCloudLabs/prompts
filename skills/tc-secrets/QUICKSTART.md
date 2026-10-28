@@ -7,7 +7,7 @@ Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.3.5
+npm install --prefix <dir> @tinycloud/cli@1.5.0-beta.23
 <dir>/node_modules/.bin/tinycloud --profile api-keys auth caps   # once per existing profile after an upgrade
 export TC_BIN=<dir>/node_modules/.bin/tinycloud
 export TC_OWNER_DID=did:pkh:eip155:1:<owner address>    # the account that owns the secrets
@@ -38,7 +38,7 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
       - The checker takes the line that holds only the URL. It accepts the link only if it requests exactly: `kv/get` on each named secret in the owner's `secrets` space, decrypt on the owner's default network, and the capability read.
       - It also requires this profile's key and node, no callback, and at most 30 days.
       - Only then send the approval message.
-   3. When the owner sends back the 8-character code (valid 10 minutes), write it to a fresh 0600 file at once and run the same login with the code on stdin. The result is parsed from the CLI's JSON (`SIGNED_IN`, `CODE_EXPIRED`, `LOGIN_FAILED <code>` or `LOGIN_TIMEOUT`), and the code is deleted.
+   3. When the owner sends back the 8-character code (works once, for 5 minutes), write it to a fresh 0600 file at once and run the same login with the code on stdin. The result is parsed from the CLI's JSON (`SIGNED_IN`, `CODE_EXPIRED`, `LOGIN_FAILED <code>` or `LOGIN_TIMEOUT`), and the code is deleted.
 
    No background waiter is needed: the second run accepts the code the first run's link produced.
 4. **Use** (§4).
@@ -61,7 +61,7 @@ At `openkey.so/delegate`, the owner signs in with their passkey and picks their 
 
 Reads are limited to the named secrets. The decrypt permission covers the owner's default encryption network, which is not limited to those names. So the approval message says so: the profile can only fetch the named secrets, but it could decrypt anything encrypted to that network that it gets from elsewhere.
 
-After **Approve**, the page shows an 8-character code (for example `K7M2-Q9XA`), valid for 10 minutes. The CLI uses it to fetch the signed approval from OpenKey, and accepts it only if that approval names this machine's profile key, so the code is useless elsewhere. "Use full delegation code instead" shows the long code (7–10 KB of base64) that CLIs older than 1.1.0-beta.14 need. Send the code to the agent in your 1:1 channel with it, not in a group. (Paseo's Secret Bridge is retired and is no longer a way to hand over codes.)
+After **Approve**, the page shows an 8-character code (for example `K7M2-Q9XA`) that works once, for 5 minutes. The CLI uses it to fetch the signed approval from OpenKey, and accepts it only if that approval names this machine's profile key. Anyone else who uses the code gets an approval they can't use. "Use full delegation code instead" shows the long code (7–10 KB of base64) that CLIs older than 1.1.0-beta.14 need. Send the code to the agent in your 1:1 channel with it, not in a group. (Paseo's Secret Bridge is retired and is no longer a way to hand over codes.)
 
 ## Never let a value leak
 

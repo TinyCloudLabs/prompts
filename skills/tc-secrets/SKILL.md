@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.9"
+  version: "0.5.10"
 ---
 
 # Read secrets from TinyCloud with `tinycloud secrets`
@@ -274,7 +274,7 @@ rm -f "$STATE/request.json" "$STATE/request.err"
 ### 2c. Send the owner one message, then wait
 
 Compose **one** message from the template at the end, with the add link (if §2b ran) and the approval link (if §3b ran). Then:
-- If you sent an approval link, wait for the owner's code and run §3c **as soon as it arrives**; the code works for only 10 minutes.
+- If you sent an approval link, wait for the owner's code and run §3c **as soon as it arrives**; the code works once and only for 5 minutes.
 - Then run §2 with `WAIT='9m'`. Never send the links again while waiting.
   - `MISSING` names after it → the owner hasn't added them yet. Run §2 with `WAIT='9m'` again, up to three times in total, then ask the owner whether they still want to add them.
   - `NO_ACCESS … PERMISSION_DENIED` after a completed sign-in → the owner unticked that name. Tell them; don't ask again unless they say so.
@@ -419,7 +419,7 @@ rm -f "$STATE/login.err" "$STATE/context.json"
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than 1.0.0-beta.23.
 
-**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`, valid for **10 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. The owner sends it in your 1:1 channel; never repeat, quote or echo it anywhere else (not in replies, notes, logs or other tools).
+**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`. It works once, for **5 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. The owner sends it in your 1:1 channel; never repeat, quote or echo it anywhere else (not in replies, notes, logs or other tools).
 
 - **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB). Copying a code that long by hand can corrupt it, so prefer upgrading the CLI.
 
@@ -478,7 +478,7 @@ rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
 - `SIGNED_IN` with a non-empty `declined` → something wasn't granted. Tell the owner which names stay unreadable and why:
   - an item they unticked;
   - or, if the declined entry is the decrypt permission and everything was ticked, an OpenKey deployment too old to grant agent decryption.
-- `CODE_EXPIRED` → the short code is older than 10 minutes or was mistyped. If the owner still has the OpenKey page open, ask for the long code behind "Use full delegation code instead" (it doesn't expire after 10 minutes) and run §3c again with it. Otherwise run §3b again and send the owner only the new approval link (not the add link again).
+- `CODE_EXPIRED` → the short code is older than 5 minutes, was already used, or was mistyped. If the owner still has the OpenKey page open, ask for the long code behind "Use full delegation code instead" (it doesn't expire after 5 minutes) and run §3c again with it. Otherwise run §3b again and send the owner only the new approval link (not the add link again).
 - `NO_CODE` → the code never arrived. Ask the owner to send it again.
 - `LOGIN_TIMEOUT` → the CLI didn't finish in two minutes. Report it; don't loop.
 - `LOGIN_FAILED <code>` → see §5. A code copied wrongly fails here: ask the owner to send it again. Don't start a new request.

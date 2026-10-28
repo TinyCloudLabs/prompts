@@ -26,7 +26,7 @@ const fresh = () => {
 };
 // A stand-in CLI: records which file name was run and its arguments, and prints a grant for `auth grant`.
 const stub = (path) => {
-  writeFileSync(path, `#!/bin/sh\necho "${path} $*" >> "$HOME/calls"\ncase "$1 $2" in "auth grant") echo '{"ok":1}' ;; esac\n`, { mode: 0o755 });
+  writeFileSync(path, `#!/bin/sh\necho "${path} $*" >> "$HOME/calls"\ncase " $* " in *" auth grant "*) echo '{"ok":1}' ;; esac\n`, { mode: 0o755 });
   chmodSync(path, 0o755);
 };
 const run = (args, env) => spawnSync(args[0], args.slice(1), {
@@ -102,7 +102,7 @@ test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no cur
 });
 
 for (const [name, argv, expected] of [
-  ["owner-grant.sh", ["healthlog"], ["profile show", "auth grant"]],
+  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner auth grant"]],
   ["owner-undo.sh", [], ["--profile agent-data auth logout", "--profile agent-data-sql auth logout", "profile delete agent-meal"]],
 ]) {
   const scenarios = [
@@ -125,6 +125,74 @@ for (const [name, argv, expected] of [
     });
   }
 }
+
+test("owner-grant uses an explicit owner profile when the CLI default is an unsigned agent profile", () => {
+  const h = fresh();
+  const cliHome = join(h.dir, ".tinycloud");
+  mkdirSync(cliHome, { recursive: true });
+  writeFileSync(join(cliHome, "config.json"), JSON.stringify({ defaultProfile: "linear-agent" }));
+  writeFileSync(join(cliHome, "owner-grant-state.json"), JSON.stringify({ profiles: ["linear-agent"], sessions: [] }));
+  writeFileSync(join(h.state, "meal-request.json"), "{}");
+  const cli = join(h.dir, "tinycloud");
+  writeFileSync(cli, String.raw`#!/usr/bin/env node
+const fs = require("node:fs");
+const path = require("node:path");
+const home = process.env.TC_HOME || process.env.HOME;
+const config = JSON.parse(fs.readFileSync(path.join(home, ".tinycloud/config.json"), "utf8"));
+const statePath = path.join(home, ".tinycloud/owner-grant-state.json");
+const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+const argv = process.argv.slice(2);
+const explicitProfile = argv[0] === "--profile" ? argv[1] : undefined;
+const profile = explicitProfile || config.defaultProfile || "default";
+const args = explicitProfile ? argv.slice(2) : argv;
+fs.appendFileSync(path.join(home, "owner-grant-calls.jsonl"), JSON.stringify({ argv, profile }) + "\n");
+const fail = (code, status) => { process.stderr.write(JSON.stringify({ error: { code } }) + "\n"); process.exit(status); };
+if (args[0] === "profile" && args[1] === "show") {
+  if (!state.profiles.includes(profile)) fail("PROFILE_NOT_FOUND", 4);
+  console.log(JSON.stringify({ profile }));
+} else if (args[0] === "init") {
+  const name = args[args.indexOf("--name") + 1];
+  if (name !== "owner" || !args.includes("--paste")) fail("UNEXPECTED_INIT", 2);
+  state.profiles.push(name);
+  state.sessions.push(name);
+  fs.writeFileSync(statePath, JSON.stringify(state));
+} else if (args[0] === "auth" && args[1] === "grant") {
+  if (!state.sessions.includes(profile)) fail("AUTH_REQUIRED", 3);
+  process.stdout.write("{\"ok\":true}\n");
+} else fail("UNEXPECTED_COMMAND", 2);
+`, { mode: 0o755 });
+  chmodSync(cli, 0o755);
+
+  const out = run(["sh", join(skill, "owner-grant.sh"), "healthlog"], {
+    HOME: h.dir,
+    TC_HOME: h.dir,
+    TC_APPS_STATE: h.state,
+    TC_BIN: cli,
+  });
+  assert.equal(out.status, 0, out.stderr + out.stdout);
+  const calls = readFileSync(join(h.dir, "owner-grant-calls.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
+  assert.deepEqual(calls, [
+    { argv: ["--profile", "owner", "profile", "show"], profile: "owner" },
+    { argv: ["init", "--name", "owner", "--paste"], profile: "linear-agent" },
+    { argv: ["--profile", "owner", "auth", "grant", join(h.state, "meal-request.json")], profile: "owner" },
+  ]);
+  assert.equal(JSON.parse(readFileSync(join(cliHome, "config.json"), "utf8")).defaultProfile, "linear-agent");
+
+  const statePath = join(cliHome, "owner-grant-state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
+  state.sessions = [];
+  writeFileSync(statePath, JSON.stringify(state));
+  const renewal = run(["sh", join(skill, "owner-grant.sh"), "healthlog"], {
+    HOME: h.dir,
+    TC_HOME: h.dir,
+    TC_APPS_STATE: h.state,
+    TC_BIN: cli,
+  });
+  assert.equal(renewal.status, 1);
+  assert.ok(renewal.stderr.includes(`"${cli}" --profile owner auth login --paste`), renewal.stderr);
+  assert.doesNotMatch(renewal.stderr, /linear-agent/);
+  assert.ok(!renewal.stderr.includes(`${cli} auth login --paste`), renewal.stderr);
+});
 
 test("the wrapper runs the CLI named in cli-path whatever its own file name is", () => {
   const h = fresh();
@@ -793,10 +861,10 @@ test("SKILL.md's folder loops start with Claude Code's ${CLAUDE_SKILL_DIR}, then
 
 test("the folder loops in TINY-APPS.md, CONTEXT.md and the setup page try a set CLAUDE_SKILL_DIR first and skip it when empty", () => {
   const loops = [join(skill, "TINY-APPS.md"), join(skill, "CONTEXT.md"), join(root, "setup/tc-apps.md")].flatMap((f) => skillDirLoops(readFileSync(f, "utf8")));
-  assert.equal(loops.length, 3);
+  assert.equal(loops.length, 4);
   const dirs = '"${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"';
   for (const loop of loops) assert.ok(loop.trim().startsWith(`for d in ${dirs}; do if [ -n "$d" ] && [ -f "$d/`), loop);
-  const probe = loops[0].trim().replace(/then sh "\$d\/announce\.sh" healthlog/, 'then echo "$d"').replace('[ -f "$d/announce.sh" ]', '[ -f "$d/CONTEXT.md" ]');
+  const probe = loops.find((l) => l.includes('announce.sh" healthlog')).trim().replace(/then sh "\$d\/announce\.sh" healthlog/, 'then echo "$d"').replace('[ -f "$d/announce.sh" ]', '[ -f "$d/CONTEXT.md" ]');
   const h = fresh();
   const agents = withSkill(h);
   const plugin = withSkill(h, "plugin/skills/tc-apps");

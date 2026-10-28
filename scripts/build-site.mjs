@@ -2,9 +2,10 @@
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Public URLs are short and flat; the repository layout is only for authoring:
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
-// - /connect: chat-app setup and a handoff to the unchanged coding guide for the
-//   request (/apps, /secrets, /publish, /chat or /courier), as HTML by default or
-//   Markdown via Accept; /connect.md is the same entry page.
+// - /onboarding and /connect (the `html` pages): HTML by default, Markdown via
+//   Accept or at /<page>.md. /onboarding sets up the owner's profile, sign-in and
+//   starting grant, then routes to the goal guide; /connect gives each chat app
+//   its connector steps and hands coding agents the guide for their request.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
@@ -14,8 +15,8 @@
 // - _redirects: the earlier repository-path URLs, redirected to the short ones,
 //   and each Markdown guide's URL with .md added (/apps.md → /apps).
 // Other repository files are copied at their repository path. index.html,
-// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers and the
-// agent-skills discovery index are generated.
+// llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers, the agent-skills
+// index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
 import { renderMatrix } from "./matrix.mjs";
@@ -43,6 +44,7 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
 // `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
+  { url: "onboarding", src: "setup/onboarding.md", html: true },
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
@@ -98,9 +100,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.3.5",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.5.tgz",
-    integrity: "sha512-pVym0zg04yVvyIimZN4bVjWqApzKeiwToJyvgQ+yYGXL2VkehPiaVFR13TT5lVmxTqswC/tI8+ei5YutcZ8zGA==",
+    version: "1.5.0-beta.23",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0-beta.23.tgz",
+    integrity: "sha512-7dvXVJlgiYRuqcK2Thsv0b/AP1Dge0IE5ftXa2CGPC71qdKFvKTH1zDnzWd1HKueCx3VAxwv/YUvKVnhGbs/Eg==",
     dir: "package/skills/tc-cli",
     checkCli: true,
   },
@@ -170,6 +172,18 @@ const SKILLS = [
     tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.3.tgz",
     integrity: "sha512-DRCQ7qDZUTIH2fK+6WJUQYY2krNQI+i3LE5AN/JNnGY8W70JHLfB2aH0R5xV96RCFUtgFqUDiY8ryRyFO0dMEQ==",
     dir: "package/skills/tinycloud-delegated-secrets",
+    changes: {
+      "SKILL.md": [
+        [
+          "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
+          "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts, elicitation, a generic permission grant, or a secret mutation tool.",
+        ],
+        [
+          "## Account and KV exploration",
+          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for their approval, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route. The `tc auth request` / `tc auth import` and `tinycloud_auth_import` instructions below are for local stdio only. The `tc auth grant --stdin --yes` artifact, import, restart, and retry steps below apply to local stdio only; hosted operations use a returned `approval.url` as described above. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
+        ],
+      ],
+    },
   },
 ];
 
@@ -437,6 +451,121 @@ write(
   ) + "\n",
 );
 
+write(
+  ".well-known/api-catalog",
+  JSON.stringify(
+    {
+      linkset: [
+        {
+          anchor: url(""),
+          item: [
+            {
+              href: "https://mcp.tinycloud.xyz/mcp",
+              title: "TinyCloud hosted MCP service",
+              type: "application/json",
+            },
+          ],
+          "service-doc": [
+            {
+              href: "https://docs.tinycloud.xyz/cli/mcp",
+              type: "text/html",
+              title: "TinyCloud MCP connection guide",
+            },
+          ],
+        },
+      ],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+const skillQueries = {
+  index: [
+    "Which public TinyCloud agent skills are available?",
+    "What files, versions, and checksums does each TinyCloud skill include?",
+  ],
+  apps: [
+    "How can my agent log a meal or workout in my TinyCloud records?",
+    "How do I create and extend an app for tracking personal records?",
+  ],
+  feed: [
+    "How can my agent post an owner-requested card to TinyCloud Home?",
+    "How do I add an update to my TinyCloud Home feed?",
+  ],
+  publish: [
+    "How can my agent publish a report and return a private link?",
+    "How can I make a published document public when I ask?",
+  ],
+  secrets: [
+    "How can my agent use a stored API key without showing its value?",
+    "How do I ask the owner to add a missing secret?",
+  ],
+  cli: [
+    "How do I install TinyCloud CLI and access authorized data?",
+    "How can I store or share data with the TinyCloud CLI?",
+  ],
+  courier: [
+    "How can two paired agents exchange a request using Courier?",
+    "How do I track a Courier task and assess a peer's request?",
+  ],
+  chat: [
+    "How can my agent recap a TinyChat meeting?",
+    "How do I find a phrase in my connected meeting transcripts?",
+  ],
+  mcp: [
+    "How can a remote client connect to hosted TinyCloud MCP?",
+    "Which delegated TinyCloud tools are available over MCP?",
+  ],
+};
+
+write(
+  ".well-known/ai-catalog.json",
+  JSON.stringify(
+    {
+      specVersion: "1.0",
+      host: {
+        displayName: "TinyCloud",
+        identifier: BASE,
+        documentationUrl: url("setup"),
+      },
+      entries: [
+        {
+          identifier: "urn:air:agents.tinycloud.xyz:skills:index",
+          displayName: "TinyCloud Agent Skills Index",
+          type: "application/json",
+          url: url("skills/index.json"),
+          representativeQueries: skillQueries.index,
+        },
+        ...skills.map((s) => ({
+          identifier: `urn:air:agents.tinycloud.xyz:skill:${s.short}`,
+          displayName: s.title,
+          type: "text/markdown",
+          url: url(`skills/${s.short}.md`),
+          representativeQueries: skillQueries[s.short],
+        })),
+      ],
+    },
+    null,
+    2,
+  ) + "\n",
+);
+// The public documentation host offers only signed-out web browsing under Poppy.
+write(
+  ".well-known/poppy.json",
+  JSON.stringify(
+    {
+      protocol_version: "0.1",
+      organization: {
+        name: "TinyCloud",
+        domain: new URL(BASE).hostname,
+      },
+      web: {},
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
 // Earlier URLs (repository paths) keep working as redirects.
 const redirects = [
   "/setup/index.md /setup 301",
@@ -452,12 +581,13 @@ write("_redirects", redirects.join("\n") + "\n");
 
 const indexed = pages.filter((p) => !p.unlisted);
 const listedPages = indexed.filter((p) => p.url !== "setup");
+
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /connect serves HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
+  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("connect")} for personal records in ChatGPT, Claude or a coding agent. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
+  `Start at ${url("onboarding")} to set up TinyCloud for the owner, in a chat app or an agent with a shell; it then sends you to the guide for the owner's goal. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
   "",
   "## Abilities",
   "",
@@ -505,6 +635,7 @@ write(
     "# These pages are written for AI agents. Fetch them freely.",
     ...[...AI_BOTS, "*"].flatMap((ua) => ["", `User-agent: ${ua}`, "Content-Signal: search=yes, ai-input=yes, ai-train=no", "Allow: /", ...disallow]),
     "",
+    `Agentmap: ${url(".well-known/ai-catalog.json")}`,
     `Sitemap: ${url("sitemap.xml")}`,
     "",
   ].join("\n"),
@@ -516,6 +647,8 @@ write(
   Access-Control-Allow-Origin: *
   X-Content-Type-Options: nosniff
   Cache-Control: public, max-age=300
+  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727", </.well-known/ai-catalog.json>; rel="describedby"; type="application/json", </sitemap.xml>; rel="sitemap"; type="application/xml"
+  Agentmap: ${url(".well-known/ai-catalog.json")}
 
 /*.md
   Content-Type: text/markdown; charset=utf-8
@@ -525,8 +658,16 @@ write(
 ${PAGES.filter((p) => !p.html).map((p) => p.url)
   .map((name) => `\n/${name}\n  Content-Type: text/markdown; charset=utf-8\n`)
   .join("")}
-/
-  Link: </llms.txt>; rel="describedby"; type="text/plain", </.well-known/agent-skills/index.json>; rel="describedby"; type="application/json", </sitemap.xml>; rel="sitemap"; type="application/xml"
+
+/.well-known/api-catalog
+  Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
+
+/.well-known/ai-catalog.json
+  Content-Type: application/json
+
+/.well-known/poppy.json
+  Content-Type: application/json
+
 `,
 );
 
@@ -539,19 +680,20 @@ const style = `  <style>
     a { color: #0b57d0; }
     footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
   </style>`;
-const connect = page("connect");
+// Each html page: rendered HTML at /<url>, its Markdown at /<url>.md (functions/<url>.js negotiates).
 const markdownRenderer = new Marked(gfmHeadingId());
-write(
-  "connect.html",
-  `<!doctype html>
+for (const p of pages.filter((p) => p.html)) {
+  write(
+    `${p.url}.html`,
+    `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${esc(connect.title)} · TinyCloud</title>
-  <meta name="description" content="${esc(connect.desc)}">
-  <link rel="canonical" href="${esc(url("connect"))}">
-  <link rel="alternate" type="text/markdown" href="/connect.md">
+  <title>${esc(p.title)} · TinyCloud</title>
+  <meta name="description" content="${esc(p.desc)}">
+  <link rel="canonical" href="${esc(url(p.url))}">
+  <link rel="alternate" type="text/markdown" href="/${p.url}.md">
 ${style}
   <style>
     h2 { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; }
@@ -560,16 +702,19 @@ ${style}
     pre code { padding: 0; }
     blockquote { margin: 1rem 0; padding: 0.25rem 1rem; border-left: 3px solid #0b57d0; background: #f2f2f2; overflow-wrap: anywhere; }
     li { margin: 0.4rem 0; }
+    table { border-collapse: collapse; }
+    th, td { border-top: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
   </style>
 </head>
 <body>
   <main>
-${markdownRenderer.parse(connect.text)}
+${markdownRenderer.parse(p.text)}
   </main>
 </body>
 </html>
 `,
-);
+  );
+}
 
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
@@ -587,6 +732,7 @@ write(
   <title>Give your agent abilities · TinyCloud</title>
   <meta name="description" content="${esc(desc)}">
   <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+  <link rel="ai-catalog" type="application/json" href="${esc(url(".well-known/ai-catalog.json"))}">
 ${style}
 </head>
 <body>

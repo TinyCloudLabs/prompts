@@ -49,16 +49,47 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 
 | Client | Request | Required behavior |
 | --- | --- | --- |
-| Claude Code, Codex | none (setup only) | Fetches `/apps`, not `/apps.md` first; installs; one OpenKey approval for `todos`; the default todo in `applications`, read back. On a home with no earlier sign-in, no separate "earlier version?" stop: the question ends the approval message, and the code is the answer. |
+| Claude Code, Codex | none (setup only) | Fetches `/onboarding` and follows its shell route: installs through `/cli`, runs `tinycloud onboard`, two OpenKey approvals, `"onboarded": true`. See [`/onboarding`](#onboarding). |
 | Claude Code, Codex | `Turn this script into a voiceover with ElevenLabs: "Hello from TinyCloud." Get the key from TinyCloud.` | Fetches `/secrets`, not `/apps`. Never asks for or prints the value. |
 | Claude Code, Codex | `Publish this report and send me a private link: ./report.md` | Fetches `/publish`; an owner-only link. |
 | Claude Code, Codex | `How did my last meeting go?` | Fetches `/chat`; the TinyChat sign-in. |
 | Claude Code, Codex | `Set up Courier so my agent can trade tasks with another person's agent.` | Fetches `/courier`. |
 | Cursor, OpenClaw, Hermes | none | Takes the coding route, not a connector; installs into `~/.agents/skills`. |
-| Grok, Perplexity, Gemini, Meta Muse | none | That app's own section: `https://mcp.tinycloud.xyz/mcp`, OAuth, OpenKey. No shell, CLI or sandbox; no plan caveat; never asks for a key or token. |
+| Grok, Perplexity, Gemini | none | That app's own section: `https://mcp.tinycloud.xyz/mcp`, OAuth, OpenKey. No shell, CLI or sandbox; no plan caveat; never asks for a key or token. |
+| Meta Muse | none | Executes native connector setup from the original prompt, without asking for another “create a connector” prompt. Requests `tinycloud:mcp offline_access` and resource `https://mcp.tinycloud.xyz/mcp` on the first OAuth flow; pauses for owner consent; verifies live tools and connection, then completes the setup-only record recipe and read-back. No local TinyCloud CLI substitution or owner-supplied credentials. |
 | ChatGPT | the regression cases above | Unchanged: four steps, at most 120 words. |
 
-Also check `curl -sI <preview>/apps.md`: a 301 to `/apps`. The Grok, Perplexity, Gemini and Muse steps were written from each vendor's documentation and have not been run with an account.
+Also check `curl -sI <preview>/apps.md`: a 301 to `/apps`. The Grok, Perplexity and Gemini steps were written from each vendor's documentation and have not been run with an account.
+
+### Muse one-prompt regressions
+
+One prompt means one setup request, not zero owner consent. Record any approval-confirmation turns separately from a repeated setup instruction. Use the actual Muse app, not a model API or a simulated connector.
+
+- **Working return visit:** the existing connector passes live `tools/list` and `tinycloud_connect`; Muse reuses it and continues the original request without disconnecting it or requesting another sign-in. A connection-only request must not create the default todo or read personal records.
+- **Stale credential:** an authenticated call fails while the card says “Added.” Muse reports the actual error, does not infer expiry from HTTP 401 alone, and does not repeat the same ineffective link. It obtains permission before disconnecting only TinyCloud, preserves connector/skill files and records, and uses both scopes and the resource on the fresh OAuth flow.
+- **Incomplete authorization:** a closed sign-in tab, a Connect card, or `missing access_token surrogate` is not a successful connection. Muse checks the actual credential/tool outcome, pauses for required owner action, and neither asks for a token nor claims setup is complete.
+- **Sustained authentication:** after initial success, leave the credential unchanged and repeat one read-only connection call beyond the access-token lifetime, without another owner sign-in. Record actual call times and results; do not infer refresh from the scope request or first successful call. Do not print credentials or token values.
+
+Native recovery evidence, 2026-10-27: an existing account's original Muse OAuth request had only `tinycloud:mcp`; later links requested `offline_access` but reused the stale “Added” connection. After an owner-approved disconnect and fresh authorization with both scopes and the MCP resource, live discovery listed 22 tools and `tinycloud_connect` returned `connected: true`. The same connection passed another actual call more than six minutes later without another requested sign-in. The recorded 401 said `invalid_token`, not specifically “expired”; refresh-token contents were not inspected. No personal-record operations were performed.
+
+That recovery used diagnostic and repair prompts, not the revised page as a fresh user's single prompt. It does not establish a fresh-account, consent-resumption or saved-record pass for this candidate, and does not populate the public interaction counts.
+
+Candidate returning-user smoke, 2026-10-27: the site built successfully, and a local Wrangler Pages preview served `/connect` as both HTML and negotiated Markdown with HTTP 200; the rendered Muse section was inspected in Chromium. In a new, empty Muse side chat, one connection-only request included the candidate Muse section verbatim. Native activity showed the tool-discovery process completing with exit code 0 and `tinycloud_connect` returning `connected: true`. Muse reused the working connector without another setup prompt, disconnect or sign-in, and no personal-record tools were called. Its response repeated an expiry explanation for the old failure; the captured `invalid_token` error does not establish that cause.
+
+This was a supplied-guide smoke on an already connected account with retained memory, not a fresh user's bare-link run. First-time connector creation, owner-consent resumption and the setup-only saved-record recipe remain unverified for this candidate; public interaction counts remain unchanged.
+
+
+### `/onboarding`
+
+`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Set me up with TinyCloud: <preview>/onboarding` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard` (js-sdk #775) and `/cli` pinned to it.
+
+| Client | Request | Required behavior |
+| --- | --- | --- |
+| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then `tinycloud onboard`. One message with the word-for-word two-approvals text, the step 1 link and its one-line instruction; asks only for the short code. Runs `onboard --code` with the code as sent; sends step 2 the same way without the step-1 text; `"onboarded": true`; ends with what the owner can ask next. Never shows JSON or the permission list; never asks for a secret. |
+| Any agent with a shell | `Log my weight: 80.5 kg today.` | After onboarding, fetches `/apps` itself, without asking for another link, and continues with it. |
+| Chat apps with a TinyCloud connector | none | Chat-app route: the app's connector steps from `/connect`, then `tinycloud_connect` → `approvalUrl` → approve → `connected`. No shell, CLI or sandbox. |
+
+**Local run, 2026-10-27 (not a production pass):** Codex 0.162.1 in an empty HOME with only the prompt, against a Wrangler Pages preview of this branch, a local tinycloud-node and an OpenKey stand-in (the owner wallet signs each link's exact request; a local short-code endpoint answers like OpenKey's). `/cli` was pointed at a packed build of js-sdk #775, because the release isn't published. Result: the CLI was installed through `/cli`; the first message had the two-approvals text, link 1 and the short-code instruction; two short codes led to `"onboarded": true` (expires in 30 days); the follow-up request fetched `/apps` with no new link. Production OpenKey screens, a new-account sign-up and chat apps were not exercised.
 
 ## Routing being tested
 
@@ -67,7 +98,8 @@ From TC-1278 (the routing spec is not in this repo). Every client starts from th
 - **Chat apps (ChatGPT web, Claude web, Desktop, mobile, Grok, Perplexity, Gemini, Meta Muse):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
   - ChatGPT: Plugins → Add → Add custom MCP server, web only.
   - Claude: Connectors → Add custom connector, on web or Desktop; it then works on mobile.
-  - Grok: grok.com/connectors → New Connector → Custom. Perplexity: Account settings → Connectors → + Custom connector → Remote. Gemini: Settings → Connected Apps → Custom apps (personal account, US). Meta Muse: ask Muse to create a custom connector.
+  - Grok: grok.com/connectors → New Connector → Custom. Perplexity: Account settings → Connectors → + Custom connector → Remote. Gemini: Settings → Connected Apps → Custom apps (personal account, US).
+  - Meta Muse: performs native custom-connector setup from the original request; requests `tinycloud:mcp offline_access` and the MCP resource, resumes after owner approval, then verifies real tools and completes the original task.
 - **Coding agents with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes):** CLI + skill, the install flow from the guide for the request unchanged: `/apps` for records or setup only, `/secrets`, `/publish`, `/chat` or `/courier` otherwise. Codex asks for a sandbox escalation; OpenCode needs a restart. Agents other than Claude Code, Codex and OpenCode install into `~/.agents/skills`, as Codex does.
 - **Other MCP clients (VS Code, Gemini CLI):** hosted URL with OAuth if remote MCP is supported, else local stdio. Not tested here.
 - **Neither shell nor connectors:** say so in one line and point the person to the hosted route.

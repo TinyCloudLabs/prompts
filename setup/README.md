@@ -2,6 +2,8 @@
 
 Give your coding agent (Claude Code, Codex or OpenCode) abilities that keep your data in your own TinyCloud space. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.
 
+**New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). It works in any agent or chat app: you sign in or create an account with OpenKey, approve two OpenKey screens, and your agent carries on with your request.
+
 You need a shell, Node.js 22.20 or later, and npm.
 
 **Agents:** the owner sent you this page, maybe with a request. Pick the action below and follow its page now, in this conversation. [One shared setup entry](agent.md) installs the pinned CLI and only that action's skill; if the owner only asked for the CLI, follow [its module](tinycloud.md).
@@ -71,4 +73,4 @@ curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <skill> --age
 
 `<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
 
-`mcp` has no setup page: it's the skill that goes with the TinyCloud MCP server, `@tinycloud/mcp` 0.5.3, for agents that already run that server. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).
+`mcp` is the skill that goes with the TinyCloud MCP server (`@tinycloud/mcp` 0.5.3), for agents that already run that server. Chat apps and other remote MCP clients connect to the hosted server at `https://mcp.tinycloud.xyz/mcp` instead and sign in with OpenKey; [`/connect`](https://agents.tinycloud.xyz/connect) has the steps. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).

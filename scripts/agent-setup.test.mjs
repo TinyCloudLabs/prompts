@@ -277,15 +277,19 @@ test("a full storage sends the owner to the storage page from /connect, tc-apps 
   for (const file of guides) assert.doesNotMatch(readFileSync(join(site, file), "utf8"), /account\.tinycloud\.xyz\/billing/, file);
 });
 
-test("a Markdown guide's URL with .md added redirects to the guide; /connect.md stays a file", () => {
+test("a Markdown guide's URL with .md added redirects to the guide; an html page's .md stays a file beside its HTML", () => {
   const site = join(root, "_site");
   const redirects = readFileSync(join(site, "_redirects"), "utf8").split("\n");
   for (const guide of ["setup", "apps", "secrets", "publish", "chat", "courier"]) {
     assert.ok(redirects.includes(`/${guide}.md /${guide} 301`), `/${guide}.md`);
     assert.equal(existsSync(join(site, `${guide}.md`)), false);
   }
-  assert.equal(redirects.some((line) => line.startsWith("/connect.md ")), false);
-  assert.equal(existsSync(join(site, "connect.md")), true);
+  for (const page of ["connect", "onboarding"]) {
+    assert.equal(redirects.some((line) => line.startsWith(`/${page}.md `)), false, page);
+    assert.equal(existsSync(join(site, `${page}.md`)), true, page);
+    assert.match(readFileSync(join(site, `${page}.html`), "utf8"), /^<!doctype html>/, page);
+    assert.equal(existsSync(join(root, "functions", `${page}.js`)), true, page);
+  }
 });
 
 test("/connect's ChatGPT section is byte-identical to the verified one, and the coding route sends context requests to /apps", () => {

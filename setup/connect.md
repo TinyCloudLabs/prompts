@@ -12,7 +12,7 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 **Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes, or any agent with a shell on the owner's computer:** fetch and read the coding-agent setup guide for the owner's original request in full, then follow it exactly for that request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
 
-**Which guide:** personal records or health (meals, weight, workouts, todos), or setup only → [/apps](tc-apps.md); API keys and other secrets → [/secrets](secrets.md); publishing or sharing a document or page → [/publish](publish.md); TinyChat meetings → [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent → [/courier](courier.md); anything else → [/setup](README.md), which lists every ability.
+**Which guide:** setup only, or no request yet → [/onboarding](onboarding.md); personal records or health (meals, weight, workouts, todos) → [/apps](tc-apps.md); API keys and other secrets → [/secrets](secrets.md); publishing or sharing a document or page → [/publish](publish.md); TinyChat meetings → [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent → [/courier](courier.md); anything else → [/setup](README.md), which lists every ability.
 
 **Context:** “remember that …”, a question about what the owner told an agent before, or “pick up where I left off” → [/apps](tc-apps.md) too: its skill keeps the owner's context for every agent on this computer.
 
@@ -81,13 +81,19 @@ If **Custom apps** is missing: Google offers it to personal Google Accounts, 18 
 
 ## Meta Muse
 
-Use a custom connector to the hosted MCP server, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey. Muse creates a custom connector when you ask for one in chat; Meta doesn't review custom connectors.
+Use Muse's native custom connector to the hosted MCP server, not the local TinyCloud CLI. The single setup prompt at the top of this page is enough to start; the owner still signs in and approves access themselves. Meta doesn't review custom connectors.
 
-1. Ask Muse: **“Create a custom connector for TinyCloud's remote MCP server, `https://mcp.tinycloud.xyz/mcp`, with OAuth sign-in.”**
-2. When the sign-in opens, sign in with OpenKey and approve.
-3. Make your original request, then follow [Approve access and continue](#approve-access-and-continue) below.
+**For Muse:** perform this setup from the owner's original request. Do not ask them to send a second “create a connector” prompt, repeat their task, or choose an integration method. Do not stop after writing connector files.
 
-**For Muse:** TinyCloud needs no API key, token or password. Don't ask the owner for one or store one. If you can't connect with OAuth, say so; don't substitute a key or the coding-agent setup. See [Meta's connector help](https://www.meta.com/help/artificial-intelligence/1687253048996149/).
+1. **Reuse a working connection.** If a TinyCloud connector already exists, start with the live checks in step 4 and reuse it if they succeed. Do not disconnect a working connector just to repeat setup.
+2. **Create the connector when needed.** Use **Streamable HTTP**, set both the server URL and OAuth `resource` to **`https://mcp.tinycloud.xyz/mcp`**, and request OAuth **scopes `tinycloud:mcp offline_access`**. Discover OpenKey's authorization and registration endpoints from the server's OAuth metadata and use Muse's native OAuth flow. Request `offline_access` on the **first** sign-in so OpenKey can issue a refresh credential, not just a short-lived access token. Retain both scopes and the resource in the saved connector configuration and reconnect instructions. The owner does not need to create a client ID or secret.
+3. **Pause only for the owner’s sign-in and consent.** Show the actual native Connect card or fresh authorization link returned by Muse's setup tool. The owner opens it, signs in with OpenKey and approves; do not approve on their behalf or invent an authorization URL. Resume this same task when completion is observable. If Muse cannot observe completion, ask only for confirmation that approval is finished—not another setup request.
+4. **Verify the connection with tools.** Run MCP `tools/list` and `tinycloud_connect`. An “Added” or “Connected” card, saved configuration, or remembered success is not proof. If a tool returns an OpenKey approval link, follow [Approve access and continue](#approve-access-and-continue) and resume the same operation after approval. A successful first call does not by itself verify token refresh.
+5. **Finish the original task.** Keep the reusable connector and personal-record instructions in Muse's normal persistent setup, using the instructions returned by the hosted tools. Call `tinycloud_apps_context` and continue the owner's request. For setup only, follow the [setup-only record recipe](#setup-only-requests-in-chat-apps) through those tools, after the required approvals, and read the record back before reporting it saved. Connection verification alone is not a successful record read or write.
+
+**Recovery only after an observed authentication failure:** a missing access-token surrogate means Muse has no credential for that connector; an authenticated HTTP 401 means the credential was rejected, not proof that it expired. If a stale connection's card only says “Added” without fresh authorization, do not keep sending the same link. With the owner's approval, disconnect **only TinyCloud** in **Settings → Connectors → Connected → Tinycloud → Disconnect**, then obtain a fresh native OAuth sign-in with both scopes and the resource above and verify it with tools. Resetting OAuth does not require deleting connector files, skills or personal records.
+
+Never ask the owner to paste a password, API key, access token or refresh token into chat. OAuth credentials belong in Muse's secure credential flow, not connector source, prompts or memory. If native OAuth cannot connect, report the actual blocker; do not substitute a key or the coding-agent setup. See [Meta's connector help](https://www.meta.com/help/artificial-intelligence/1687253048996149/).
 
 ## Other chat apps
 
