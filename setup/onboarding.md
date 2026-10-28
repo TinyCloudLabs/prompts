@@ -97,6 +97,7 @@ Fetch the guide for what the owner asked for yourself and follow it from the sta
 | Share a document or page | [/share](share.md) |
 | Publish a page with a link | [/publish](publish.md) |
 | Use an API key or other secret | [/secrets](secrets.md) |
+| Copy data they keep in another app, like a Wabi weight log | [/sync](sync.md) |
 | Ask about their meetings | [/chat](../apps/tinychat/setup.md) |
 | Post to their TinyCloud Home feed | [/feed](https://agents.tinycloud.xyz/feed) |
 | Let you work with another person's agent | [/courier](courier.md) |

@@ -55,6 +55,7 @@ const PAGES = [
   { url: "publish", src: "setup/publish.md" },
   { url: "share", src: "setup/share.md" },
   { url: "secrets", src: "setup/secrets.md" },
+  { url: "sync", src: "setup/sync.md" },
   { url: "courier", src: "setup/courier.md" },
   { url: "cli", src: "setup/tinycloud.md" },
   { url: "openkey", src: "setup/openkey.md" },
@@ -98,6 +99,7 @@ const SKILLS = [
   { short: "feed", dir: "skills/tinycloud-feed" },
   { short: "publish", dir: "skills/tc-publish" },
   { short: "secrets", dir: "skills/tc-secrets" },
+  { short: "sync", dir: "skills/tc-sync" },
   {
     short: "cli",
     version: "1.5.0-beta.23",
@@ -213,6 +215,12 @@ const ABILITIES = [
     url: "secrets",
     text: "Use API keys you keep in TinyCloud Secrets. The value never appears in the conversation. If a key is missing, your agent sends you a link to add it.",
     prompt: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud:",
+  },
+  {
+    title: "Sync",
+    url: "sync",
+    text: "Copy what you keep in another app, like a Wabi weight log, into your TinyCloud when you ask. Weigh-ins also appear in Health Log.",
+    prompt: "Sync my weight log into TinyCloud:",
   },
   {
     title: "Meetings",
