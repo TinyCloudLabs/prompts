@@ -167,48 +167,21 @@ before(() => {
   assert.equal(built.status, 0, built.stderr);
 });
 for (const name of ["courier", "cli"]) {
-  test(`${name} skill selects the persisted custom CLI in a fresh shell`, () => {
+  test(`${name} skill uses the published tinycloud executable in a fresh shell`, () => {
     const dir = home();
     const bin = join(dir, "bin");
     mkdirSync(bin);
-    const selected = join(bin, "selected-cli");
-    executable(selected, 'case "$*" in "--version") echo 1.2.3 ;; "courier --help") echo COURIER_SELECTED_1.2.3 ;; esac');
-    executable(join(bin, "tinycloud"), 'echo GLOBAL_1.2.1');
-    const selectedEnv = join(dir, "owner/agent.env");
-    const installed = shell(helperInstall(), { HOME: dir, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}` });
-    assert.equal(installed.status, 0, installed.stderr);
-    const persisted = shell('node "$HOME/.config/tinycloud/agent-env.mjs" set TC_BIN "$CLI"', {
-      HOME: dir, CLI: selected, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.equal(persisted.status, 0, persisted.stderr);
+    executable(join(bin, "tinycloud"), 'case "$*" in "--version") echo TINYCLOUD_VERSION ;; "courier --help") echo TINYCLOUD_COURIER ;; esac');
+    executable(join(bin, "tc"), 'echo LEGACY_TC_ALIAS');
     const skill = readFileSync(join(root, `_site/skills/${name}/SKILL.md`), "utf8");
-    if (name === "cli") assert.doesNotMatch(skill, /set `?TC_BIN`?/);
+    if (name === "cli") assert.doesNotMatch(skill, /TC_BIN/);
+    if (name === "courier") assert.doesNotMatch(skill, /\btc courier\b/);
     const result = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}`,
+      HOME: dir, PATH: `${bin}:${process.env.PATH}`,
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, name === "courier" ? /COURIER_SELECTED_1\.2\.3/ : /1\.2\.3/);
-    assert.doesNotMatch(result.stdout, /GLOBAL_1\.2\.1/);
-    const override = join(bin, "override-cli");
-    executable(override, 'case "$*" in "--version") echo OVERRIDE_1.2.4 ;; "courier --help") echo COURIER_OVERRIDE_1.2.4 ;; esac');
-    const overridden = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: selectedEnv, TC_BIN: override, PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.equal(overridden.status, 0, overridden.stderr);
-    assert.match(overridden.stdout, name === "courier" ? /COURIER_OVERRIDE_1\.2\.4/ : /OVERRIDE_1\.2\.4/);
-    symlinkSync(join(dir, "owner"), join(dir, "linked-owner"));
-    const linked = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: join(dir, "linked-owner/agent.env"), PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.notEqual(linked.status, 0);
-    assert.doesNotMatch(linked.stdout, /GLOBAL_1\.2\.1/);
-    const overriddenLinked = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: join(dir, "linked-owner/agent.env"), TC_BIN: override,
-      PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.equal(overriddenLinked.status, 0, overriddenLinked.stderr);
-    assert.match(overriddenLinked.stdout, name === "courier" ? /COURIER_OVERRIDE_1\.2\.4/ : /OVERRIDE_1\.2\.4/);
-    assert.doesNotMatch(overriddenLinked.stdout, /GLOBAL_1\.2\.1/);
+    assert.match(result.stdout, name === "courier" ? /TINYCLOUD_COURIER/ : /TINYCLOUD_VERSION/);
+    assert.doesNotMatch(result.stdout, /LEGACY_TC_ALIAS/);
   });
 }
 

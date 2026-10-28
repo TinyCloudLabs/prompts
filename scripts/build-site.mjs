@@ -67,9 +67,8 @@ const PAGES = [
 // `changes` adjusts a released file for this site: either [find, replace] pairs,
 // each of which must match exactly once, or a repository path whose file replaces it.
 // `checkCli`: the build fails unless every served file of the skill runs the
-// CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
-// /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
-// lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
+// installed CLI through the current `tinycloud` executable, with no old `tc`
+// command in a shell code block or script defaulting to `tc`.
 // The released CLI and Courier skills contain one of these exact resolvers (courier 0.1.3 and
 // CLI 1.2.3 end in `tc`; CLI 1.2.4 and later end in `tinycloud`). Replace it
 // in every published Markdown file, including the core skill's reference pages.
@@ -80,15 +79,8 @@ const upstreamResolver = (bin) => [
 ].join("\n");
 const UPSTREAM_RESOLVERS = [upstreamResolver("tc"), upstreamResolver("tinycloud")];
 const RESOLVER = [
-  '{ set +x; } 2>/dev/null; umask 077',
-  'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
-  '[ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }',
-  'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
-  '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
-  'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
-  '[ -x "$TC" ] || { echo "TinyCloud CLI not found: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli" >&2; exit 1; }',
+  'command -v tinycloud >/dev/null || { echo "TinyCloud CLI not found; install it from https://agents.tinycloud.xyz/cli" >&2; exit 1; }',
+  'TC="$(command -v tinycloud)"',
 ].join("\n");
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
@@ -108,6 +100,31 @@ const SKILLS = [
       "SKILL.md": [[
         "Use the installed `@tinycloud/cli` executable, `tinycloud`. Its older name `tc` clashes with `/usr/sbin/tc` (iproute2 traffic control) on many Linux hosts. Call the CLI by path and check it first; set `TC_BIN` to use a specific one:",
         "Use the installed TinyCloud CLI through its current `tinycloud` executable. Setup places it in a private CLI directory; check the installed version before running commands:",
+      ]],
+      "INSTALL.md": [[
+        "Follow https://agents.tinycloud.xyz/cli. It installs the pinned TinyCloud CLI into `~/.local/share/tinycloud/cli` and installs this skill. Run the CLI as `tinycloud`, which needs CLI 1.2.3 or later; `tc` is its older name, and on many Linux hosts `tc` on `PATH` is iproute2's `/usr/sbin/tc` instead. The skill's first block finds the CLI there; set `TC_BIN` to use another one.",
+        "Follow https://agents.tinycloud.xyz/cli to install the pinned TinyCloud CLI and this skill. Run commands with the installed `tinycloud` executable.",
+      ]],
+      "AUTH.md": [[
+        "Wait for the other tc or MCP process and retry.",
+        "Wait for the other TinyCloud CLI or MCP process and retry.",
+      ], [
+        "Call the CLI by absolute path: run `tinycloud`, never the older `tc` name, which can be iproute2's `/usr/sbin/tc` (traffic control).",
+        "Run the installed `tinycloud` executable. On Linux, `tc` may be iproute2 traffic control.",
+      ]],
+      "REFERENCE.md": [[
+        "`/usr/sbin/tc` (iproute2 traffic control) shadows the older `tc` name on many Linux hosts, so the CLI is called `tinycloud`. Call the CLI by path, preferring the private install from https://agents.tinycloud.xyz/cli (set `TC_BIN` to use another one):",
+        "Run the installed `tinycloud` executable. On Linux, `/usr/sbin/tc` is iproute2 traffic control:",
+      ], [
+        "After the revoke, the agent's next call is refused (`GRANT_REVOKED`, exit 5, the same as `tc replica`: \"This grant was revoked. Ask the owner for a new grant\") as soon as the node has recorded it.",
+        "After the revoke, the agent's next call is refused (`GRANT_REVOKED`, exit 5, the same as `tinycloud replica`: \"This grant was revoked. Ask the owner for a new grant\") as soon as the node has recorded it.",
+      ], [
+        "from an older copy) refuses logout; run `tc profile delete <name>` (after\n`tc profile switch <other>` if it is the default) and sign in again.",
+        "from an older copy) refuses logout; run `tinycloud profile delete <name>` (after\n`tinycloud profile switch <other>` if it is the default) and sign in again.",
+      ]],
+      "SDK.md": [[
+        "// Account delegation query, POST /delegation/query (what `tc delegation list` uses). It includes",
+        "// Account delegation query, POST /delegation/query (what `tinycloud delegation list` uses). It includes",
       ]],
     },
     checkCli: true,
@@ -320,10 +337,15 @@ async function loadSkill(skill) {
   if (skill.short === "cli" || skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
-      const text = body.toString("utf8");
-      if (!UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) return [path, body];
+      const original = body.toString("utf8");
+      let text = original;
+      if (UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) {
+        text = UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text);
+      }
+      if (skill.short === "courier") text = text.replaceAll("tc courier", "tinycloud courier");
+      if (text === original) return [path, body];
       changed.add(path);
-      return [path, Buffer.from(UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text))];
+      return [path, Buffer.from(text)];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -796,14 +818,16 @@ const wrongCli = skills
   .flatMap((s) =>
     s.files.flatMap((f) => {
       const text = f.body.toString("utf8");
-      const lookups = text.split("npm prefix --global").length - 1;
+      const oldLookups = text.split("npm prefix --global").length - 1;
+      const resolverCount = text.split(RESOLVER).length - 1;
       const upstream = UPSTREAM_RESOLVERS.some((resolver) => text.includes(resolver));
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
       const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
-      return !upstream && lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
+      const unresolvedVariable = text.includes('"$TC"') && resolverCount === 0;
+      return !upstream && oldLookups === 0 && !unresolvedVariable && !bare && !scriptDefault ? [] : [f.url];
     }),
   );
-if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);
+if (wrongCli.length) throw new Error(`skill files that don't use the installed tinycloud executable:\n  ${wrongCli.join("\n  ")}`);
 
 // Every link in a served Markdown file must reach a served file: relative
 // links, and absolute ones to this site. Code is skipped.

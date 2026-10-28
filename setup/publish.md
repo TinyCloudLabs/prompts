@@ -22,4 +22,4 @@ These are owner steps. Use the installed `tinycloud` command and the profile tha
 - **The agent's key:** the first time it runs, the agent creates a local profile, `publisher`, holding a key that your approval is for. It never deletes profiles itself. Remove it with `tinycloud profile delete publisher`; this succeeds even if the profile was never created. If it reports `PROFILE_DELETE_DEFAULT`, `publisher` is the default profile:
   - if you have another (`tinycloud profile list`), make that the default with `tinycloud profile switch <other>` and delete again;
   - if `publisher` is your only profile, delete the whole profile store, `${TC_HOME:-$HOME}/.tinycloud`. Deleting just the profile's folder would leave `publisher` named as the default.
-- **The skill and the CLI:** delete `~/.agents/skills/tinycloud-publish` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tinycloud-publish`, and `~/.local/share/tinycloud/cli` if nothing else uses it.
+- **The skill and the CLI:** delete `~/.agents/skills/tinycloud-publish` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tinycloud-publish`. If nothing else uses the CLI, run `npm uninstall --global @tinycloud/cli`.
