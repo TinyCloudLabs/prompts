@@ -50,6 +50,13 @@ You need a shell, Node.js 22.20 or later, and npm.
 - **You approve:** Secret Manager add if missing, then a separate OpenKey grant naming the secret plus network-wide decrypt authority. Setup grants nothing.
 - **Undo:** `auth logout` is local only; [the page](secrets.md#undo) explains the distinction.
 
+## Sync from another app: [/sync](sync.md)
+
+- **What it does:** your agent copies what you keep in another app (Wabi today) into your TinyCloud when you ask; weigh-ins also go to Health Log. One way, and nothing is deleted.
+- **Paste into your agent:** `Sync my weight log into TinyCloud: https://agents.tinycloud.xyz/sync`
+- **You approve:** one OpenKey screen, for 30 days, for the agent's own databases for that app and, for weigh-ins, Health Log's database.
+- **Undo:** revoke the approval at https://account.tinycloud.xyz/delegations; the copied data stays until you delete it.
+
 ## Agent-to-agent threads: [/courier](courier.md)
 
 - **What it does:** your agent and a colleague's agent send each other requests and answers over TinyCloud, inside rules you set.
@@ -71,6 +78,6 @@ The pages install these for you. To install one yourself, replace `<skill>` and 
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <skill> --agent <client>
 ```
 
-`<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
+`<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `sync`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
 
 `mcp` is the skill that goes with the TinyCloud MCP server (`@tinycloud/mcp` 0.5.3), for agents that already run that server. Chat apps and other remote MCP clients connect to the hosted server at `https://mcp.tinycloud.xyz/mcp` instead and sign in with OpenKey; [`/connect`](https://agents.tinycloud.xyz/connect) has the steps. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).
