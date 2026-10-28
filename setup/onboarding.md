@@ -1,12 +1,12 @@
 # Set up TinyCloud for the person you're working for
 
-Give any AI agent or chat app this page, and it sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do. Then it carries on with what you asked for.
+Give any AI agent or chat app this page, and it sets you up so it can act for you in your own TinyCloud storage: you sign in (or create an account) with OpenKey and approve what it may do. Then it carries on with what you asked for. Your records stay available across agents, and secrets are encrypted before storage instead of pasted into chat. After setup, try logging a meal in Health Log.
 
 **Paste into your agent or chat app:**
 
 > Set me up with TinyCloud: https://agents.tinycloud.xyz/onboarding
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
+- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, list, change, delete and see metadata for all KV data in your whole `applications` space, plus read and write SQL data across the whole `applications` space, including Health Log's database, for 30 days. It does not grant SQL-schema permissions. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
@@ -19,6 +19,8 @@ The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's co
 ## For the agent
 
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
+
+**What/when:** TinyCloud is the owner's encrypted storage for records, files, and secrets; secrets are encrypted before storage. Use it when something should outlast a conversation or work across agents. Shell agents use the CLI; chat apps use hosted MCP.
 
 Pick the route for where you run:
 
@@ -39,14 +41,14 @@ Follow these on every TinyCloud page.
 
 ## Shell
 
-**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command.
+**1. The CLI.** Before installing, tell the owner: "TinyCloud keeps your records available across agents; after setup I can log a meal in Health Log." Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command; if its `tc-cli` skill status is unavailable, the CLI remains usable and onboarding continues.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0-beta.20 or later.
+No `ONBOARD_READY` means the installed CLI is missing or too old: report the observed version or error and stop. Do not claim onboarding succeeded or ask the owner to rerun `/cli`. These steps need CLI 1.5.0-beta.20 or later.
 
 **2. Run onboarding.** Each run does the next approval. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set.
 
@@ -58,7 +60,7 @@ It prints JSON on stdout:
 
 - **Exit 8, `"onboarded": false`:** the owner needs to approve. Send them one message with `approvalUrl` and this line, filling in `asks` with its first letter in lower case: "Open this link and sign in or create your account. It lets me <asks> Approve, then send me the short code OpenKey shows (like ABCD-EFGH)." For step 1, start that message with this text, word for word:
 
-  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
+  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, list, change, delete and see metadata for all KV data in your whole applications space, plus read and write SQL data across the whole applications space, including Health Log's database, for 30 days. This does not grant SQL-schema permissions. Then let me see which spaces and apps you have, read-only, for 30 days.
 
   When they reply with the code, run this with the code exactly as they sent it:
 

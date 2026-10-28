@@ -4,10 +4,10 @@ This module installs and verifies only the TinyCloud CLI and the CLI's core skil
 
 ## For the owner
 
-- **What it does:** installs TinyCloud CLI 1.5.0-beta.23 into `~/.local/share/tinycloud/cli`, makes the `tinycloud` command run it, and installs the `tc-cli` skill for your agent. It also makes `tc` run it when nothing else on your `PATH` is called `tc`; on Linux, `tc` is usually the system's traffic-control tool, which it leaves alone.
+- **What it does:** installs TinyCloud CLI 1.5.0-beta.23 into the private CLI folder, links the `tinycloud` command only when safe, and installs the `tc-cli` skill when the agent's skill directory is writable. TinyCloud keeps the owner's records available across agents and secrets out of chat; a useful first task is logging a meal in Health Log.
 - **Paste into Claude Code, Codex or OpenCode:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat` runs this page for you; `/apps`, `/publish`, `/secrets` and `/courier` install the CLI themselves.
 - **You approve:** nothing. It doesn't sign in or request any access.
-- **Then:** in a new terminal, `tinycloud --help` lists the commands.
+- **Then:** use `tinycloud --help` or the verified `TC_BIN` path. Skill installation status is reported separately from CLI readiness.
 - **Undo:** see [Undo](#undo).
 
 ## Caller contract
@@ -35,6 +35,8 @@ The site's skills run the CLI as process `TC_BIN` if set, else read the saved `T
 - **`tinycloud`**, the name the pages tell the owner to type, and **`tc`**: each is linked in `~/.local/bin` only if that directory is already on the `PATH`, writable and has nothing by that name yet.
 - It never replaces or shadows another program. A name counts as taken when `command -v` finds it, whatever it does when run; it counts as TinyCloud's only when its real path is the CLI's. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is. Existing global CLIs are left untouched.
 
+**Codex sandbox:** If Codex blocks the CLI install because its default sandbox cannot write outside the project or access the network, run this CLI install block as one shell call with `sandbox_permissions: "require_escalated"`, justification `Install the TinyCloud CLI and core skill`, and `yield_time_ms: 30000`—the same escalation used by [/apps](tc-apps.md#personal-records-in-tinycloud-tc-apps). If that escalation is unavailable, stop and report the CLI install failure. Do not ask the owner to restart Codex or run `/cli` again.
+
 Run this as one sequential foreground shell call, exactly as written:
 
 ```sh
@@ -45,7 +47,7 @@ if [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$("$TC_BIN" --version 2
 fi
 WANT=$("$TC_BIN" --version 2>/dev/null)
 # A private prefix only. Never install or link into npm's global bin.
-# ~/.local/bin may be on the PATH (as many shell profiles add it) before it exists.
+# ~/.local/bin may already be on PATH even when it does not yet exist.
 case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
 if [ -z "$WANT" ] || { [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$WANT" != 1.5.0-beta.23 ]; }; then
   echo "TC_INSTALL_FAILED $TC_BIN"
@@ -84,31 +86,36 @@ It prints one line for `tinycloud`, then one for `tc`:
 - `TC_LINKED 1.5.0-beta.23 <link>` → the block linked that name to the pinned CLI.
 - `TC_CONFLICT <name> other` → another program has that name (`command -v` finds it), usually the Linux traffic-control tool for `tc`. It was left alone, whatever it does when run.
 - `TC_CONFLICT <name> <version>` (or `unknown`) → that name runs another TinyCloud CLI version; the block left it alone.
-- `TC_CONFLICT <name> no-path` → nothing has that name, but `~/.local/bin` is not on the `PATH` and writable. For `tinycloud`, tell the owner, in these words: "To use the `tinycloud` command, add this line to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`): `export PATH="$HOME/.local/bin:$PATH"`. Then open a new terminal, start your agent from it, and ask it to run https://agents.tinycloud.xyz/cli again." The rerun creates `~/.local/bin` and links `tinycloud` there; it still leaves any other `tc` alone.
+- `TC_CONFLICT <name> no-path` → nothing has that name, but `~/.local/bin` is not on the `PATH` and writable. Give the owner the full `TC_BIN` path for immediate use. Do not ask them to edit a shell profile or rerun `/cli`.
 - `TC_CONFLICT <name> link` → nothing has that name, but the link couldn't be made.
-- `TC_INSTALL_FAILED` → the npm install failed or the owner's `TC_BIN` doesn't run. Stop and report the error. Don't retry with other options or `sudo`.
+- `TC_INSTALL_FAILED` → the npm install failed or the owner's `TC_BIN` doesn't run. For an observed Codex sandbox denial, use the escalation above; otherwise stop and report the actual error. Don't retry with other options or `sudo`.
 
-On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: continue with the skill below. A `TC_CONFLICT` changes nothing else; mention it to the owner in one line. If `tinycloud` isn't `TC_READY` or `TC_LINKED`, tell the owner they can run the CLI by its path, `TC_BIN`, or put a link to it on their `PATH` themselves; don't do that for them.
+On anything but `TC_INSTALL_FAILED`, the CLI is installed at `TC_BIN`; the `tc-cli` skill step below is optional. A `TC_CONFLICT` changes nothing else; mention it in one line. When `tinycloud` is not `TC_READY` or `TC_LINKED`, use `TC_BIN` directly.
 
 ## Install the core skill
 
 Inspect an existing `tc-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.5.0-beta.23`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tc-cli` skill from an earlier CLI version is a replaceable mismatch. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
 
-If the skill is missing or is a replaceable mismatch, run:
+If the skill is already current, report `TC_SKILL_STATUS reused` and skip installation. If missing or replaceable, run:
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
+if TC_SKILL_TMP=$(mktemp 2>/dev/null) && curl -fsSL https://agents.tinycloud.xyz/skills/install.js -o "$TC_SKILL_TMP" && node "$TC_SKILL_TMP" cli --agent "$CLIENT"; then
+  echo "TC_SKILL_STATUS installed"
+else
+  echo "TC_SKILL_STATUS unavailable"
+fi
+if [ -n "${TC_SKILL_TMP:-}" ]; then rm -f "$TC_SKILL_TMP" || :; fi
 ```
 
-The installer downloads the `tc-cli` skill from `@tinycloud/cli@1.5.0-beta.23` with this site's pinned resolver overlay and checks every served file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection via the `/agent` helper, then the private installation before global npm. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.5.0-beta.23 <folder>`; anything else means the install failed, so stop and report it.
+The installer downloads the `tc-cli` skill from `@tinycloud/cli@1.5.0-beta.23` with this site's pinned resolver overlay and checks every served file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection via the `/agent` helper, then the private installation before global npm. An unavailable status means the skill is not installed; it does not invalidate the CLI. If a shell-tool denial prevents this optional command from running, record the status as unavailable and continue; do not retry or escalate the skill installation.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
-## Verify and return
+Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --version` reports `1.5.0-beta.23` (or the version of the owner's `TC_BIN`), and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. If `TC_SKILL_STATUS` is `installed` or `reused`, check that the selected client's `tc-cli/SKILL.md` is readable and matches the pinned skill. If it is `unavailable`, tell the owner the CLI is ready but the `tc-cli` skill could not be installed; do not claim otherwise. A caller such as `/onboarding` must continue using the CLI.
 
-Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --version` reports `1.5.0-beta.23` (or the version of the owner's `TC_BIN`), and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. Check that the selected client's `tc-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
+Do not sign in, choose a profile, configure a host or space, or request permissions here.
 
-Return to the exact recorded app-guide heading and continue there without another user prompt.
+Return to the exact recorded app-guide heading and continue the original task in the same conversation. Do not ask the owner to restart the flow or paste another prompt.
 
 ## Undo
 
