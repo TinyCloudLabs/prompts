@@ -6,9 +6,15 @@ Give any AI agent or chat app this page, and it sets you up so it can act for yo
 
 > Set me up with TinyCloud: https://agents.tinycloud.xyz/onboarding
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read and change your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
+- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
+
+## How this works
+
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. Chat apps approve by link only; no code is involved.
+
+**Why the code is safe to send in chat:** it isn't a password, and it isn't the grant. It only lets the CLI collect a grant that is useless without the CLI's key, and that key never leaves the computer it was made on. TinyCloud refuses any request not signed by that key. Each code also works once and expires after 5 minutes. If someone else uses a code first, the owner's CLI is refused and the agent asks for a new one. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
 ## For the agent
 
@@ -16,7 +22,7 @@ The person you are talking to is the **owner**. Onboarding sets up three things 
 
 Pick the route for where you run:
 
-- **You can run shell commands on the owner's computer** (a coding agent, or any agent with a workspace): follow [Shell](#shell).
+- **You can run shell commands, on the owner's computer or in your own workspace** (a coding agent, or any agent with a workspace): follow [Shell](#shell).
 - **You can't** (a chat app such as ChatGPT, Claude, Gemini, Grok or Perplexity): follow [Chat app](#chat-app).
 
 ### Principles
@@ -40,7 +46,7 @@ TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again.
+No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0-beta.20 or later.
 
 **2. Run onboarding.** Each run does the next approval. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set.
 
@@ -52,7 +58,7 @@ It prints JSON on stdout:
 
 - **Exit 8, `"onboarded": false`:** the owner needs to approve. Send them one message with `approvalUrl` and this line, filling in `asks` with its first letter in lower case: "Open this link and sign in or create your account. It lets me <asks> Approve, then send me the short code OpenKey shows (like ABCD-EFGH)." For step 1, start that message with this text, word for word:
 
-  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read and change your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
+  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
   When they reply with the code, run this with the code exactly as they sent it:
 
@@ -70,7 +76,7 @@ The owner can open the link on any device, their phone included; OpenKey shows t
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
-- **The code is refused:** each code works once, for the link it came from. Send the latest `approvalUrl` again and ask for the new code.
+- **The code is refused:** each code works once and expires after 5 minutes. Send the latest `approvalUrl` again and ask for the new code.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 
 ## Chat app
