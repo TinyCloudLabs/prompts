@@ -13,8 +13,8 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/feed` | Creating a post in TinyCloud Home (`tinycloud-feed`) | [`skills/tinycloud-feed/creating-a-post.md`](skills/tinycloud-feed/creating-a-post.md) |
 | `/connect` | One link for ChatGPT, Claude, Grok, Perplexity, Gemini, Meta Muse and coding agents: HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); coding agents follow the unchanged guide for their request: [`/apps`](setup/tc-apps.md), [`/secrets`](setup/secrets.md), [`/publish`](setup/publish.md), [`/chat`](apps/tinychat/setup.md) or [`/courier`](setup/courier.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
-| `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
-| `/share` | Share an artifact (`tc-publish`): choose who can open it, set an expiry, revoke | [`setup/share.md`](setup/share.md) |
+| `/publish` | Publish and share (`tinycloud-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
+| `/share` | Share an artifact (`tinycloud-publish`): choose who can open it, set an expiry, revoke | [`setup/share.md`](setup/share.md) |
 | `/secrets` | TinyCloud Secrets (`tc-secrets`): owner setup | [`setup/secrets.md`](setup/secrets.md) |
 | `/courier` | Agent-to-agent threads (`courier`): owner setup | [`setup/courier.md`](setup/courier.md) |
 | `/cli` | Building block: the TinyCloud CLI, its `tinycloud` command and its `tc-cli` skill | [`setup/tinycloud.md`](setup/tinycloud.md) |
@@ -51,7 +51,7 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | --- | --- | --- |
 | `tc-apps` | `apps` | [`skills/tc-apps`](skills/tc-apps), in this repository |
 | `tinycloud-feed` | `feed` | [`skills/tinycloud-feed`](skills/tinycloud-feed), in this repository |
-| `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
+| `tinycloud-publish` | `publish` | [`skills/tinycloud-publish`](skills/tinycloud-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
 | `tc-cli` | `cli` | `skills/tc-cli` in the npm package [`@tinycloud/cli@1.3.5`](https://www.npmjs.com/package/@tinycloud/cli/v/1.3.5) (js-sdk), unchanged |
 | `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.1.3`](https://www.npmjs.com/package/@tinycloud/courier/v/0.1.3) (js-sdk), unchanged |
@@ -62,7 +62,7 @@ Skills written for these guides live in `skills/`. Skills owned by another repos
 
 The owner-facing pages call the CLI `tinycloud`, the name `@tinycloud/cli` 1.2.3 added next to `tc`: on Linux, `/usr/sbin/tc` is the system's traffic-control tool, and `tinycloud` doesn't clash with anything. [`/cli`](setup/tinycloud.md) links `tinycloud` onto the owner's `PATH`, and `tc` too where nothing else has that name. The skills themselves don't need either name on the `PATH`: they run the CLI as `TC_BIN` if set, else from `~/.local/share/tinycloud/cli`.
 
-Every skill whose `SKILLS` entry has `checkCli` must run the CLI that way. For tc-cli, courier and tinychat-retrieval, the build fails if a served file looks up the CLI other than through the three-line resolver that tc-cli and courier ship (`TC_BIN` if set, else `~/.local/share/tinycloud/cli`, else a global npm install; the released lines end in `tc` up to tc-cli 1.2.3 and courier 0.1.3, and in `tinycloud` from tc-cli 1.2.4), has a bare `tc` command in a shell block, or has a script that runs `tc` (as a default executable, a spawned program or a returned value). tc-cli 1.3.0 and courier 0.1.3 pass as released ([TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522)). The skills written here (`tc-publish`, `tc-secrets`) resolve `TC_BIN` in each block's preamble the same way, preferring the `tinycloud` executable.
+Every skill whose `SKILLS` entry has `checkCli` must run the CLI that way. For tc-cli, courier and tinychat-retrieval, the build fails if a served file looks up the CLI other than through the three-line resolver that tc-cli and courier ship (`TC_BIN` if set, else `~/.local/share/tinycloud/cli`, else a global npm install; the released lines end in `tc` up to tc-cli 1.2.3 and courier 0.1.3, and in `tinycloud` from tc-cli 1.2.4), has a bare `tc` command in a shell block, or has a script that runs `tc` (as a default executable, a spawned program or a returned value). tc-cli 1.3.0 and courier 0.1.3 pass as released ([TinyCloudLabs/js-sdk#522](https://github.com/TinyCloudLabs/js-sdk/pull/522)). The skills written here (`tinycloud-publish`, `tc-secrets`) resolve `TC_BIN` in each block's preamble the same way, preferring the `tinycloud` executable.
 
 One released skill is served with changes, listed as `changes` in `SKILLS` and as `changed` in `/skills/index.json`: `tinychat-retrieval`'s scripts run `TC_BIN` if set, else the `tinycloud` in `~/.local/share/tinycloud/cli`, else `tinycloud` on the `PATH`, never `tc`; with none of them they fail with `CLI_UNAVAILABLE` ("TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN"). That's `defaultTc()` in `lib/retrieval.mjs`, used by `lib/setup.mjs` and `lib/login.mjs`; `scripts/retrieve.mjs --help` and `references/meetings.md` say so. TinyChat's pack needs the same change upstream (TC-1077); once a pinned release has it, drop the changes here.
 
@@ -94,7 +94,7 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 - [`prompt.txt`](prompt.txt) is the TinyChat test prompt. It points at `https://agents.tinycloud.xyz/chat`.
 - [`skills/tc-apps/SQL.md`](skills/tc-apps/SQL.md) is `tc-apps`'s optional SQL index; each skill's `QUICKSTART.md` covers the owner's setup, what they see, and why it works the way it does.
-- [`forward-tests.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests.md) (`tc-publish`), [`forward-tests-tc-secrets.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-secrets.md) and [`forward-tests-tc-apps.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-apps.md) are the coordinator runbooks: fresh-agent prompts, expected commands, and how to verify each outcome. They stay in this repository and are not published on the site.
+- [`forward-tests.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests.md) (`tinycloud-publish`), [`forward-tests-tc-secrets.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-secrets.md) and [`forward-tests-tc-apps.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-apps.md) are the coordinator runbooks: fresh-agent prompts, expected commands, and how to verify each outcome. They stay in this repository and are not published on the site.
 
 The owning repositories remain authoritative for executable code and their skills: TinyChat owns `tinychat-retrieval`, `@tinycloud/cli` owns `tc-cli`, `@tinycloud/courier` owns `courier`, `@tinycloud/mcp` owns `tinycloud-delegated-secrets`, and OpenKey owns `openkey-cli`, which is not published here.
 

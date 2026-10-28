@@ -96,7 +96,7 @@ const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
 const SKILLS = [
   { short: "apps", dir: "skills/tc-apps" },
   { short: "feed", dir: "skills/tinycloud-feed" },
-  { short: "publish", dir: "skills/tc-publish" },
+  { short: "publish", dir: "skills/tinycloud-publish" },
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",

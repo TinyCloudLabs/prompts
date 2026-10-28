@@ -121,7 +121,7 @@ Install **only** the skill for the selected action using the site's checksum-che
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <action> --agent <client>
 ```
 
-Read its installed `SKILL.md` by path (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/` or `/tc-publish/` or `/courier/` for Claude Code; `$HOME/.agents/skills/` for Codex/OpenCode). Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed.
+Read its installed `SKILL.md` by path (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/` or `/tinycloud-publish/` or `/courier/` for Claude Code; `$HOME/.agents/skills/` for Codex/OpenCode). Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed.
 
 If the owner only asked for setup, report which CLI and skill are ready, and which non-secret owner field still needs an answer; do not start an approval. If the task asks for a different capability, use its own setup page.
 
