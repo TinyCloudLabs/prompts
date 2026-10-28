@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 
-import { appName, chunks, HEALTHLOG_DB, main, MAX_PARAMS_BYTES, weightRows, loadSnapshot } from "../skills/tc-sync/sync.mjs";
+import { appName, capsFor, chunks, HEALTHLOG_DB, main, MAX_PARAMS_BYTES, weightRows, loadSnapshot } from "../skills/tc-sync/sync.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "tc-sync-test-"));
 after(() => rmSync(dir, { recursive: true, force: true }));
@@ -28,7 +28,10 @@ function cliStub({ covered = true, stored = [], weights = null } = {}) {
     calls.push(args);
     const [, cmd, sub] = args;
     const ok = (value) => ({ status: 0, stdout: JSON.stringify(value), stderr: "" });
-    if (cmd === "auth" && sub === "caps") return ok({ covered });
+    if (cmd === "auth" && sub === "caps") {
+      const capability = args.at(-1);
+      return ok({ covered: typeof covered === "function" ? covered(capability) : covered });
+    }
     if (cmd === "sql" && sub === "query") {
       const db = args[args.indexOf("--db") + 1];
       if (db === HEALTHLOG_DB) {
@@ -113,12 +116,37 @@ test("chunks keep every --params value under the argument limit and refuse a rec
   assert.throws(() => chunks([{ r: "x".repeat(MAX_PARAMS_BYTES) }]), { code: "RECORD_TOO_LARGE" });
 });
 
+test("Wabi alone needs schema, and the grant request includes only capabilities not already covered", () => {
+  const wabi = snapshot([entries([{ id: "a" }])]);
+  assert.deepEqual(capsFor(loadSnapshot(file(wabi))), [
+    "tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:read,write",
+    "tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:schema",
+    "tinycloud.kv:applications:xyz.tinycloud.sync.wabi/knowledge/:get,list,put",
+  ]);
+  const other = loadSnapshot(file(snapshot([entries([{ id: "a" }])], { connector: "other" })));
+  assert.deepEqual(capsFor(other), [
+    "tinycloud.sql:applications:xyz.tinycloud.sync.other/:read,write",
+    "tinycloud.kv:applications:xyz.tinycloud.sync.other/knowledge/:get,list,put",
+  ]);
+
+  const stub = cliStub({ covered: (cap) => !cap.endsWith(":schema") });
+  const result = runMain("caps", wabi, stub);
+  assert.equal(result.out, "tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:schema\n");
+  assert.equal(stub.calls.length, 3);
+  const healthLogCap = `tinycloud.sql:applications:${HEALTHLOG_DB}:read,write`;
+  const weighInStub = cliStub({ covered: (cap) => !cap.endsWith(":schema") });
+  const weighInSnapshot = snapshot([entries([{ id: "w", date: "2026-10-28", pounds: 180 }], { map: WEIGHT_MAP })]);
+  assert.equal(runMain("caps", weighInSnapshot, weighInStub).out, "tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:schema\n");
+  assert.ok(weighInStub.calls.some((args) => args.at(-1) === healthLogCap), "Health Log is checked but not requested when already covered");
+});
+
 test("without the grant, plan stops with needs_grant (exit 3) and lists every cap, Health Log's only when weigh-ins are mapped", () => {
   const plain = runMain("plan", snapshot([entries([{ id: "a" }])]), cliStub({ covered: false }));
   assert.equal(plain.status, 3);
   assert.equal(plain.json.status, "needs_grant");
   assert.deepEqual(plain.json.caps, [
-    "tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:read,write,schema",
+    "tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:read,write",
+    "tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:schema",
     "tinycloud.kv:applications:xyz.tinycloud.sync.wabi/knowledge/:get,list,put",
   ]);
   const stub = cliStub({ covered: false });

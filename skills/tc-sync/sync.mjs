@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // tc-sync: copy a snapshot of another app's data into the owner's TinyCloud.
 //
-//   node sync.mjs <TC> caps  <snapshot.json>   the --cap specs the sync needs, one per line
+//   node sync.mjs <TC> caps  <snapshot.json>   uncovered --cap specs to request, one per line
 //   node sync.mjs <TC> plan  <snapshot.json>   what a sync would change; writes nothing
 //   node sync.mjs <TC> apply <snapshot.json>   sync, read back, and record the run
 //
@@ -129,9 +129,12 @@ export function loadSnapshot(path) {
 /** The capabilities a sync of this snapshot needs, as `auth request --cap` specs. */
 export function capsFor(snap) {
   const caps = [
-    `tinycloud.sql:${SPACE}:${ROOT}.${snap.connector}/:read,write,schema`,
-    `tinycloud.kv:${SPACE}:${ROOT}.${snap.connector}/knowledge/:get,list,put`,
+    `tinycloud.sql:${SPACE}:${ROOT}.${snap.connector}/:read,write`,
   ];
+  if (snap.connector === "wabi") {
+    caps.push(`tinycloud.sql:${SPACE}:${ROOT}.wabi/:schema`);
+  }
+  caps.push(`tinycloud.kv:${SPACE}:${ROOT}.${snap.connector}/knowledge/:get,list,put`);
   if (snap.collections.some((c) => c.map.some((m) => m.to === "healthlog.weight"))) {
     caps.push(`tinycloud.sql:${SPACE}:${HEALTHLOG_DB}:read,write`);
   }
@@ -533,12 +536,12 @@ export function main(argv, { run = spawnSync, out = (s) => process.stdout.write(
     }
     const snap = loadSnapshot(file);
     const caps = capsFor(snap);
-    if (command === "caps") {
-      out(`${caps.join("\n")}\n`);
-      return 0;
-    }
     const cli = makeCli(tc, run);
     const missing = grantStatus(cli, caps);
+    if (command === "caps") {
+      if (missing.length) out(`${missing.join("\n")}\n`);
+      return 0;
+    }
     if (missing.length) {
       print({ status: "needs_grant", missing, caps });
       return 3;

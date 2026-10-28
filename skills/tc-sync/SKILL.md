@@ -52,14 +52,14 @@ node '<SYNC>' "$TC" plan '<SNAPSHOT>'
 
 ## 3. Ask for the grant, once
 
-The sync needs one approval per connector, for 30 days: its own databases (including making their tables), its knowledge folder, and Health Log's database when the snapshot has weigh-ins. Get the link:
+Run `auth caps --diff` before asking. The sync reuses covered grants and requests only uncovered capabilities, in one approval for up to 30 days. For Wabi only, the missing schema capability is `tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:schema`; it permits table creation across the connector prefix, not just imported rows, and is not part of `tinycloud onboard`. If the snapshot maps weigh-ins, Health Log SQL read/write is requested only when not already covered.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" auth request $(node '<SYNC>' "$TC" caps '<SNAPSHOT>' | sed 's/^/--cap /') --grant --paste --expiry 30d < /dev/null
 ```
 
-It exits 3 and prints the OpenKey link on stderr, on the line after `Open this URL in a browser to authenticate:`. Send the owner the link with this line, naming the app: "Open this link and approve. It lets me copy <app> into your TinyCloud, for 30 days. Then send me the short code OpenKey shows (like ABCD-EFGH)." When the owner replies with the code, run the same command with the code on stdin:
+Before sending the link, use the missing-cap list from `caps` and explain its exact scope. Owner message: "Open this link and approve. It lets me copy <app> into your TinyCloud for up to 30 days. It includes only these uncovered permissions: <plain-language list>. If Wabi schema is listed, it permits table creation across `applications:xyz.tinycloud.sync.wabi/`, not only for imported rows. If Health Log SQL is listed, it permits writes to `xyz.tinycloud.sample.healthlog/healthlog`. Then send me the short code OpenKey shows (like ABCD-EFGH)."
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"

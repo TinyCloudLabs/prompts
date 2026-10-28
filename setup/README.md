@@ -54,7 +54,7 @@ You need a shell, Node.js 22.20 or later, and npm.
 
 - **What it does:** your agent copies what you keep in another app (Wabi today) into your TinyCloud when you ask; weigh-ins also go to Health Log. One way, and nothing is deleted.
 - **Paste into your agent:** `Sync my weight log into TinyCloud: https://agents.tinycloud.xyz/sync`
-- **You approve:** one OpenKey screen, for 30 days, for the agent's own databases for that app and, for weigh-ins, Health Log's database.
+- **You approve:** one OpenKey screen for up to 30 days only when `auth caps --diff` finds uncovered permissions; covered whole-`applications` grants are reused. Wabi table creation needs `tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:schema` over the connector prefix, not just imported rows. If weigh-ins are mapped, Health Log SQL read/write is requested only when not already covered.
 - **Undo:** revoke the approval at https://account.tinycloud.xyz/delegations; the copied data stays until you delete it.
 
 ## Agent-to-agent threads: [/courier](courier.md)

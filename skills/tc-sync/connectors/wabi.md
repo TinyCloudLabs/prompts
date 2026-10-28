@@ -6,6 +6,12 @@ Part of the `tc-sync` skill: read `SKILL.md` first. This file says how to turn a
 - **Where you run:** in the Wabi agent's workspace, with its Wabi tools and a shell. The TinyCloud CLI and onboarding work there as on any computer: if the workspace isn't onboarded yet, follow [/onboarding](https://agents.tinycloud.xyz/onboarding) first.
 - **One-way:** read the Wabi app only. Never write it back (no `patch_store`, no `call_action`).
 
+## TinyCloud permissions
+
+Sync writes to `xyz.tinycloud.sync.wabi/<app>` and creates the `records` and `runs` tables there. If not already covered, table creation needs `tinycloud.sql:applications:xyz.tinycloud.sync.wabi/:schema`. This authority covers the Wabi connector database prefix; it is not limited to imported rows. Existing whole-`applications` SQL read/write grants cover data operations when present. The helper checks `auth caps --diff` and requests only uncovered permissions; schema is requested for Wabi, not during onboarding. If weigh-ins are mapped, Health Log SQL read/write is included only if that grant is not already covered.
+
+The Wabi source remains read-only: use `list_apps` and `read_store`; never write it back with `patch_store` or `call_action`.
+
 ## 1. Find the app
 
 Call `list_apps` and pick the app the owner named. If two could match, ask which one. Use the app's id as `app.id` and its name as `app.title`.

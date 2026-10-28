@@ -6,7 +6,7 @@ Your agent copies the data you keep in another app into your own TinyCloud, so i
 
 - **Paste into your agent, where it can use the other app:** `Sync my weight log into TinyCloud: https://agents.tinycloud.xyz/sync`
 - **Works with:** Wabi. Other apps get their own connector as they're added.
-- **You approve:** one OpenKey screen, for 30 days: the agent's own databases for that app (it creates their tables), a short description other agents read, and Health Log's database when weigh-ins are copied. If the agent isn't onboarded yet, it does [/onboarding](onboarding.md) first.
+- **You approve:** one OpenKey screen for up to 30 days only when `auth caps --diff` finds uncovered permissions; covered whole-`applications` grants are reused. Wabi table creation needs SQL schema over `applications:xyz.tinycloud.sync.wabi/`, which is connector-prefix-wide, not row-limited. Mapped weigh-ins need Health Log SQL read/write only when that grant is not already covered.
 - **Undo:** see [Undo](#undo).
 
 ## For the agent
