@@ -20,7 +20,7 @@ Add the setup link to your first request:
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
 2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tinycloud`, a short script that runs this CLI and retries when TinyCloud drops a connection.
-3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
+3. It installs the skill for your user, for each coding agent it finds on this computer, so every project folder and every agent sees it, not only the one you set it up in: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode. If your agent isn't allowed to copy it for one of them, it gives you the command to run yourself. If Claude Code has the skill from the TinyCloud plugin, a setup in Claude Code doesn't copy it there.
 4. It reads the skill and signs you in, as below.
 
 No shell profile to edit, and nothing to restart except OpenCode, once (see below). Afterwards, any new conversation in any folder can use your apps without the link.
@@ -62,6 +62,15 @@ One approval covers one app. A new app, such as `fitness`, asks once more; nothi
 - "What do you keep for me?", "How far am I from my goal?", "My bench volume last week?"
 
 When the agent creates an app or a kind, it tells you in one line. Meals, food, calories and recipes go to Health Log and Recipes, which have their own approvals.
+
+## Context: switch agents, keep what you told them
+
+When you tell an agent something about yourself, such as "my coffee order is a flat white" or "keep replies short", it saves it in your context app, `xyz.tinycloud.tinyapps.context/`, and says so in one line. The next agent you use reads it: ask "What's my coffee order?" in another client on this computer. At the end of a longer task, the agent leaves a short handoff note, so "pick up where I left off" works in the next conversation, or in another agent. The context app has its own approval, the first time.
+
+- **One question at setup.** At the end of setup the agent asks once whether new sessions of your agents on this computer should check your context first. Yes adds one line, ending with `<!-- tinycloud-context -->`, to each agent's own instructions file: `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`. No is remembered, and nobody asks again.
+- **Light.** Each session lists your context once and reads only the records the request needs, at most about 20. One record per subject: a new value replaces it. Agents save only what you said, never a guess.
+- **What stays out.** Every agent you use reads your context, and each read goes to that agent's model provider. So secrets go in TinyCloud Secrets, and health data, money and account numbers, ID numbers, your exact address and other people's private details go in their own app. If you paste a key into a chat, the agent won't save it, and tells you to rotate it.
+- **See and delete.** "What's in my TinyCloud context?" lists every record, with the agent that saved it and when. "Forget my coffee order" deletes one. Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until history collapse ships (TC-1470), so don't put anything in context you'd need erased.
 
 ## How your data is organised
 
@@ -141,3 +150,4 @@ Good to know:
 - When your TinyCloud storage is full, saves fail with `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` and nothing is saved; your records are still readable. The agent tells you and doesn't retry. To keep saving, upgrade at https://account.tinycloud.xyz/storage; deleting records doesn't free space yet.
 - Two agents changing the same kind's description in the same few seconds can lose one change; the next agent re-adds it.
 - `tinycloud-explorer` doesn't show these apps yet.
+- Claude Code doesn't read `~/.agents/skills`, so the setup copies the skill into the folder of each agent it finds. An agent you install after the setup doesn't have the skill until you run the setup again in any agent. OpenCode reads both folders and logs a duplicate-name warning; the two copies are the same.

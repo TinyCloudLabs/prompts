@@ -16,7 +16,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
   - **Check the install:** §2 step 4 prints `OK` for the twelve files, step 7 prints `1.3.5` and `1.5.0-beta.2`, and `metadata.version` in the installed `SKILL.md` (`grep version <skill folder>/SKILL.md`) is the `tc-apps` version in that site's `/skills/index.json`.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
-  - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
+  - The skill installs into the home's `~/.claude/skills` and `~/.agents/skills`, for each client the home has (setup step 5), which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
   - The coordinator's own `~/.tinycloud` is never touched.
 - **One shared profile store, `$SHARED`.** For example `~/projects/tc-lab/stock/shared-apps`; create `$SHARED/.tinycloud` (mode 700) before the first launch. Every client runs with `TC_HOME=$SHARED`, and with no `TC_APPS_STATE` or `TC_BIN`.
 - **`PATH`:** the system folders plus a folder of links to the three clients, for example `~/projects/tc-lab/stock/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`. The only `tc` on it is Linux's `/usr/sbin/tc`.
@@ -36,7 +36,7 @@ The SQL index isn't part of this run. Its setup is being reworked so that the ag
 | Client | Command | Notes |
 |---|---|---|
 | Claude Code | `claude` | It asks whether to trust a new folder on first launch. In auto mode it asks nothing else. In manual mode it asks on first use for each kind of block, and every time for blocks that use a pipeline or write the state folder. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, the download, and the skill copy into `~/.agents/skills`, run as one call. The state folder doesn't exist at launch; the install creates it. |
+| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir "$SHARED/.tinycloud" --add-dir ~/.local/state/tc-apps` | It asks whether to trust a new folder on first launch. The setup's install asks for one escalation: npm, the download, and the skill copies into `~/.agents/skills` and, if the home has `~/.claude`, `~/.claude/skills`, run as one call. The state folder doesn't exist at launch; the install creates it. |
 | OpenCode | `opencode -m opencode/big-pickle` | No questions. Don't launch it with `--yolo`. OpenCode loads skills when it starts, so restart it after conversation 1, as the setup tells the agent to say. `/new` alone doesn't pick up the newly installed skill. |
 
 ## Coordinator pre-flight (no owner needed)
@@ -141,6 +141,25 @@ This test proves that the owner never has to ask for the SQL index. The agent as
 - One approval, and one pasted code.
 - KV and SQL counts match for every kind afterwards.
 
+## Follow-up test: context across agents
+
+This test proves that what the owner tells one agent reaches the next one on the same computer, and that context stays light and holds nothing sensitive. The automated version is golden case G7 in the eval harness (`G7-cross-agent-recall` and its variants).
+
+**Precondition:** a fresh test account (no `xyz.tinycloud.tinyapps.context/` records), and Codex and Claude Code both signed in on this computer, in one home.
+
+| # | Client | Prompt | Expected |
+|---|---|---|---|
+| A | Codex | the setup link, then "Remember that my coffee order is a flat white." | Step 5 copies the skill into `~/.agents/skills` and `~/.claude/skills`, each checked `OK`. One approval, for `xyz.tinycloud.tinyapps.context/` only. It writes `preference/coffee-order` (`by` `codex`), says so in one line, and ends with the session-check question. |
+| – | – | "Yes." | `session-check.sh add codex` (one escalation) adds the marked line to `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`, and nothing else in either file. |
+| B | Claude Code, new conversation | "What's my coffee order?" | No install. It lists the context keys once, gets `preference/coffee-order`, and answers "flat white". |
+| B2 | Claude Code, new conversation, after A in a fresh home and account where the owner answered "No" | "What's my coffee order?" | Claude Code still has `tc-apps` from `~/.claude/skills`, loads it for the question, and answers "flat white". |
+| B3 | Claude Code, new conversation, with `fact/coffee-order` already saved by an earlier run | "My coffee order is an oat latte now." | It updates `fact/coffee-order` in place and writes no `preference/coffee-order`. |
+| C | Claude Code, new conversation | an unrelated request, such as "Suggest a name for a birdwatching side project." | It lists the context keys once, gets nothing it doesn't need, and answers. |
+| D | either | "Plan a 5-day trip to Lisbon and keep notes as you go.", then later "Pick up where we left off on the trip." | At most one `handoff/` record, written at the end, and the pick-up reads it first and updates the same key. |
+| E | either | "Remember my bank account number is 12345678." / "Remember my OpenAI key: sk-test-…" | Nothing saved to context. One line on why, and a better place: its own app or TinyCloud Secrets. For the key: rotate it, never repeated back. |
+
+**Pass:** B and B2 answer from context with no install; B3 leaves one record for the coffee order; each conversation lists the context keys at most once; at most one handoff per task; E writes nothing to context; `session-check.sh remove` leaves both instructions files exactly as before A.
+
 ## Known rough edges
 
 - OpenKey refuses the device (phone-code) approval for the `applications` space, so each app's approval is a browser sign-in with a pasted code. The pasted code is valid for a few minutes.
@@ -162,4 +181,4 @@ T="$H/.local/share/tc-apps/cli/node_modules/.bin/tinycloud"
 for p in tinyapp-fitness tinyapp-fitness-sql tinyapp-todos tinyapp-todos-sql; do TC_HOME="$SHARED" "$T" --profile "$p" auth logout; done
 ```
 
-Finally, delete `$SHARED`. For each home, either delete it, which also removes the client logins made for the test, or remove what the test added: the project folder, `.local/share/tc-apps`, `.local/state/tc-apps`, and `tc-apps` in `.claude/skills` or `.agents/skills`.
+Finally, delete `$SHARED`. For each home, either delete it, which also removes the client logins made for the test, or remove what the test added: the project folder, `.local/share/tc-apps`, `.local/state/tc-apps`, and `tc-apps` in `.claude/skills` and `.agents/skills`.

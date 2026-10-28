@@ -16,6 +16,7 @@ A domain is owned by a catalog app when one of its words matches the request. If
 1. A catalog app owns the domain: that app is the target. Set the app up if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
 2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §1a to §9). `SKILL.md` §1a decides the layout per app. New layout: each generic app has its own folder in the `applications` space, `xyz.tinycloud.tinyapps.<slug>/`, and its own approval. Legacy mode: an app whose records an earlier version kept in `default` stays in that layout (`LEGACY.md`) until the owner moves it and the move is verified. The catalog apps' ids in §1 are unchanged.
 3. The request is ambiguous between two catalog apps: ask one question that names both, then follow rule 1 for the answer.
+4. Something to remember about the owner, a question about what they told an agent before, or "continue" / "pick up where I left off": the context app (`CONTEXT.md`), unless a catalog app owns the domain (rule 1) or it is sensitive (`CONTEXT.md` §1).
 
 Never write a catalog app's data to the generic store, and never write generic records into a catalog app.
 
@@ -34,7 +35,7 @@ Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. 
 Resolve the installed helper's absolute path once per conversation:
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/healthlog-context.mjs" ]; then printf '%s/healthlog-context.mjs\n' "$d"; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/healthlog-context.mjs" ]; then printf '%s/healthlog-context.mjs\n' "$d"; break; fi; done
 ```
 
 Copy that path exactly as `<HEALTHLOG_CONTEXT>` in the blocks below. If no path prints, stop and ask the owner to rerun the setup to install the helper. Before selecting a meal's slot, and before every meal query or write, run `node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"`. It reads only `meal-space.txt` and the agent's `context --json` metadata, compares both full applications space IDs with the independent expected owner (address case is ignored), and returns JSON `{spaceId,day,now,utc,timeZone}` using a fresh clock in the explicit owner timezone. It never reads the owner's profile. A failure prints one plain instruction on stderr: stop, pass that instruction to the owner, and run no SQL. A mismatch or missing session metadata says: "Ask the owner to confirm their TinyCloud address and approve Health Log for that account." Never repair a mismatch by changing the expected owner or copying the session's address into it.
@@ -74,7 +75,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 3. **The owner's approval (the owner's terminal).** Run this one command. It prints the approval state and the owner's message; the agent runs nothing else for this step:
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
    Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, copied exactly, character for character, once, in one code fence, with nothing before it. Do not reword any line of it. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.

@@ -1,8 +1,8 @@
 ---
 name: tc-apps
-description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
+description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) and their context (facts and preferences they tell you, decisions, handoffs between agents) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, tells you to remember something about them, asks about something they told an agent before, or asks you to continue or pick up an earlier task, even if they don't mention TinyCloud. The owner approves each app once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
-  version: "0.2.2"
+  version: "0.3.0"
 ---
 
 # Personal apps in TinyCloud
@@ -11,10 +11,16 @@ metadata:
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
+**Context: what the owner told an agent before.** When the owner asks you to remember something about them, asks about something they told an agent before ("what's my …", "as usual"), asks you to continue or pick up an earlier task, or a line in your instructions asks you to check their TinyCloud context, read `CONTEXT.md` in full and follow it. It needs no catalog read. Read whichever path exists:
+
+```sh
+for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/CONTEXT.md" ]; then cat "$d/CONTEXT.md"; break; fi; done
+```
+
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in or access request, including the per-app sign-in in §4. Read the catalog now and follow it:
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/TINY-APPS.md" ]; then cat "$d/TINY-APPS.md"; break; fi; done
 ```
 
 Sections 1 to 9 below apply only to a request that no catalog app owns (`TINY-APPS.md` §2). Which layout an app uses is decided by §1a.
@@ -22,7 +28,7 @@ Sections 1 to 9 below apply only to a request that no catalog app owns (`TINY-AP
 **For any request about the owner's data, read the catalog first.** Read whichever path exists:
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/TINY-APPS.md" "$HOME/.agents/skills/tc-apps/TINY-APPS.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/TINY-APPS.md" ]; then cat "$d/TINY-APPS.md"; break; fi; done
 ```
 
 If a catalog app owns the domain, follow its fast path in that file: it checks the saved grant first, and no approval screen opens while the grant is live. Don't start the per-app sign-in (§3, §4 below) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
@@ -42,6 +48,7 @@ How to run the blocks:
 - `<TC_BIN>` and `<STATE>` are the first two lines §1 prints, copied exactly; `<TC_BETA>` is the line §1a prints. Don't put `$TC_BIN` back, and keep the assignments first, before `umask 077`: Claude Code can remember an approval only for commands whose paths it can work out from the block itself. Blocks of the new layout start `TC_BIN='<TC_BETA>'`; blocks of `LEGACY.md` start `TC_BIN='<TC_BIN>'`. Never mix them for one app.
 - A command takes 4–10 s. A block that runs commands side by side (`xargs -P 8`) takes about as long as one. Wait up to 60 s.
 - Write files only through these blocks, never with a file-editing tool. Don't run `tinycloud` commands that aren't here.
+- The blocks that find this skill's own files look first in the folder that Claude Code fills in for this skill, including a plugin's; in other clients that first folder is empty and skipped. Run them as written.
 - Run §1 once per conversation, and §1a and §3 once per app per conversation.
 
 ## 0. Route the request
@@ -64,10 +71,10 @@ It prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`, one per line.
 
 ## 1a. Which layout does this app use?
 
-Do this first for every app you are about to read or write, once per conversation. `<APP>` is the app's name. It prints one word and creates no profile, grant or record:
+Do this first for every app you are about to read or write, once per conversation, except `context`, which is always in the new layout (`CONTEXT.md`). `<APP>` is the app's name. It prints one word and creates no profile, grant or record:
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/layout.sh" ]; then sh "$d/layout.sh" '<APP>'; break; fi; done
+for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/layout.sh" ]; then sh "$d/layout.sh" '<APP>'; break; fi; done
 { [ -n "${TC_BETA_BIN:-}" ] && echo "$TC_BETA_BIN"; } || ls "$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud" 2>/dev/null || echo 'TC_BETA is unset'
 ```
 
@@ -85,7 +92,7 @@ Only a verified receipt switches an app: never switch because you moved, or thin
 
 ## 2. How the records are organised
 
-Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>`, and every key of that app starts with `<ID>/`. The app names `catalog`, `index-stale`, `healthlog` and `recipes` are reserved, and a kind is never named `catalog` or `index-stale`.
+Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>`, and every key of that app starts with `<ID>/`. The app names `catalog`, `index-stale`, `healthlog` and `recipes` are reserved, and a kind is never named `catalog` or `index-stale`. The app `context` is the owner's context: use it only as `CONTEXT.md` says.
 
 | Key (in the `applications` space) | Holds |
 |---|---|
@@ -93,6 +100,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 | `<ID>/catalog/<kind>` | a catalog record for each kind of thing the app holds |
 | `<ID>/<kind>/<YYYY-MM>/<id>` | records of a **log** kind: things that happen, such as a weigh-in or a run |
 | `<ID>/<kind>/<state>/<id>` | records of an **item** kind: things with a status, such as a todo or a goal |
+| `<ID>/<kind>/<subject>` | records of a **subject** kind: one record per subject, which a new value replaces, such as the context app's facts (`CONTEXT.md`) |
 | `xyz.tinycloud.tinyapps.catalog/<APP>/entry` | the app's discovery entry: its name and title, no records |
 
 **Names and keys.**
@@ -128,7 +136,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 **A discovery entry:** `{"v":1,"app":"fitness","id":"xyz.tinycloud.tinyapps.fitness","title":"Fitness"}`. It holds only these four fields, with the title from the app record.
 
 **A kind record:** `{"app":"fitness","kind":"lift","about":"Strength training: one record per exercise per workout.","shape":"log","per":"time","v":1,"fields":{"exercise":"text: lowercase name, e.g. bench press","sets":"integer","reps":"integer: reps per set","kg":"number: load in kilograms"},"notes":"Volume = sets x reps x kg. The id ends with the exercise slug.","created":"2026-10-06","by":"claude-code"}`
-- `shape`: `log`, with `per` (`day` or `time`), or `item`, with `states`. New items start in the first state, e.g. `["open","done"]`.
+- `shape`: `log`, with `per` (`day` or `time`); `item`, with `states`, where new items start in the first state, e.g. `["open","done"]`; or `subject`, one record per subject, named by a slug of what it's about.
 - `fields`: name → `"type: meaning"`. A field with a unit names it: `kg`, `km`, `minutes`.
 - Optional: `notes` (how to read or sum up the records), `history` (how to read records with an older `v`), `updated`.
 
@@ -251,7 +259,7 @@ To answer a question:
 
 ## 6. Write
 
-One record, in the app's own folder. The same block writes catalog records. Use `--if-none-match '*'` whenever the key must be new: a catalog record, a `per: time` record, an item. If the key exists, the CLI writes nothing and exits 5 with `KV_ALREADY_EXISTS`. Leave the flag out only when the owner's new value should replace the record: a `per: day` record, or a change to a catalog record you read fresh (§2 rule 7).
+One record, in the app's own folder. The same block writes catalog records. Use `--if-none-match '*'` whenever the key must be new: a catalog record, a `per: time` record, an item. If the key exists, the CLI writes nothing and exits 5 with `KV_ALREADY_EXISTS`. Leave the flag out only when the owner's new value should replace the record: a `per: day` record, a `subject` record (`CONTEXT.md` §4), or a change to a catalog record you read fresh (§2 rule 7).
 
 ```sh
 TC_BIN='<TC_BETA>'; umask 077
@@ -302,8 +310,10 @@ Read `SQL.md` in full, at the install path shown below, when:
 - §3 showed it `present` and a question needs more than about 40 records.
 
 For example:
+- Claude Code with the TinyCloud plugin: `cat "${CLAUDE_SKILL_DIR}/SQL.md"`.
 - Claude Code with the user-level install: `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SQL.md"`.
 - Codex and OpenCode with the user-level install: `cat "$HOME/.agents/skills/tc-apps/SQL.md"`.
+- The setup's download folder, when the copy into your client's skills folder wasn't allowed: `cat "$HOME/.local/share/tc-apps/skill/SQL.md"`.
 
 ## 8. Errors
 
@@ -339,7 +349,7 @@ Any mismatch, collision, refusal or error means: do not switch, do not delete. T
 3. Give the owner the dry run, which prints the plan and writes nothing. It uses this computer's earlier `agent-data` sign-in to read the old place. If that has expired, or this computer never had it, add `--source-profile default` to use the owner's own sign-in:
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/migrate.sh" ]; then sh "$d/migrate.sh" --dry-run '<APP>'; break; fi; done
+for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/migrate.sh" ]; then sh "$d/migrate.sh" --dry-run '<APP>'; break; fi; done
 ```
 
 4. When the plan looks right to them, give the same command without `--dry-run`. It copies, reads back, compares, re-checks the old place, and only then writes the discovery entry and the receipt, with the counts and a digest. It leaves the old records untouched. It can be run again after a failure: keys that already hold the same content are recognised.

@@ -14,6 +14,8 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 **Which guide:** setup only, or no request yet → [/onboarding](onboarding.md); personal records or health (meals, weight, workouts, todos) → [/apps](tc-apps.md); API keys and other secrets → [/secrets](secrets.md); publishing or sharing a document or page → [/publish](publish.md); TinyChat meetings → [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent → [/courier](courier.md); anything else → [/setup](README.md), which lists every ability.
 
+**Context:** “remember that …”, a question about what the owner told an agent before, or “pick up where I left off” → [/apps](tc-apps.md) too: its skill keeps the owner's context for every agent on this computer.
+
 That guide is the authority for all prerequisites, installation commands, permissions, sign-in, first-record behavior, troubleshooting and cleanup. This page does not replace or modify any of those instructions. Do not reconstruct the setup from a summary or use the chat-app MCP instructions below for this route. If you are not Claude Code, Codex or OpenCode, use Codex's choice wherever the guide asks for your client or gives a step per client: Codex's skills go in `~/.agents/skills`.
 
 **ChatGPT, Claude chat, Grok, Perplexity, Gemini, Meta Muse and other chat apps:** use the instructions below instead. Do not run the coding-agent setup in a chat app's temporary code sandbox.
