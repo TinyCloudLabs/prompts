@@ -275,6 +275,8 @@ test("onboarding explains the payoff, environment route, real grant scope and CL
   assert.match(cli, /TC_SKILL_STATUS installed/);
   assert.match(cli, /Do not ask them to edit a shell profile or rerun `\/cli`/);
   assert.match(cli, /If a shell-tool denial prevents this optional command from running/);
+  assert.match(cli, /An unavailable status means the core skill could not be installed or verified/);
+  assert.match(cli, /the `tc-cli` skill could not be installed or verified; do not claim otherwise/);
 });
 test("CLI setup reports an optional tc-cli install failure and keeps onboarding usable", () => {
   const dir = home();

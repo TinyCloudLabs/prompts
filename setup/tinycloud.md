@@ -107,11 +107,11 @@ fi
 if [ -n "${TC_SKILL_TMP:-}" ]; then rm -f "$TC_SKILL_TMP" || :; fi
 ```
 
-The installer downloads the `tc-cli` skill from `@tinycloud/cli@1.5.0-beta.23` with this site's pinned resolver overlay and checks every served file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection via the `/agent` helper, then the private installation before global npm. An unavailable status means the skill is not installed; it does not invalidate the CLI. If a shell-tool denial prevents this optional command from running, record the status as unavailable and continue; do not retry or escalate the skill installation.
+The installer downloads the `tc-cli` skill from `@tinycloud/cli@1.5.0-beta.23` with this site's pinned resolver overlay and checks every served file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection via the `/agent` helper, then the private installation before global npm. An unavailable status means the core skill could not be installed or verified; it does not invalidate the CLI. If a shell-tool denial prevents this optional command from running, record the status as unavailable and continue; do not retry or escalate the skill installation.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
-Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --version` reports `1.5.0-beta.23` (or the version of the owner's `TC_BIN`), and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. If `TC_SKILL_STATUS` is `installed` or `reused`, check that the selected client's `tc-cli/SKILL.md` is readable and matches the pinned skill. If it is `unavailable`, tell the owner the CLI is ready but the `tc-cli` skill could not be installed; do not claim otherwise. A caller such as `/onboarding` must continue using the CLI.
+Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --version` reports `1.5.0-beta.23` (or the version of the owner's `TC_BIN`), and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. If `TC_SKILL_STATUS` is `installed` or `reused`, check that the selected client's `tc-cli/SKILL.md` is readable and matches the pinned skill. If it is `unavailable`, tell the owner the CLI is ready but the `tc-cli` skill could not be installed or verified; do not claim otherwise. A caller such as `/onboarding` must continue using the CLI.
 
 Do not sign in, choose a profile, configure a host or space, or request permissions here.
 
