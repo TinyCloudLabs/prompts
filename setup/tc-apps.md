@@ -4,11 +4,11 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 ## For the owner
 
-- **What it does:** installs the `tc-apps` skill for your user, using the TinyCloud CLI and sign-in from [/onboarding](onboarding.md), then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
+- **What it does:** installs the TinyCloud CLI and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-  - **Claude Code:** it may ask you to confirm a step. See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
-  - **Codex:** its default sandbox can block the install. Approve the install escalation it asks for in chat; the agent performs the steps.
-- **You approve:** nothing new after [/onboarding](onboarding.md): its starting grant covers your apps, Health Log and Recipes included. A fast, searchable copy of an app's records, or records from an earlier version, asks once with one OpenKey link; send back the code it shows. The agent runs every command and finishes the request; you never need a separate terminal.
+  - **Claude Code:** it stops before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
+  - **Codex:** before you paste, type `/permissions` and choose "Ask for approval", then approve each step it asks for.
+- **You approve:** for Health Log, three OpenKey approvals the first time. Opening Health Log once at https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.healthlog is the first. Then your agent sends you two links: one signs it in, and one gives it access to Health Log. When OpenKey shows you a code, paste it back to your agent in the chat, even though the OpenKey page mentions a terminal. If Chrome asks to let openkey.so access other apps and services on this device, click Allow, or OpenKey stays on "Signing…". Each other app asks once, the first time you use it. The agent runs every command and finishes the request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
@@ -108,7 +108,7 @@ printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycl
 It takes about 30 s, almost all of it step 2.
 
 If something goes wrong:
-- **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 can fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. The owner approves it once. If escalation is unavailable, report the blocked install in chat; don't send terminal commands or ask the owner to restart.
+- **Codex:** its default sandbox blocks network access and writes outside the workspace, so steps 1 to 7 can fail there. Run steps 1 to 7 as one shell call, joined with `&&`, with `sandbox_permissions: "require_escalated"`, the justification "Install the TinyCloud CLI and the tc-apps skill" and `yield_time_ms: 30000`. If it returns a session id, poll it with `write_stdin` until the command exits. If escalation is unavailable or network access is blocked, tell the owner in one line to type `/permissions`, choose "Ask for approval", and send the request again. Don't send terminal commands or ask the owner to restart.
 - **Claude Code (or your client) denies a step or the sign-in, or asks to confirm it.** Show the owner the step and what it does: it installs the TinyCloud CLI and this skill for their user, or the sign-in saves a key and a 30-day session in their TinyCloud profile folder. Ask them to reply naming the step, as in <https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it>, and run it again only once they agree. Don't edit their settings files, and don't run the step another way.
 - **A step fails, or step 4 doesn't print `OK` for every file:** stop and report the error. Don't retry it with other options or in another folder.
 - **`agents.tinycloud.xyz` does not answer** (step 3 fails): stop and say so to the owner. Don't switch to another source.
