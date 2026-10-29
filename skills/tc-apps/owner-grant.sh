@@ -18,8 +18,19 @@ fi
 # Write to a temp file first: a failed or empty grant must not replace the recorded one.
 TMP=$(mktemp "$DIR/$GRANT.XXXXXX")
 OWNER_PROFILE=owner
-cleanup() { rm -f "$TMP"; }
-cancel() { cleanup; [ -n "${DONE-}" ] || echo 'Cancelled; nothing changed. Tell your agent.' >&2; exit "$1"; }
+ACTIVE_PID=
+printf 'OWNER_GRANT_PID=%s\n' "$$" >&2
+# Preserve chat-code input before the shell gives an asynchronous command /dev/null on stdin.
+exec 3<&0
+cleanup() {
+  if [ -n "$ACTIVE_PID" ]; then
+    kill -TERM "$ACTIVE_PID" 2>/dev/null || true
+    wait "$ACTIVE_PID" 2>/dev/null || true
+    ACTIVE_PID=
+  fi
+  rm -f "$TMP"
+}
+cancel() { trap '' INT TERM HUP; cleanup; [ -n "${DONE-}" ] || echo 'Cancelled; nothing changed. Tell your agent.' >&2; exit "$1"; }
 trap cleanup EXIT
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
@@ -32,7 +43,10 @@ if [ "$PROBE_RC" -ne 0 ]; then
     *PROFILE_NOT_FOUND*)
       echo 'OpenKey sign-in: approve the link and paste the code back to your agent in chat.' >&2
       INIT_RC=0
-      "$TC_BIN" init --name "$OWNER_PROFILE" --paste || INIT_RC=$?
+      "$TC_BIN" init --name "$OWNER_PROFILE" --paste <&3 3<&- &
+      ACTIVE_PID=$!
+      wait "$ACTIVE_PID" || INIT_RC=$?
+      ACTIVE_PID=
       if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
       if [ "$INIT_RC" -ne 0 ]; then
         echo "Sign-in didn't finish, so nothing was granted. Tell your agent." >&2
@@ -55,7 +69,10 @@ if [ ! -s "$DIR/owner-did.txt" ]; then
   printf '%s\n' "$OWNER_DID" > "$DIR/owner-did.txt"
 fi
 RC=0
-"$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" > "$TMP" || RC=$?
+"$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
+ACTIVE_PID=$!
+wait "$ACTIVE_PID" || RC=$?
+ACTIVE_PID=
 if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
   echo 'The owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
