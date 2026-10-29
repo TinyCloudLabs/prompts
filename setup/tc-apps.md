@@ -4,11 +4,11 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI into a folder only this skill uses, and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
+- **What it does:** installs the `tc-apps` skill for your user, using the TinyCloud CLI and sign-in from [/onboarding](onboarding.md), then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may ask you to confirm a step. See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox can block the install. Approve the install escalation it asks for in chat; the agent performs the steps.
-- **You approve:** for Health Log or Recipes, two OpenKey approvals the first time on this computer: your own sign-in, then the app permission. The sign-in lasts 7 days and lists access to your own space; it does not give the agent app access. After that, one approval per new app, for 7 days. Your agent sends each link, you approve in OpenKey, and you paste the code back to the agent in chat. The agent runs every command and finishes the request; you never need a separate terminal. For other records such as workouts, goals or todos, one approval per app gives agents on this computer access to that app's folder in your `applications` space for 30 days. An earlier app needs no new approval until you ask to move it. Questions over many records may need one more approval for a searchable copy of that app's records; its code also comes back in chat.
+- **You approve:** nothing new after [/onboarding](onboarding.md): its starting grant covers your apps, Health Log and Recipes included. A fast, searchable copy of an app's records, or records from an earlier version, asks once with one OpenKey link; send back the code it shows. The agent runs every command and finishes the request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
