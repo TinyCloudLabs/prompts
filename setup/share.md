@@ -4,8 +4,8 @@ Your agent publishes a document or web page from your computer to your own TinyC
 
 ## For the owner
 
-- **Paste into Claude Code, Codex or OpenCode:** `Share this with TinyCloud, and ask me who should be able to open it: https://agents.tinycloud.xyz/share`
-- You need a shell, Node.js 22.20 or later, and npm. A chat agent that can't run shell commands can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
+- **Paste into your agent:** `Share this with TinyCloud, and ask me who should be able to open it: https://agents.tinycloud.xyz/share`
+- You need a shell, Node.js 22.20 or later, and npm. An agent that can't run the TinyCloud CLI can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
 - **What it does:** installs the pinned TinyCloud CLI and the `tc-publish` skill, asks which audience you want, publishes, and returns the link.
 - **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. The first time, you approve two sign-ins in OpenKey and paste each code back to your agent.
 - **Default is private.** With no audience named, the agent makes a link only your own email can open. It makes a public link only when you ask for one.

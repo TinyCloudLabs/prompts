@@ -1,8 +1,8 @@
 # Set up TinyCloud for the person you're working for
 
-Give any AI agent or chat app this page, and it sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do. Then it carries on with what you asked for.
+Give any AI agent this page, and it sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do. Then it carries on with what you asked for.
 
-**Paste into your agent or chat app:**
+**Paste into your agent:**
 
 > Set me up with TinyCloud: https://agents.tinycloud.xyz/onboarding
 
@@ -12,9 +12,9 @@ Give any AI agent or chat app this page, and it sets you up so it can act for yo
 
 ## How this works
 
-The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. Chat apps approve by link only; no code is involved.
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. With the hosted MCP, approval is by link only; no code is involved.
 
-**Why the code is safe to send in chat:** it isn't a password, and it isn't the grant. It only lets the CLI collect a grant that is useless without the CLI's key, and that key never leaves the computer it was made on. TinyCloud refuses any request not signed by that key. Each code also works once and expires after 5 minutes. If someone else uses a code first, the owner's CLI is refused and the agent asks for a new one. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
+The code is safe to send in chat: it works only for this computer's CLI, once, within 5 minutes. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
 ## For the agent
 
@@ -22,8 +22,8 @@ The person you are talking to is the **owner**. Onboarding sets up three things 
 
 Pick the route for where you run:
 
-- **You can run shell commands, on the owner's computer or in your own workspace** (a coding agent, or any agent with a workspace): follow [Shell](#shell).
-- **You can't** (a chat app such as ChatGPT, Claude, Gemini, Grok or Perplexity): follow [Chat app](#chat-app).
+- **You can install and run the TinyCloud CLI**, on the owner's computer or in your own workspace: follow [CLI](#cli). This is the preferred route.
+- **Otherwise, if you support remote MCP** (for example ChatGPT, Claude, Gemini, Grok or Perplexity): follow [MCP](#mcp).
 
 ### Principles
 
@@ -37,7 +37,7 @@ Follow these on every TinyCloud page.
 6. **Send only links you started.** Give the owner only OpenKey links that your own command or tool returned in this conversation.
 7. **No account needed first.** The owner doesn't need to have used TinyCloud before: OpenKey creates their account during the first approval.
 
-## Shell
+## CLI
 
 **1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command.
 
@@ -79,7 +79,7 @@ The owner can open the link on any device, their phone included; OpenKey shows t
 - **The code is refused:** each code works once and expires after 5 minutes. Send the latest `approvalUrl` again and ask for the new code.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 
-## Chat app
+## MCP
 
 **1. Connect TinyCloud.** If TinyCloud tools aren't available yet, give the owner the steps for their app from [Set up TinyCloud](connect.md), then stop until they've connected. Signing in there with OpenKey creates their account if they don't have one.
 
@@ -89,7 +89,7 @@ The owner can open the link on any device, their phone included; OpenKey shows t
 
 ## The owner's goal
 
-Fetch the guide for what the owner asked for yourself and follow it from the start, in this conversation. Each guide asks for the permissions its task needs; before each new approval, tell the owner in one line what it is for.
+Fetch the guide for what the owner asked for yourself and follow it from the start, in this conversation. Each guide reuses this profile and sign-in. If the task needs more than the starting grant, ask once with one OpenKey link (see [Asking for more later](#asking-for-more-later)) and say in one line what it's for.
 
 | The owner wants to | Guide |
 | --- | --- |
@@ -97,12 +97,12 @@ Fetch the guide for what the owner asked for yourself and follow it from the sta
 | Share a document or page | [/share](share.md) |
 | Publish a page with a link | [/publish](publish.md) |
 | Use an API key or other secret | [/secrets](secrets.md) |
-| Ask about their meetings | [/chat](../apps/tinychat/setup.md) |
+| Ask about their meetings (CLI route only) | [/chat](../apps/tinychat/setup.md) |
 | Post to their TinyCloud Home feed | [/feed](https://agents.tinycloud.xyz/feed) |
 | Let you work with another person's agent | [/courier](courier.md) |
 | Something not listed here | The ability list at [/setup](README.md) |
 
-In a chat app, use the connected TinyCloud tools for the goal. If they don't cover it, tell the owner they need an agent with a shell on their computer.
+With MCP, use the connected TinyCloud tools for the goal. The hosted MCP has no meeting tools yet, so meetings use the CLI route. For meetings, or anything else the tools don't cover, tell the owner it needs an agent that can install and run the TinyCloud CLI.
 
 ### Asking for more later
 

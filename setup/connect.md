@@ -1,24 +1,24 @@
 # Set up TinyCloud
 
-Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in ChatGPT, Claude, Grok, Perplexity, Gemini or Meta Muse, or in an agent with a shell, such as Claude Code, Codex, OpenCode, Cursor, OpenClaw or Hermes.
+Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in any AI agent: one that can install and run the TinyCloud CLI, such as Claude Code, Codex, OpenCode, Cursor, OpenClaw or Hermes, or one that supports remote MCP, such as ChatGPT, Claude, Grok, Perplexity, Gemini or Meta Muse.
 
 **Paste this into your app or agent:**
 
 > Set up TinyCloud using https://agents.tinycloud.xyz/connect
 
-**For the assistant:** keep the owner's original request and continue it in this conversation. Use the route for the environment you are running in. In a chat app, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format.
+**For the assistant:** keep the owner's original request and continue it in this conversation. If you can install and run the TinyCloud CLI, use it: that's the preferred route. Otherwise, if you support remote MCP, connect the hosted server below. For an MCP agent, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format.
 
-## Coding agents
+## Agents that can run the CLI (preferred)
 
-**Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes, or any agent with a shell on the owner's computer:** fetch and read the coding-agent setup guide for the owner's original request in full, then follow it exactly for that request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
+**Any agent that can install and run the TinyCloud CLI**, on the owner's computer or in its own workspace (for example Claude Code, Codex, OpenCode, Cursor, OpenClaw or Hermes): fetch [/onboarding](onboarding.md) yourself and follow it. It signs the owner in once, then sends you to the guide for their request. Do not ask the owner to paste another URL or repeat their request.
 
-**Which guide:** setup only, or no request yet → [/onboarding](onboarding.md); personal records or health (meals, weight, workouts, todos) → [/apps](tc-apps.md); API keys and other secrets → [/secrets](secrets.md); publishing or sharing a document or page → [/publish](publish.md); TinyChat meetings → [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent → [/courier](courier.md); anything else → [/setup](README.md), which lists every ability.
+**After onboarding:** it routes personal records or health (meals, weight, workouts, todos) to [/apps](tc-apps.md); API keys and other secrets to [/secrets](secrets.md); publishing or sharing a document or page to [/publish](publish.md); TinyChat meetings to [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent, to [/courier](courier.md); anything else to [/setup](README.md), which lists every ability.
 
-That guide is the authority for all prerequisites, installation commands, permissions, sign-in, first-record behavior, troubleshooting and cleanup. This page does not replace or modify any of those instructions. Do not reconstruct the setup from a summary or use the chat-app MCP instructions below for this route. If you are not Claude Code, Codex or OpenCode, use Codex's choice wherever the guide asks for your client or gives a step per client: Codex's skills go in `~/.agents/skills`.
+Those guides are the authority for prerequisites, installation, permissions, sign-in, troubleshooting and cleanup. If you can run the CLI, don't use the MCP steps below. Where a guide asks for your client, use yours; any other agent uses `codex` (its skills go in `~/.agents/skills`).
 
-**ChatGPT, Claude chat, Grok, Perplexity, Gemini, Meta Muse and other chat apps:** use the instructions below instead. Do not run the coding-agent setup in a chat app's temporary code sandbox.
+**Agents that can't run the CLI but support remote MCP** (for example ChatGPT, Claude, Grok, Perplexity, Gemini or Meta Muse): use the steps below. Do not run the CLI setup in a temporary code sandbox. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
-Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other chat apps](#other-chat-apps).
+Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other MCP clients](#other-mcp-clients).
 
 ## ChatGPT
 
@@ -93,11 +93,11 @@ Use Muse's native custom connector to the hosted MCP server, not the local TinyC
 
 Never ask the owner to paste a password, API key, access token or refresh token into chat. OAuth credentials belong in Muse's secure credential flow, not connector source, prompts or memory. If native OAuth cannot connect, report the actual blocker; do not substitute a key or the coding-agent setup. See [Meta's connector help](https://www.meta.com/help/artificial-intelligence/1687253048996149/).
 
-## Other chat apps
+## Other MCP clients
 
 If your app supports remote MCP over HTTP with OAuth, add **`https://mcp.tinycloud.xyz/mcp`**, choose **OAuth**, and sign in with OpenKey. Enable the connection for your conversation, then make your request. Mobile support depends on the app.
 
-If the app has no custom remote MCP support, reading this page cannot add that capability. Say so and direct the owner to one of the apps above. Do not suggest installing a CLI in a temporary chat sandbox as a substitute.
+If the agent supports neither the CLI nor remote MCP, reading this page cannot add that capability. Say so and tell the owner to use an agent that supports one of them. Do not suggest installing a CLI in a temporary chat sandbox as a substitute.
 
 ## Approve access and continue
 
