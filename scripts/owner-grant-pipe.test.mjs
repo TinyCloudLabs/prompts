@@ -6,8 +6,9 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { after, test } from "node:test";
 
-// TINY-APPS.md §3's block for agents without a live interactive session: the helper gets a pipe of its own,
-// codes reach it through that pipe, and cancelling stops only its recorded PID.
+// TINY-APPS.md §3's blocks for agents without a live interactive session: the helper gets a pipe of its own,
+// codes reach it through that pipe, and cancelling stops only its recorded PID. Every step runs as its own
+// shell call, the way such an agent runs it, so nothing carries over between them.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const base = mkdtempSync("/var/tmp/tc2238-pipe.");
 after(() => rmSync(base, { recursive: true, force: true }));
@@ -30,7 +31,13 @@ createInterface({ input: process.stdin }).once('line', code => {
 `, { mode: 0o755 });
 
 const doc = readFileSync(join(root, "skills/tc-apps/TINY-APPS.md"), "utf8");
-const block = doc.split("**Without a live interactive session**")[1].match(/```sh\n([\s\S]*?)\n```/)[1];
+const section = doc.split("**Without a live interactive session**")[1];
+const [block, steps] = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].slice(0, 2).map((m) => m[1]);
+const step = (prefix) => {
+  const line = steps.split("\n").find((l) => l.startsWith(prefix));
+  assert.ok(line, `no step starting with ${prefix}`);
+  return line;
+};
 
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 async function until(check, what) {
@@ -38,44 +45,54 @@ async function until(check, what) {
   assert.fail(`timed out waiting for ${what}`);
 }
 
-function start(name) {
+function session(name) {
   const home = join(base, name), state = join(home, "state"), skill = join(home, ".agents/skills/tc-apps");
   mkdirSync(state, { recursive: true });
   mkdirSync(skill, { recursive: true });
   copyFileSync(join(root, "skills/tc-apps/owner-grant.sh"), join(skill, "owner-grant.sh"));
   writeFileSync(join(state, "meal-request.json"), "{}");
   writeFileSync(join(state, "meal-grant.json"), '{"previous":true}\n');
-  const script = block.replaceAll("<TC_BIN>", cli).replaceAll("<STATE>", state);
-  const run = spawnSync("sh", ["-c", script], { encoding: "utf8", timeout: 20000,
-    env: { PATH: process.env.PATH, HOME: home, TZ: "UTC" } });
-  assert.equal(run.status, 0, run.stderr);
-  const session = join(state, "owner-grant-session");
-  const out = () => (existsSync(join(session, "out")) ? readFileSync(join(session, "out"), "utf8") : "");
-  const pid = Number(out().match(/OWNER_GRANT_PID=(\d+)/)?.[1]);
-  assert.ok(pid > 0, `no OWNER_GRANT_PID in: ${out()}`);
-  const send = (code) => writeFileSync(join(session, "in"), code + "\n");
-  return { state, session, out, pid, send };
+  const sh = (script) => {
+    const run = spawnSync("sh", ["-c", script.replaceAll("<TC_BIN>", cli).replaceAll("<STATE>", state)],
+      { encoding: "utf8", timeout: 20000, env: { PATH: process.env.PATH, HOME: home, TZ: "UTC" } });
+    assert.equal(run.status, 0, run.stderr);
+    return run.stdout;
+  };
+  const dir = join(state, "owner-grant-session");
+  return {
+    state, dir, start: () => sh(block), out: () => sh(step("cat ")), pid: () => Number(readFileSync(join(dir, "pid"), "utf8")),
+    send: (code) => sh(step("printf ").replace("<the code>", code)), cancel: () => sh(step("kill ")), clean: () => sh(step("rm ")),
+  };
 }
 
-test("codes written to the session pipe reach the sign-in and the grant, and the helper exits by itself", async () => {
-  const s = start("codes");
-  assert.ok(statSync(join(s.session, "in")).isFIFO());
+test("codes sent with the doc's own step reach the sign-in and the grant, and the helper exits by itself", async () => {
+  const s = session("codes");
+  s.start();
+  const pid = s.pid();
+  assert.ok(statSync(join(s.dir, "in")).isFIFO());
+  assert.match(s.out(), new RegExp(`OWNER_GRANT_PID=${pid}\\b`), "the recorded pid is the helper's own");
   await until(() => s.out().includes("READY init"), "sign-in");
   s.send("init-code");
   await until(() => s.out().includes("READY grant"), "grant");
   s.send("grant-code");
   await until(() => s.out().includes("Done: approval saved"), "done");
-  await until(() => !alive(s.pid), "helper exit");
+  await until(() => !alive(pid), "helper exit");
   assert.equal(readFileSync(join(s.state, "meal-grant.json"), "utf8").trim(), '{"approved":true}');
+  s.clean();
+  assert.ok(!existsSync(s.dir));
 });
 
-test("cancelling stops only the recorded PID: the helper ends, nothing changes, other processes keep running", async () => {
-  const bystander = spawn("sh", ["-c", `tail -f ${join(base, "other-session-in.fifo")} 2>/dev/null; sleep 30`], { stdio: "ignore" });
+test("starting again while a helper waits keeps its record, and cancelling stops only that PID", async () => {
+  const bystander = spawn("sh", ["-c", "sleep 30"], { stdio: "ignore" });
   try {
-    const s = start("cancel");
+    const s = session("cancel");
+    s.start();
+    const pid = s.pid();
     await until(() => s.out().includes("READY init"), "sign-in");
-    process.kill(s.pid, "SIGTERM");
-    await until(() => !alive(s.pid), "helper exit");
+    assert.match(s.start(), /^HELPER_RUNNING/);
+    assert.equal(s.pid(), pid);
+    s.cancel();
+    await until(() => !alive(pid), "helper exit");
     assert.match(s.out(), /Cancelled; nothing changed/);
     assert.equal(readFileSync(join(s.state, "meal-grant.json"), "utf8").trim(), '{"previous":true}');
     assert.ok(alive(bystander.pid), "an unrelated process was stopped");
@@ -88,8 +105,7 @@ test("no guide, skill or script stops processes by name or pattern", () => {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) walk(path); else files.push(path);
   } };
-  for (const dir of ["setup", "skills", "apps"]) walk(join(root, dir));
-  walk(join(root, "functions"));
+  for (const dir of ["setup", "skills", "apps", "functions"]) walk(join(root, dir));
   const hits = files.flatMap((path) => readFileSync(path, "utf8").split("\n")
     .map((line, i) => [line, i + 1]).filter(([line]) => /\b(pkill|killall|pgrep)\b/.test(line))
     .map(([line, n]) => `${path.slice(root.length + 1)}:${n}: ${line.trim()}`));
