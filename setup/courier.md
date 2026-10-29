@@ -8,22 +8,41 @@ Courier connects agents in a shared session. You choose another agent you contro
 
 Route by capability, not by client name:
 
-- If you can install and run the TinyCloud CLI, use that preferred route. Start at [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding); it signs the owner in once and then returns you to this request.
-- Otherwise, if you support remote MCP, connect through [/connect](https://agents.tinycloud.xyz/connect) to `https://mcp.tinycloud.xyz/mcp`. The hosted MCP currently has no Courier tools, so an agent must be able to run the CLI to invite or join through Courier.
+- If you can install and run the TinyCloud CLI, use that preferred route. Run the pre-onboarding selection check below first, then start at [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding); it signs the owner in once and returns you to this request.
+- Otherwise, if you support remote MCP, connect through [/connect](https://agents.tinycloud.xyz/connect) to `https://mcp.tinycloud.xyz/mcp`. The hosted MCP currently has no Courier tools, so it cannot invite or join through Courier.
 
-Keep the owner's original request and any incoming invitation URL exactly as supplied. This preview offers only the two invitation modes below. Reuse the onboarding profile for other TinyCloud CLI access. Courier uses the separate, restricted setup described below; do not substitute an onboarding or app grant for Courier authority. For other additional TinyCloud permissions, request the minimum once with `"$TC" auth request --cap '<minimum capability>' --grant --paste --expiry 30d`. Send the returned OpenKey link with one line saying what it is for: “Please approve this request for <purpose> and paste the short code here.” The owner approves and pastes the short code in chat; pass it to the CLI exactly as sent. Codes and delegations are fine in chat; secrets are not. Never use private code files, hidden inputs, owner-run `tc auth grant`, or hand-copied JSON.
+## Before onboarding
 
-OpenKey approval is a one-time, restricted Courier grant; after that, each invitation is created from the one mode you choose here.
+Use Node.js 22.20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. A selected path that is missing or not CLI `1.5.0-beta.28` stops here; do not switch binaries. With no selection, continue to onboarding, which installs the default CLI.
 
-**Courier setup in CLI `1.5.0-beta.28`:** Courier reads its own `$COURIER_HOME` (default `~/.courier`), not the onboarding profile. It does not consume `TC_PROFILE`, and putting `--profile` before `courier` is explicitly refused. With no Courier profile, `"$TC" courier start` returns `setup-required`. Use the normal `"$TC" courier init` OpenKey flow below: on fresh state, it creates Courier's key/profile and requests the restricted Courier grant. Reuse an existing ready Courier profile rather than repeating setup.
+```sh
+{ set +x; } 2>/dev/null; umask 077
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+[ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }
+if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
+  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then export TC_BIN
+  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi
+fi
+if [ "${TC_BIN+x}" = x ]; then
+  [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
+  TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
+  [ "$TC_VERSION" = 1.5.0-beta.28 ] || { echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.5.0-beta.28; binary left unchanged" >&2; exit 1; }
+fi
+```
 
-After onboarding, follow [the shared agent setup](agent.md) without another sign-in and install only the Courier action skill, version `0.4.0-beta.19`. Read its `SKILL.md` and `start.md`; keep this preview's two-choice flow.
+Keep the owner's original request and any incoming invitation URL exactly as supplied. `/onboarding` is the only sign-in; ability guides reuse that profile. Once `TC` is resolved after onboarding, request any extra TinyCloud access only as needed with `"$TC" auth request --cap '<minimum capability>' --grant --paste --expiry 30d`. Send the returned OpenKey link with one line saying what it is for. The owner approves that link and pastes the short code in chat; pass the code to the CLI exactly as sent. Codes and delegations are fine in chat; secrets are not. Never use private code files, hidden inputs, owner-run `tc auth grant`, or hand-copied JSON.
+
+**Pinned-release blocker:** Courier `0.4.0-beta.19` with CLI `1.5.0-beta.28` uses a separate Courier profile instead of the profile created by `/onboarding`. This preview cannot meet the one-profile setup contract. During review, do not run Courier commands against live data. If Courier reports `setup-required`, stop and report the blocker. Do not run `courier init`, create or use a separate profile, or request a second grant.
+
+> I'll use the TinyCloud profile created at `/onboarding` for Courier; if the pinned CLI requires separate setup or approval, I'll stop instead of creating a second profile or grant.
+
+After onboarding, install or reuse the Courier action skill `0.4.0-beta.19` through your agent's standard skill mechanism; do not overwrite a modified skill. Read this preview's [`SKILL.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/SKILL.md) and [`start.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/start.md). If your agent cannot install local skills, read those pages directly. This step does not sign in or request a grant.
 
 ## Check the installed CLI
 
-Use Node.js 22.20 or later. Preserve an operator-provided `TC_BIN`. Never replace it, unset it to try another binary, or install over it. Without an operator selection, use the existing resolver below. If no CLI is installed, start with [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding), which installs and signs in the CLI, then return here. An incompatible selected binary stops this flow; report its path and version to the operator.
+After onboarding, use Node.js 22.20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks the pinned release and required subcommands. Without a selection, it uses the installed CLI. An incompatible selected binary stops this flow; report its path and version.
 
-Run this preamble in the same shell as the later commands:
+Run this in the same shell as the later commands:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -42,9 +61,10 @@ COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; 
 for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac
 done
+export COURIER_LINK_ORIGIN='https://preview-tc1544-step1.courier-ae3.pages.dev'
 ```
 
-These are version/help probes only. They do not create a key, invitation, session or grant.
+These are version/help probes only. This Pages preview is not a Courier API sandbox; do not run Courier commands against live data or create or join real invitations from it.
 
 ## Incoming invitation takes priority
 
@@ -54,7 +74,7 @@ If the owner included an invitation, do this before any `start`, discovery or ne
 "$TC" courier join "$INVITATION_URL" --consent
 ```
 
-If setup is required, use the normal `"$TC" courier init` OpenKey flow, then retry the same invitation. If verification fails, stop and report the result. Do not create a replacement session. Continue with the returned session ID and peer handle.
+If setup is required, stop and report the pinned-release blocker above. Do not run `courier init` or retry with a second profile or grant. If verification fails, stop and report the result. Do not create a replacement session. Continue with the returned session ID and peer handle only after a supported profile is available.
 
 ## Discover the owner's chats
 
@@ -64,7 +84,7 @@ Without an incoming invitation:
 "$TC" courier start
 ```
 
-- `setup-required`: use `"$TC" courier init` through normal OpenKey approval, then run `"$TC" courier start` again. Never ask for an owner key or raw JSON signing.
+- `setup-required`: stop and report the pinned-release blocker. Do not run `courier init` or retry with a separate profile or grant.
 - `active`: keep the returned `session.sessionId`. With no ongoing chats, continue without a new/existing question.
 - `choose-session`: show only the returned subjects, session IDs and peers. Ask whether to start a new chat or continue one of those actual chats.
 

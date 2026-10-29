@@ -159,12 +159,21 @@ const SKILLS = [
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
-      "SKILL.md": [[
-        "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
-        "For this preview, offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the preview Courier guide's two-choice flow.",
-      ]],
+      "SKILL.md": [
+        [
+          "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
+          "For this preview, offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the preview Courier guide's two-choice flow.",
+        ],
+        [
+          "`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey (`tinycloud courier init --paste` also accepts the OpenKey `XXXX-XXXX`\ncode) and decides who to pair with.\nIf OpenKey reports the space is still being set up, `init` waits up to about 2.5 minutes; otherwise use `init --resume`.",
+          "This pinned CLI does not reuse the profile created by `/onboarding`. This Pages preview is documentation-only; the steps below are illustrative, not executable. Do not run Courier commands against live data. If Courier reports `setup-required`, stop and report the blocker. Do not run `init`, create or use a separate profile, or request a second grant.",
+        ],
+      ],
       "start.md": [
-        ["Start Courier for me using the installed courier command.", "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier."],
+        [
+          "Start Courier for me using the installed courier command. Reuse my existing Courier profile and restricted grant. If setup is required, use the normal courier init approval flow; do not request my owner key or broader permissions.",
+          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. This pinned CLI does not reuse the profile created by /onboarding. If any command reports setup-required, stop and report the blocker; do not run courier init, create a second profile, or request a separate grant.\n\nThis Pages preview is documentation-only. The following steps describe intended behavior, not actions to run during review. Do not run Courier commands against live data, create or join real invitations, or send messages. Before any synthetic preview-only invite, invite-serve, or join, set COURIER_LINK_ORIGIN=https://preview-tc1544-step1.courier-ae3.pages.dev in the CLI environment. Preserve every returned invitation URL exactly.",
+        ],
         [
           "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
           "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent. Keep the issuer serving while the recipient joins. Give me its exact handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",

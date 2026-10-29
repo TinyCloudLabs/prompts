@@ -292,6 +292,43 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
   }
 });
 
+test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and preserves process precedence", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const probe = block(guide, "## Before onboarding");
+  for (const scenario of ["saved", "process", "old", "unset"]) {
+    const dir = home();
+    const bin = join(dir, "bin");
+    mkdirSync(bin);
+    const saved = join(bin, "saved-cli");
+    const override = join(bin, "process-cli");
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "process" ? "1.5.0-beta.23" : "1.5.0-beta.28"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.0-beta.28 ;; esac');
+    const envFile = join(dir, "owner/agent.env");
+    const config = join(dir, ".config/tinycloud");
+    mkdirSync(config, { recursive: true, mode: 0o700 });
+    const helperPath = join(config, "agent-env.mjs");
+    writeFileSync(helperPath, readFileSync(helper), { mode: 0o600 });
+    if (scenario !== "unset") {
+      assert.equal(shell(`node "${helperPath}" set TC_BIN "${saved}"`, { HOME: dir, TC_AGENT_ENV: envFile }).status, 0);
+    }
+    const result = shell(`${probe}\nprintf 'RESOLVED=%s\\n' "$TC_BIN"`, {
+      HOME: dir,
+      TC_AGENT_ENV: envFile,
+      ...(scenario === "process" ? { TC_BIN: override } : {}),
+      PATH: `${bin}:${process.env.PATH}`,
+    });
+    if (scenario === "old") {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /COURIER_CLI_VERSION/);
+      assert.doesNotMatch(result.stdout, /RESOLVED=/);
+    } else {
+      assert.equal(result.status, 0, result.stderr);
+      const expected = scenario === "process" ? override : scenario === "unset" ? "" : saved;
+      assert.equal(result.stdout.trim(), `RESOLVED=${expected}`);
+    }
+  }
+});
+
 test("Courier preview resolver preserves an explicitly selected binary and checks its release and features", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const probe = block(guide, "## Check the installed CLI");
