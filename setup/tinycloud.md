@@ -5,7 +5,7 @@ This module installs and verifies TinyCloud CLI `1.5.0-beta.28` and its core ski
 ## For the owner
 
 - **What it does:** installs TinyCloud CLI 1.5.0-beta.28 into `~/.local/share/tinycloud/cli`, makes the `tinycloud` command run it, and installs the `tc-cli` skill for your agent. It also makes `tc` run it when nothing else on your `PATH` is called `tc`; on Linux, `tc` is usually the system's traffic-control tool, which it leaves alone.
-- **Paste into Claude Code, Codex or OpenCode:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat` runs this page for you; `/apps`, `/publish`, `/secrets` and `/courier` install the CLI themselves.
+- **Paste into any agent that can install and run the CLI:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat` runs this page for you; `/apps`, `/publish`, `/secrets` and `/courier` install the CLI themselves.
 - **You approve:** nothing. It doesn't sign in or request any access.
 - **Then:** in a new terminal, `tinycloud --help` lists the commands.
 - **Undo:** see [Undo](#undo).
@@ -15,16 +15,16 @@ This module installs and verifies TinyCloud CLI `1.5.0-beta.28` and its core ski
 Before starting, retain all of the following from the caller:
 
 - the user's original task;
-- the selected client: `opencode`, `codex` or `claude-code`;
+- the selected client: `opencode`, `codex` or `claude-code` (any other agent: `codex`);
 - the calling app guide and its exact return heading.
 
 After the checks below pass, return directly to that heading and continue the original task in the same conversation. Do not ask the user to paste another prompt. If the owner sent you this page directly, there is no calling guide: report the result to them when you finish.
 
 ## Requirements
 
-Use Node.js **22.20 or later** and npm, the same as the app guides that call this module. The `@tinycloud/cli` package alone supports Node 20 or later.
+Use Node.js **22.20 or later** and npm, the same as the app guides that call this module.
 
-Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `claude-code`. Do not apply app-specific OpenCode restrictions here.
+Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `claude-code` (any other agent: `codex`). Do not apply app-specific OpenCode restrictions here.
 
 ## Install the CLI
 

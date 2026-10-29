@@ -17,7 +17,7 @@ Before starting, retain the user's original task, the current agent client, the 
 
 ## Requirements
 
-Use Node.js **22.20 or later** and npm, the minimum every page on this site uses. The OpenKey CLI itself would run on 22.12 or later: it depends on `commander@^15.0.0`, which needs Node.js 22.12.
+Use Node.js **22.20 or later** and npm, the minimum every page on this site uses.
 
 ## Reuse or install
 
