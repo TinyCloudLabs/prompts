@@ -6,7 +6,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 - **What it does:** installs the TinyCloud CLI and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-  - **Claude Code:** it stops before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
+  - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
   - **Codex:** before you paste, type `/permissions` and choose "Ask for approval", then approve each step it asks for.
 - **You approve:** for Health Log, three OpenKey approvals the first time. Opening Health Log once at https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.healthlog is the first. Then your agent sends you two links: one signs it in, and one gives it access to Health Log. When OpenKey shows you a code, paste it back to your agent in the chat, even though the OpenKey page mentions a terminal. If Chrome asks to let openkey.so access other apps and services on this device, click Allow, or OpenKey stays on "Signing…". Each other app asks once, the first time you use it. The agent runs every command and finishes the request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
