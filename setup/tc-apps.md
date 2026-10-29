@@ -4,19 +4,19 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 ## For the owner
 
-- **What it does:** installs the TinyCloud CLI into a folder only this skill uses, and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
-- **Paste into Claude Code, Codex or OpenCode:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
+- **What it does:** installs the `tc-apps` skill for your user, using the TinyCloud CLI and sign-in from [/onboarding](onboarding.md), then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may ask you to confirm a step. See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
   - **Codex:** its default sandbox can block the install. Approve the install escalation it asks for in chat; the agent performs the steps.
-- **You approve:** for Health Log or Recipes, two OpenKey approvals the first time on this computer: your own sign-in, then the app permission. The sign-in lasts 7 days and lists access to your own space; it does not give the agent app access. After that, one approval per new app, for 7 days. Your agent sends each link, you approve in OpenKey, and you paste the code back to the agent in chat. The agent runs every command and finishes the request; you never need a separate terminal. For other records such as workouts, goals or todos, one approval per app gives agents on this computer access to that app's folder in your `applications` space for 30 days. An earlier app needs no new approval until you ask to move it. Questions over many records may need one more approval for a searchable copy of that app's records; its code also comes back in chat.
+- **You approve:** nothing new after [/onboarding](onboarding.md): its starting grant covers your apps, Health Log and Recipes included. A fast, searchable copy of an app's records, or records from an earlier version, asks once with one OpenKey link; send back the code it shows. The agent runs every command and finishes the request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
-## Use it in Claude (web, iOS, Android)
+## Without the CLI
 
-Add `https://mcp.tinycloud.xyz/mcp` as a custom connector in Claude, sign in, and approve the connect and personal-record access links it shows you. Then ask naturally: “Log my weight: 80.5 kg today.” No local CLI or skill installation is needed for this connector.
+An agent that can't run the CLI but supports remote MCP, such as Claude on the web, iOS or Android, can add `https://mcp.tinycloud.xyz/mcp` as a custom connector ([/connect](connect.md) has the steps), sign in, and approve the connect and personal-record access links it shows you. Then ask naturally: “Log my weight: 80.5 kg today.” No local CLI or skill installation is needed for this connector.
 
-To avoid approving each record-writing tool call, go to **Settings → Connectors → TinyCloud**, find `tinycloud_apps_write`, and choose **Always allow**. This does not replace the OpenKey access approval.
+In Claude, to avoid approving each record-writing tool call, go to **Settings → Connectors → TinyCloud**, find `tinycloud_apps_write`, and choose **Always allow**. This does not replace the OpenKey access approval.
 
 ## For the agent
 
@@ -26,7 +26,7 @@ What is and isn't secret: [the list on the shared setup page](https://agents.tin
 
 If the owner only asked for setup or named no record, save one default record without asking, after sign-in is approved (skill §1a, §3 and §4) and not before: app `todos`, kind `todo`, value `{"v":1,"at":"<UTC>","data":{"title":"Try my personal apps"},"by":<client>}`, where `<UTC>` is the clock's time from `date -u +%FT%TZ` (skill §1; run it again if it is more than 5 minutes old), never an estimate. Run skill §1a for `todos` first. If it prints `legacy`, an earlier version already keeps `todos` records for this owner: use the old layout (skill `LEGACY.md`, no new approval) with key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps` and done twin `xyz.tinycloud.agent-data/todos/todo/done/try-my-personal-apps`, and, if they don't exist yet, the catalog records `xyz.tinycloud.agent-data/catalog/todos` and `xyz.tinycloud.agent-data/catalog/todos/todo`. Otherwise use the new layout in the `applications` space with key `xyz.tinycloud.tinyapps.todos/todo/open/try-my-personal-apps`, done twin `xyz.tinycloud.tinyapps.todos/todo/done/try-my-personal-apps`, and catalog records `xyz.tinycloud.tinyapps.todos/catalog` and `xyz.tinycloud.tinyapps.todos/catalog/todo`, followed by the discovery entry `xyz.tinycloud.tinyapps.catalog/todos/entry` = `{"v":1,"app":"todos","id":"xyz.tinycloud.tinyapps.todos","title":"Todos"}`. If the `todos` app or its `todo` kind doesn't exist yet, write the catalog records first (skill §2 rule 2): the app record is `{"app":"todos","title":"Todos","about":"Things to do.","created":"<TODAY>","by":<client>}` and the kind record is `{"app":"todos","kind":"todo","about":"One record per thing to do.","shape":"item","states":["open","done"],"v":1,"fields":{"title":"text: what to do"}}`. Write commands are in skill §6 (`LEGACY.md` §6 in the old layout). Get that key and its done twin first (skill §5), and skip saving if either exists, so a todo the owner already ticked off isn't saved again. Afterwards tell the owner the key, that “What’s on my todo list?” shows it, and that you'll delete it on request (the skill's `kv delete`, §6).
 
-Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode`.
+Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode` (any other agent: `codex`).
 
 Run each block as one shell tool call from your project folder, exactly as written. Where a step has a block for each client, run only the block for yours. Install nothing else: the only installs are step 2's and step 2b's `npm install --prefix`; never `npm install -g`, `sudo` or `curl … | sh`. Don't use or change a `tc` on the `PATH`: other tools depend on it, and this skill needs its own.
 
