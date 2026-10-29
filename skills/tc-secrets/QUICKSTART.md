@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli@1.2.0-beta.2` or later; pin an exact version. The `tinycloud` command needs 1.2.3 or later; on older versions, run the same commands as `tc`. 1.0.0-beta.23 still works through the skill's old-CLI steps (no `secrets request`/`wait`; the owner sends OpenKey's long code). Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
+Works in any agent that can install and run the TinyCloud CLI, for example Codex, Claude Code, OpenCode or OMP. Requires Node.js **22.20 or later** and `@tinycloud/cli@1.2.0-beta.2` or later; pin an exact version. The `tinycloud` command needs 1.2.3 or later; on older versions, run the same commands as `tc`. 1.0.0-beta.23 still works through the skill's old-CLI steps (no `secrets request`/`wait`; the owner sends OpenKey's long code). Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
 
 ## 0. Operator setup (once, not run by the agent)
 
@@ -38,7 +38,7 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
       - The checker takes the line that holds only the URL. It accepts the link only if it requests exactly: `kv/get` on each named secret in the owner's `secrets` space, decrypt on the owner's default network, and the capability read.
       - It also requires this profile's key and node, no callback, and at most 30 days.
       - Only then send the approval message.
-   3. When the owner sends back the 8-character code (works once, for 5 minutes), write it to a fresh 0600 file at once and run the same login with the code on stdin. The result is parsed from the CLI's JSON (`SIGNED_IN`, `CODE_EXPIRED`, `LOGIN_FAILED <code>` or `LOGIN_TIMEOUT`), and the code is deleted.
+   3. When the owner sends back the 8-character code (works once, for 5 minutes), pass it to the CLI exactly as sent and run the same login with the code on stdin. The result is parsed from the CLI's JSON (`SIGNED_IN`, `CODE_EXPIRED`, `LOGIN_FAILED <code>` or `LOGIN_TIMEOUT`).
 
    No background waiter is needed: the second run accepts the code the first run's link produced.
 4. **Use** (§4).
@@ -59,9 +59,9 @@ At `openkey.so/delegate`, the owner signs in with their passkey and picks their 
 - the expiry;
 - each capability: "Read secret values" and "Decrypt protected data" (both marked Sensitive), plus the required "Check your TinyCloud permissions".
 
-Reads are limited to the named secrets. The decrypt permission covers the owner's default encryption network, which is not limited to those names. So the approval message says so: the profile can only fetch the named secrets, but it could decrypt anything encrypted to that network that it gets from elsewhere.
+Reads are limited to the named secrets. The decrypt permission covers the owner's default encryption network, which is not limited to those names. The profile can only fetch the named secrets, but it could decrypt anything encrypted to that network that it gets from elsewhere.
 
-After **Approve**, the page shows an 8-character code (for example `K7M2-Q9XA`) that works once, for 5 minutes. The CLI uses it to fetch the signed approval from OpenKey, and accepts it only if that approval names this machine's profile key. Anyone else who uses the code gets an approval they can't use. "Use full delegation code instead" shows the long code (7–10 KB of base64) that CLIs older than 1.1.0-beta.14 need. Send the code to the agent in your 1:1 channel with it, not in a group. (Paseo's Secret Bridge is retired and is no longer a way to hand over codes.)
+After **Approve**, the page shows an 8-character code (for example `K7M2-Q9XA`) that works once, for 5 minutes. The CLI uses it to fetch the signed approval from OpenKey, and accepts it only if that approval names this machine's profile key. Anyone else who uses the code gets an approval they can't use. "Use full delegation code instead" shows the long code (7–10 KB of base64) that CLIs older than 1.1.0-beta.14 need. Send the code back in the chat. (Paseo's Secret Bridge is retired and is no longer a way to hand over codes.)
 
 ## Never let a value leak
 

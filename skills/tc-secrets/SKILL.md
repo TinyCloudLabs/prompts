@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.10"
+  version: "0.6.0"
 ---
 
 # Read secrets from TinyCloud with `tinycloud secrets`
@@ -419,26 +419,11 @@ rm -f "$STATE/login.err" "$STATE/context.json"
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than 1.0.0-beta.23.
 
-**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`. It works once, for **5 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. The owner sends it in your 1:1 channel; never repeat, quote or echo it anywhere else (not in replies, notes, logs or other tools).
+**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`. It works once, for **5 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. The owner sends it back in the chat; pass it to the CLI exactly as sent, in place of `<the code>` below.
 
-- **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB). Copying a code that long by hand can corrupt it, so prefer upgrading the CLI.
+- **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB) in the chat. Pass it the same way, exactly as sent. Copying a code that long by hand can corrupt it, so prefer upgrading the CLI.
 
-Ask the owner to send the code in your 1:1 channel, then put it into `$STATE/code` with exactly one of these. Don't use a separate secret-input tool for the code: Paseo's Secret Bridge is retired.
-
-- If the harness exposes an existing, authorized log of this 1:1 conversation, extract the owner's code for this sign-in directly into a fresh 0600 `$STATE/code` in one command, with tracing disabled. Don't print the code or the log, don't put the code in a command-line argument, and don't make intermediate copies. Leave the harness's log untouched, and never create a log for this purpose.
-- If not, paste it between the `CODE` markers exactly as received, in one tool call. Paste it exactly as sent; either case works.
-
-  ```sh
-  { set +x; } 2>/dev/null; set +e; umask 077
-  STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-  rm -f "$STATE/code"
-  cat > "$STATE/code" <<'CODE'
-  <code exactly as the owner sent it>
-  CODE
-  echo CODE_SAVED
-  ```
-
-Then finish the sign-in:
+Finish the sign-in:
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
@@ -446,12 +431,11 @@ Then finish the sign-in:
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
-if ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null || [ ! -s "$STATE/manifest.json" ]; then echo NO_CODE
+if [ ! -s "$STATE/manifest.json" ]; then echo NO_CODE
 else
-  printf '\n' >> "$STATE/code"
   rm -f "$STATE/login.json" "$STATE/login.err"
-  timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" --paste \
-    --owner "$TC_OWNER_DID" --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
+  printf '%s\n' '<the code>' | timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" --paste \
+    --owner "$TC_OWNER_DID" --expiry 30d > "$STATE/login.json" 2> "$STATE/login.err"
   python3 - "$?" "$STATE/login.json" "$STATE/login.err" <<'PY'
 import json, re, sys
 rc, out, err = int(sys.argv[1]), sys.argv[2], sys.argv[3]
@@ -471,7 +455,7 @@ expired = bool(re.search(r"not found|expired", msg, re.I)) and bool(re.search(r"
 print("CODE_EXPIRED" if expired else "LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", msg)[:200])
 PY
 fi
-rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
+rm -f "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
 ```
 
 - `SIGNED_IN … declined []` → continue with §2c (run §2).
@@ -479,7 +463,7 @@ rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
   - an item they unticked;
   - or, if the declined entry is the decrypt permission and everything was ticked, an OpenKey deployment too old to grant agent decryption.
 - `CODE_EXPIRED` → the short code is older than 5 minutes, was already used, or was mistyped. If the owner still has the OpenKey page open, ask for the long code behind "Use full delegation code instead" (it doesn't expire after 5 minutes) and run §3c again with it. Otherwise run §3b again and send the owner only the new approval link (not the add link again).
-- `NO_CODE` → the code never arrived. Ask the owner to send it again.
+- `NO_CODE` → there is no pending request from §3b. Run §3b again.
 - `LOGIN_TIMEOUT` → the CLI didn't finish in two minutes. Report it; don't loop.
 - `LOGIN_FAILED <code>` → see §5. A code copied wrongly fails here: ask the owner to send it again. Don't start a new request.
 
@@ -593,7 +577,7 @@ Branch on `code`, never on the exit status alone: exit 8 means "still pending" o
 - **Replace:** only the owner replaces a secret, in Secret Manager. When an existing secret doesn't work, give the owner the page from `"$TC_BIN" secrets manage <NAME> --no-open --json` (its `url`; on an old CLI, `https://secrets.tinycloud.xyz/app?secret=<NAME>`), say what failed, and stop.
 - **Stop reading:** `"$TC_BIN" --profile "$PROFILE" auth logout` clears the local session. The approval stays valid on TinyCloud until it expires, so tell the owner that.
 
-## Message to the owner (1:1)
+## Message to the owner
 
 Send **one** message. Fill in the placeholders, and keep only the paragraphs that apply. Don't drop sentences from a paragraph you keep.
 
@@ -601,9 +585,9 @@ Send **one** message. Fill in the placeholders, and keep only the paragraphs tha
 >
 > *(add link)* Add the missing ones here: <add link>. You enter each value on that page; names that are already in your vault show "Already in your vault". Never send a value to me.
 >
-> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 10 minutes: send it back to me here.
+> *(approval link)* To let me read them, open <approval link> and approve: it lets me read <NAMES> for 30 days. Then send me the code OpenKey shows.
 >
-> *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code here.
+> *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code.
 >
 > *(old CLI, add link)* Replace the add-link paragraph with: <NAMES> isn't in your TinyCloud Secrets yet. Open <OLD_ADD_LINK> to add it: Secret Manager opens with the name filled in, and you enter the value there. Never send the value to me. Tell me when it's saved and I'll continue.
 >

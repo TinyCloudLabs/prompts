@@ -11,28 +11,27 @@ const catalog = () => readFileSync(join(root, "skills/tc-apps/TINY-APPS.md"), "u
 const A = "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const B = "did:pkh:eip155:1:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const space = (did) => did.replace(/^did:/, "tinycloud:") + ":applications";
-const ACCOUNT = "Health Log is set up for a different TinyCloud account than the one that approved this agent; run the owner step again with the right account.\n";
+const ACCOUNT = "Health Log is set up for a different TinyCloud account than the one this computer is signed in with; sign in with the right account at https://agents.tinycloud.xyz/onboarding.\n";
+const CONTEXT_ARGS = ["context", "--space", "applications", "--json"];
 const KEY = "xyz.tinycloud.sample.healthlog/settings/timezone";
 const ZONE = "Pacific/Kiritimati";
 const base = mkdtempSync("/var/tmp/tc-2174-context.");
 after(() => rmSync(base, { recursive: true, force: true }));
 
-function world({ saved = space(A), owner = A, context = { spaceId: space(A) }, stderr = "", status = 0, changed, page = ZONE, fallback } = {}) {
+function world({ owner = A, context = { ownerDid: A, spaceId: space(A) }, stderr = "", status = 0, page = ZONE, fallback } = {}) {
   const dir = mkdtempSync(join(base, "case."));
-  if (saved !== null) writeFileSync(join(dir, "meal-space.txt"), saved + "\n");
   if (owner !== null) writeFileSync(join(dir, "owner-did.txt"), owner + "\n");
   if (fallback !== undefined) writeFileSync(join(dir, "owner-timezone.txt"), fallback + "\n");
-  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ context, stderr, status, changed, page }));
+  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ context, stderr, status, page }));
   const cli = join(dir, "custom cli.mjs");
   writeFileSync(cli, `#!${process.execPath}
-import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { readFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 const dir = process.env.TEST_WORLD;
 const args = process.argv.slice(2);
 appendFileSync(join(dir, 'calls'), JSON.stringify(args) + '\\n');
 const f = JSON.parse(readFileSync(join(dir, 'fixture.json')));
 if (args.includes('context')) {
-  if (f.changed !== undefined) writeFileSync(join(dir, 'meal-space.txt'), f.changed + '\\n');
   process.stderr.write(f.stderr);
   process.stdout.write(typeof f.context === 'string' ? f.context : JSON.stringify(f.context));
   process.exit(f.status);
@@ -63,15 +62,15 @@ function docBlock(w, contains) {
   return spawnSync("sh", ["-c", text], { encoding: "utf8", timeout: 5000, env: w.env });
 }
 
-test("current documented INSERT refuses expected owner A with saved/session owner B before SQL", () => {
-  const w = world({ saved: space(B), context: { spaceId: space(B) } });
+test("current documented INSERT refuses bound owner A with signed-in owner B before SQL", () => {
+  const w = world({ context: { ownerDid: B, spaceId: space(B) } });
   const r = docBlock(w, "INSERT INTO meal");
   assert.equal(w.calls().some((args) => args.includes("sql")), false, "wrong-owner SQL reached CLI");
   assert.notEqual(r.status, 0);
   assert.equal(r.stderr, ACCOUNT);
 });
 
-test("helper returns validated space and a fresh owner-local clock using only delegate context", () => {
+test("helper returns validated space and a fresh owner-local clock using only the sign-in's context", () => {
   const w = world();
   const before = Date.now();
   const r = run(w);
@@ -85,10 +84,7 @@ test("helper returns validated space and a fresh owner-local clock using only de
   assert.equal(Date.parse(out.now), Date.parse(out.utc));
   assert.equal(out.day, out.now.slice(0, 10));
   assert.match(out.now, /\+14:00$/);
-  assert.deepEqual(w.calls(), [
-    ["--profile", "agent-meal", "context", "--json"],
-    ["--profile", "agent-meal", "kv", "get", KEY, "--space", space(A), "--raw"],
-  ]);
+  assert.deepEqual(w.calls(), [CONTEXT_ARGS, ["kv", "get", KEY, "--space", space(A), "--raw"]]);
 });
 
 test("a fresh conversation asks nothing: the saved owner and the page's timezone are enough", () => {
@@ -121,14 +117,27 @@ test("timezone: no page key and no setup fallback uses host UTC without a questi
 });
 
 test("a wrong account is refused with the account line even when no timezone exists", () => {
-  const r = run(world({ saved: space(B), context: { spaceId: space(B) }, page: null }));
+  const r = run(world({ context: { ownerDid: B, spaceId: space(B) }, page: null }));
   assert.notEqual(r.status, 0);
   assert.equal(r.stderr, ACCOUNT);
 });
 
-test("a missing or malformed saved owner address fails closed with one line", () => {
-  for (const owner of [null, "0xaaaa"]) {
-    const r = run(world({ owner }));
+test("first use binds the signed-in owner and never replaces it later", () => {
+  const w = world({ owner: null });
+  const r = run(w);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(w.dir, "owner-did.txt"), "utf8").trim(), A);
+  assert.equal(readFileSync(join(w.dir, "owner-timezone.txt"), "utf8").trim(), "UTC");
+  writeFileSync(join(w.dir, "fixture.json"), JSON.stringify({ context: { ownerDid: B, spaceId: space(B) }, stderr: "", status: 0, page: ZONE }));
+  const again = run(w);
+  assert.notEqual(again.status, 0);
+  assert.equal(again.stderr, ACCOUNT);
+  assert.equal(readFileSync(join(w.dir, "owner-did.txt"), "utf8").trim(), A);
+});
+
+test("a malformed saved owner, or no owner to bind, fails closed with one line", () => {
+  for (const fixture of [{ owner: "0xaaaa" }, { owner: null, context: { spaceId: space(A) } }]) {
+    const r = run(world(fixture));
     assert.notEqual(r.status, 0);
     assert.equal(r.stdout, "");
     assert.equal(r.stderr, ACCOUNT);
@@ -136,14 +145,12 @@ test("a missing or malformed saved owner address fails closed with one line", ()
 });
 
 for (const [label, fixture] of [
-  ["wrong saved owner", { saved: space(B) }],
+  ["wrong saved owner", { owner: B }],
   ["wrong session owner", { context: { spaceId: space(B) } }],
-  ["missing saved space", { saved: null }], ["malformed saved space", { saved: "applications" }],
   ["missing context space", { context: {} }], ["malformed context JSON", { context: "not JSON" }],
   ["malformed context space", { context: { spaceId: "applications" } }],
   ["wrong chain", { context: { spaceId: space(A).replace("eip155:1:", "eip155:137:") } }],
-  ["wrong space name", { saved: space(A).replace(/applications$/, "default") }],
-  ["saved space changes during metadata check", { changed: space(B) }],
+  ["wrong space name", { context: { spaceId: space(A).replace(/applications$/, "default") } }],
   ["CLI error is private", { stderr: "PRIVATE CLI ERROR\nSTACK TRACE\n", status: 3 }],
 ]) test(`${label}: fail closed with one account message`, () => {
   const w = world(fixture);
@@ -151,12 +158,12 @@ for (const [label, fixture] of [
   assert.notEqual(r.status, 0);
   assert.equal(r.stdout, "");
   assert.equal(r.stderr, ACCOUNT);
-  assert.ok(w.calls().every((args) => ["context", "kv"].includes(args[2])));
+  assert.ok(w.calls().every((args) => ["context", "kv"].includes(args[0])));
 });
 
-test("address comparisons ignore case without changing the validated saved space", () => {
+test("address comparisons ignore case without changing the validated space", () => {
   const upper = space(A).replace(/0xa+/, (s) => "0x" + s.slice(2).toUpperCase());
-  const w = world({ saved: upper });
+  const w = world({ context: { spaceId: upper } });
   const r = run(w);
   assert.equal(r.status, 0, r.stderr);
   assert.equal(JSON.parse(r.stdout).spaceId, upper);
@@ -166,7 +173,7 @@ test("pure clock supports date boundaries, fractional offsets and DST independen
   const { validateContext } = await import(pathToFileURL(helper));
   const at = new Date("2026-10-27T12:30:00.123Z");
   const context = (timeZone, date = at) => validateContext({ ownerDid: A, timeZone,
-    savedSpace: space(A), context: { spaceId: space(A) }, now: date });
+    context: { spaceId: space(A) }, now: date });
   assert.deepEqual(context("Pacific/Kiritimati"), { spaceId: space(A), day: "2026-10-28",
     now: "2026-10-28T02:30:00.123+14:00", utc: at.toISOString(), timeZone: "Pacific/Kiritimati" });
   assert.equal(context("Asia/Kathmandu").now, "2026-10-27T18:15:00.123+05:45");

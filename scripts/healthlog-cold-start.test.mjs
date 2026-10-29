@@ -38,21 +38,19 @@ for (const [zone, expected] of [["Asia/Tokyo", "Asia/Tokyo"], ["UTC", "UTC"], ["
   });
 }
 
-test("fresh owner sign-in records binding before guarded Health Log write and read", () => {
+test("first Health Log write after onboarding binds the owner without a question, then writes and reads", () => {
   const home = fresh("fresh.");
   const state = join(home, "state");
   mkdirSync(state);
   const cli = join(home, "cli.mjs");
   // Auth is a bounded local fixture; SQL is a real on-disk database, not echoed parameters.
   writeFileSync(cli, `#!${process.execPath}
-import { existsSync, writeFileSync, readFileSync } from 'node:fs';
+
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-const home = process.env.HOME, a = process.argv.slice(2), signed = join(home, 'signed');
-if (a.includes('init')) { writeFileSync(signed, 'owner'); process.exit(0); }
-if (a.includes('show')) { if (!existsSync(signed)) { console.error('PROFILE_NOT_FOUND'); process.exit(4); } process.exit(0); }
-if (a.includes('context')) { if (!existsSync(signed)) process.exit(4); console.log(JSON.stringify({ ownerDid: '${owner}', spaceId: '${space}' })); process.exit(0); }
-if (a.includes('grant')) { if (!existsSync(signed)) process.exit(3); console.log('{"approved":true}'); process.exit(0); }
+const home = process.env.HOME, a = process.argv.slice(2);
+if (a.includes('--profile')) process.exit(2); // the skill uses the onboarded profile, never --profile
+if (a.includes('context')) { console.log(JSON.stringify({ ownerDid: '${owner}', spaceId: '${space}' })); process.exit(0); }
 if (a.includes('kv')) process.exit(4);
 if (a.includes('sql')) {
   const db = new DatabaseSync(join(home, 'healthlog.sqlite'));
@@ -66,14 +64,6 @@ process.exit(2);
 `, { mode: 0o755 });
   const isolated = { HOME: home, TC_HOME: home, TC_APPS_STATE: state, TC_BIN: cli };
   assert.equal(existsSync(join(state, "owner-did.txt")), false);
-  assert.equal(existsSync(join(home, "signed")), false);
-  writeFileSync(join(state, "meal-request.json"), "{}");
-  const approval = run("sh", [join(root, "skills/tc-apps/owner-grant.sh"), "healthlog"], isolated);
-  assert.equal(approval.status, 0, approval.stderr);
-  assert.equal(readFileSync(join(state, "owner-did.txt"), "utf8").trim(), owner);
-  assert.equal(readFileSync(join(state, "owner-timezone.txt"), "utf8").trim(), "UTC");
-  // Import's saved delegate space is metadata, never a source for the owner binding.
-  writeFileSync(join(state, "meal-space.txt"), space);
   const doc = readFileSync(join(root, "skills/tc-apps/TINY-APPS.md"), "utf8");
   const block = [...doc.matchAll(/```sh\n([\s\S]*?)\n```/g)].map(m => m[1]).find(b => b.includes("INSERT INTO meal"));
   const replacements = { "<TC_BIN>": cli, "<STATE>": state, "<HEALTHLOG_CONTEXT>": helper,
@@ -83,7 +73,10 @@ process.exit(2);
   for (const [key, value] of Object.entries(replacements)) command = command.replaceAll(key, value);
   const write = run("sh", ["-c", command], isolated);
   assert.equal(write.status, 0, write.stderr);
-  const read = run(cli, ["--profile", "agent-meal", "sql", "query", "SELECT name, kcal, source FROM meal WHERE op_id = ?", "--params", '["cold-meal"]'], isolated);
+  assert.equal(write.stderr, "");
+  assert.equal(readFileSync(join(state, "owner-did.txt"), "utf8").trim(), owner);
+  assert.equal(readFileSync(join(state, "owner-timezone.txt"), "utf8").trim(), "UTC");
+  const read = run(cli, ["sql", "query", "SELECT name, kcal, source FROM meal WHERE op_id = ?", "--params", '["cold-meal"]'], isolated);
   assert.equal(read.status, 0, read.stderr);
   assert.deepEqual(JSON.parse(read.stdout), [{ name: "Eggs and toast", kcal: 350, source: "agent" }]);
 });

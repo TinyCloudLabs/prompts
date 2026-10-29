@@ -1,11 +1,12 @@
-// Health Log's account and clock guard. It never asks the owner anything: the expected owner address is the one saved
-// in the app state at setup (owner-did.txt), and the timezone is the owner's own, saved by the Health Log page.
+// Health Log's account and clock guard. It never asks the owner anything. The expected owner address is saved in the
+// app state (owner-did.txt) the first time, from the onboarded profile's owner, and never changed to match a grant.
+// The timezone is the one the Health Log page saves, else the saved host zone, else this host's IANA zone, else UTC.
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const ACCOUNT = "Health Log is set up for a different TinyCloud account than the one that approved this agent; run the owner step again with the right account.";
+const ACCOUNT = "Health Log is set up for a different TinyCloud account than the one this computer is signed in with; sign in with the right account at https://agents.tinycloud.xyz/onboarding.";
 const TIMEZONE_KEY = "xyz.tinycloud.sample.healthlog/settings/timezone";
 const DID = /^did:pkh:eip155:([1-9][0-9]*):(0x[0-9a-fA-F]{40})$/;
 const SPACE = /^tinycloud:pkh:eip155:([1-9][0-9]*):(0x[0-9a-fA-F]{40}):applications$/;
@@ -29,22 +30,20 @@ export function pickTimeZone(...candidates) {
 }
 
 /** Pure validation and clock conversion; CLI callers cannot inject a clock. */
-export function validateContext({ ownerDid, timeZone, savedSpace, context, now }) {
+export function validateContext({ ownerDid, timeZone, context, now }) {
   timeZone = pickTimeZone(timeZone, Intl.DateTimeFormat().resolvedOptions().timeZone, "UTC");
   const formatter = formatterFor(timeZone);
   const expected = typeof ownerDid === "string" && DID.exec(ownerDid);
   if (!expected) throw new Error(ACCOUNT);
-  const saved = typeof savedSpace === "string" && SPACE.exec(savedSpace);
   const active = typeof context?.spaceId === "string" && SPACE.exec(context.spaceId);
-  if (!saved || !active || [saved, active].some((s) =>
-    s[1] !== expected[1] || s[2].toLowerCase() !== expected[2].toLowerCase())) {
+  if (!active || active[1] !== expected[1] || active[2].toLowerCase() !== expected[2].toLowerCase()) {
     throw new Error(ACCOUNT);
   }
   const parts = Object.fromEntries(formatter.formatToParts(now).map(({ type, value }) => [type, value]));
   const day = `${parts.year}-${parts.month}-${parts.day}`;
   const offset = parts.timeZoneName === "GMT" ? "+00:00" : parts.timeZoneName.replace(/^GMT/, "");
   const utc = now.toISOString();
-  return { spaceId: savedSpace, day,
+  return { spaceId: context.spaceId, day,
     now: `${day}T${parts.hour}:${parts.minute}:${parts.second}.${String(now.getUTCMilliseconds()).padStart(3, "0")}${offset}`,
     utc, timeZone };
 }
@@ -54,24 +53,34 @@ function readCli(cli, args) {
   return r.error || r.status !== 0 ? null : r.stdout;
 }
 
+function readText(file) {
+  try { return readFileSync(file, "utf8").trim(); } catch { return null; }
+}
+
 function main() {
   try {
     const [cli, state, ...extra] = process.argv.slice(2);
     if (!cli || !state || extra.length || !isAbsolute(cli) || !isAbsolute(state)) throw new Error(ACCOUNT);
-    const file = join(state, "meal-space.txt");
-    const savedSpace = readFileSync(file, "utf8").trim();
-    const ownerDid = readFileSync(join(state, "owner-did.txt"), "utf8").trim();
-    const contextText = readCli(cli, ["--profile", "agent-meal", "context", "--json"]);
-    if (contextText === null || readFileSync(file, "utf8").trim() !== savedSpace) throw new Error(ACCOUNT);
+    // The onboarded profile: the CLI's default, or TC_PROFILE from the environment.
+    const contextText = readCli(cli, ["context", "--space", "applications", "--json"]);
+    if (contextText === null) throw new Error(ACCOUNT);
     const context = JSON.parse(contextText);
-    // Prefer the page, then the saved host zone, then this host's local IANA zone, else UTC.
-    const page = readCli(cli, ["--profile", "agent-meal", "kv", "get", TIMEZONE_KEY, "--space", savedSpace, "--raw"]);
-    let fallback = null;
-    try { fallback = readFileSync(join(state, "owner-timezone.txt"), "utf8"); } catch {}
-    const timeZone = pickTimeZone(page, fallback, Intl.DateTimeFormat().resolvedOptions().timeZone, "UTC");
-    const output = validateContext({ ownerDid, timeZone, savedSpace, context, now: new Date() });
+    const ownerFile = join(state, "owner-did.txt");
+    let ownerDid = readText(ownerFile);
+    if (ownerDid === null) {
+      // First use on this computer: bind the onboarded profile's owner, and the host zone as the timezone fallback.
+      if (typeof context?.ownerDid !== "string" || !DID.test(context.ownerDid)) throw new Error(ACCOUNT);
+      ownerDid = context.ownerDid;
+      writeFileSync(ownerFile, ownerDid + "\n", { mode: 0o600, flag: "wx" });
+      const hostZone = pickTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone, "UTC");
+      if (readText(join(state, "owner-timezone.txt")) === null) writeFileSync(join(state, "owner-timezone.txt"), hostZone + "\n", { mode: 0o600 });
+    }
+    const spaceId = typeof context?.spaceId === "string" && SPACE.test(context.spaceId) ? context.spaceId : null;
+    const page = spaceId === null ? null : readCli(cli, ["kv", "get", TIMEZONE_KEY, "--space", spaceId, "--raw"]);
+    const timeZone = pickTimeZone(page, readText(join(state, "owner-timezone.txt")), Intl.DateTimeFormat().resolvedOptions().timeZone, "UTC");
+    const output = validateContext({ ownerDid, timeZone, context, now: new Date() });
     process.stdout.write(JSON.stringify(output) + "\n");
-  } catch (error) {
+  } catch {
     process.stderr.write(ACCOUNT + "\n");
     process.exitCode = 1;
   }
