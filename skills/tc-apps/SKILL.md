@@ -1,6 +1,6 @@
 ---
 name: tc-apps
-description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app on OpenKey from a link you show them and pastes the code back to you in chat. The agent runs every command.
+description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app once, on OpenKey, from a link and code you show them, or from a command you give them to run in their own terminal.
 metadata:
   version: "0.2.2"
 ---
@@ -35,7 +35,7 @@ Operator-set, never change or unset:
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
-Health Log never asks the owner for an address or timezone: the explicit owner's address is saved after sign-in. Use the page-saved timezone, then the saved host zone, then the host's local IANA zone, else UTC. Follow `TINY-APPS.md` for the account and clock guard before accessing meal rows.
+Health Log also requires `TC_APPS_OWNER_DID` and `TC_APPS_TIMEZONE` in its shell environment: the expected owner DID and IANA timezone explicitly supplied by the owner/operator. Preserve operator-provided values; otherwise ask the owner for them. Never derive them from a grant, session, saved space or host timezone. Follow `TINY-APPS.md` for the account and clock guard before accessing meal rows.
 
 How to run the blocks:
 - Run each block as one shell tool call, exactly as written, after filling in the `'<…>'` values. Keep the single quotes. `<APP>` is the app's name: lowercase `a-z`, `0-9` and `-`, starting with a letter, such as `fitness`.
@@ -78,7 +78,7 @@ The first line is the layout, the second is `<TC_BETA>`.
   - The setup page (`agents.tinycloud.xyz/apps`) ran in this conversation, or the request is setup only → don't stop to ask first. Treat the app as `new` up to its approval: run §3, then §4a, and end §4a's message with this line: "If you kept <the thing they asked about> with an earlier version of this skill, don't approve: tell me, and I'll use those records instead." A code from the owner is a no: finish with §4b. A yes or not sure is `legacy`: don't use that link (the `tinyapp-<APP>` profile it made stays unused), and sign in as `LEGACY.md` §4 says. Write nothing for this app until the owner has answered one way or the other.
   - Otherwise → ask the question, and wait for the answer before §3.
 - `check-failed` → the old place couldn't be checked (for example the network). Tell the owner in one line, write nothing, and try again on the next request.
-- Nothing printed before `TC_BETA is unset`, or `jq is needed` on stderr (exit 3) → the host prerequisite `jq` is unavailable. Report the blocked prerequisite in chat and write nothing for this app; don't send the owner terminal commands. `migrate.sh` needs `jq` too.
+- Nothing printed before `TC_BETA is unset`, or `jq is needed` on stderr (exit 3) → `jq` isn't installed on this computer. Tell the owner in one line to install `jq`, write nothing for this app, and run §1a again after they say it's done. `migrate.sh` needs `jq` too.
 - `TC_BETA is unset` → in the `new` case, the setup hasn't installed it: stop, and ask the owner to send their request again with the setup link.
 
 Only a verified receipt switches an app: never switch because you moved, or think you moved, records yourself.
@@ -158,7 +158,7 @@ TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" context --json --profile tinyapp-<APP>-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.5.0-beta.2` or newer. Otherwise follow the setup link again to install its pinned copy; don't ask the owner to update a CLI or set variables.
+- The first line must be `1.5.0-beta.2` or newer. Otherwise stop and tell the owner that `<TC_BETA>` must be TinyCloud CLI `1.5.0-beta.2` or newer: for the setup's own copy, they send their request with the setup link again, which installs it; a `TC_BETA_BIN` they set themselves, they update.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the entry read, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4 for this app, then run this block again.
 - The entry prints a record, and the list prints `"keys"` → the app exists in `applications`: use it. The keys are the app's kind records, `<ID>/catalog/<kind>`; `"keys": []` means no kinds yet. Read the app record `<ID>/catalog` and the kind records you need with §5's blocks. For "what do you keep for me?", list the entries under `xyz.tinycloud.tinyapps.catalog/` with any app's profile (`"$TC_BIN" profile list` names them: `tinyapp-<app>`), then read each app's catalog records the same way; also list the old catalog (`LEGACY.md` §3) for apps still in legacy mode.
 - The entry says `NOT_FOUND` → this app has no entry in `applications` yet: a new app (§1a found no old records, or the owner's move is verified and the entry is being read for the first time). Continue with §4 (its approval) if the sign-in is missing, then rule 1 and rule 2 of §2. If a verified receipt exists for this app but the entry is missing, write nothing and tell the owner.
@@ -287,7 +287,7 @@ If §3 showed the app's `tinyapp-<APP>-sql` profile, `present` or `expired`, fol
 
 ## 7. The fast copy (SQL index)
 
-An app's index keeps a copy of every record of that app in a SQLite database, `xyz.tinycloud.tinyapps.<APP>/index`, so a question over many records takes one query, not minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It is optional, per app, and needs its own approval on OpenKey. The owner approves there and sends the code back in chat; the agent finishes the sign-in (`SQL.md` §1b).
+An app's index keeps a copy of every record of that app in a SQLite database, `xyz.tinycloud.tinyapps.<APP>/index`, so a question over many records takes one query, not minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It is optional, per app, and needs its own approval, on OpenKey's approval page. The owner approves there, then sends you the code OpenKey shows (`SQL.md` §1b finishes the sign-in with it), or runs the sign-in command in their own terminal and pastes the code there.
 
 **The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
 - first write your answer from the records you read;
@@ -331,19 +331,19 @@ An app in legacy mode (§1a) keeps working in the old layout until the owner mov
 4. **Re-list the old place** and read it again, to catch an edit made while copying.
 5. **Only then switch:** the app's discovery entry exists, and the owner's receipt, `<STATE>/migration/<APP>.receipt.json`, says `"verified": true`. Until both exist, `layout.sh` prints `legacy` and the app stays in the old layout.
 
-Any mismatch, collision, refusal or error means: do not switch, do not delete. The app stays in legacy mode. Tell the owner in one line what the script printed, and stop. The agent runs the script only for the owner's requested move; it only reads the old place. Never change the old place on your own.
+Any mismatch, collision, refusal or error means: do not switch, do not delete. The app stays in legacy mode. Tell the owner in one line what the script printed, and stop. The owner runs the script, in their own terminal, and it only reads the old place: you never run it, never read the owner's profile, and never change the old place on your own.
 
 **What you do:**
 1. Get the app's approval (§4, with `<TC_BETA>`) first: the copy writes with that profile. This is the only new grant, and you ask for it only now. If `<TC_BETA>` is unset, stop and ask the owner to send their request again with the setup link.
 2. Tell the owner to pause every other agent and device that writes this app, and not to log anything for it until the move is done; you write nothing for the app meanwhile either.
-3. Run the dry run yourself, which prints the plan and writes nothing. It uses this computer's earlier `agent-data` sign-in to read the old place. If that has expired, or this computer never had it, add `--source-profile default` to use the owner's own sign-in for the requested move:
+3. Give the owner the dry run, which prints the plan and writes nothing. It uses this computer's earlier `agent-data` sign-in to read the old place. If that has expired, or this computer never had it, add `--source-profile default` to use the owner's own sign-in:
 
 ```sh
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/migrate.sh" ]; then sh "$d/migrate.sh" --dry-run '<APP>'; break; fi; done
 ```
 
-4. Show the plan in chat. When the owner agrees, run the same command without `--dry-run`. It copies, reads back, compares, re-checks the old place, and only then writes the discovery entry and the receipt, with the counts and a digest. It leaves the old records untouched. It can be run again after a failure: keys that already hold the same content are recognised.
-5. When the process finishes, check it: run §1a again and see `new`; §3 shows the entry; the receipt says `"verified": true`; listing `<ID>/` (§5, with `--all`) gives `counts.total` keys. Read one record. Only then use the app in `applications` (§2 to §8), and tell the owner the old records are still in `default` and can be deleted only when they ask.
-6. The receipt holds counts and a digest, no keys. On another computer, the owner can ask its agent in chat to install that receipt in `<STATE>/migration/` before using the app. Until it is there, that computer keeps the old layout, and records it writes there are not in the new folder.
+4. When the plan looks right to them, give the same command without `--dry-run`. It copies, reads back, compares, re-checks the old place, and only then writes the discovery entry and the receipt, with the counts and a digest. It leaves the old records untouched. It can be run again after a failure: keys that already hold the same content are recognised.
+5. When the owner says it finished, check it yourself: run §1a again and see `new`; §3 shows the entry; the receipt says `"verified": true`; listing `<ID>/` (§5, with `--all`) gives `counts.total` keys. Read one record. Only then use the app in `applications` (§2 to §8), and tell the owner the old records are still in `default` and can be deleted only when they ask.
+6. Tell the owner: on every other computer where they use this skill, copy that receipt file to the same folder (`<STATE>/migration/`) before using the app there. It holds counts and a digest, no keys. Until it is there, that computer keeps the old layout, and records it writes there are not in the new folder.
 
-**Going back** is the owner's decision, requested in chat. Stop writing the app, and explain that records written in `applications` since the move exist only there. Copying them to the old place is a separate step the owner approves: create-only, each record read back before the old place is used again. Then the agent removes the receipt file, and `layout.sh` prints `legacy` again. If a key differs between the two places, keep both and ask the owner which is right; never overwrite either.
+**Going back** is the owner's decision. Stop writing the app, and tell the owner that records written in `applications` since the move exist only there. Copying them to the old place is a separate step the owner approves: create-only, each record read back before the old place is used again. Then the owner removes the receipt file, and `layout.sh` prints `legacy` again. If a key differs between the two places, keep both and ask the owner which is right; never overwrite either.

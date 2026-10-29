@@ -24,8 +24,7 @@ test("agent meals use the intended owner and owner day, and agree with the page 
   const cliBin = process.env.TC_CLI_BIN;
   const root = await mkdtemp("/var/tmp/tc-2174-test.");
   await chmod(root, 0o700);
-  await writeFile(join(root, "temp-paths.txt"), root + "\n");
-  const env = { PATH: process.env.PATH, HOME: root, TC_HOME: root, COURIER_HOME: root, BUN_INSTALL_CACHE_DIR: root, TC_APPS_STATE: join(root, "state"), TZ: "UTC", NO_COLOR: "1" };
+  const env = { PATH: process.env.PATH, TC_HOME: root, TC_APPS_STATE: join(root, "state"), TZ: "UTC", NO_COLOR: "1" };
   await mkdir(env.TC_APPS_STATE);
   await mkdir(join(root, "wrapper"));
   const wrapper = join(root, "wrapper/tinycloud");
@@ -79,39 +78,11 @@ test("agent meals use the intended owner and owner day, and agree with the page 
     node = await startNode();
     assert.match(node.host, /^http:\/\/127\.0\.0\.1:/);
     env.TC_HOST = node.host;
-    // Truly fresh onboarding: no owner profile or binding exists. Only OpenKey is replaced
-    // by a local-key fixture; profile creation, grant, import and SQL use the pinned real CLI.
-    const ownerCli = join(root, "owner-cli.mjs");
-    await writeFile(ownerCli, `#!${process.execPath}
-import { spawnSync } from 'node:child_process';
-const cli = ${JSON.stringify(cliBin)}, host = ${JSON.stringify(node.host)};
-const call = (args) => {
-  const r = spawnSync(cli, ['--host', host, ...args], { stdio: 'inherit' });
-  if (r.status !== 0) process.exit(r.status ?? 1);
-};
-const args = process.argv.slice(2);
-if (args[0] === 'init') {
-  call(['init', '--name', 'owner', '--key-only']);
-  call(['--profile', 'owner', 'auth', 'login', '--method', 'local']);
-  call(['--profile', 'owner', 'space', 'create', 'applications']);
-  call(['--profile', 'owner', 'auth', 'request', '--cap', 'tinycloud.kv:applications::get,list,put,del', '--cap', 'tinycloud.sql:applications::read,write,schema,admin', '--grant', '--yes']);
-} else call(args.includes('grant') ? [...args, '--yes'] : args);
-`, { mode: 0o755 });
-    env.TC_BIN = ownerCli;
-    await cli("agent-meal", ["profile", "create", "agent-meal", "--posture", "delegate-session", "--operator", "agent"]);
-    const req = join(env.TC_APPS_STATE, "meal-request.json"), grant = join(env.TC_APPS_STATE, "meal-grant.json");
-    await cli("agent-meal", ["auth", "request", "--preset", "apps-agent", "--write", "--app", manifest.app_id, "--emit", req]);
-    const approval = await run("sh", [join(repo, "skills/tc-apps/owner-grant.sh"), "healthlog"]);
-    assert.equal(approval.code, 0, approval.stderr);
-    const binding = (await readFile(join(env.TC_APPS_STATE, "owner-did.txt"), "utf8")).trim();
-    assert.equal(binding, (await cli("owner", ["context", "--json"])).ownerDid);
     const app = await loadApp();
     const owners = {};
-    for (const profile of ["owner", "other-owner"]) {
-      if (profile !== "owner") {
-        await cli(profile, ["init", "--name", profile, "--key-only"]);
-        await cli(profile, ["auth", "login", "--method", "local"]);
-      }
+    for (const profile of ["page-owner", "other-owner"]) {
+      await cli(profile, ["init", "--name", profile, "--key-only"]);
+      await cli(profile, ["auth", "login", "--method", "local"]);
       const { spaceId } = await cli(profile, ["space", "create", "applications"]);
       // Only this test's newly generated key is used for its local browser bridge.
       const { privateKey } = JSON.parse(await readFile(join(root, `.tinycloud/profiles/${profile}/profile.json`), "utf8"));
@@ -126,12 +97,10 @@ if (args[0] === 'init') {
       owners[profile] = { bridge, ownerDid, spaceId };
       await cli(profile, ["auth", "request", "--cap", "tinycloud.kv:applications::get,list,put,del", "--cap", "tinycloud.sql:applications::read,write,schema,admin", "--grant", "--yes"]);
     }
+    await cli("agent-meal", ["profile", "create", "agent-meal", "--posture", "delegate-session", "--operator", "agent"]);
+    const req = join(env.TC_APPS_STATE, "meal-request.json"), grant = join(env.TC_APPS_STATE, "meal-grant.json");
+    await cli("agent-meal", ["auth", "request", "--preset", "apps-agent", "--write", "--app", manifest.app_id, "--emit", req]);
     const importGrant = async (profile) => {
-      // Delegate sessions keep their first imported grant; recreate just the fixture's agent
-      // and request when switching owners, as the documented renewal path does.
-      await cli("agent-meal", ["profile", "delete", "agent-meal"]);
-      await cli("agent-meal", ["profile", "create", "agent-meal", "--posture", "delegate-session", "--operator", "agent"]);
-      await cli("agent-meal", ["auth", "request", "--preset", "apps-agent", "--write", "--app", manifest.app_id, "--emit", req]);
       const result = await run(cliBin, ["--host", node.host, "--profile", profile, "auth", "grant", req, "--yes"]);
       assert.equal(result.code, 0, result.stderr);
       await writeFile(grant, result.stdout, { mode: 0o600 });
@@ -141,17 +110,25 @@ if (args[0] === 'init') {
       assert.equal(context.spaceId, owners[profile].spaceId);
     };
     await importGrant("other-owner");
-    // The onboarding binding is account A; the imported grant is B. It must not replace the binding.
-    const OWNER_ZONE = "Pacific/Kiritimati";
-    assert.equal((await readFile(join(env.TC_APPS_STATE, "owner-did.txt"), "utf8")).trim(), binding);
+    env.TC_APPS_OWNER_DID = owners["page-owner"].ownerDid;
+    env.TC_APPS_TIMEZONE = "Pacific/Kiritimati";
     const wrongOwner = await writeMeal("Wrong account must not receive this meal", 600);
     assert.notEqual(wrongOwner.code, 0, "grant B / expected page owner A must stop before INSERT");
     assert.equal(wrongOwner.stderr.trim().split("\n").length, 1);
-    assert.match(wrongOwner.stderr, /different TinyCloud account/);
+    assert.match(wrongOwner.stderr, /Ask the owner/);
     assert.deepEqual((await owners["other-owner"].bridge.sql.query("healthlog", "SELECT COUNT(*) FROM meal")).rows, [[0]]);
 
-    // The intended owner's page saves its non-UTC browser zone; the agent host stays UTC.
-    bridge = owners["owner"].bridge;
+    // Match the independent expected owner to the grant; host stays UTC.
+    env.TC_APPS_OWNER_DID = owners["other-owner"].ownerDid;
+    for (const [name, kcal] of [["Eggs and toast", 350], ["Banana and yogurt", 250]]) {
+      const result = await writeMeal(name, kcal);
+      assert.equal(result.code, 0, result.stderr);
+    }
+    bridge = owners["other-owner"].bridge;
+    const rows = await bridge.sql.query(`/${db}`, "SELECT day, name, kcal, source FROM meal ORDER BY id");
+    assert.equal(rows.ok, true);
+    assert.equal(rows.rows.length, 2);
+    assert.deepEqual(rows.rows.map((r) => r.slice(1)), [["Eggs and toast", 350, "agent"], ["Banana and yogurt", 250, "agent"]]);
     const bundle = await build({ entryPoints: [join(sample, "dev/browser-entry.jsx")], bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic",
       alias: { "@tinycloud/app": join(sample, "dev/browser-bridge.mjs") }, define: { "process.env.NODE_ENV": '"development"' }, logLevel: "silent" });
     server = createServer(async (req, res) => {
@@ -166,32 +143,8 @@ if (args[0] === 'init') {
     });
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
     browser = await chromium.launch({ headless: true, executablePath: process.env.TC_CHROMIUM_BIN });
-    const context = await browser.newContext({ timezoneId: OWNER_ZONE });
+    const context = await browser.newContext({ timezoneId: env.TC_APPS_TIMEZONE });
     const page = await context.newPage();
-    await page.goto(`http://127.0.0.1:${server.address().port}`);
-    await page.locator('[data-testid="today-card"]').waitFor();
-    const savedZone = await (async () => {
-      for (let n = 0; n < 50; n += 1) {
-        const r = await bridge.kv.get("settings/timezone");
-        if (r.ok) return new TextDecoder().decode(r.bytes);
-        await new Promise((r2) => setTimeout(r2, 100));
-      }
-      return null;
-    })();
-    assert.equal(savedZone, OWNER_ZONE, "the page saves the browser's IANA timezone on open");
-
-    // Import the intended owner's grant. Never seed or replace owner-did.txt.
-    await importGrant("owner");
-    for (const [name, kcal] of [["Eggs and toast", 350], ["Banana and yogurt", 250]]) {
-      const result = await writeMeal(name, kcal);
-      assert.equal(result.code, 0, result.stderr);
-      assert.equal(result.stderr, "", "no question or message on a fresh conversation");
-    }
-    bridge = owners["owner"].bridge;
-    const rows = await bridge.sql.query(`/${db}`, "SELECT day, name, kcal, source FROM meal ORDER BY id");
-    assert.equal(rows.ok, true);
-    assert.equal(rows.rows.length, 2);
-    assert.deepEqual(rows.rows.map((r) => r.slice(1)), [["Eggs and toast", 350, "agent"], ["Banana and yogurt", 250, "agent"]]);
     const checkPage = async () => {
       await page.locator('[data-testid="today-card"]').waitFor();
       const day = await page.locator('[data-testid="today-day"]').innerText();
@@ -204,14 +157,14 @@ if (args[0] === 'init') {
       assert.deepEqual(card.rows, [[600, 2]]);
       return day;
     };
-    await page.reload();
+    await page.goto(`http://127.0.0.1:${server.address().port}`);
     const day = await checkPage();
     await page.reload(); await checkPage();
-    // The other account remains empty.
-    bridge = owners["other-owner"].bridge;
+    // The independently signed-in account A remains empty.
+    bridge = owners["page-owner"].bridge;
     await page.reload(); await page.locator('[data-testid="today-card"]').waitFor();
     assert.equal(await page.locator('[data-testid="today-kcal"]').innerText(), "0");
-    console.log(JSON.stringify({ host: node.host, appId: manifest.app_id, db, table: "meal", view: "day_card", expectedOwner: owners["owner"].ownerDid, pageSpace: owners["owner"].spaceId, hostTimezone: "UTC", ownerTimezone: OWNER_ZONE, day, meals: 2, kcal: 600, afterReload: true, coldOwnerBinding: true }));
+    console.log(JSON.stringify({ host: node.host, appId: manifest.app_id, db, table: "meal", view: "day_card", expectedOwner: env.TC_APPS_OWNER_DID, pageSpace: owners["other-owner"].spaceId, hostTimezone: "UTC", ownerTimezone: env.TC_APPS_TIMEZONE, day, meals: 2, kcal: 600, afterReload: true }));
   } finally {
     await browser?.close();
     if (server) await new Promise((r) => server.close(r));

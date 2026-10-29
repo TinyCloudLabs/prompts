@@ -1,6 +1,6 @@
 #!/bin/sh
-# Agent-run, owner-requested step: copy one generic tiny app's records from the old `default` space into the app's own root in
-# `applications`. Show the dry-run plan in chat, then run the move after the owner agrees there.
+# Owner step: copy one generic tiny app's records from the old `default` space into the app's own root in
+# `applications`. Run it in your own terminal, not in an agent's shell.
 #   sh migrate.sh --dry-run [<app>]                       print what would be copied; nothing is written
 #   sh migrate.sh [--source-profile <name>] <app>         copy, read back, compare, re-check the old place, then record the move
 # The old place is only read: this script has no delete and no write to it. Every write to the new place creates a key
