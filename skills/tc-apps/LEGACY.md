@@ -190,7 +190,7 @@ If §3 showed the `agent-data-sql` profile, `present` or `expired`, follow `LEGA
 
 ## 7. The fast copy (SQL index)
 
-The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query, not minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval, on OpenKey's approval page. The owner approves there, then sends you the code OpenKey shows (`LEGACY-SQL.md` §1b finishes the sign-in with it), or runs the sign-in command in their own terminal and pastes the code there.
+The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query, not minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval on OpenKey. The owner approves there and pastes the code back to the agent in chat; the agent finishes the sign-in (`LEGACY-SQL.md` §1b).
 
 **The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
 - first write your answer from the records you read;
