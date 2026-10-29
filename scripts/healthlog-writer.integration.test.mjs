@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -27,11 +27,6 @@ test("agent meals use the intended owner and owner day, and agree with the page 
   await writeFile(join(root, "temp-paths.txt"), root + "\n");
   const env = { PATH: process.env.PATH, HOME: root, TC_HOME: root, COURIER_HOME: root, BUN_INSTALL_CACHE_DIR: root, TC_APPS_STATE: join(root, "state"), TZ: "UTC", NO_COLOR: "1" };
   await mkdir(env.TC_APPS_STATE);
-  await mkdir(join(root, "wrapper"));
-  const wrapper = join(root, "wrapper/tinycloud");
-  await copyFile(join(repo, "skills/tc-apps/tc-wrapper.sh"), wrapper);
-  await chmod(wrapper, 0o755);
-  await writeFile(join(root, "wrapper/cli-path"), cliBin + "\n");
   const fromSample = (path) => import(pathToFileURL(join(sample, path)).href);
   const { startNode } = await fromSample("tests/lib/node.mjs");
   const { connect } = await fromSample("dev/shim.mjs");
@@ -63,7 +58,7 @@ test("agent meals use the intended owner and owner day, and agree with the page 
   const writeMeal = async (name, kcal) => {
     const op = randomUUID();
     const values = {
-      "<TC_BIN>": wrapper, "<STATE>": env.TC_APPS_STATE,
+      "<TC_BIN>": cliBin, "<STATE>": env.TC_APPS_STATE,
       "<HEALTHLOG_CONTEXT>": join(repo, "skills/tc-apps/healthlog-context.mjs"),
       "<MARK>": op.replaceAll("-", ""), "<OP_ID>": op,
       "<DAY>": new Date().toISOString().slice(0, 10), "<UTC>": new Date().toISOString(),
@@ -79,39 +74,11 @@ test("agent meals use the intended owner and owner day, and agree with the page 
     node = await startNode();
     assert.match(node.host, /^http:\/\/127\.0\.0\.1:/);
     env.TC_HOST = node.host;
-    // Truly fresh onboarding: no owner profile or binding exists. Only OpenKey is replaced
-    // by a local-key fixture; profile creation, grant, import and SQL use the pinned real CLI.
-    const ownerCli = join(root, "owner-cli.mjs");
-    await writeFile(ownerCli, `#!${process.execPath}
-import { spawnSync } from 'node:child_process';
-const cli = ${JSON.stringify(cliBin)}, host = ${JSON.stringify(node.host)};
-const call = (args) => {
-  const r = spawnSync(cli, ['--host', host, ...args], { stdio: 'inherit' });
-  if (r.status !== 0) process.exit(r.status ?? 1);
-};
-const args = process.argv.slice(2);
-if (args[0] === 'init') {
-  call(['init', '--name', 'owner', '--key-only']);
-  call(['--profile', 'owner', 'auth', 'login', '--method', 'local']);
-  call(['--profile', 'owner', 'space', 'create', 'applications']);
-  call(['--profile', 'owner', 'auth', 'request', '--cap', 'tinycloud.kv:applications::get,list,put,del', '--cap', 'tinycloud.sql:applications::read,write,schema,admin', '--grant', '--yes']);
-} else call(args.includes('grant') ? [...args, '--yes'] : args);
-`, { mode: 0o755 });
-    env.TC_BIN = ownerCli;
-    await cli("agent-meal", ["profile", "create", "agent-meal", "--posture", "delegate-session", "--operator", "agent"]);
-    const req = join(env.TC_APPS_STATE, "meal-request.json"), grant = join(env.TC_APPS_STATE, "meal-grant.json");
-    await cli("agent-meal", ["auth", "request", "--preset", "apps-agent", "--write", "--app", manifest.app_id, "--emit", req]);
-    const approval = await run("sh", [join(repo, "skills/tc-apps/owner-grant.sh"), "healthlog"]);
-    assert.equal(approval.code, 0, approval.stderr);
-    const binding = (await readFile(join(env.TC_APPS_STATE, "owner-did.txt"), "utf8")).trim();
-    assert.equal(binding, (await cli("owner", ["context", "--json"])).ownerDid);
     const app = await loadApp();
     const owners = {};
     for (const profile of ["owner", "other-owner"]) {
-      if (profile !== "owner") {
-        await cli(profile, ["init", "--name", profile, "--key-only"]);
-        await cli(profile, ["auth", "login", "--method", "local"]);
-      }
+      await cli(profile, ["init", "--name", profile, "--key-only"]);
+      await cli(profile, ["auth", "login", "--method", "local"]);
       const { spaceId } = await cli(profile, ["space", "create", "applications"]);
       // Only this test's newly generated key is used for its local browser bridge.
       const { privateKey } = JSON.parse(await readFile(join(root, `.tinycloud/profiles/${profile}/profile.json`), "utf8"));
@@ -126,26 +93,23 @@ if (args[0] === 'init') {
       owners[profile] = { bridge, ownerDid, spaceId };
       await cli(profile, ["auth", "request", "--cap", "tinycloud.kv:applications::get,list,put,del", "--cap", "tinycloud.sql:applications::read,write,schema,admin", "--grant", "--yes"]);
     }
-    const importGrant = async (profile) => {
-      // Delegate sessions keep their first imported grant; recreate just the fixture's agent
-      // and request when switching owners, as the documented renewal path does.
-      await cli("agent-meal", ["profile", "delete", "agent-meal"]);
-      await cli("agent-meal", ["profile", "create", "agent-meal", "--posture", "delegate-session", "--operator", "agent"]);
-      await cli("agent-meal", ["auth", "request", "--preset", "apps-agent", "--write", "--app", manifest.app_id, "--emit", req]);
-      const result = await run(cliBin, ["--host", node.host, "--profile", profile, "auth", "grant", req, "--yes"]);
-      assert.equal(result.code, 0, result.stderr);
-      await writeFile(grant, result.stdout, { mode: 0o600 });
-      await cli("agent-meal", ["auth", "import", grant]);
-      const context = await cli("agent-meal", ["context", "--json"]);
-      await writeFile(join(env.TC_APPS_STATE, "meal-space.txt"), context.spaceId + "\n");
-      assert.equal(context.spaceId, owners[profile].spaceId);
+    // The agent uses the signed-in profile, as after onboarding: the CLI's default, or TC_PROFILE.
+    const useProfile = async (profile) => {
+      env.TC_PROFILE = profile;
+      assert.equal((await cli(profile, ["context", "--space", "applications", "--json"])).spaceId, owners[profile].spaceId);
     };
-    await importGrant("other-owner");
-    // The onboarding binding is account A; the imported grant is B. It must not replace the binding.
+    // Truly fresh binding: the helper's first run saves the signed-in owner's address; nothing is asked.
+    await useProfile("owner");
+    const first = await run(process.execPath, [join(repo, "skills/tc-apps/healthlog-context.mjs"), cliBin, env.TC_APPS_STATE]);
+    assert.equal(first.code, 0, first.stderr);
+    const binding = (await readFile(join(env.TC_APPS_STATE, "owner-did.txt"), "utf8")).trim();
+    assert.equal(binding, owners["owner"].ownerDid);
+    await useProfile("other-owner");
+    // The binding is account A; this computer is now signed in as B. It must not replace the binding.
     const OWNER_ZONE = "Pacific/Kiritimati";
     assert.equal((await readFile(join(env.TC_APPS_STATE, "owner-did.txt"), "utf8")).trim(), binding);
     const wrongOwner = await writeMeal("Wrong account must not receive this meal", 600);
-    assert.notEqual(wrongOwner.code, 0, "grant B / expected page owner A must stop before INSERT");
+    assert.notEqual(wrongOwner.code, 0, "signed-in B / bound owner A must stop before INSERT");
     assert.equal(wrongOwner.stderr.trim().split("\n").length, 1);
     assert.match(wrongOwner.stderr, /different TinyCloud account/);
     assert.deepEqual((await owners["other-owner"].bridge.sql.query("healthlog", "SELECT COUNT(*) FROM meal")).rows, [[0]]);
@@ -180,8 +144,8 @@ if (args[0] === 'init') {
     })();
     assert.equal(savedZone, OWNER_ZONE, "the page saves the browser's IANA timezone on open");
 
-    // Import the intended owner's grant. Never seed or replace owner-did.txt.
-    await importGrant("owner");
+    // Back to the intended owner's sign-in. Never seed or replace owner-did.txt.
+    await useProfile("owner");
     for (const [name, kcal] of [["Eggs and toast", 350], ["Banana and yogurt", 250]]) {
       const result = await writeMeal(name, kcal);
       assert.equal(result.code, 0, result.stderr);
