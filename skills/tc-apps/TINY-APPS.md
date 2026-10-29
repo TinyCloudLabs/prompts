@@ -86,11 +86,42 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/owner-grant.sh" ]; then sh "$d/owner-grant.sh" healthlog; break; fi; done
 ```
 
+   At startup the helper prints `OWNER_GRANT_PID=<number>`. Record that exact PID as `<OWNER_GRANT_PID>` for this tool session; the line is for the agent, not the owner. If the owner cancels, stop only that process, and only while the same tool session is still running:
+
+```sh
+kill -TERM '<OWNER_GRANT_PID>'
+```
+
+   Observe that session exit before continuing. The helper records each approval CLI child's PID with `$!`, stops only that child on cancellation, and removes its temporary grant file. Never stop processes by name or command-line pattern, or reuse a PID from a finished session. If you start a background process yourself, record `$!` immediately and stop only that PID.
+
+   **Without a live interactive session** (for example Claude Code, where each shell call ends): don't build your own pipe, and never stop a `tail` or any other process by pattern. Start the helper with this block instead. It gives the helper a pipe of its own, so no `tail` runs, and it records the helper's PID in `pid`, the only process to stop:
+
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"; umask 077
+S="$STATE/owner-grant-session"
+P=$(cat "$S/pid" 2>/dev/null); if [ -n "$P" ] && ps -p "$P" -o args= 2>/dev/null | grep -q 'owner-grant\.sh'; then echo "HELPER_RUNNING"; cat "$S/out"; else
+rm -rf "$S"; mkdir -p "$S"; mkfifo "$S/in"
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/owner-grant.sh" ]; then G="$d/owner-grant.sh"; break; fi; done
+nohup sh -c 'exec 3<>"$1"; exec sh "$2" healthlog <&3' _ "$S/in" "$G" > "$S/out" 2>&1 < /dev/null &
+echo "$!" > "$S/pid"; sleep 2; cat "$S/out"; fi
+```
+
+   `HELPER_RUNNING` means a helper from earlier is still waiting: carry on with it, or cancel it as below and run the block again. A `pid` left by a helper that has ended is ignored. Each later step is its own shell call, with the full path:
+
+```sh
+cat '<STATE>/owner-grant-session/out'
+printf '%s\n' '<the code>' > '<STATE>/owner-grant-session/in'
+P=$(cat '<STATE>/owner-grant-session/pid'); if ps -p "$P" -o args= | grep -q 'owner-grant\.sh'; then kill -TERM "$P"; else echo NOT_RUNNING; fi
+rm -rf '<STATE>/owner-grant-session'
+```
+
+   Read `out` again until it shows the OpenKey URL. Send each code the owner pastes with the `printf` line. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. When `out` shows `Done` or an error, or after a cancel, remove the folder with the `rm` line.
+
    - Relay the OpenKey URL printed by the running process. The owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. Keep it running while waiting for the reply. Do not run a second process or approval for a returned code.
    - On a fresh computer, the script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL and code the same way. First time: two approvals (sign-in and app); then one per new app.
-   - `auth grant` in CLI `1.3.5` accepts the OpenKey code through the interactive session's stdin. Do not add `--paste` to it: that flag reads a request artifact, not an approval code. Do not close stdin, redirect stderr, or run it as a non-interactive one-shot shell call.
+   - `auth grant` in CLI `1.3.5` accepts the OpenKey code through the interactive session's stdin. Do not add `--paste` to it: that flag reads a request artifact, not an approval code. Do not close stdin, hide stderr, or run it as a non-interactive one-shot shell call; the block above keeps stdin open through its pipe and stderr in its `out` file.
    - If the owner sign-in has expired, the agent runs `"$TC_BIN" --profile owner auth login --method openkey --paste` in a live interactive session, relays the link and chat code, then starts the grant script again.
-   - If the owner declines or cancels, stop the waiting process. If the grant fails or `meal-grant.json` is empty, stop, report it in one line, and write nothing. Don't retry in a loop.
+   - If the owner declines or cancels, stop the waiting helper by its recorded PID as above. If the grant fails or `meal-grant.json` is empty, stop, report it in one line, and write nothing. Don't retry in a loop.
    - If a tool step is denied, stop. Explain the step and ask for a chat reply naming it, such as "Go ahead: run the Health Log approval step." Don't edit settings or run it another way.
 
 4. **Import the grant (no screen).** This starts the agent's session in `agent-meal` and saves the full space id, which every later command passes as `--space "$SPACE"`. Short names such as `applications` fail for this profile with `ADDRESS_UNKNOWN`. The old space file is emptied first, so a failed import can't leave an earlier space in place.
