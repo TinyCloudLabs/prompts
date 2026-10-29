@@ -61,7 +61,7 @@ function session(name) {
   const dir = join(state, "owner-grant-session");
   return {
     state, dir, start: () => sh(block), out: () => sh(step("cat ")), pid: () => Number(readFileSync(join(dir, "pid"), "utf8")),
-    send: (code) => sh(step("printf ").replace("<the code>", code)), cancel: () => sh(step("kill ")), clean: () => sh(step("rm ")),
+    send: (code) => sh(step("printf ").replace("<the code>", code)), cancel: () => sh(step("P=")), clean: () => sh(step("rm ")),
   };
 }
 
@@ -97,6 +97,24 @@ test("starting again while a helper waits keeps its record, and cancelling stops
     assert.equal(readFileSync(join(s.state, "meal-grant.json"), "utf8").trim(), '{"previous":true}');
     assert.ok(alive(bystander.pid), "an unrelated process was stopped");
   } finally { bystander.kill("SIGKILL"); }
+});
+
+test("a pid left by an ended helper is ignored: no HELPER_RUNNING, and the cancel step leaves that process alone", async () => {
+  const reused = spawn("sh", ["-c", "sleep 30"], { stdio: "ignore" });
+  try {
+    const s = session("stale");
+    mkdirSync(s.dir, { recursive: true });
+    writeFileSync(join(s.dir, "pid"), `${reused.pid}\n`);
+    writeFileSync(join(s.dir, "out"), "Done: approval saved for the agent.\n");
+    assert.match(s.cancel(), /NOT_RUNNING/);
+    assert.ok(alive(reused.pid), "the cancel step stopped a process that isn't the helper");
+    assert.doesNotMatch(s.start(), /HELPER_RUNNING/);
+    const pid = s.pid();
+    assert.notEqual(pid, reused.pid);
+    s.cancel();
+    await until(() => !alive(pid), "helper exit");
+    assert.ok(alive(reused.pid));
+  } finally { reused.kill("SIGKILL"); }
 });
 
 test("no guide, skill or script stops processes by name or pattern", () => {

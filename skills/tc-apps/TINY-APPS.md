@@ -99,23 +99,23 @@ kill -TERM '<OWNER_GRANT_PID>'
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"; umask 077
 S="$STATE/owner-grant-session"
-if [ -s "$S/pid" ] && kill -0 "$(cat "$S/pid")" 2>/dev/null; then echo "HELPER_RUNNING"; cat "$S/out"; else
+P=$(cat "$S/pid" 2>/dev/null); if [ -n "$P" ] && ps -p "$P" -o args= 2>/dev/null | grep -q 'owner-grant\.sh'; then echo "HELPER_RUNNING"; cat "$S/out"; else
 rm -rf "$S"; mkdir -p "$S"; mkfifo "$S/in"
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/owner-grant.sh" ]; then G="$d/owner-grant.sh"; break; fi; done
 nohup sh -c 'exec 3<>"$1"; exec sh "$2" healthlog <&3' _ "$S/in" "$G" > "$S/out" 2>&1 < /dev/null &
 echo "$!" > "$S/pid"; sleep 2; cat "$S/out"; fi
 ```
 
-   `HELPER_RUNNING` means a helper from earlier is still waiting: carry on with it, or cancel it as below and run the block again. Each later step is its own shell call, with the full path:
+   `HELPER_RUNNING` means a helper from earlier is still waiting: carry on with it, or cancel it as below and run the block again. A `pid` left by a helper that has ended is ignored. Each later step is its own shell call, with the full path:
 
 ```sh
 cat '<STATE>/owner-grant-session/out'
 printf '%s\n' '<the code>' > '<STATE>/owner-grant-session/in'
-kill -TERM "$(cat '<STATE>/owner-grant-session/pid')"
+P=$(cat '<STATE>/owner-grant-session/pid'); if ps -p "$P" -o args= | grep -q 'owner-grant\.sh'; then kill -TERM "$P"; else echo NOT_RUNNING; fi
 rm -rf '<STATE>/owner-grant-session'
 ```
 
-   Read `out` again until it shows the OpenKey URL. Send each code the owner pastes with the `printf` line. To cancel, use the `kill` line and nothing else. When `out` shows `Done` or an error, remove the folder with the `rm` line.
+   Read `out` again until it shows the OpenKey URL. Send each code the owner pastes with the `printf` line. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. When `out` shows `Done` or an error, or after a cancel, remove the folder with the `rm` line.
 
    - Relay the OpenKey URL printed by the running process. The owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. Keep it running while waiting for the reply. Do not run a second process or approval for a returned code.
    - On a fresh computer, the script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL and code the same way. First time: two approvals (sign-in and app); then one per new app.
