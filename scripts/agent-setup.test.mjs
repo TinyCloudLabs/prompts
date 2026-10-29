@@ -160,7 +160,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   mkdirSync(bin);
   const selected = join(bin, "custom-cli");
   const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.2.3');
+  executable(selected, 'echo 1.5.0-beta.28');
   executable(conflicting, 'echo unrelated');
   const original = readFileSync(conflicting);
   const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
@@ -290,4 +290,64 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
     assert.match(readFileSync(join(site, `${page}.html`), "utf8"), /^<!doctype html>/, page);
     assert.equal(existsSync(join(root, "functions", `${page}.js`)), true, page);
   }
+});
+
+test("Courier preview resolver preserves an explicitly selected binary and checks its release and features", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const probe = block(guide, "## Check the installed CLI");
+  for (const scenario of ["current", "old", "broken", "missing", "not-executable", "no-join"]) {
+    const dir = home();
+    const selected = join(dir, "operator-cli");
+    const body = `case "$*" in
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.23" : "1.5.0-beta.28"}`} ;;
+      "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
+      *) exit 90 ;;
+    esac`;
+    if (scenario !== "missing") executable(selected, body);
+    if (scenario === "not-executable") chmodSync(selected, 0o600);
+    const before = scenario === "missing" ? null : readFileSync(selected);
+    const result = shell(probe, { HOME: dir, TC_BIN: selected });
+    assert.equal(result.status === 0, scenario === "current", `${scenario}: ${result.stderr}`);
+    if (before) assert.deepEqual(readFileSync(selected), before);
+    else assert.equal(existsSync(selected), false);
+    assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
+    if (scenario !== "current") assert.match(result.stderr, /TC_NOT_FOUND|COURIER_CLI/);
+  }
+});
+
+test("Courier preview offers exactly same-owner and anyone and never executes another mode", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const invite = block(guide, "## Choose how to invite");
+  for (const mode of ["same-owner", "anyone", "named", "email", ""]) {
+    const dir = home();
+    const selected = join(dir, "tc");
+    const calls = join(dir, "calls");
+    executable(selected, `printf '%s\\n' "$@" > "$CALLS"`);
+    const result = shell(invite, { HOME: dir, TC: selected, MODE: mode, SESSION_ID: "01M62GPP936EPBR37DK93RWS1H", CALLS: calls });
+    const allowed = mode === "same-owner" || mode === "anyone";
+    assert.equal(result.status === 0, allowed, result.stderr);
+    if (allowed) assert.deepEqual(readFileSync(calls, "utf8").trimEnd().split("\n"),
+      ["courier", "invite", "--session", "01M62GPP936EPBR37DK93RWS1H", "--mode", mode, "--consent"]);
+    else assert.equal(existsSync(calls), false);
+  }
+});
+
+test("Courier preview installs and serves the approved release pins", () => {
+  const skills = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8")).skills;
+  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.0-beta.28");
+  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.0-beta.19");
+  const dir = home();
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const calls = join(dir, "npm-calls");
+  executable(join(bin, "npm"), `printf '%s\\n' "$@" > "$NPM_CALLS"
+    mkdir -p "$HOME/.local/share/tinycloud/cli/node_modules/.bin"
+    printf '#!/bin/sh\\necho 1.5.0-beta.28\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"
+    chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"`);
+  const cliGuide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  const installed = shell(block(cliGuide, "## Install the CLI"), { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls });
+  assert.equal(installed.status, 0, installed.stderr);
+  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.0-beta.28"));
+  const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");
+  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.0-beta.28"]);
 });

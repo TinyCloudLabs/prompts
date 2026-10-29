@@ -70,9 +70,8 @@ const PAGES = [
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released CLI and Courier skills contain one of these exact resolvers (courier 0.1.3 and
-// CLI 1.2.3 end in `tc`; CLI 1.2.4 and later end in `tinycloud`). Replace it
-// in every published Markdown file, including the core skill's reference pages.
+// Released CLI and Courier skill preambles use one of these exact resolvers.
+// Keep the site's data-only operator selection behavior in every served Markdown file.
 const upstreamResolver = (bin) => [
   `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
   `[ -n "\${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/${bin}"   # else a global npm install`,
@@ -83,11 +82,12 @@ const RESOLVER = [
   '{ set +x; } 2>/dev/null; umask 077',
   'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
   '[ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }',
-  'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
-  '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
+  'if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then',
+  '  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :',
+  '  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi',
   'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"',
+  'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"',
+  '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
@@ -100,19 +100,32 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.0-beta.23",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0-beta.23.tgz",
-    integrity: "sha512-7dvXVJlgiYRuqcK2Thsv0b/AP1Dge0IE5ftXa2CGPC71qdKFvKTH1zDnzWd1HKueCx3VAxwv/YUvKVnhGbs/Eg==",
+    version: "1.5.0-beta.28",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0-beta.28.tgz",
+    integrity: "sha512-lmBXE2t5+7H91uoXip+wt7E3HKlUzLfnvLRsT16Ho7xE/EortUlwrgIg/lbolUdKl+5FnSjnZ4+AOe5QNUta7g==",
     dir: "package/skills/tc-cli",
     checkCli: true,
   },
   {
     short: "courier",
-    version: "0.1.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.1.3.tgz",
-    integrity: "sha512-7QVW0zeu+5A+cb8axFVO2iZPOGbGC0DC4JDPqq68aaOj8DzRt+8J0gwC9tPV3U2bGGES2mOTquWKiOJTHeiVuA==",
+    version: "0.4.0-beta.19",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.0-beta.19.tgz",
+    integrity: "sha512-cS4icq+3jSz9u9Xj+BCnneGhwAIUVy79HGvjfC6JvqvlHa1Sbj/z0WmQ9OZZt2X7RZAfkSex37+v6iYXVWtBOg==",
     dir: "package/skills/courier",
     checkCli: true,
+    changes: {
+      "SKILL.md": [[
+        "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
+        "For this preview, offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the preview Courier guide's two-choice flow.",
+      ]],
+      "start.md": [
+        ["Start Courier for me using the installed courier command.", "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier."],
+        [
+          "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent. Keep the issuer serving while the recipient joins. Give me its exact handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+        ],
+      ],
+    },
   },
   {
     short: "chat",
@@ -310,6 +323,13 @@ async function loadSkill(skill) {
       files[i] = [path, Buffer.from(text)];
     }
     changed.add(path);
+  }
+  if (skill.short === "courier") {
+    files = files.map(([path, body]) => {
+      if (path !== "start.md") return [path, body];
+      changed.add(path);
+      return [path, Buffer.from(body.toString("utf8").replace(/\bcourier (?=start|init|join|invite|read|send)/g, '"$TC" courier '))];
+    });
   }
   if (skill.short === "cli" || skill.short === "courier") {
     files = files.map(([path, body]) => {
