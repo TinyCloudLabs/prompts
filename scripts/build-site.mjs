@@ -161,55 +161,12 @@ const SKILLS = [
   },
   {
     short: "chat",
-    tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz",
-    integrity: "sha512-uO016ryrnG0A1OR2d0xJs3jRPd+oPorb0oloRApnG5T28qReZZ35bteZgWqPhqf1Nme/rHuRX3qdmuhtsagV2A==",
+    tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz",
+    integrity: "sha512-o+kAbwivfO7kKQUyoaOlrYIREX7RUpb8X91SeBa/SjQkP01PcpmIei5n8N6B15UaFu8ftrajjgRt2eeUxtjG2Q==",
     dir: "package",
+    // Served unchanged: since 0.1.1-onboarding.25 the pack runs TC_BIN, else the
+    // `tinycloud` that /onboarding installs, else `tinycloud` on PATH. Never `tc`.
     checkCli: true,
-    // The pack's scripts run `tc` from PATH, which on Linux is often the
-    // traffic-control tool. They now run TC_BIN if set (nothing else), else the
-    // `tinycloud` that agents.tinycloud.xyz/cli installs, else `tinycloud` on
-    // PATH; with none of them, CLI_UNAVAILABLE says to run /cli. Never `tc`.
-    changes: {
-      "lib/retrieval.mjs": [
-        ["import { constants, readFileSync } from 'node:fs';", "import { accessSync, constants, readFileSync } from 'node:fs';"],
-        ["import { tmpdir } from 'node:os';", "import { homedir, tmpdir } from 'node:os';"],
-        [
-          "CLI_UNAVAILABLE: 'TinyCloud CLI was not found. Install the supported release or supply --tc.',",
-          "CLI_UNAVAILABLE: 'TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN.',",
-        ],
-        [
-          "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */\nexport function createTcRunner({ executable = 'tc',",
-          [
-            "/** The TinyCloud CLI to run: TC_BIN if set, else the `tinycloud` agents.tinycloud.xyz/cli installs, else `tinycloud` on PATH. Never `tc`. */",
-            "export function defaultTc() {",
-            "  if (process.env.TC_BIN) return process.env.TC_BIN;",
-            "  const installed = join(homedir(), '.local/share/tinycloud/cli/node_modules/.bin/tinycloud');",
-            "  const onPath = (process.env.PATH || '').split(':').filter(isAbsolute).map(dir => join(dir, 'tinycloud'));",
-            "  for (const candidate of [installed, ...onPath]) { try { accessSync(candidate, constants.X_OK); return candidate; } catch { /* next */ } }",
-            "  return installed; // Missing: running it fails with ENOENT, reported as CLI_UNAVAILABLE.",
-            "}",
-            "",
-            "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */",
-            "export function createTcRunner({ executable = defaultTc(),",
-          ].join("\n"),
-        ],
-      ],
-      "lib/setup.mjs": [
-        ["import { createTcRunner } from './retrieval.mjs';", "import { createTcRunner, defaultTc } from './retrieval.mjs';"],
-        ["manifestPath, executable = 'tc' })", "manifestPath, executable = defaultTc() })"],
-      ],
-      "lib/login.mjs": [
-        ["import { spawn } from 'node:child_process';", "import { spawn } from 'node:child_process';\nimport { defaultTc } from './retrieval.mjs';"],
-        ["CLI_UNAVAILABLE: 'TinyCloud CLI could not be started.',", "CLI_UNAVAILABLE: 'TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN.',"],
-        ["{ executable = 'tc', input }", "{ executable = defaultTc(), input }"],
-      ],
-      "scripts/retrieve.mjs": [
-        ["--tc PATH (otherwise resolves tc on PATH; never uses a shell)", "--tc PATH (otherwise TC_BIN, then ~/.local/share/tinycloud/cli's tinycloud, then tinycloud on PATH; never tc, never a shell)"],
-      ],
-      "references/meetings.md": [
-        ["otherwise the helper resolves `tc` through PATH.", "otherwise the helper runs `TC_BIN` if set, else the `tinycloud` that https://agents.tinycloud.xyz/cli installs in `~/.local/share/tinycloud/cli`, else `tinycloud` on the PATH, and never `tc`. With none of them it stops with `CLI_UNAVAILABLE`."],
-      ],
-    },
   },
   {
     short: "mcp",
