@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in any agent that can install and run the TinyCloud CLI (for example Claude Code, Codex, OpenCode or OMP). Requires Node.js 22.20 or later and `@tinycloud/cli` ≥ `1.5.0-beta.22` (`tinycloud onboard`, and owner-only links through `auth request`). Install the exact pin below, never `@latest`. The skill's feature probe checks for `onboard` and `auth request --paste`; it can't tell beta.20 or beta.21 from beta.22, so the skill also reads the version.
+Works in any agent that can install and run the TinyCloud CLI (for example Claude Code, Codex, OpenCode or OMP). Requires Node.js 22.20 or later and `@tinycloud/cli` ≥ `1.5.0-beta.22`, whose built-in publishing permission includes decryption in one sign-in. Install the exact pin below, never `@latest`. The skill's feature probe checks that `auth login` offers `--paste` and `--owner`; it can't tell beta.20 or beta.21 from beta.22, so it also prints the version.
 
 ## 0. Operator setup (once, not run by the agent)
 
@@ -16,7 +16,7 @@ export TC_PUBLISH_STATE=<state dir for this agent>       # optional; default $HO
 
 Install this `tc-publish` directory into the agent's skills folder (for example `~/.agents/skills/tc-publish/` for Codex and OpenCode, or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-publish/` for Claude Code). The `tc-cli` core skill is a separate install. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent never changes or unsets them. Set `TC_PUBLISH_STATE` (and `TC_HOME`) per agent when several agents share one machine and `$HOME` — for example the owner's agent alongside test agents — so their state files can't collide. `command -v tc` is not reliable — it can resolve to `/usr/sbin/tc`.
 
-The agent publishes from the profile [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding) set up: the CLI's default profile, or `TC_PROFILE` if that is set.
+The agent publishes from its own profile, `publisher`, on the owner's `default` space, where shares live. It creates the profile's key the first time, and takes the owner's account from their TinyCloud sign-in on this computer ([onboarding](https://agents.tinycloud.xyz/onboarding)) or `TC_OWNER_DID`.
 
 ## Why every block starts with a preamble
 
@@ -31,9 +31,9 @@ That rebuilds the state paths, keeps the state directory at 0700 and repairs any
 
 ## Walkthrough
 
-1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: the CLI must offer `onboard`, and `auth request` must offer `--paste`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
-2. **Check the onboarding profile** (§2, first block). `SESSION: present` means onboarding is done. If the profile isn't onboarded or its session has ended, the agent follows https://agents.tinycloud.xyz/onboarding first, then comes back. `STORAGE_QUOTA_EXCEEDED` and `UPLOAD_FAILED` are never permission problems. The agent never creates or deletes a profile.
-3. **Ask for publishing** (§2). The first time you want an owner-only or email link, the agent sends you one OpenKey link. Approve it and send back the code OpenKey shows; it lasts up to 30 days. If you already approved it, the agent asks for nothing.
+1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: `auth login` must offer `--paste` and `--owner`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
+2. **Check the `publisher` profile** (§2, first block). `SESSION: present` → go to §4 of this walkthrough. A missing profile is created (key only). `STORAGE_QUOTA_EXCEEDED` and `UPLOAD_FAILED` are never permission problems. The agent never deletes a profile.
+3. **Sign in** (§2). The first time, the agent sends you one OpenKey link. Approve it and send back the code OpenKey shows; the agent passes it to the CLI as you sent it. It lasts up to 30 days.
 4. **Publish** (§3). Exactly one of the two blocks: owner-only by default, public only when the owner explicitly asked. The block publishes with `--json`, records the share id, and saves the link to `$STATE/last-url` with `share show <id> --reveal-link`, so the link never prints. A failed publish prints `PUBLISH_FAILED: <code>` and leaves no link file. Run EXACTLY the block; do not write your own `share publish` command.
 5. **Verify** (§4). Public: receive the link and compare SHA-256 with the source → `VERIFIED` or `MISMATCH (reason)`. Owner-only: the agent can't receive it (`CLAIM_REQUIRED` is expected), so it checks `share inspect` against the publish record and the sender record: email target, same share id, same stored path, display name equal to the file name, identical expiry, `policy` link, recipient = `$TC_SHARE_TO` lowercased (the CLI canonicalizes the whole address to lower case).
 6. **Deliver, report, clean up** (§6). Hand the link to the owner in the reply with the recipient and expiry, and nowhere else; report with the template for the link type (either link type can be revoked any time before it expires), then delete the state files.
@@ -52,7 +52,7 @@ A public link is about 2.6 KB and an owner-only link about 16.7 KB. An agent tha
 ## Links, lifetime and lifecycle
 
 - Everything after `#` is a credential — `#tc1=…` (public) or `#v=2&p=…` (owner-only). The full URL lives only in the CLI output, the 0600 state file, the one delivery read, and the one owner message.
-- Always pass `--expires`: owner-only = the session's remaining lifetime minus 1 h (computed by the §3 block; `6d` only if the session's expiry can't be read); public 24h; unless the owner says otherwise. `SESSION_LIFETIME_EXCEEDED` with "exceeds session expiry": the share would outlive the session → use a shorter `--expires`, never a longer one; under 1 h of session left → the agent renews it through onboarding. With "must be at least 60 seconds from now" → use the smallest allowed value, never beyond the session end minus 1 h.
+- Always pass `--expires`: owner-only = the session's remaining lifetime minus 1 h (computed by the §3 block; `6d` only if the session's expiry can't be read); public 24h; unless the owner says otherwise. `SESSION_LIFETIME_EXCEEDED` with "exceeds session expiry": the share would outlive the session → use a shorter `--expires`, never a longer one; under 1 h of session left → the agent renews the `publisher` sign-in (§2). With "must be at least 60 seconds from now" → use the smallest allowed value, never beyond the session end minus 1 h.
 - `share list --json` is sender history with fields `shareId`, `target` (`bearer` or `email`), `expiresAt` and `revoked`; there is no `id` field. Public ids are CIDs (`bafkr4…`), owner-only ids are 32 hex characters. Filter out revoked and expired records before calling anything active.
 - Owner-only links revoke with `share revoke <id>`; `share show <id>` then reports `"revoked": true`.
 - Invalid recipients are refused before anything is published: `INVALID_ARGUMENT` "recipient email is invalid" or "recipient email domain is invalid". Ask the owner for the correct address.
@@ -78,5 +78,5 @@ Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option er
 - Never retype, reassemble, or chunk a link.
 - Never report a publish without verification.
 - Never publish publicly unless the owner explicitly asked, and never substitute a public link for a private one.
-- Never run `profile delete` or `init`, sign in on another profile, make an open link for a named recipient or an "only you" link before the owner replies "Yes, make an open link", or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
+- Never run `profile delete`, sign in on another profile, make an open link for a named recipient or an "only you" link before the owner replies "Yes, make an open link", or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
 - Never publish HTML that fails the self-contained check unless the owner, told what will break, explicitly says to publish anyway.

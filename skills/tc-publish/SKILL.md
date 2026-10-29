@@ -7,9 +7,9 @@ metadata:
 
 # Publish documents and HTML with `tinycloud share`
 
-Publish a file from the owner's TinyCloud space and return a link. The agent uses the profile set up by [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding); the owner approves publishing once, in OpenKey. No passwords, no keys.
+Publish a file from the owner's TinyCloud space and return a link. Publishing has its own profile, `publisher`, on the owner's `default` space, and its own single approval: the owner approves one OpenKey link and sends back the code. No passwords, no keys.
 
-Requires `@tinycloud/cli` **1.5.0-beta.22 or newer** (`tinycloud onboard`, and `auth request` with the owner-only link permission). The §1 feature probe checks for both commands. It can't tell beta.20 or beta.21 from beta.22, so also read the version it prints: on those two, owner-only links fail; ask the owner to update the CLI through https://agents.tinycloud.xyz/agent.
+Requires `@tinycloud/cli` **1.5.0-beta.22 or newer**: from that release the built-in publishing permission includes the decryption owner-only links need, in one sign-in. The §1 feature probe checks the sign-in flags. It can't tell beta.20 or beta.21 from beta.22, so also read the version it prints: on older versions, owner-only links fail; ask the owner to update the CLI through https://agents.tinycloud.xyz/agent.
 
 Operator defaults `TC_BIN` and `TC_OWNER_EMAIL` come from process variables first, then `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host), read as data through the pinned parser installed by [setup/agent.md](https://agents.tinycloud.xyz/agent). Never source the data file. `TC_HOME` (CLI home root) and `TC_PUBLISH_STATE` (this skill's state, default `$HOME/.local/state/tc-publish`) stay role-specific. Without `TC_BIN`, use the shared private CLI or `tinycloud` on `PATH`, never bare `tc`.
 
@@ -26,9 +26,10 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 ```
 
-Run each block as one tool call. Replace every `'<…>'` placeholder before running. Every block uses the onboarding profile: the CLI's default profile, or `TC_PROFILE` if that is set (for example `TC_PROFILE=owner` when onboarding used `--profile owner`). Never pass another `--profile`.
+Run each block as one tool call. Replace every `'<…>'` placeholder before running. Every block uses `--profile "$PROFILE"`.
 
 ## Handling contract — applies to every step
 
@@ -50,7 +51,7 @@ Address owner-only links with `--to "email:$TC_SHARE_TO"`, where `TC_SHARE_TO` i
 
 Never use a public link as a substitute for a private one, unless the owner replied "Yes, make an open link" to the choice in "When decryption is missing". The CLI lowercases the whole address and refuses an invalid one before publishing anything (`INVALID_ARGUMENT` "recipient email is invalid" / "recipient email domain is invalid") — ask the owner for the correct address.
 
-**When decryption is missing.** Use these messages on `DECRYPT_DECLINED`, or on `PERMISSION_DENIED` for an owner-only or email link after §2 reported `GRANTED` or `GRANT_PRESENT`.
+**When decryption is missing.** Use these messages on `DECRYPT_DECLINED`, or on `PERMISSION_DENIED` for an owner-only or email link.
 
 **Named email:**
 
@@ -66,7 +67,7 @@ Never use a public link as a substitute for a private one, unless the owner repl
 > 2. Open https://share.tinycloud.xyz and share it with yourself there.
 > 3. I make a link that anyone who has it can open. Reply "Yes, make an open link".
 
-On "Approve again", run "Ask for publishing" in §2 again.
+On "Approve again", run the §2 sign-in again, on the same profile.
 
 **A `did:` or `domain:` recipient:** say:
 
@@ -83,10 +84,11 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
 if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/publish or set TC_BIN"
-elif "$TC_BIN" onboard --help >/dev/null 2>&1 \
-  && "$TC_BIN" auth request --help | grep -q -- '--paste'; then echo CLI_OK
+elif "$TC_BIN" auth login --help | grep -q -- '--paste' \
+  && "$TC_BIN" auth login --help | grep -q -- '--owner'; then echo CLI_OK
 else echo STALE; fi
 [ -z "$TC_BIN" ] || "$TC_BIN" --version
 [ -n "${TC_OWNER_EMAIL:-}" ] && echo OWNER_EMAIL_OK || echo OWNER_EMAIL_UNSET
@@ -94,7 +96,9 @@ else echo STALE; fi
 
 If the block prints `TC_NOT_FOUND`, `STALE` or `OWNER_EMAIL_UNSET`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. Never publish publicly as a fallback.
 
-## 2. Use the onboarding profile and ask for publishing once
+## 2. Sign in once: the `publisher` profile
+
+Shares live in the owner's `default` space, so publishing has its own profile, `publisher`, and its own single approval, separate from onboarding. Start ONE sign-in and wait for it to finish; never start a second while one is running.
 
 Check the profile and session first:
 
@@ -107,13 +111,14 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
-if "$TC_BIN" context --json > "$STATE/context.json" 2>"$STATE/context.err"; then
+if "$TC_BIN" --profile "$PROFILE" context --json > "$STATE/context.json" 2>"$STATE/context.err"; then
   python3 -c 'import json,sys;print("SESSION:", json.load(open(sys.argv[1])).get("session",{}).get("state"))' "$STATE/context.json"
 else
   code=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("error",{}).get("code",""))' "$STATE/context.err" 2>/dev/null)
   if [ "$code" = PROFILE_NOT_FOUND ]; then
-    echo NOT_ONBOARDED
+    "$TC_BIN" init --name "$PROFILE" --key-only >/dev/null && echo "SESSION: missing (profile created)"
   else
     cat "$STATE/context.err"; echo "SETUP_FAILED: $code"
   fi
@@ -121,11 +126,11 @@ fi
 rm -f "$STATE/context.json" "$STATE/context.err"
 ```
 
-- `SESSION: present` → for an owner-only or email link, run "Ask for publishing" below, then §3. For a public link, go straight to §3. Come back here when a publish returns `AUTH_REQUIRED` or `PERMISSION_DENIED`.
-- `NOT_ONBOARDED`, or `SESSION: missing` / `expired` / `unknown-expiry` → follow https://agents.tinycloud.xyz/onboarding in this conversation, then come back to this same task at §2.
+- `SESSION: present` → **skip to §3.** Come back here only when a publish returns `AUTH_REQUIRED`.
+- `SESSION: missing` / `expired` / `unknown-expiry` → run the sign-in below. `init --key-only` above only made the profile's key; say nothing to the owner about it.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
-**Ask for publishing.** One OpenKey approval adds what owner-only and email links need to the onboarding profile, for up to 30 days. Call 1 gets the link; when the profile already has it, it prints `GRANT_PRESENT` and asks for nothing:
+**The sign-in.** One OpenKey approval, for up to 30 days, with the decryption that owner-only and email links need. It names the owner's account with `--owner`, taken from this profile if it has signed in before, else from `TC_OWNER_DID`, else from the owner's TinyCloud sign-in on this computer (the profile [/onboarding](https://agents.tinycloud.xyz/onboarding) set up). Call 1 prints the approval link and stops with `PASTE_CODE_MISSING`, which is expected:
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
@@ -136,33 +141,28 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
-rm -f "$STATE/request.json" "$STATE/request.err"
-timeout 60 "$TC_BIN" auth request --manifest builtin:share-publishing --grant --paste --expiry 30d < /dev/null > "$STATE/request.json" 2> "$STATE/request.err"; rc=$?
-if [ "$rc" = 0 ]; then
-  echo GRANT_PRESENT
-elif grep -q 'Open this URL in a browser to authenticate:' "$STATE/request.err"; then
-  echo "APPROVE_URL: $(grep -A2 'Open this URL in a browser to authenticate:' "$STATE/request.err" | grep -oE 'https://[^[:space:]]+' | head -1)"
+OWNER_DID=$("$TC_BIN" --profile "$PROFILE" auth status --json 2>/dev/null | python3 -c 'import json,sys;print((json.load(sys.stdin).get("ownerDid") or "").split("#")[0])' 2>/dev/null)
+[ -n "$OWNER_DID" ] || OWNER_DID=${TC_OWNER_DID:-}
+[ -n "$OWNER_DID" ] || OWNER_DID=$("$TC_BIN" context --json 2>/dev/null | python3 -c 'import json,sys;print((json.load(sys.stdin).get("ownerDid") or "").split("#")[0])' 2>/dev/null)
+rm -f "$STATE/login.err"
+if ! printf '%s\n' "$OWNER_DID" | grep -qE '^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$'; then
+  echo "OWNER_DID_UNSET"
 else
-  python3 - "$rc" "$STATE/request.err" <<'PY'
-import json, re, sys
-rc, text = sys.argv[1], open(sys.argv[2], errors="replace").read()
-dec, i, last = json.JSONDecoder(), 0, {}
-while (m := re.compile(r"\{").search(text, i)):
-    try: o, i = dec.raw_decode(text, m.start()); last = o if isinstance(o, dict) and "error" in o else last
-    except ValueError: i = m.start() + 1
-print("REQUEST_FAILED:", (last.get("error") or {}).get("code") or f"exit-{rc}")
-PY
+  timeout 60 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest builtin:share-publishing --owner "$OWNER_DID" --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
+  url=$(grep -E '^[[:space:]]*https://[^[:space:]]+[[:space:]]*$' "$STATE/login.err" | head -1 | tr -d '[:space:]')
+  [ -n "$url" ] && echo "APPROVE_URL: $url" || { echo NO_URL; sed -E 's#https://[^ ]+#<link>#g' "$STATE/login.err" | head -3; }
 fi
-rm -f "$STATE/request.json" "$STATE/request.err"
+rm -f "$STATE/login.err"
 ```
 
-- `GRANT_PRESENT` → go to §3.
 - `APPROVE_URL: <link>` → send the owner this one line, with the link, and wait for their reply:
 
   > Open this link and approve so I can publish for you, then send me the code OpenKey shows: {link}
 
-- `REQUEST_FAILED: AUTH_REQUIRED` → the session has ended: follow https://agents.tinycloud.xyz/onboarding again, then run call 1 again. Any other `REQUEST_FAILED` → report the code; don't retry in a loop.
+- `OWNER_DID_UNSET` → TinyCloud isn't set up on this computer yet: follow https://agents.tinycloud.xyz/onboarding in this conversation, then come back to this same task at §2.
+- `NO_URL` → report it; don't retry in a loop.
 
 Call 2, with the code exactly as the owner sent it:
 
@@ -175,20 +175,30 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
-rm -f "$STATE/request.json" "$STATE/request.err"
-printf '%s\n' '<the code>' | timeout 120 "$TC_BIN" auth request --manifest builtin:share-publishing --grant --paste --expiry 30d > "$STATE/request.json" 2> "$STATE/request.err"
-python3 - "$?" "$STATE/request.json" "$STATE/request.err" <<'PY'
+OWNER_DID=$("$TC_BIN" --profile "$PROFILE" auth status --json 2>/dev/null | python3 -c 'import json,sys;print((json.load(sys.stdin).get("ownerDid") or "").split("#")[0])' 2>/dev/null)
+[ -n "$OWNER_DID" ] || OWNER_DID=${TC_OWNER_DID:-}
+[ -n "$OWNER_DID" ] || OWNER_DID=$("$TC_BIN" context --json 2>/dev/null | python3 -c 'import json,sys;print((json.load(sys.stdin).get("ownerDid") or "").split("#")[0])' 2>/dev/null)
+rm -f "$STATE/login.json" "$STATE/login.err"
+printf '%s\n' '<the code>' | timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest builtin:share-publishing --owner "$OWNER_DID" --expiry 30d > "$STATE/login.json" 2> "$STATE/login.err"
+python3 - "$?" "$STATE/login.json" "$STATE/login.err" <<'PY'
 import json, re, sys
 rc, out, err = int(sys.argv[1]), sys.argv[2], sys.argv[3]
-if rc == 124: sys.exit(print("REQUEST_TIMEOUT"))
-try: result = json.load(open(out))
-except Exception: result = None
-if rc == 0 and isinstance(result, dict):
-    added = [p for p in result.get("added") or [] if isinstance(p, dict)]
-    decrypt = any(p.get("service") == "tinycloud.encryption" for p in added)
-    sys.exit(print("GRANTED" if decrypt or not result.get("changed") else "DECRYPT_DECLINED"))
+if rc == 124: sys.exit(print("LOGIN_TIMEOUT"))
 text = open(err, errors="replace").read()
+try: signed = bool(json.load(open(out)).get("authenticated"))
+except Exception: signed = False
+if signed:
+    lines, declined = text.splitlines(), []
+    for k, l in enumerate(lines):
+        if "Not granted in this session:" in l:
+            for m in lines[k + 1:]:
+                if m.strip() and m[:1].isspace(): declined.append(m.strip())
+                else: break
+            break
+    for d in declined: print("NOT_GRANTED", d)
+    sys.exit(print("DECRYPT_DECLINED") if any("tinycloud.encryption" in d for d in declined) else print("SIGNED_IN"))
 dec, i, last = json.JSONDecoder(), 0, {}
 while (m := re.compile(r"\{").search(text, i)):
     try: o, i = dec.raw_decode(text, m.start()); last = o if isinstance(o, dict) and "error" in o else last
@@ -196,17 +206,17 @@ while (m := re.compile(r"\{").search(text, i)):
 e = last.get("error") or {}
 msg = e.get("message") or ""
 if re.search(r"not found|expired", msg, re.I) and re.search(r"code", msg, re.I): sys.exit(print("CODE_EXPIRED"))
-print("REQUEST_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", msg)[:200])
+print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", msg)[:200])
 PY
-rm -f "$STATE/request.json" "$STATE/request.err"
+rm -f "$STATE/login.json" "$STATE/login.err"
 ```
 
-- `GRANTED` → go to §3: for a named email address run the owner-only block with `NOTIFY=--notify`; for "only you" with `NOTIFY` empty.
-- `DECRYPT_DECLINED` → give the owner the choice in "When decryption is missing".
-- `CODE_EXPIRED` → say exactly: "That short code has expired. Please paste the full code OpenKey shows instead." Then run call 2 again with the code they send.
-- `REQUEST_TIMEOUT` or `REQUEST_FAILED <code>` → report the error code and ask the owner to send their code again, then run call 2 again. If it fails a second time, stop and report.
+- `SIGNED_IN` → go to §3: for a named email address run the owner-only block with `NOTIFY=--notify`; for "only you" with `NOTIFY` empty. A `NOT_GRANTED <entry>` line means the owner left that permission out: tell them which.
+- `DECRYPT_DECLINED` → public links still work; for an owner-only or email link, give the owner the choice in "When decryption is missing".
+- `CODE_EXPIRED` → each code works once and expires after 5 minutes. Run call 1 again, send the new link, and ask for the new code.
+- `LOGIN_TIMEOUT` or `LOGIN_FAILED <code>` → report the error code and ask the owner to send their code again, then run call 2 again. If it fails a second time, stop and report.
 
-**Renewing.** Every approval lasts up to 30 days. When the session ends (`AUTH_REQUIRED`, or `SESSION_ENDING` in §3), follow https://agents.tinycloud.xyz/onboarding again, then run "Ask for publishing" again.
+**Renewing.** The sign-in lasts up to 30 days. When it ends (`AUTH_REQUIRED`, or `SESSION_ENDING` in §3), run the §2 sign-in again on the same profile. Don't use `--replace-session`.
 
 ## 3. Publish — run exactly one of the two blocks
 
@@ -231,9 +241,10 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 FILE='<absolute path of the file>'
 EXPIRES=6d          # fallback only when the session has no expiresAt
-SESSION_END=$("$TC_BIN" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
+SESSION_END=$("$TC_BIN" --profile "$PROFILE" context --json 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("session",{}).get("expiresAt") or "")' 2>/dev/null)
 [ -n "$SESSION_END" ] && EXPIRES=$(python3 -c 'import sys,datetime as d;e=d.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00"));m=int((e-d.datetime.now(d.timezone.utc)).total_seconds()//60)-60;print(f"{m}m" if m>=2 else "")' "$SESSION_END" 2>/dev/null)
 NOTIFY=             # NOTIFY=--notify when the owner named an email address; leave it empty for "only you"
 TC_SHARE_TO=        # REQUIRED: the address the owner named; $TC_OWNER_EMAIL only if the owner asked for a link for themselves. Never guess.
@@ -244,13 +255,13 @@ if [ -z "$EXPIRES" ]; then
 elif [ -z "$TC_SHARE_TO" ]; then
   echo "RECIPIENT_UNSET: ask the owner who should be able to open it"
 else
-  "$TC_BIN" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" $NOTIFY --json \
+  "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to "email:$TC_SHARE_TO" --expires "$EXPIRES" $NOTIFY --json \
     > "$STATE/publish.json" 2>"$STATE/publish.err"; rc=$?
   if { [ "$rc" = 0 ] || [ "$rc" = 9 ]; } && [ -s "$STATE/publish.json" ]; then
     id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
     echo "PUBLISHED owner-only share id $id file $(basename "$FILE") recipient $TC_SHARE_TO expires $EXPIRES"
     [ "$rc" = 9 ] && echo "INVITE_NOT_SENT"
-    "$TC_BIN" share show "$id" --reveal-link \
+    "$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link \
       | python3 -c 'import json,sys;link=json.load(sys.stdin)["link"];open(sys.argv[1],"w").write(link)' "$STATE/last-url" 2>/dev/null \
       && echo LINK_SAVED || echo REVEAL_FAILED
   else
@@ -273,15 +284,16 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 FILE='<absolute path of the file>'
 EXPIRES=24h
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
-if "$TC_BIN" share publish "$FILE" --expires "$EXPIRES" --json \
+if "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --expires "$EXPIRES" --json \
      > "$STATE/publish.json" 2>"$STATE/publish.err" && [ -s "$STATE/publish.json" ]; then
   id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
   echo "PUBLISHED public share id $id file $(basename "$FILE") expires $EXPIRES"
-  "$TC_BIN" share show "$id" --reveal-link \
+  "$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link \
     | python3 -c 'import json,sys;link=json.load(sys.stdin)["link"];open(sys.argv[1],"w").write(link)' "$STATE/last-url" 2>/dev/null \
     && echo LINK_SAVED || echo REVEAL_FAILED
 else
@@ -305,13 +317,14 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 FILE='<absolute path of the file>'
 
 rm -f "$STATE/received" "$STATE/receive.err"
 src=$(sha256sum < "$FILE" | cut -d' ' -f1)
 if [ ! -s "$STATE/last-url" ]; then
   echo "MISMATCH (no link file)"
-elif ! "$TC_BIN" share receive - --stdout < "$STATE/last-url" > "$STATE/received" 2>"$STATE/receive.err"; then
+elif ! "$TC_BIN" --profile "$PROFILE" share receive - --stdout < "$STATE/last-url" > "$STATE/received" 2>"$STATE/receive.err"; then
   echo "MISMATCH (receive failed: $(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["error"]["code"])' "$STATE/receive.err" 2>/dev/null || echo unknown))"
 elif [ "$src" = "$(sha256sum < "$STATE/received" | cut -d' ' -f1)" ]; then
   echo VERIFIED
@@ -331,14 +344,15 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 FILE='<absolute path of the file>'
 TC_SHARE_TO=        # the same address the publish block used
 
 rm -f "$STATE/inspect.json" "$STATE/show.json"
 [ -s "$STATE/last-url" ] && [ -s "$STATE/publish.json" ] \
-  && "$TC_BIN" share inspect - --json < "$STATE/last-url" > "$STATE/inspect.json" \
+  && "$TC_BIN" --profile "$PROFILE" share inspect - --json < "$STATE/last-url" > "$STATE/inspect.json" \
   && id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json") \
-  && "$TC_BIN" share show "$id" > "$STATE/show.json" \
+  && "$TC_BIN" --profile "$PROFILE" share show "$id" > "$STATE/show.json" \
   && python3 - "$STATE/inspect.json" "$STATE/publish.json" "$STATE/show.json" "$(basename "$FILE")" "$TC_SHARE_TO" <<'PY' || echo MISMATCH
 import json, sys, datetime, unicodedata
 ins, pub, show = (json.load(open(p)) for p in sys.argv[1:4])
@@ -371,8 +385,9 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
-"$TC_BIN" share list --json | python3 -c 'import json,sys,datetime
+"$TC_BIN" --profile "$PROFILE" share list --json | python3 -c 'import json,sys,datetime
 now = datetime.datetime.now(datetime.timezone.utc)
 for s in json.load(sys.stdin)["shares"]:
     exp = datetime.datetime.fromisoformat(s["expiresAt"].replace("Z", "+00:00"))
@@ -391,10 +406,11 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 id='<public share id you recorded>'
 
 rm -f "$STATE/last-url"
-"$TC_BIN" share show "$id" --reveal-link \
+"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link \
   | python3 -c 'import json,sys;link=json.load(sys.stdin)["link"];open(sys.argv[1],"w").write(link)' "$STATE/last-url" 2>/dev/null \
   && echo LINK_SAVED || echo REVEAL_FAILED
 ```
@@ -410,9 +426,10 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 id='<owner-only share id you recorded>'
 
-"$TC_BIN" share revoke "$id"
+"$TC_BIN" --profile "$PROFILE" share revoke "$id"
 ```
 
 Afterwards `share show "$id"` reports `"revoked": true`.
@@ -448,6 +465,7 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
 python3 - "$STATE/last-url" "<summary line without the URL>" <<'PY' \
   | curl -fsS -H 'Content-Type: application/json' --data-binary @- '<owner send endpoint>' >/dev/null \
@@ -464,6 +482,7 @@ PY
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
 cat "$STATE/last-url"
 ```
@@ -474,6 +493,7 @@ cat "$STATE/last-url"
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
       "$STATE/inspect.json" "$STATE/show.json" "$STATE/context.json" "$STATE/context.err"
@@ -485,8 +505,8 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 
 | Code | Exit | Action |
 |---|---|---|
-| `AUTH_REQUIRED` | 3 | Session expired/invalid — follow https://agents.tinycloud.xyz/onboarding again, then return to §2 (ignore the CLI's own `auth login`/`init`/`enable share` hint) |
-| `PERMISSION_DENIED` | 5 | On an owner-only or email link: the profile lacks decryption. If "Ask for publishing" in §2 hasn't run yet, run it once (ignore the CLI's `auth login` hint). If it already reported `GRANTED` or `GRANT_PRESENT`, don't retry: give the owner the choice in "When decryption is missing". Otherwise: scope lacks the publishing permission — run "Ask for publishing" in §2 once. If the same error comes back, stop and report; don't ask the owner to approve again |
+| `AUTH_REQUIRED` | 3 | Session expired/invalid — run the §2 sign-in again on the same profile (ignore the CLI's own `init`/`enable share` hint) |
+| `PERMISSION_DENIED` | 5 | On an owner-only or email link: the sign-in lacks decryption. Don't retry: give the owner the choice in "When decryption is missing". Otherwise: scope lacks the publishing permission — run the §2 sign-in once. If the same error comes back, stop and report; don't ask the owner to approve again |
 | `SESSION_LIFETIME_EXCEEDED` | 2 | Two cases, told apart by the message. **"requested share lifetime exceeds session expiry"** → the share would outlive the session: use a SHORTER `--expires` (session end minus 1 hour), never a longer one. If the session has under 1 hour left, tell the owner it is about to end and renew it (see "Renewing" in §2). **"share expiry must be at least 60 seconds from now"** → use the smallest allowed value (`2m`), never beyond the session end minus 1 hour. |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
 | `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. "recipient email is invalid" / "recipient email domain is invalid" → nothing was published; ask the owner for the correct address. |
@@ -499,7 +519,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `STORAGE_QUOTA_EXCEEDED` / `STORAGE_LIMIT_REACHED` | 10 (4 on CLIs before the TC-625 release) | The owner's TinyCloud storage is full, or this file is larger than what is left. Newer CLIs include the account's used and plan sizes. Nothing was shared. Tell the owner and point them to https://account.tinycloud.xyz/storage; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
 | exit 9, "partial share success" | 9 | The share exists but the invitation email wasn't sent — expected on CLIs before `1.0.1-beta.0` (TC-571). The owner-only block prints `PUBLISHED`, then `INVITE_NOT_SENT`. Don't publish again; verify, give the owner the link (§6) and tell the owner no invite went out |
-| `PROFILE_NOT_FOUND` | 1 | Not onboarded — follow https://agents.tinycloud.xyz/onboarding, then return to §2; never `init` or `profile delete` |
+| `PROFILE_NOT_FOUND` | 1 | No `publisher` profile yet — run §2, which creates it; never `profile delete` |
 | `PASTE_CODE_MISSING` | 3 | Expected from §2 call 1: it printed the approval link. Send it and wait for the code |
 | `OPENKEY_UNREACHABLE` | 6 | OpenKey unreachable — report, retry later |
 | `SCOPE_REJECTED` | 5 | Manifest rejected — report; don't retry the same request |
@@ -515,6 +535,7 @@ Before publishing HTML, check that it is self-contained. Any `src`, `href` or CS
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+PROFILE=publisher   # this skill's own profile, on the owner's default space
 FILE='<absolute path of the file>'
 
 python3 - "$FILE" <<'PY'
