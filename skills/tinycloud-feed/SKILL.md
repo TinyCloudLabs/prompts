@@ -1,119 +1,201 @@
 ---
 name: tinycloud-feed
-description: Post owner-requested cards into TinyCloud Home's feed from a bot's scoped folder, using its profile and five built-in card formats.
+description: Publish owner-requested SQLite Home cards, receive durable owner responses, and report handling through an exact per-agent grant.
 metadata:
   version: "0.1.0"
 ---
 
-This is how an agent adds cards to your TinyCloud Home feed. It writes only to its own folder, and only what you asked it to post.
+This is how an agent posts requested cards to your TinyCloud Home feed, receives your answers, and reports what it did.
 
 # Creating a post
 
-A TinyCloud Home feed card is one JSON record that an agent writes to its own folder in the owner's `applications` KV space under `xyz.tinycloud.tinychat/feed/`. Home's feed view currently shows bundled sample cards; bot cards will appear in TinyCloud Home when that view starts reading the owner's feed folder. Post only what the owner requested, including any standing rule the owner gave that bot. Reading the owner's feed is not part of this skill.
+## Before you start
 
-## Choose a bot and request permission
+This is the SQLite feed cutover draft, not a claim that the deployed guide or published CLI already supports it. Published `@tinycloud/cli@1.5.0-beta.25` does **not** contain these feed commands. Use the reviewed feed-enabled CLI and SDK build paired with the corresponding Home build; `tinycloud feed --help` must expose the commands below. Do not guess a package version or install a beta tag as proof of support.
 
-Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Before the approval, tell the owner which folder you will write to (`xyz.tinycloud.tinychat/feed/<bot>/`). Ask the owner to approve write access to only that folder through the OpenKey browser sign-in below, in one approval. Request only `tinycloud.kv/put` in `applications`; do not request `get`, `list`, `del`, SQL, another folder or another space. Before opening the approval, tell the owner: you will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinychat/feed/<bot>/` and the `put` permission. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. Do not treat a request artifact, a generated key, or a session file as an approval.
+The SDK's public feed contract is `@tinycloud/sdk-services/feed`. The guide, installed skill reference, and Home's “Creating a post” knowledge must switch together after the reviewed SDK release and Home dependency pin. Until that coordinated cutover, leave the deployed guide unchanged. Do not create a second canonical KV feed or teach parallel KV/SQLite posting.
 
-### Install and sign in (weight bot example)
+Post only what the owner requested, including an explicit standing instruction. An answer expresses the owner's decision; it does not grant extra storage, release, deployment, or spending authority.
 
-Use CLI `1.5.0-beta.2` or newer; its command is `tinycloud`. Install the pinned beta:
+## Connect the actual agent once
+
+Use an existing authenticated **owner** profile with posture `owner-openkey` or `local-owner-key` for provisioning. An existing `delegate-session` bot is not an owner provisioner. Do not use `init --key-only`, change a bot's posture, or broaden its grant to work around missing owner authority.
+
+Create the bot's delegated profile on the intended node:
 
 ```sh
-npm i -g @tinycloud/cli@1.5.0-beta.2
-tinycloud --version
+tinycloud profile create feed-weight --posture delegate-session --operator agent --host "$NODE_ORIGIN"
 ```
 
-Save this as `feed-weight.manifest.json` in the current directory. For another bot, change `weight` in the folder, app id, display name and profile name:
+Use the actual `did` printed by that command as `AGENT_DID`. `NODE_ORIGIN` is the node used by the owner's Home deployment. A profile name, label, or agent token is not a DID and conveys no authority.
+
+With the owner's existing profile, connect one stable token to that exact agent:
+
+```sh
+tinycloud --profile "$OWNER_PROFILE" feed connect --agent weight --to "$AGENT_DID" --label "Weight bot" --expiry 24h
+```
+
+`feed connect` initializes two distinct databases, activates one bundled delegation, and records the owner-controlled agent/resource binding. Give only the returned `delegation` object to the intended agent as a private JSON file, then import it into the same bot profile:
+
+```sh
+tinycloud --profile feed-weight auth import ./feed-grant.json
+```
+
+Check the actual returned scope and expiry. A generated profile, pending request, or saved JSON file is not an activated owner grant. Stop on refusal, expiry, or a different owner/agent/resource binding; do not replace it with broader authority.
+
+For token `weight`, the resources in the owner's `applications` space are:
+
+| Resource | Agent authority |
+| --- | --- |
+| `xyz.tinycloud.tinychat/feed/feed_output_weight` | `tinycloud.sql/read`, `tinycloud.sql/write` |
+| `xyz.tinycloud.tinychat/feed/feed_responses_weight` | `tinycloud.sql/read` only |
+| Hooks path `sql/xyz.tinycloud.tinychat/feed/feed_responses_weight` | `tinycloud.hooks/subscribe` only |
+| `xyz.tinycloud.tinychat/home_feed` | None: owner registry, settings and private state |
+
+The full database names matter. Do not substitute short names, another agent's database, or a wildcard hook. The Home/owner provisioning namespace is `xyz.tinycloud.tinychat/feed/`, **including its trailing slash**; agent grants name the exact resources above. Only the owner initializes schemas. Agents get no schema authority, response writes, owner-registry access, or cross-agent access.
+
+The registry label is display text; the authenticated agent DID and signed grant determine authority. Private notes, partial task ticks, read/snooze state and selector preferences belong only in the owner's registry/state, not agent handling records.
+
+## Publish a durable card
+
+Save a card as JSON and publish it through the bot profile:
+
+```sh
+tinycloud --profile feed-weight feed publish --agent weight --file ./card.json
+```
+
+For example:
 
 ```json
 {
-  "app_id": "xyz.tinycloud.tinychat.feed.weight",
-  "name": "Weight feed bot",
-  "space": "applications",
-  "defaults": false,
-  "permissions": [
-    {
-      "service": "tinycloud.kv",
-      "path": "xyz.tinycloud.tinychat/feed/weight/",
-      "actions": ["put"],
-      "skipPrefix": true
-    }
-  ]
+  "cardId": "8e8513f5-e1f1-4a21-bb03-f3bda9075640",
+  "revision": 1,
+  "issuanceId": "4dcbb155-ef57-4e50-bdcf-48156599939b",
+  "kind": "ask",
+  "needsResponse": true,
+  "title": "Prepare a review of the draft?",
+  "body": "I can prepare a short review, or skip it.",
+  "choices": [
+    {"id": "review", "label": "Prepare the review"},
+    {"id": "skip", "label": "Skip"}
+  ],
+  "urgency": 1,
+  "createdAt": "2026-10-29T12:00:00.000Z"
 }
 ```
 
-`skipPrefix: true` keeps the folder path exact. The manifest requests no KV read, list or delete and no SQL. The CLI adds `tinycloud.capabilities/read` on the `applications` space root because OpenKey needs it to sign the approval; this does not grant KV read. Tell the owner the folder path **before** starting approval. Use a new bot-only profile and the browser/paste sign-in; leave the command running while the owner approves:
+Generate fresh full IDs for a new card/issuance; do not reuse these example IDs. Persist `cardId`, positive `revision`, and `issuanceId` before publishing. Retry an identical issuance with the same identity and content. A correction or re-ask is an explicit new revision/issuance or linked follow-up, not a silent edit of the existing question. Choice IDs are stable identifiers, not their display labels.
+
+Use `needsResponse: false` for information. Information must not masquerade as unanswered work. Preserve applicable typed payloads, source/report links, recommendation versus default, expiry and issuance windows; do not turn every kind into a generic ask. Never put private codes in titles, bodies, links or other visible fields.
+
+The feed API refuses changing an existing issuance's content. The underlying output SQL write grant is **not** an add-only capability: do not claim it cryptographically prevents an authorized agent from modifying its own database. Never use raw SQL to overwrite or delete card/handling history.
+
+## Answers, messages and private payloads
+
+Home saves an owner's inline answer in that agent's separate response database. An owner can also use:
 
 ```sh
-tinycloud init --name feed-weight --key-only
-tinycloud --profile feed-weight auth login --method openkey --paste --manifest ./feed-weight.manifest.json --expiry 30d
+tinycloud --profile "$OWNER_PROFILE" feed respond --agent weight --file ./answer.json
 ```
 
-The CLI prints an OpenKey URL. Send it to the owner; they open it in a browser, sign in, open "Advanced details" to check that it shows `put` (Key Value) on `xyz.tinycloud.tinychat/feed/weight/`, and approve once. The owner sends back the code OpenKey shows; paste it into the waiting CLI command. Check the returned permissions before posting. The bot's put-only grant cannot read its own cards (a read returns 401 `AUTH_REQUIRED`: expected), so the bot should not try to read back what it wrote. If the owner wants to approve with a nonprimary OpenKey key, ask them to copy its full address from the OpenKey dashboard's key list and add `--owner did:pkh:eip155:1:<address>` to the login command; the CLI checks that this key approved the request.
-
-Create a bot profile at `<bot>/profile` (the full key includes the root):
+An answer carries its own durable full response ID and the exact question identity:
 
 ```json
-{"v":1,"name":"Weight bot","client":"claude-code","about":"Posts new weight records","avatar":"weight/avatar.png"}
+{
+  "responseId": "f974086c-0f6a-4a6c-a74b-ed3833d4bf9a",
+  "cardId": "8e8513f5-e1f1-4a21-bb03-f3bda9075640",
+  "revision": 1,
+  "issuanceId": "4dcbb155-ef57-4e50-bdcf-48156599939b",
+  "kind": "answer",
+  "choiceId": "review",
+  "createdAt": "2026-10-29T12:01:00.000Z"
+}
 ```
 
-`avatar` is an optional key in the bot's own folder; write the media there first. A valid profile has `v:1` and nonempty `name`, `client` and `about`. The profile name is the author Home displays, not a card field. An absent or invalid profile is ignored and the card shows the bot slug; a malformed card is skipped. Home may limit how many cards each bot can add. Write the profile and any media only with the bot's authorized profile; do not use the owner's profile to post.
+Retain the same `responseId` when retrying the same saved answer. An explicit replacement uses a new response ID, `kind: "followup"` and `supersedesResponseId` identifying the earlier response. It does not promise cancellation of work already accepted or performed. Full card/revision/issuance/response identities govern handling; short aliases are display/convenience references only.
 
-Save the profile JSON above as `feed-weight.profile.json` (omit `avatar` if its media key is not ready), then create it with the bot profile:
+For conversation or context without answering a card, use `feed message --agent weight --file ./message.json` with the owner profile:
+
+```json
+{
+  "responseId": "9a58e6d5-e09b-41d5-9252-43112d7d706c",
+  "cardId": "8e8513f5-e1f1-4a21-bb03-f3bda9075640",
+  "revision": 1,
+  "issuanceId": "4dcbb155-ef57-4e50-bdcf-48156599939b",
+  "kind": "message",
+  "text": "Context only; this is not an approval.",
+  "createdAt": "2026-10-29T12:02:00.000Z"
+}
+```
+
+A message never answers, supersedes, or clears a card. Keep private owner notes and partial task state in owner-only storage instead of sending them as messages.
+
+For an approval code or other private typed data, attach a private file to `respond` or `message` with `--payload-file ./private-payload.json`. Its envelope is `{ "type": "...", "version": 1, "data": ... }`; `type` is a nonsecret format identifier, `version` is a positive integer, and `data` is the private JSON value. Protect the file and grant material from other users.
+
+Do **not** put the code in header `text`, choice IDs, handling details, notifications, URLs, or ordinary stdout/stderr. Response headers can contain visible text; only `payloadType` and `payloadVersion` describe the private payload there. The intended authorized agent reads its data explicitly:
 
 ```sh
-tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/profile' --space applications --if-none-match '*' --file ./feed-weight.profile.json
+tinycloud --profile feed-weight feed payload --agent weight --response f974086c-0f6a-4a6c-a74b-ed3833d4bf9a --card 8e8513f5-e1f1-4a21-bb03-f3bda9075640 --revision 1 --issuance 4dcbb155-ef57-4e50-bdcf-48156599939b
 ```
 
-## Card format and writing
+That command intentionally returns private data. Do not forward its output into a generic notification, transcript, telemetry event, or error message.
 
-Use a new key `xyz.tinycloud.tinychat/feed/<bot>/<YYYY-MM>/<id>`. The month must equal the UTC month in `at`. Make `<id>` a UTC timestamp plus lowercase slug in the precise shape `YYYY-MM-DDTHHMMSSZ-[a-z0-9-]+`, for example `2026-10-25T074210Z-new-low`; choose a fresh id for each event. The full key contains only ASCII letters, digits and `/-._~:+@=,` (no spaces, `?`, `#` or non-ASCII characters). A card is one JSON object with `v:1`, `at` in UTC with a `Z` suffix and seconds (optional fractional seconds), `render` and required nonempty plain `lead.text`. Home's parser checks that `at` is a real UTC date and the month matches the key. `source` is optional: `{ "label": "...", "url": "https://..." }` for a web page, or `{ "label": "...", "ref": "<TinyCloud key>" }` for a TinyCloud record. A source needs a nonempty label; a ref uses the allowed key characters. Home displays `source.ref` as text, not a web link. The author comes from the bot profile and the card id comes from its key. Home's provisional order is newest first by `at`, then key.
+## Deliver responses to a real runtime
 
-Use `tinycloud kv put` with `--if-none-match '*'` for a new card. This needs `@tinycloud/cli@1.5.0-beta.2` or later (`beta` tag until it reaches `latest`); earlier versions have no such option. For example, after the weight bot has its own scoped posting authority, write its card with the bot's CLI profile:
+Use Bun or Node.js **22.13+** for the durable local SQLite handoff. Configure the existing runtime's real durable-inbox adapter as a JSON argv array in `RUNTIME_ARGV_JSON`; a logging/printing command is not an acceptance adapter.
 
 ```sh
-tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/2026-10/2026-10-25T074210Z-new-low' --space applications --if-none-match '*' --stdin <<'JSON'
-{"v":1,"at":"2026-10-25T07:42:10Z","render":"post","lead":{"text":"New low: 81.4 kg, 0.6 kg under your best (82.0 kg on 10-11)."},"source":{"label":"Fitness · weigh-ins","ref":"xyz.tinycloud.agent-data/fitness/weight/2026-10/2026-10-25"}}
-JSON
+tinycloud --profile feed-weight feed watch --agent weight --recipient weight-runtime-v1 --runner "$RUNTIME_ARGV_JSON" --handoff ./state/feed-weight.sqlite
 ```
 
-If the key exists, the CLI refuses the write with exit 5 `KV_ALREADY_EXISTS`: pick a new id; never reuse a key. An SDK-backed writer can use `kv.put(key, value, { ifNoneMatch: "*" })`. The node has no add-only permission: a `put` grant can replace a value in the bot's folder. Never overwrite or delete a card; post a correction as a **new card** with a new id and explain the correction in `lead.text`.
+`--recipient` is a stable runtime key for the local handoff ledger. Keep it and the SQLite file across restarts. It is not a substitute for the authenticated agent DID or a legacy logical-recipient mapping.
 
-## Built-in renderers
+The watcher consumes the authorized subscription before draining rows. Server `ready` means the broadcast subscription exists; only then does the first durable catch-up run. SSE events are wakeups, coalesced into durable response-row drains, not durable replay or execution evidence. Reconnect and ticket renewal reconcile rows again, including offline answers and answers arriving during catch-up. Default renewal is five minutes while connected; outages extend recovery. There is no fast idle SELECT polling loop.
 
-All five examples below use `v:1` and a required plain `lead.text`. Put each at a new key in its bot's month folder. Media references are **keys in that bot's own folder**, never HTTP(S) URLs; Home does not load card media from other sites. A media key starts with `<bot>/`, uses the allowed key characters and has no empty, `.` or `..` path segments. Home ignores an invalid `lead.image` or `avatar`. An unknown or failing renderer displays `lead.text`. `video`, custom renderers, actions, reactions and inbox replies are later work.
+The runner receives allowlisted response-header JSON on stdin, with `shell: false`. Use a trusted argv array, not a shell command or `sh -c`. Exit **0 only after the external runtime has durably accepted that response ID**. Printing JSON, receiving an SSE event, or placing it in volatile memory is not durable acceptance.
 
-**Post**: lead text; optional `lead.image` points to a bot-local media key. Key: `weight/2026-10/2026-10-25T074210Z-new-low`.
+An interrupted or ambiguous send remains **unconfirmed**. Do not automatically resend it, erase its ledger, or change recipient keys to bypass deduplication. Reconcile the real runtime's durable receipt before any explicit retry. Execution deduplicates by full `responseId`; exactly-once external effects are not promised. Check the exact card revision, issuance and applicable approval/expiry rules before acting.
+
+Legacy logical recipients require their own explicit owner-approved mapping to runtime recipients. Never fall back to the current profile DID or broadcast an unresolved target. Unknown targets stay held.
+
+## Report receipt and outcome separately
+
+After durable runtime acceptance, the agent publishes a handling record in its own output database:
+
+```sh
+tinycloud --profile feed-weight feed handling --agent weight --file ./handling.json
+```
 
 ```json
-{"v":1,"at":"2026-10-25T07:42:10Z","render":"post","lead":{"text":"New low: 81.4 kg, 0.6 kg under your best (82.0 kg on 10-11)."},"source":{"label":"Fitness · weigh-ins","ref":"xyz.tinycloud.agent-data/fitness/weight/2026-10/2026-10-25"}}
+{
+  "handlingId": "2853ce62-60d1-4235-89f8-632c19885746",
+  "responseId": "f974086c-0f6a-4a6c-a74b-ed3833d4bf9a",
+  "cardId": "8e8513f5-e1f1-4a21-bb03-f3bda9075640",
+  "revision": 1,
+  "issuanceId": "4dcbb155-ef57-4e50-bdcf-48156599939b",
+  "phase": "acknowledged",
+  "createdAt": "2026-10-29T12:03:00.000Z"
+}
 ```
 
-This is the **weight bot** example: the owner asked it to post a new record; it posts that result, without adding a field for the author's name. A later correction gets a different key and a new card.
+Use a fresh handling ID for a terminal `succeeded` or `failed` outcome, retaining the same complete response/question identity. Publish success only after the actual work succeeds; include a nonsecret result in `detail`. Do not rewrite the owner's response.
 
-**Image**: `lead.image` is a bot-local media key; `lead.text` is the caption. Key: `garden/2026-10/2026-10-25T080000Z-first-bloom`. Store the image at `garden/media/first-bloom.png` first.
+| Home state | Evidence |
+| --- | --- |
+| Answer saved | Owner response committed durably |
+| Agent received | Agent acknowledgement for that exact response after durable runtime acceptance |
+| Completed / Failed | Agent terminal outcome for that exact response |
 
-```json
-{"v":1,"at":"2026-10-25T08:00:00Z","render":"image","lead":{"text":"The first bloom opened this morning.","image":"garden/media/first-bloom.png"},"source":{"label":"Garden notes","ref":"xyz.tinycloud.agent-data/garden/notes/2026-10/first-bloom"}}
-```
+The watcher does not manufacture the acknowledgement or outcome. A saved answer is not received work, and received work is not completed work. Profile/author labels are display metadata, not authority.
 
-**Thread**: `replies` is a list of `{ "text": "..." }` after the lead. Key: `planning/2026-10/2026-10-25T080500Z-plan`.
+Use `feed show <full-card-id> --agent weight` to inspect the current answer, acknowledgement and outcome separately; messages do not become the current answer. `feed responses --agent weight --after 0 --limit 100` reads an ordered history page, including messages. Page with the returned durable sequence; do not use timestamps or short aliases as execution checkpoints.
 
-```json
-{"v":1,"at":"2026-10-25T08:05:00Z","render":"thread","lead":{"text":"Three points from today's plan."},"replies":[{"text":"Review the draft."},{"text":"Send the owner the summary."}]}
-```
+## Migration and publication boundaries
 
-**Article**: `title` and `body`, the key of a `.md` file in the same bot's folder; `lead.text` is its summary. Key: `writing/2026-10/2026-10-25T081000Z-morning-notes`. Write `writing/articles/2026-10-25.md` before the card. Home ignores a body key that is not a bot-local `.md` key. The current Home view renders bundled sample article files as plain-text paragraphs, not formatted Markdown: raw HTML, image syntax and link syntax are text, not active elements. It does not yet fetch an agent-written body file for a real card.
+All-ten-kind parity and lossless import remain work in progress: `ask`, `task`, `approval`, `incident`, `work`, `ship`, `order`, `claim`, `hold`, `progress`. A proven first loop is not proof of every typed renderer, issuance window, approval-code workflow, thread receipt or migration case.
 
-```json
-{"v":1,"at":"2026-10-25T08:10:00Z","render":"article","lead":{"text":"A short account of the morning's observations."},"title":"Morning notes","body":"writing/articles/2026-10-25.md"}
-```
+Preserve original typed payloads, relationships, IDs and per-recipient delivered/pending/held/unconfirmed state during migration. Import must not trigger historical approvals or replay delivered/unconfirmed events. Do not read a live board, fence writers, delete records, broaden production grants, or enable two canonical stores as part of following this guide.
 
-**Link**: `url` is an HTTP(S) web page; `lead.text` is a short summary. Key: `reading/2026-10/2026-10-25T081500Z-reading-list`. This URL is a page link, not a media reference.
-
-```json
-{"v":1,"at":"2026-10-25T08:15:00Z","render":"link","lead":{"text":"The published reference for our reading list."},"url":"https://example.org/reading-list","source":{"label":"Reading list","url":"https://example.org/reading-list"}}
-```
+Publish this guide and its matching Home knowledge only with the actual reviewed/released SDK and corresponding Home pin. Keep the existing deployed guide until that single coordinated cutover; no invented installed version or premature migration-complete claim.
 
 The installed reference copy of this section is [creating-a-post.md](creating-a-post.md).
