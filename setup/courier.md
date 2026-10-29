@@ -30,11 +30,9 @@ if [ "${TC_BIN+x}" = x ]; then
 fi
 ```
 
-Keep the owner's original request and any incoming invitation URL exactly as supplied. `/onboarding` is the only sign-in; ability guides reuse that profile. Once `TC` is resolved after onboarding, request any extra TinyCloud access only as needed with `"$TC" auth request --cap '<minimum capability>' --grant --paste --expiry 30d`. Send the returned OpenKey link with one line saying what it is for. The owner approves that link and pastes the short code in chat; pass the code to the CLI exactly as sent. Codes and delegations are fine in chat; secrets are not. Never use private code files, hidden inputs, owner-run `tc auth grant`, or hand-copied JSON.
+Keep the owner's original request and any incoming invitation URL exactly as supplied. Reuse the existing TinyCloud CLI sign-in from `/onboarding`; do not create another TinyCloud CLI profile for Courier. Codes and delegations are fine in chat; secrets are not. Never ask for an owner key, use hidden code files or owner-run `tc auth grant`, or ask the owner to construct grant JSON.
 
-**Pinned-release blocker:** Courier `0.4.0-beta.19` with CLI `1.5.0-beta.28` uses a separate Courier profile instead of the profile created by `/onboarding`. This preview cannot meet the one-profile setup contract. During review, do not run Courier commands against live data. If Courier reports `setup-required`, stop and report the blocker. Do not run `courier init`, create or use a separate profile, or request a second grant.
-
-> I'll use the TinyCloud profile created at `/onboarding` for Courier; if the pinned CLI requires separate setup or approval, I'll stop instead of creating a second profile or grant.
+**One extra Courier approval:** CLI `1.5.0-beta.28` and Courier `0.4.0-beta.19` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
 
 After onboarding, install or reuse the Courier action skill `0.4.0-beta.19` through your agent's standard skill mechanism; do not overwrite a modified skill. Read this preview's [`SKILL.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/SKILL.md) and [`start.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/start.md). If your agent cannot install local skills, read those pages directly. This step does not sign in or request a grant.
 
@@ -64,7 +62,7 @@ done
 export COURIER_LINK_ORIGIN='https://preview-tc1544-step1.courier-ae3.pages.dev'
 ```
 
-These are version/help probes only. This Pages preview is not a Courier API sandbox; do not run Courier commands against live data or create or join real invitations from it.
+These are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
 
 ## Incoming invitation takes priority
 
@@ -74,7 +72,7 @@ If the owner included an invitation, do this before any `start`, discovery or ne
 "$TC" courier join "$INVITATION_URL" --consent
 ```
 
-If setup is required, stop and report the pinned-release blocker above. Do not run `courier init` or retry with a second profile or grant. If verification fails, stop and report the result. Do not create a replacement session. Continue with the returned session ID and peer handle only after a supported profile is available.
+If the command reports missing Courier setup, complete [Set up Courier once](#set-up-courier-once), then retry this exact invitation with the same `COURIER_HOME`. If invitation verification fails, stop and report the result; do not initialize again or create a replacement session. Continue with the returned session ID and peer handle.
 
 ## Discover the owner's chats
 
@@ -84,7 +82,7 @@ Without an incoming invitation:
 "$TC" courier start
 ```
 
-- `setup-required`: stop and report the pinned-release blocker. Do not run `courier init` or retry with a separate profile or grant.
+- `setup-required`: complete [Set up Courier once](#set-up-courier-once), then run `"$TC" courier start` again with the same `COURIER_HOME`.
 - `active`: keep the returned `session.sessionId`. With no ongoing chats, continue without a new/existing question.
 - `choose-session`: show only the returned subjects, session IDs and peers. Ask whether to start a new chat or continue one of those actual chats.
 
@@ -96,6 +94,38 @@ For an existing selection, use its exact ID and include `--peer "$PEER"` when re
 ```
 
 Run only the command for the owner's selection, not both. Keep the active result's exact session ID in `SESSION_ID`.
+
+## Set up Courier once
+
+Run this only when the owner's requested command reports missing Courier setup, not before trying an incoming invitation. Reuse the owner's existing `COURIER_HOME` if selected; otherwise use `~/.courier`. Keep this same directory and CLI executable throughout both steps. It is separate from the TinyCloud CLI profile; do not create another CLI profile or substitute an onboarding/app grant.
+
+**1. Request the one Courier approval.** This creates or reuses Courier's own agent key and returns an OpenKey URL without waiting for a loopback callback:
+
+```sh
+{ set +x; } 2>/dev/null; umask 077
+: "${TC:?Run the CLI preamble}"
+export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
+"$TC" courier init --request
+```
+
+Copy the returned `openkeyUrl` exactly. Send it to the owner with this one sentence, in the same message:
+
+> Please approve this one-time Courier permission, then paste the short code here.
+
+The owner may open that link on another computer or phone and paste the code in this chat. Do not send the request's public-key or permissions JSON to the owner, reconstruct the URL, or ask for a private key.
+
+**2. Import the owner's code.** Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. Run this with the same `TC` and `COURIER_HOME`; despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
+
+```sh
+{ set +x; } 2>/dev/null; umask 077
+: "${TC:?Run the CLI preamble}" "${COURIER_CODE:?Use the code returned by the owner}"
+export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
+printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file -
+```
+
+Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, but do not start a second approval alongside the request above.
+
+Continue only after initialization succeeds. If OpenKey reports that its space is still being set up, keep the same key and approval and use `"$TC" courier init --resume`; do not request another grant. If a code is rejected, report the error rather than claiming setup succeeded. After success, retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
 
 ## Choose how to invite
 

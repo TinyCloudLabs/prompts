@@ -388,3 +388,83 @@ test("Courier preview installs and serves the approved release pins", () => {
   const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");
   assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.0-beta.28"]);
 });
+
+for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"]) {
+  test(`Courier remote setup consumes non-TTY codes with the real CLI: ${surface}`, () => {
+    const text = readFileSync(join(root, surface), "utf8");
+    const section = text.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+    assert.ok(section, `${surface}: missing executable remote setup`);
+    const [request, redeem] = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+    assert.ok(request && redeem, `${surface}: missing request or code-import step`);
+    const dir = home();
+    const courierHome = join(dir, "courier");
+    const cliHome = join(dir, "cli");
+    mkdirSync(cliHome, { mode: 0o700 });
+    writeFileSync(join(cliHome, "sentinel"), "existing CLI context\n");
+    const requests = join(dir, "requests.jsonl");
+    const forbidden = join(dir, "forbidden.jsonl");
+    const fence = join(dir, "network-fence.cjs");
+    writeFileSync(fence, `
+      const fs = require("node:fs");
+      const { syncBuiltinESMExports } = require("node:module");
+      const deny = (operation) => () => {
+        fs.appendFileSync(${JSON.stringify(forbidden)}, operation + "\\n");
+        throw Error("COURIER_TEST_NETWORK_DENIED");
+      };
+      globalThis.fetch = async (input, options = {}) => {
+        const url = String(input);
+        if (url !== "https://openkey.example.invalid/api/delegation-codes/abcd-efgh") return deny("fetch")();
+        fs.appendFileSync(${JSON.stringify(requests)}, JSON.stringify({ url, method: options.method || "GET", redirect: options.redirect }) + "\\n");
+        return new Response("{}", { status: 404 });
+      };
+      for (const name of ["http", "https"]) {
+        const module = require("node:" + name);
+        for (const operation of ["get", "request", "createServer"]) module[operation] = deny(name + "." + operation);
+      }
+      for (const [name, operations] of [["net", ["connect", "createConnection", "createServer"]], ["tls", ["connect"]], ["dns", ["lookup"]]]) {
+        const module = require("node:" + name);
+        for (const operation of operations) module[operation] = deny(name + "." + operation);
+      }
+      syncBuiltinESMExports();
+    `);
+    const env = {
+      PATH: process.env.PATH, HOME: dir, TC_HOME: cliHome, TC_PROFILE: "existing-owner",
+      COURIER_HOME: courierHome, COURIER_TEST: "1", COURIER_TEST_HOME: dir,
+      COURIER_HOST: "https://node.example.invalid", COURIER_OPENKEY_HOST: "https://openkey.example.invalid",
+      COURIER_OPENKEY_API_HOST: "https://openkey.example.invalid",
+      TC: join(root, "node_modules/.bin/tinycloud"), NODE_OPTIONS: `--require=${fence}`, FORCE_COLOR: "0",
+    };
+    const run = (script, code) => spawnSync("sh", ["-c", script], {
+      env: { ...env, ...(code === undefined ? {} : { COURIER_CODE: code }) },
+      encoding: "utf8", timeout: 15000,
+    });
+    const issued = run(request);
+    assert.ifError(issued.error);
+    assert.equal(issued.status, 0, issued.stderr);
+    const approval = JSON.parse(issued.stdout);
+    const url = new URL(approval.openkeyUrl);
+    assert.equal(url.origin, "https://openkey.example.invalid");
+    assert.equal(url.searchParams.has("callback"), false);
+    assert.equal("d" in approval.publicJwk, false);
+    assert.equal(JSON.parse(readFileSync(join(courierHome, "profile.json"), "utf8")).courierDid, approval.courierDid);
+    const keyDigest = () => createHash("sha256").update(readFileSync(join(courierHome, "key.json"))).digest("hex");
+    const originalKey = keyDigest();
+    const malformed = run(redeem, "not-a-grant");
+    assert.ifError(malformed.error);
+    assert.equal(malformed.status, 1, malformed.stderr);
+    assert.match(malformed.stderr, /\[bad-grant\]/);
+    assert.equal(existsSync(requests), false);
+    const expired = run(redeem, "ABCD-EFGH");
+    assert.ifError(expired.error);
+    assert.equal(expired.status, 1, expired.stderr);
+    assert.match(expired.stderr, /\[code-not-found\]/);
+    assert.deepEqual(readFileSync(requests, "utf8").trim().split("\n").map((line) => JSON.parse(line)), [{
+      url: "https://openkey.example.invalid/api/delegation-codes/abcd-efgh", method: "GET", redirect: "error",
+    }]);
+    assert.equal(keyDigest(), originalKey);
+    assert.equal(existsSync(join(courierHome, "grant.json")), false);
+    assert.equal(existsSync(forbidden), false);
+    assert.deepEqual(readdirSync(cliHome), ["sentinel"]);
+    assert.equal(readFileSync(join(cliHome, "sentinel"), "utf8"), "existing CLI context\n");
+  });
+}
