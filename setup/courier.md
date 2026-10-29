@@ -6,13 +6,20 @@ Courier connects agents in a shared session. You choose another agent you contro
 
 ## For the agent
 
-Keep the owner's original request and any incoming invitation URL exactly as supplied. This preview offers only the two choices below. Read [the shared agent setup](agent.md), reuse existing setup and grants, and install only the Courier skill, version `0.4.0-beta.19`. Read its `SKILL.md` and `start.md`; use this preview's two-choice flow.
+Route by capability, not by client name:
 
-OpenKey approval is a one-time, restricted Courier grant; after that, each invitation is created from the one mode you choose here.
+- If you can install and run the TinyCloud CLI, use that preferred route. Start at [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding); it signs the owner in once and then returns you to this request.
+- Otherwise, if you support remote MCP, connect through [/connect](https://agents.tinycloud.xyz/connect) to `https://mcp.tinycloud.xyz/mcp`. The hosted MCP currently has no Courier tools, so an agent must be able to run the CLI to invite or join through Courier.
+
+Keep the owner's original request and any incoming invitation URL exactly as supplied. This preview offers only the two invitation modes below. Reuse the onboarding profile for TinyCloud CLI access. For any additional TinyCloud permission, request it once with `"$TC" auth request --cap '<minimum capability>' --grant --paste --expiry 30d`. Send the returned OpenKey link with one line saying what it is for: “Please approve this request for <purpose> and paste the short code here.” The owner approves and pastes the short code in chat; pass it to the CLI exactly as sent. Codes and delegations are fine in chat; secrets are not. Never use private code files, hidden inputs, owner-run `tc auth grant`, or hand-copied JSON.
+
+Use this one-line Courier consent text: “I'll connect Courier with the agent you choose.”
+
+**Current CLI limitation:** CLI `1.5.0-beta.28`'s Courier command ignores TinyCloud CLI profiles and keeps a separate profile under `$COURIER_HOME` (default `~/.courier`). Its `courier init` flow asks for a separate Courier grant rather than reusing onboarding or `tinycloud auth request`. This release therefore does not yet meet the one-profile, one-request setup. If Courier reports `setup-required`, stop and report this limitation; do not create a second profile or grant.
 
 ## Check the installed CLI
 
-Preserve an operator-provided `TC_BIN`. Never replace it, unset it to try another binary, or install over it. Without an operator selection, use the existing resolver below. If no CLI is installed, follow [the CLI setup](tinycloud.md), then return here. An incompatible selected binary stops this flow; report its path and version to the operator.
+Use Node.js 22.20 or later. Preserve an operator-provided `TC_BIN`. Never replace it, unset it to try another binary, or install over it. Without an operator selection, use the existing resolver below. If no CLI is installed, start with [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding), which installs and signs in the CLI, then return here. An incompatible selected binary stops this flow; report its path and version to the operator.
 
 Run this preamble in the same shell as the later commands:
 
@@ -45,7 +52,7 @@ If the owner included an invitation, do this before any `start`, discovery or ne
 "$TC" courier join "$INVITATION_URL" --consent
 ```
 
-If setup is required, use the normal `"$TC" courier init` OpenKey flow, then retry the same invitation. If verification fails, stop and report the result. Do not create a replacement session. Continue with the returned session ID and peer handle.
+If setup is required, stop and report the current CLI limitation above. Do not run `"$TC" courier init` or retry with a separate Courier profile. If verification fails, stop and report the result. Do not create a replacement session. Continue with the returned session ID and peer handle.
 
 ## Discover the owner's chats
 
@@ -55,7 +62,7 @@ Without an incoming invitation:
 "$TC" courier start
 ```
 
-- `setup-required`: use `"$TC" courier init` through normal OpenKey approval, then run `"$TC" courier start` again. Never ask for an owner key or raw JSON signing.
+- `setup-required`: stop and report the current CLI limitation above; do not run `courier init`.
 - `active`: keep the returned `session.sessionId`. With no ongoing chats, continue without a new/existing question.
 - `choose-session`: show only the returned subjects, session IDs and peers. Ask whether to start a new chat or continue one of those actual chats.
 
@@ -70,12 +77,12 @@ Run only the command for the owner's selection, not both. Keep the active result
 
 ## Choose how to invite
 
-Offer exactly these two choices in the agent conversation:
+Ask once: “Who would you like to invite: another agent you control (`same-owner`) or someone who should join with a link (`anyone`)?”, then offer exactly these two choices:
 
-- **`same-owner` — another agent you control.** The receiving agent must prove the same owner. The owner's choice is explicit consent to connect those agents.
-- **`anyone` — anyone holding the invitation link.** This is a bearer invitation; the first valid claim wins. Pass it only to the person or agent the owner wants to join.
+- **`same-owner` — another agent you control.** The receiving agent must prove the same owner.
+- **`anyone` — someone who can use the invitation link.** This is a bearer invitation; the first valid claim wins. Pass it only to the person or agent the owner wants to join.
 
-Set `MODE` to the owner's choice. That selection is consent to issue the invitation; do not add another approval question. Then run:
+Set `MODE` to the owner's choice. That choice is consent to issue the invitation; do not add another approval question. Then run:
 
 ```sh
 case "$MODE" in
