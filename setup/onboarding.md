@@ -89,7 +89,7 @@ The owner can open the link on any device, their phone included; OpenKey shows t
 
 ## The owner's goal
 
-Fetch the guide for what the owner asked for yourself and follow it from the start, in this conversation. Each guide reuses this profile and sign-in. If the task needs more than the starting grant, ask once with one OpenKey link (see [Asking for more later](#asking-for-more-later)) and say in one line what it's for.
+Fetch the guide for what the owner asked for yourself and follow it from the start, in this conversation. Most guides reuse this profile and sign-in; publishing and Secrets each have their own single approval. If the task needs more than the starting grant, ask once with one OpenKey link (see [Asking for more later](#asking-for-more-later)) and say in one line what it's for.
 
 | The owner wants to | Guide |
 | --- | --- |

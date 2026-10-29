@@ -1,12 +1,12 @@
 # Publish and share with TinyCloud
 
-Your agent publishes a document or web page from your computer to your TinyCloud and sends you a link. Links are owner-only by default; the agent makes a public link, which anyone holding it can open, only when you ask for one. The first time, you approve two sign-ins in OpenKey and paste each code back.
+Your agent publishes a document or web page from your computer to your TinyCloud and sends you a link. Links are owner-only by default; the agent makes a public link, which anyone holding it can open, only when you ask for one. The first time, you approve one sign-in in OpenKey and paste its code back.
 
 ## For the owner
 
 - **Paste into your agent:** `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
 - Your agent follows [the shared setup](agent.md): it installs or reuses the pinned CLI, records your email as a non-secret owner default, installs only the `tc-publish` skill and continues this request. It asks for your email if it is unknown; it never switches to a public link unless you reply "Yes, make an open link".
-- **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant. The first time, you approve two sign-ins in OpenKey and paste each code back to your agent.
+- **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant. Publishing has its own single approval, separate from /onboarding: the first time, you approve one sign-in in OpenKey and paste its code back to your agent.
 - **Undo:** the receipt must distinguish revoking a share from clearing the agent's local login. Revoking a share stops its link opening; copies already downloaded can't be recalled. After key rotation, older links may last until expiry.
 
 ## For the agent

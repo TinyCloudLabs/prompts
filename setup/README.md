@@ -6,7 +6,7 @@ Give your AI agent abilities that keep your data in your own TinyCloud space. Ag
 
 The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
-**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI, signs the owner in and gives the starting grant, then sends you to the page below for the request. Every page below reuses that.
+**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI, signs the owner in and gives the starting grant, then sends you to the page below for the request. Most pages reuse that; publish/share and Secrets each have their own single approval.
 
 ## Personal records: [/apps](tc-apps.md)
 
@@ -33,7 +33,7 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link: private to you by default, or public when you ask.
 - **Paste into your agent:** `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
-- **You approve:** one OpenKey link to let your agent publish to your share folders, for up to 30 days.
+- **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days; send back the code it shows.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Share an artifact: [/share](share.md)
@@ -59,7 +59,7 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 ## Building blocks
 
-- [/onboarding](onboarding.md): the one setup. Signs you in and gives the starting grant; each ability reuses it.
+- [/onboarding](onboarding.md): the one setup. Signs you in and gives the starting grant; most abilities reuse it.
 - [/agent](agent.md): installs the one skill for Secrets, publish/share or Courier, after /onboarding.
 - [/cli](tinycloud.md): installs the CLI and core skill into a private prefix. Does not grant access.
 - [/openkey](openkey.md): installs the standalone OpenKey CLI, for workflows that need it. No page here uses it. Nothing to approve.

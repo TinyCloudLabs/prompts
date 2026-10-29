@@ -108,7 +108,8 @@ const SKILLS = [
     checkCli: true,
     // The released skill says Node.js 20, and has agents sign in to separate
     // profiles and the owner run `auth grant`. Here it reuses the profile
-    // /onboarding sets up and asks for more with one OpenKey link.
+    // /onboarding sets up and asks for more with one OpenKey link; publishing
+    // keeps its own `publisher` profile, because shares live in `default`.
     changes: {
       "SKILL.md": [
         ["Node.js 20 or later runs the CLI.", "Node.js 22.20 or later runs the CLI."],
@@ -121,7 +122,14 @@ const SKILLS = [
             "\"$TC\" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d < /dev/null",
             "```",
             "",
-            "It exits 3 and prints the OpenKey link on stderr. Send the owner the link with one line saying what it's for. When they send back the code, run the same command with the code on stdin: `printf '%s\\n' '<the code>' | \"$TC\" auth request --cap '...' --grant --paste --expiry 30d`. To publish or share, follow https://agents.tinycloud.xyz/publish.",
+            "It exits 3 and prints the OpenKey link on stderr. Send the owner the link with one line saying what it's for. When they send back the code, run the same command with the code on stdin: `printf '%s\\n' '<the code>' | \"$TC\" auth request --cap '...' --grant --paste --expiry 30d`. ",
+            "",
+            "Publishing is the exception: shares live in the owner's `default` space, so publish from a `publisher` profile with its own single approval. The code is pasted the same way. Full steps: https://agents.tinycloud.xyz/publish.",
+            "",
+            "```bash",
+            "\"$TC\" init --name publisher --key-only",
+            "\"$TC\" --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing",
+            "```",
             "",
           ].join("\n"),
         ],
@@ -139,9 +147,6 @@ const SKILLS = [
           " The owner can run the same command on the owner profile (`\"$TC\" --profile owner apps install xyz.tinycloud.sample.healthlog`); that needs no grant.",
           "",
         ],
-        ["\"$TC\" --profile publisher share publish ./note.md --json", "\"$TC\" --profile PROFILE share publish ./note.md --json"],
-        ["\"$TC\" --profile publisher share publish ./note.md --to", "\"$TC\" --profile PROFILE share publish ./note.md --to"],
-        ["\"$TC\" --profile publisher share publish ./site/", "\"$TC\" --profile PROFILE share publish ./site/"],
         ["for OpenCode, Codex and Claude Code", "for your agent"],
       ],
     },
