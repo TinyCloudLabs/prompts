@@ -11,15 +11,18 @@ const catalog = () => readFileSync(join(root, "skills/tc-apps/TINY-APPS.md"), "u
 const A = "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const B = "did:pkh:eip155:1:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const space = (did) => did.replace(/^did:/, "tinycloud:") + ":applications";
-const CONFIG = "Ask the owner for their TinyCloud address and timezone.\n";
-const ACCOUNT = "Ask the owner to confirm their TinyCloud address and approve Health Log for that account.\n";
+const ACCOUNT = "Health Log is set up for a different TinyCloud account than the one that approved this agent; run the owner step again with the right account.\n";
+const KEY = "xyz.tinycloud.sample.healthlog/settings/timezone";
+const ZONE = "Pacific/Kiritimati";
 const base = mkdtempSync("/var/tmp/tc-2174-context.");
 after(() => rmSync(base, { recursive: true, force: true }));
 
-function world({ saved = space(A), context = { spaceId: space(A) }, stderr = "", status = 0, changed } = {}) {
+function world({ saved = space(A), owner = A, context = { spaceId: space(A) }, stderr = "", status = 0, changed, page = ZONE, fallback } = {}) {
   const dir = mkdtempSync(join(base, "case."));
   if (saved !== null) writeFileSync(join(dir, "meal-space.txt"), saved + "\n");
-  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ context, stderr, status, changed }));
+  if (owner !== null) writeFileSync(join(dir, "owner-did.txt"), owner + "\n");
+  if (fallback !== undefined) writeFileSync(join(dir, "owner-timezone.txt"), fallback + "\n");
+  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ context, stderr, status, changed, page }));
   const cli = join(dir, "custom cli.mjs");
   writeFileSync(cli, `#!${process.execPath}
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
@@ -34,10 +37,14 @@ if (args.includes('context')) {
   process.stdout.write(typeof f.context === 'string' ? f.context : JSON.stringify(f.context));
   process.exit(f.status);
 }
+if (args.includes('kv')) {
+  if (f.page === null) process.exit(4);
+  process.stdout.write(f.page);
+  process.exit(0);
+}
 console.log('{}');
 `, { mode: 0o755 });
-  const env = { PATH: process.env.PATH, TEST_WORLD: dir,
-    TC_APPS_OWNER_DID: A, TC_APPS_TIMEZONE: "Pacific/Kiritimati", TZ: "UTC" };
+  const env = { PATH: process.env.PATH, TEST_WORLD: dir, TZ: "UTC" };
   return { dir, cli, env,
     calls: () => existsSync(join(dir, "calls")) ? readFileSync(join(dir, "calls"), "utf8").trim().split("\n").map(JSON.parse) : [] };
 }
@@ -73,26 +80,59 @@ test("helper returns validated space and a fresh owner-local clock using only de
   const out = JSON.parse(r.stdout);
   assert.deepEqual(Object.keys(out).sort(), ["day", "now", "spaceId", "timeZone", "utc"]);
   assert.equal(out.spaceId, space(A));
-  assert.equal(out.timeZone, "Pacific/Kiritimati");
+  assert.equal(out.timeZone, ZONE);
   assert.ok(Date.parse(out.utc) >= before && Date.parse(out.utc) <= Date.now());
   assert.equal(Date.parse(out.now), Date.parse(out.utc));
   assert.equal(out.day, out.now.slice(0, 10));
   assert.match(out.now, /\+14:00$/);
-  assert.deepEqual(w.calls(), [["--profile", "agent-meal", "context", "--json"]]);
+  assert.deepEqual(w.calls(), [
+    ["--profile", "agent-meal", "context", "--json"],
+    ["--profile", "agent-meal", "kv", "get", KEY, "--space", space(A), "--raw"],
+  ]);
 });
 
-for (const [label, extra] of [
-  ["missing owner", { TC_APPS_OWNER_DID: "" }], ["missing timezone", { TC_APPS_TIMEZONE: "" }],
-  ["malformed owner", { TC_APPS_OWNER_DID: "0xaaaa" }],
-  ["malformed timezone", { TC_APPS_TIMEZONE: "Moon/Base" }],
-  ["offset instead of IANA timezone", { TC_APPS_TIMEZONE: "+14:00" }],
-]) test(`${label}: one configuration message and no CLI call`, () => {
+test("a fresh conversation asks nothing: the saved owner and the page's timezone are enough", () => {
   const w = world();
-  const r = run(w, extra);
+  const r = run(w);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stderr, "");
+  assert.doesNotMatch(r.stdout + r.stderr, /ask/i);
+});
+
+for (const [label, fixture, zone] of [
+  ["page key missing", { page: null, fallback: "Asia/Kathmandu" }, "Asia/Kathmandu"],
+  ["page key not an IANA zone", { page: "+14:00", fallback: "Asia/Kathmandu" }, "Asia/Kathmandu"],
+  ["page key unknown zone", { page: "Moon/Base", fallback: "Asia/Kathmandu" }, "Asia/Kathmandu"],
+  ["page key preferred over the setup fallback", { fallback: "Asia/Kathmandu" }, ZONE],
+]) test(`timezone: ${label}`, () => {
+  const w = world(fixture);
+  const r = run(w);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stderr, "");
+  assert.equal(JSON.parse(r.stdout).timeZone, zone);
+});
+
+test("timezone: no page key and no setup fallback uses host UTC without a question", () => {
+  const w = world({ page: null });
+  const r = run(w);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(r.stdout).timeZone, "UTC");
+  assert.equal(r.stderr, "");
+});
+
+test("a wrong account is refused with the account line even when no timezone exists", () => {
+  const r = run(world({ saved: space(B), context: { spaceId: space(B) }, page: null }));
   assert.notEqual(r.status, 0);
-  assert.equal(r.stdout, "");
-  assert.equal(r.stderr, CONFIG);
-  assert.deepEqual(w.calls(), []);
+  assert.equal(r.stderr, ACCOUNT);
+});
+
+test("a missing or malformed saved owner address fails closed with one line", () => {
+  for (const owner of [null, "0xaaaa"]) {
+    const r = run(world({ owner }));
+    assert.notEqual(r.status, 0);
+    assert.equal(r.stdout, "");
+    assert.equal(r.stderr, ACCOUNT);
+  }
 });
 
 for (const [label, fixture] of [
@@ -111,7 +151,7 @@ for (const [label, fixture] of [
   assert.notEqual(r.status, 0);
   assert.equal(r.stdout, "");
   assert.equal(r.stderr, ACCOUNT);
-  assert.ok(w.calls().every((args) => JSON.stringify(args) === JSON.stringify(["--profile", "agent-meal", "context", "--json"])));
+  assert.ok(w.calls().every((args) => ["context", "kv"].includes(args[2])));
 });
 
 test("address comparisons ignore case without changing the validated saved space", () => {
@@ -152,7 +192,7 @@ test("doc INSERT uses validated owner date and UTC instead of host date or fille
   const params = JSON.parse(args[args.indexOf("--params") + 1]);
   assert.equal(args[args.indexOf("--space") + 1], space(A));
   const utc = new Date(params[5]);
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: w.env.TC_APPS_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(utc);
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(utc);
   const p = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
   assert.equal(params[1], `${p.year}-${p.month}-${p.day}`);
   assert.ok(Math.abs(Date.now() - utc.getTime()) < 5000);
@@ -165,6 +205,4 @@ test("setup downloads and copies the helper into both installed skill paths", ()
   assert.equal(copies.length, 2);
   for (const line of copies) assert.ok(line.includes(" healthlog-context.mjs "));
   assert.match(catalog(), /<HEALTHLOG_CONTEXT>/);
-  assert.match(catalog(), /TC_APPS_OWNER_DID/);
-  assert.match(catalog(), /TC_APPS_TIMEZONE/);
 });

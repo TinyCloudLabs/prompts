@@ -3,13 +3,13 @@
 ## For the owner
 
 - **What it does:** your agent answers questions about the meetings TinyChat has already synced, such as recaps, follow-ups and what was said, citing the transcript. It installs the TinyCloud CLI and the `tinychat-retrieval` skill first.
-- **Paste into Claude Code, Codex or OpenCode:** `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat`
-- **You approve:** a TinyChat sign-in in your browser, with the account you use for TinyChat. It lets this computer read your TinyChat meeting list and transcripts, for 7 days. Then you paste the code the browser shows back into the conversation.
-- **Undo:** delete the skill folder, and if you signed in, log out. §6 below has both commands.
+- **Paste into any agent that can install and run the TinyCloud CLI** (for example Claude Code, Codex or OpenCode): `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat`
+- **You approve:** TinyCloud onboarding if this computer isn't set up yet, then at most one OpenKey link that lets your agent read your TinyChat meeting list and transcripts for 30 days. Send your agent the short code OpenKey shows.
+- **Undo:** delete the skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. §6 below has both.
 
 ## For the agent
 
-Use the user's existing TinyChat account and synced meetings from OpenCode, Codex or Claude Code. Do not reconnect sources, copy meetings, clone a repository or run an MCP server.
+Answer from the user's existing TinyChat account and synced meetings with the TinyCloud CLI. Meetings need an agent that can install and run the CLI; the hosted MCP has no meeting tools yet. Do not reconnect sources, copy meetings or clone a repository.
 
 Keep the user's original request and current client throughout setup. Setup is a prerequisite, not a replacement task. After setup becomes ready, continue the original request in this same conversation without asking the user to paste another prompt.
 

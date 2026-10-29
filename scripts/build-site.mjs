@@ -4,8 +4,8 @@
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
 // - /onboarding and /connect (the `html` pages): HTML by default, Markdown via
 //   Accept or at /<page>.md. /onboarding sets up the owner's profile, sign-in and
-//   starting grant, then routes to the goal guide; /connect gives each chat app
-//   its connector steps and hands coding agents the guide for their request.
+//   starting grant, then routes to the goal guide; /connect sends agents that can
+//   run the CLI to /onboarding and gives remote MCP clients their connector steps.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
@@ -65,7 +65,8 @@ const PAGES = [
 // checked against its sha512 `integrity`, so every build serves the same files.
 // `version` is used when SKILL.md has no metadata.version: the package's version.
 // `changes` adjusts a released file for this site: either [find, replace] pairs,
-// each of which must match exactly once, or a repository path whose file replaces it.
+// each of which must match exactly once (find is a string or a RegExp), or a
+// repository path whose file replaces it.
 // `checkCli`: the build fails unless every served file of the skill runs the
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
@@ -105,6 +106,50 @@ const SKILLS = [
     integrity: "sha512-lmBXE2t5+7H91uoXip+wt7E3HKlUzLfnvLRsT16Ho7xE/EortUlwrgIg/lbolUdKl+5FnSjnZ4+AOe5QNUta7g==",
     dir: "package/skills/tc-cli",
     checkCli: true,
+    // The released skill says Node.js 20, and has agents sign in to separate
+    // profiles and the owner run `auth grant`. Here it reuses the profile
+    // /onboarding sets up and asks for more with one OpenKey link; publishing
+    // keeps its own `publisher` profile, because shares live in `default`.
+    changes: {
+      "SKILL.md": [
+        ["Node.js 20 or later runs the CLI.", "Node.js 22.20 or later runs the CLI."],
+        [
+          /^Agents can use normal OpenKey login[\s\S]*?--manifest builtin:share-publishing\n```\n\n`builtin:share-publishing` covers[^\n]*do not create another account\.\n/m,
+          [
+            "After `onboard`, keep using that profile. For access it doesn't have, ask once with one OpenKey link:",
+            "",
+            "```bash",
+            "\"$TC\" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d < /dev/null",
+            "```",
+            "",
+            "It exits 3 and prints the OpenKey link on stderr. Send the owner the link with one line saying what it's for. When they send back the code, run the same command with the code on stdin: `printf '%s\\n' '<the code>' | \"$TC\" auth request --cap '...' --grant --paste --expiry 30d`. ",
+            "",
+            "Publishing is the exception: shares live in the owner's `default` space, so publish from a `publisher` profile with its own single approval. The code is pasted the same way. Full steps: https://agents.tinycloud.xyz/publish.",
+            "",
+            "```bash",
+            "\"$TC\" init --name publisher --key-only",
+            "\"$TC\" --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing",
+            "```",
+            "",
+          ].join("\n"),
+        ],
+        [
+          /^Ask for the narrowest grant that does the job\.[\s\S]*?\n(?=\nThen:)/m,
+          "The onboarded profile already reads and writes the `applications` space, so reading and changing the owner's apps needs no new approval. For anything else, ask once as in \"Sign in\" above. Change an app's data only when the owner asks.\n",
+        ],
+        ["1. `\"$TC\" --profile agent knowledge list`", "1. `\"$TC\" --profile PROFILE knowledge list`"],
+        ["2. `\"$TC\" --profile agent knowledge read APP_ID`", "2. `\"$TC\" --profile PROFILE knowledge read APP_ID`"],
+        [
+          /^An agent installs a catalog app into its own profile\.[\s\S]*?Then read the notes with `knowledge read`\./m,
+          "Install a catalog app from the onboarded profile; it needs no new approval:\n\n```bash\n\"$TC\" --profile PROFILE apps install xyz.tinycloud.sample.healthlog\n```\n\nThis installs the pinned version into the owner's applications space. Then read the notes with `knowledge read`.",
+        ],
+        [
+          " The owner can run the same command on the owner profile (`\"$TC\" --profile owner apps install xyz.tinycloud.sample.healthlog`); that needs no grant.",
+          "",
+        ],
+        ["for OpenCode, Codex and Claude Code", "for your agent"],
+      ],
+    },
   },
   {
     short: "courier",
@@ -188,12 +233,28 @@ const SKILLS = [
     changes: {
       "SKILL.md": [
         [
+          "Never ask the\nuser to paste a secret value, private key, token, or delegation credential into\nchat.",
+          "Never ask the user for a secret value, private key or token. OpenKey codes and delegations are fine to paste.",
+        ],
+        [
           "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
           "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts, elicitation, a generic permission grant, or a secret mutation tool.",
         ],
         [
           "## Account and KV exploration",
-          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for their approval, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route. The `tc auth request` / `tc auth import` and `tinycloud_auth_import` instructions below are for local stdio only. The `tc auth grant --stdin --yes` artifact, import, restart, and retry steps below apply to local stdio only; hosted operations use a returned `approval.url` as described above. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
+          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for them to say continue, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route.\n\nWith local stdio, use the profile `tinycloud onboard` set up (https://agents.tinycloud.xyz/onboarding). When a tool returns `authority_required`, run `tinycloud auth request --cap '<cap>' --grant --paste --expiry 30d < /dev/null` on that profile and send the owner the OpenKey link it prints. When they send back the code, run the same command with the code on stdin, restart the MCP server and retry the call. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
+        ],
+        [
+          /^1\. A fresh `delegate-session` profile[\s\S]*?restart, and retry sequence when authority is required\./m,
+          [
+            "1. With local stdio, start from the onboarded profile (see above).",
+            "2. Inspect posture with `tinycloud_status` or `tinycloud_auth_status`.",
+            "3. Call `tinycloud_account_spaces_list` and",
+            "   `tinycloud_account_applications_list`. If either returns",
+            "   `authority_required`, ask the owner as described above, then retry.",
+            "4. Choose a non-secrets space from those results. Use `tinycloud_kv_list` with",
+            "   an exact space and prefix. Ask the same way when authority is required.",
+          ].join("\n"),
         ],
       ],
     },
@@ -205,7 +266,7 @@ const ABILITIES = [
   {
     title: "Personal records",
     url: "apps",
-    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go; each app has its own folder in your TinyCloud and its own approval.",
+    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go; each app has its own folder in your TinyCloud.",
     prompt: `Fetch ${BASE}/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`,
     whole: true,
   },
@@ -605,9 +666,9 @@ const listedPages = indexed.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
+  "> Setup guides for any AI agent, backed by the owner's own TinyCloud space: the TinyCloud CLI when the agent can install and run it, otherwise the hosted MCP. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("onboarding")} to set up TinyCloud for the owner, in a chat app or an agent with a shell; it then sends you to the guide for the owner's goal. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
+  `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 22.20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
   "",
   "## Abilities",
   "",
@@ -625,7 +686,7 @@ const llms = [
   "## Optional",
   "",
   `- [Full text](${url("llms-full.txt")}): every guide and skill above in one file.`,
-  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one with \`curl -fsSL ${url("skills/install.js")} | node - <short name> --agent <claude-code|codex|opencode>\`.`,
+  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one with \`curl -fsSL ${url("skills/install.js")} | node - <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
   `- [Source repository](https://github.com/TinyCloudLabs/prompts): where the guides and TinyCloud's own skills are written.`,
   "",
 ].join("\n");
@@ -741,7 +802,7 @@ const card = (a) => `      <li>
         <p>${esc(a.text)}</p>
         <p>Try: <code>${esc(examplePrompt(a))}</code></p>
       </li>`;
-const desc = "Paste one line into your coding agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
+const desc = "Paste one line into your AI agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
 write(
   "index.html",
   `<!doctype html>
@@ -759,8 +820,8 @@ ${style}
   <main>
     <h1>Give your agent abilities</h1>
     <p>${esc(desc)}</p>
-    <p>Works with agents that can run commands: Claude Code, Codex and OpenCode. Needs Node.js 22.20 or later.</p>
-    <p>Everything starts at <a href="/setup"><code>${esc(url("setup"))}</code></a>: what each ability does, what to paste, what you approve and how to undo it.</p>
+    <p>Works with any agent that can install and run the TinyCloud CLI (Node.js 22.20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
+    <p>Everything starts at <a href="/onboarding"><code>${esc(url("onboarding"))}</code></a>. <a href="/setup">/setup</a> lists what each ability does, what to paste, what you approve and how to undo it.</p>
 
     <h2>How it works</h2>
     <ol>
@@ -786,7 +847,7 @@ ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a
     </ul>
     <p><a href="/matrix">How many steps each skill asks of you</a></p>
   </main>
-  <footer>Agents: start at <a href="/setup">/setup</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
+  <footer>Agents: start at <a href="/onboarding">/onboarding</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
 </body>
 </html>
 `,

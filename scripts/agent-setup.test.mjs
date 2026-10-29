@@ -235,13 +235,13 @@ test("feed skill is listed and its published relative reference resolves", () =>
   ));
 });
 
-test("/connect sends a coding agent to the guide for its request and gives each chat app its own steps", () => {
+test("/connect sends an agent that can run the CLI to /onboarding and gives each MCP app its own steps", () => {
   const site = join(root, "_site");
   const markdown = readFileSync(join(site, "connect.md"), "utf8");
   const html = readFileSync(join(site, "connect.html"), "utf8");
-  const coding = markdown.split("\n## Coding agents\n")[1].split("\n## ChatGPT\n")[0];
-  for (const agent of ["Claude Code", "Codex", "OpenCode", "Cursor", "OpenClaw", "Hermes", "any agent with a shell"]) assert.ok(coding.includes(agent), agent);
-  for (const guide of ["apps", "secrets", "publish", "chat", "courier", "setup"]) {
+  const coding = markdown.split("\n## Agents that can run the CLI (preferred)\n")[1].split("\n## ChatGPT\n")[0];
+  assert.ok(coding.includes("Any agent that can install and run the TinyCloud CLI"));
+  for (const guide of ["onboarding", "apps", "secrets", "publish", "chat", "courier", "setup"]) {
     assert.ok(coding.includes(`](https://agents.tinycloud.xyz/${guide})`), `Markdown routes to /${guide}`);
     assert.ok(html.includes(`href="https://agents.tinycloud.xyz/${guide}"`), `HTML routes to /${guide}`);
   }
