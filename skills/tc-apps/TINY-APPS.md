@@ -21,22 +21,17 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 ## 3. Installing a catalog app and getting approval
 
-The owner runs the sign-in and the grant in their own terminal (step 3); the agent never runs them. A code OpenKey shows during the owner's sign-in goes into the terminal where that sign-in is running; if the owner pastes one in the chat, say where it goes and carry on. Apart from the account and timezone check below, don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the validated full space id `$SPACE`.
+The agent runs every command, including sign-in and the owner grant. The owner only opens the OpenKey links, approves, and pastes each code back to the agent in chat. Keep sign-in and grant in a live interactive tool session (PTY) so you can send the returned code to that same process's stdin, followed by a newline. Never ask the owner to open a terminal, set variables or restart. Don't ask before the first write. Short space names such as `applications` fail for `agent-meal` (`ADDRESS_UNKNOWN`): every command passes the validated full space id `$SPACE`.
 
 **Say the two steps first.** The owner signs in to, or creates, their OpenKey, then gives you permission for what they asked; signing in is not what gives you access. The `FIRST` message from `announce.sh` says this: copy that message into your reply exactly, character for character, once, and do not reword any line of it. If the action skill's own message already opens with this, don't repeat it. Call it "permission", not "delegation", "DID" or "capability".
 
 `AGENT_INSTALL_ENABLED` is `false` now: the agent logs into a Health Log that is already set up. Set it to `true` once `tinycloud apps install` ships. The same switch is set in `announce.sh`; change both together. Only the step marked INSTALL depends on it.
 
-Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent starts no browser and waits for no code: the owner's sign-in and grant are in step 3, the import in step 4.
+Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent relays each OpenKey link and chat code in step 3, then imports in step 4.
 
-**Health Log account and timezone.** Never ask the owner for their TinyCloud address or timezone. The expected owner is the address of the explicit `owner` profile, saved once in `$STATE/owner-did.txt` by the block below. The owner's timezone is the IANA zone the Health Log page saves on open in the app's own space (`xyz.tinycloud.sample.healthlog/settings/timezone`); `owner-grant.sh` also records the owner terminal's zone in `$STATE/owner-timezone.txt` for use until the page has been opened. Never use this computer's timezone, and never change the saved owner to match a grant. Save the owner address once per computer (it keeps an existing value, so a later grant for another account is refused, not adopted):
+**Health Log account and timezone.** Never ask the owner for their TinyCloud address or timezone. After successful sign-in, `owner-grant.sh` saves the explicit `owner` profile's address in `$STATE/owner-did.txt`, before granting access. It keeps an existing binding: never change it to match an imported grant. Do not try to save it before sign-in creates the profile.
 
-```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-[ -s "$STATE/owner-did.txt" ] || "$TC_BIN" --profile owner context --json 2>/dev/null | jq -r '.ownerDid // empty' > "$STATE/owner-did.txt"; test -s "$STATE/owner-did.txt" && echo OWNER_SAVED || echo OWNER_MISSING
-```
-
-On `OWNER_MISSING` the helper below refuses with its one line; say it and run no SQL.
+Use the timezone the Health Log page saves on open (`xyz.tinycloud.sample.healthlog/settings/timezone`). If missing or invalid, use the saved host IANA zone in `$STATE/owner-timezone.txt`, otherwise the agent host's local IANA zone, otherwise UTC. UTC and `Etc/*` are valid. A missing timezone never stops the request, asks a question or requires approval again.
 
 Resolve the installed helper's absolute path once per conversation:
 
@@ -44,7 +39,7 @@ Resolve the installed helper's absolute path once per conversation:
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/healthlog-context.mjs" ]; then printf '%s/healthlog-context.mjs\n' "$d"; break; fi; done
 ```
 
-Copy that path exactly as `<HEALTHLOG_CONTEXT>` in the blocks below. If no path prints, stop and ask the owner to rerun the setup to install the helper. Before selecting a meal's slot, and before every meal query or write, run `node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"`. It reads `meal-space.txt`, `owner-did.txt`, the agent's `context --json` metadata and the page's timezone key, compares both full applications space IDs with the saved owner (address case is ignored), and returns JSON `{spaceId,day,now,utc,timeZone}` using a fresh clock in the owner's timezone. It never reads the owner's profile. It asks nothing and prints nothing when all is well. A failure prints one plain line on stderr: stop, pass that line to the owner, and run no SQL. Never repair a mismatch by changing the saved owner or copying the session's address into it.
+Copy that path exactly as `<HEALTHLOG_CONTEXT>` in the blocks below. If no path prints, the agent reruns setup to install the helper. Before selecting a meal's slot, and before every meal query or write, run `node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"`. It reads `meal-space.txt`, `owner-did.txt`, the agent's `context --json` metadata and the page's timezone key, compares both full applications space IDs with the saved owner (address case is ignored), and returns JSON `{spaceId,day,now,utc,timeZone}` using a fresh clock in the selected timezone. It never reads the owner's profile. An account failure prints one plain line on stderr: stop, pass that line to the owner, and run no SQL. Never repair it by replacing the saved owner from a grant.
 
 0. **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database. It fails with `AUTH_REQUIRED` or `PROFILE_NOT_FOUND` when there is no live grant, and with another error for anything else.
 
@@ -78,20 +73,25 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (the owner's terminal).** Run this one command. It prints the approval state and the owner's message; the agent runs nothing else for this step:
+3. **The owner's approval (agent-run, codes in chat).** Print the approval message:
 
 ```sh
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
-   Your reply to the owner is the block printed between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE`, fence included, copied exactly, character for character, once, in one code fence, with nothing before it. Do not reword any line of it. You may add the single line `Tell me when you have run it.` after the block. The `STATE:` line is for you (`FIRST`, `APPROVED-OFF` or `APPROVED-ON`); don't send it. Then stop and wait for the owner's reply.
+   Copy only the text between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE` into your reply once, exactly as printed. The `STATE:` line is for you. Then start the grant script yourself in a live interactive tool session (PTY), with stdin available across replies:
 
-   The printed message has the grant command the owner runs first, which OpenKey approves in their browser. Then:
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"; umask 077
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/owner-grant.sh" ]; then sh "$d/owner-grant.sh" healthlog; break; fi; done
+```
 
-   - Wait until the owner says it's done. If the grant prints `Run "…" --profile owner auth login --paste`, the owner's profile needs signing in again: the owner runs that line in their terminal, chooses 1) OpenKey, then runs the grant again. `--paste` prints the OpenKey link and reads the code the owner pastes into that terminal; no browser callback is waited on. The owner's grant command already has the absolute CLI path; use it, never a bare `tinycloud` (it isn't on the owner's PATH).
-   - The agent never reads the owner's profile to decide this: the grant script checks the explicit `owner` profile and prints the line to run.
-   - **If the owner declines, cancels, or the grant fails** (anything other than the sign-in line above), or `$STATE/meal-grant.json` is empty after the owner says it's done: stop. Tell the owner in one line what happened, write nothing, and don't retry in a loop. The owner can ask again later.
-   - If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: run announce.sh for Health Log." Then wait. Don't edit their settings files or suggest changing them, and don't run it another way.
+   - Relay the OpenKey URL printed by the running process. The owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. Keep it running while waiting for the reply. Do not run a second process or approval for a returned code.
+   - On a fresh computer, the script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL and code the same way. First time: two approvals (sign-in and app); then one per new app.
+   - `auth grant` in CLI `1.3.5` accepts the OpenKey code through the interactive session's stdin. Do not add `--paste` to it: that flag reads a request artifact, not an approval code. Do not close stdin, redirect stderr, or run it as a non-interactive one-shot shell call.
+   - If the owner sign-in has expired, the agent runs `"$TC_BIN" --profile owner auth login --method openkey --paste` in a live interactive session, relays the link and chat code, then starts the grant script again.
+   - If the owner declines or cancels, stop the waiting process. If the grant fails or `meal-grant.json` is empty, stop, report it in one line, and write nothing. Don't retry in a loop.
+   - If a tool step is denied, stop. Explain the step and ask for a chat reply naming it, such as "Go ahead: run the Health Log approval step." Don't edit settings or run it another way.
 
 4. **Import the grant (no screen).** This starts the agent's session in `agent-meal` and saves the full space id, which every later command passes as `--space "$SPACE"`. Short names such as `applications` fail for this profile with `ADDRESS_UNKNOWN`. The old space file is emptied first, so a failed import can't leave an earlier space in place.
 
@@ -132,7 +132,7 @@ node '<HEALTHLOG_CONTEXT>' "$TC_BIN" "$STATE"
 - `day`: the helper's owner-local `day`, `YYYY-MM-DD`, refreshed in each block. These blocks log the current owner day.
 - `slot`: `breakfast`, `lunch`, `dinner` or `snack`, from the owner's words. If not named, fill `<SLOT>` with an empty string: the blocks use the helper's fresh owner-local hour, before 11:00 breakfast, before 15:00 lunch, before 21:00 dinner, otherwise snack. Say which one you used.
 - `name`: the owner's meal description, 1 to 200 characters. Line breaks are joined with spaces when the value is read; an empty name is not logged.
-- `kcal`: the owner's number, a whole number from 0 to 5000. If the owner gave no calories, estimate a reasonable whole number for the portion described. Never ask for calories; only an account or timezone guard failure needs an owner answer before the write.
+- `kcal`: the owner's number, a whole number from 0 to 5000. If the owner gave no calories, estimate a reasonable whole number for the portion described. Never ask for calories or timezone. An account mismatch stops the write; missing timezone uses the fallback above.
 - `source`: `agent`. `logged_at`: the helper's fresh `utc`.
 - Leave `protein_g`, `carbs_g`, `fat_g` at their defaults unless the owner gave them or the app's `knowledge/app.md` rules say otherwise. Fill any other column from those rules, never by a question. Don't invent macros.
 
@@ -214,9 +214,9 @@ Use `SKILL.md` §1a to §9 only for a domain that no catalog app owns. In the ne
 
 ## 7. Profiles
 
-The agent uses one profile, `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. The owner uses a separate profile, `owner`, for the grant in step 3. The agent only gets a limited permission slip for its own profile; it never reads or uses the owner's profile directory or session, or passes the owner profile to an agent command.
+Meal data commands use only `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. The agent runs the sign-in/grant helper with the explicit `owner` profile only to complete the owner's approvals and save its address. Never read the owner's profile directory or session keys, or use that profile for meal data commands.
 
-The agent never runs `delegation revoke`, `owner-undo.sh`, or the Undo block in `setup/tc-apps.md`: a revoke needs a terminal for its OpenKey approval, and the agent has none.
+For an owner-requested Undo, follow `setup/tc-apps.md`: the agent runs the helper in an interactive tool session and relays confirmations and OpenKey codes through chat.
 
 ## 8. Wording to the owner
 

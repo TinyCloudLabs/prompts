@@ -6,7 +6,6 @@ import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const ACCOUNT = "Health Log is set up for a different TinyCloud account than the one that approved this agent; run the owner step again with the right account.";
-const NO_CLOCK = "Health Log has no timezone for this owner yet; run the owner step again.";
 const TIMEZONE_KEY = "xyz.tinycloud.sample.healthlog/settings/timezone";
 const DID = /^did:pkh:eip155:([1-9][0-9]*):(0x[0-9a-fA-F]{40})$/;
 const SPACE = /^tinycloud:pkh:eip155:([1-9][0-9]*):(0x[0-9a-fA-F]{40}):applications$/;
@@ -24,13 +23,14 @@ function formatterFor(timeZone) {
   }
 }
 
-/** The first valid IANA timezone among the candidates (page value, then the setup fallback), else null. */
+/** The first valid IANA timezone among the candidates, else null. UTC and Etc/* are valid. */
 export function pickTimeZone(...candidates) {
   return candidates.map((c) => (typeof c === "string" ? c.trim() : c)).find((c) => formatterFor(c)) ?? null;
 }
 
 /** Pure validation and clock conversion; CLI callers cannot inject a clock. */
 export function validateContext({ ownerDid, timeZone, savedSpace, context, now }) {
+  timeZone = pickTimeZone(timeZone, Intl.DateTimeFormat().resolvedOptions().timeZone, "UTC");
   const formatter = formatterFor(timeZone);
   const expected = typeof ownerDid === "string" && DID.exec(ownerDid);
   if (!expected) throw new Error(ACCOUNT);
@@ -40,7 +40,6 @@ export function validateContext({ ownerDid, timeZone, savedSpace, context, now }
     s[1] !== expected[1] || s[2].toLowerCase() !== expected[2].toLowerCase())) {
     throw new Error(ACCOUNT);
   }
-  if (!formatter) throw new Error(NO_CLOCK); // the account is checked first: a wrong account never hears about the clock
   const parts = Object.fromEntries(formatter.formatToParts(now).map(({ type, value }) => [type, value]));
   const day = `${parts.year}-${parts.month}-${parts.day}`;
   const offset = parts.timeZoneName === "GMT" ? "+00:00" : parts.timeZoneName.replace(/^GMT/, "");
@@ -65,15 +64,15 @@ function main() {
     const contextText = readCli(cli, ["--profile", "agent-meal", "context", "--json"]);
     if (contextText === null || readFileSync(file, "utf8").trim() !== savedSpace) throw new Error(ACCOUNT);
     const context = JSON.parse(contextText);
-    // The page writes the owner's timezone on open; the setup fallback covers a page that has not been opened yet.
+    // Prefer the page, then the saved host zone, then this host's local IANA zone, else UTC.
     const page = readCli(cli, ["--profile", "agent-meal", "kv", "get", TIMEZONE_KEY, "--space", savedSpace, "--raw"]);
     let fallback = null;
     try { fallback = readFileSync(join(state, "owner-timezone.txt"), "utf8"); } catch {}
-    const timeZone = pickTimeZone(page, fallback);
+    const timeZone = pickTimeZone(page, fallback, Intl.DateTimeFormat().resolvedOptions().timeZone, "UTC");
     const output = validateContext({ ownerDid, timeZone, savedSpace, context, now: new Date() });
     process.stdout.write(JSON.stringify(output) + "\n");
   } catch (error) {
-    process.stderr.write((error.message === NO_CLOCK ? NO_CLOCK : ACCOUNT) + "\n");
+    process.stderr.write(ACCOUNT + "\n");
     process.exitCode = 1;
   }
 }

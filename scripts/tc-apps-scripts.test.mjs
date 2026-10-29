@@ -26,7 +26,7 @@ const fresh = () => {
 };
 // A stand-in CLI: records which file name was run and its arguments, and prints a grant for `auth grant`.
 const stub = (path) => {
-  writeFileSync(path, `#!/bin/sh\necho "${path} $*" >> "$HOME/calls"\ncase " $* " in *" auth grant "*) echo '{"ok":1}' ;; esac\n`, { mode: 0o755 });
+  writeFileSync(path, `#!/bin/sh\necho "${path} $*" >> "$HOME/calls"\ncase " $* " in *" auth grant "*) echo '{"ok":1}' ;; *" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; esac\n`, { mode: 0o755 });
   chmodSync(path, 0o755);
 };
 const run = (args, env) => spawnSync(args[0], args.slice(1), {
@@ -102,7 +102,7 @@ test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no cur
 });
 
 for (const [name, argv, expected] of [
-  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner auth grant"]],
+  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner context --json", "--profile owner auth grant"]],
   ["owner-undo.sh", [], ["--profile agent-data auth logout", "--profile agent-data-sql auth logout", "profile delete agent-meal"]],
 ]) {
   const scenarios = [
@@ -156,6 +156,9 @@ if (args[0] === "profile" && args[1] === "show") {
   state.profiles.push(name);
   state.sessions.push(name);
   fs.writeFileSync(statePath, JSON.stringify(state));
+} else if (args[0] === "context") {
+  if (!state.sessions.includes(profile)) fail("AUTH_REQUIRED", 3);
+  console.log(JSON.stringify({ ownerDid: "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }));
 } else if (args[0] === "auth" && args[1] === "grant") {
   if (!state.sessions.includes(profile)) fail("AUTH_REQUIRED", 3);
   process.stdout.write("{\"ok\":true}\n");
@@ -174,6 +177,7 @@ if (args[0] === "profile" && args[1] === "show") {
   assert.deepEqual(calls, [
     { argv: ["--profile", "owner", "profile", "show"], profile: "owner" },
     { argv: ["init", "--name", "owner", "--paste"], profile: "linear-agent" },
+    { argv: ["--profile", "owner", "context", "--json"], profile: "owner" },
     { argv: ["--profile", "owner", "auth", "grant", join(h.state, "meal-request.json")], profile: "owner" },
   ]);
   assert.equal(JSON.parse(readFileSync(join(cliHome, "config.json"), "utf8")).defaultProfile, "linear-agent");
@@ -189,7 +193,7 @@ if (args[0] === "profile" && args[1] === "show") {
     TC_BIN: cli,
   });
   assert.equal(renewal.status, 1);
-  assert.ok(renewal.stderr.includes(`"${cli}" --profile owner auth login --paste`), renewal.stderr);
+  assert.ok(renewal.stderr.includes("The agent must run owner auth login --method openkey --paste in an interactive session"), renewal.stderr);
   assert.doesNotMatch(renewal.stderr, /linear-agent/);
   assert.ok(!renewal.stderr.includes(`${cli} auth login --paste`), renewal.stderr);
 });

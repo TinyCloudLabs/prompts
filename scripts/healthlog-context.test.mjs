@@ -12,7 +12,6 @@ const A = "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const B = "did:pkh:eip155:1:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const space = (did) => did.replace(/^did:/, "tinycloud:") + ":applications";
 const ACCOUNT = "Health Log is set up for a different TinyCloud account than the one that approved this agent; run the owner step again with the right account.\n";
-const NO_CLOCK = "Health Log has no timezone for this owner yet; run the owner step again.\n";
 const KEY = "xyz.tinycloud.sample.healthlog/settings/timezone";
 const ZONE = "Pacific/Kiritimati";
 const base = mkdtempSync("/var/tmp/tc-2174-context.");
@@ -113,12 +112,12 @@ for (const [label, fixture, zone] of [
   assert.equal(JSON.parse(r.stdout).timeZone, zone);
 });
 
-test("timezone: no page key and no setup fallback gives one line and no SQL", () => {
+test("timezone: no page key and no setup fallback uses host UTC without a question", () => {
   const w = world({ page: null });
   const r = run(w);
-  assert.notEqual(r.status, 0);
-  assert.equal(r.stdout, "");
-  assert.equal(r.stderr, NO_CLOCK);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(r.stdout).timeZone, "UTC");
+  assert.equal(r.stderr, "");
 });
 
 test("a wrong account is refused with the account line even when no timezone exists", () => {
