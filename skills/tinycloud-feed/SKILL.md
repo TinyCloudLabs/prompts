@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Post owner-requested cards into TinyCloud Home's feed from a bot's scoped folder, using its profile and five built-in card formats.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 This is how an agent adds cards to your TinyCloud Home feed. It writes only to its own folder, and only what you asked it to post.

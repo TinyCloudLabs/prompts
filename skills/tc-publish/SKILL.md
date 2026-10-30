@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.5.17"
+  version: "0.6.0"
 ---
 
 # Publish documents and HTML with `tinycloud share`

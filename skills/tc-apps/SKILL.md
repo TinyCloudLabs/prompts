@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app on OpenKey from a link you show them and pastes the code back to you in chat. The agent runs every command.
 metadata:
-  version: "0.2.2"
+  version: "0.2.3"
 ---
 
 # Personal apps in TinyCloud
