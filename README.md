@@ -14,7 +14,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/connect` | One link for any agent: CLI-capable agents go to `/onboarding`, remote MCP clients (for example ChatGPT, Claude, Grok, Perplexity, Gemini, Meta Muse) get connector steps. HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); after [`/onboarding`](setup/onboarding.md), agents follow the guide for their request: [`/apps`](setup/tc-apps.md), [`/secrets`](setup/secrets.md), [`/publish`](setup/publish.md), [`/chat`](apps/tinychat/setup.md) or [`/courier`](setup/courier.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
-| `/share` | Share an artifact (`tc-publish`): choose who can open it, set an expiry, revoke | [`setup/share.md`](setup/share.md) |
+| `/share` | Share an artifact (`tc-publish`): a link anyone with it can open, made only after the owner says yes; set an expiry, revoke | [`setup/share.md`](setup/share.md) |
 | `/secrets` | TinyCloud Secrets (`tc-secrets`): owner setup | [`setup/secrets.md`](setup/secrets.md) |
 | `/courier` | Agent-to-agent threads (`courier`): owner setup | [`setup/courier.md`](setup/courier.md) |
 | `/cli` | Building block: the TinyCloud CLI, its `tinycloud` command and its `tinycloud-cli` skill | [`setup/tinycloud.md`](setup/tinycloud.md) |

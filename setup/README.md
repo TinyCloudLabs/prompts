@@ -31,15 +31,15 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 ## Publish and share: [/publish](publish.md)
 
-- **What it does:** your agent publishes a document or web page from your computer and sends you a link: private to you by default, or public when you ask.
-- **Paste into your agent:** `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
+- **What it does:** your agent publishes a document or web page from your computer and sends you a link that anyone who has it can open. It asks you before it makes one.
+- **Paste into your agent:** `Publish this report and send me a link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
 - **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days; send back the code it shows.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Share an artifact: [/share](share.md)
 
-- **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. You choose who can open it: anyone with the link, one email address, or everyone at a domain. Every share expires, and your agent can revoke it.
-- **Paste into your agent:** `Share this with TinyCloud, and ask me who should be able to open it: https://agents.tinycloud.xyz/share`
+- **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first; sharing with an email address or a domain is not available yet. Every share expires, and your agent can revoke it.
+- **Paste into your agent:** `Share this with TinyCloud: https://agents.tinycloud.xyz/share`
 - **You approve:** the same OpenKey link as [/publish](publish.md), to let your agent publish to your share folders, for up to 30 days.
 - **Undo:** same as [/publish](publish.md#undo).
 

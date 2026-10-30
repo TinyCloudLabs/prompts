@@ -151,8 +151,8 @@ const ABILITIES = [
   {
     title: "Publish",
     url: "publish",
-    text: "Publish a document or web page and get back a link, either private to you or public.",
-    prompt: "Publish this report and send me a private link. Use TinyCloud:",
+    text: "Publish a document or web page and get back a link that anyone who has it can open. Your agent asks you first.",
+    prompt: "Publish this report and send me a link. Use TinyCloud:",
   },
   {
     title: "Secrets",
@@ -439,8 +439,8 @@ const skillQueries = {
     "How do I add an update to my TinyCloud Home feed?",
   ],
   publish: [
-    "How can my agent publish a report and return a private link?",
-    "How can I make a published document public when I ask?",
+    "How can my agent publish a report and return a link?",
+    "How does my agent ask before it makes a link anyone can open?",
   ],
   secrets: [
     "How can my agent use a stored API key without showing its value?",

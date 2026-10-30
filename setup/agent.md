@@ -100,18 +100,17 @@ NODE
 node "$HOME/.config/tinycloud/agent-env.mjs" set TC_BIN "${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 ```
 
-Check only the field needed for this task before asking: `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_DID` for Secrets, or `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_EMAIL` for publish. Exit 1 means absent; exit 2 means invalid. Do not read the entire file.
+Check only the field needed for this task before asking: `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_DID` for Secrets. Publish/share needs no owner field. Exit 1 means absent; exit 2 means invalid. Do not read the entire file.
 
-For **Secrets**, ask once for the address of the account that holds the requested secrets, as shown in Secret Manager, if no valid `TC_OWNER_DID` exists. For **publish/share**, ask once for the owner's email for owner-only links if no valid `TC_OWNER_EMAIL` exists. Do not guess either or publish publicly instead. A reply from the owner resumes this same setup, not a fresh request. Use the parser with the owner-supplied value for that field only, never with a secret:
+For **Secrets**, ask once for the address of the account that holds the requested secrets, as shown in Secret Manager, if no valid `TC_OWNER_DID` exists. Do not guess it. A reply from the owner resumes this same setup, not a fresh request. Use the parser with the owner-supplied value for that field only, never with a secret:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 H="$HOME/.config/tinycloud/agent-env.mjs"
-node "$H" set TC_OWNER_DID 'did:pkh:eip155:1:0x<owner-address>'   # Secrets only
-node "$H" set TC_OWNER_EMAIL 'owner@example.com'                  # Publish only
+node "$H" set TC_OWNER_DID 'did:pkh:eip155:1:0x<owner-address>'
 ```
 
-Run only the line for the action at hand; replace its example with the owner's answer. The parser writes a 0600 file in a 0700 directory, rejects secret-looking keys and never executes file content. Do not echo or copy `agent.env` into a transcript. If the owner doesn't provide the required identity, stop with one `NEEDS_OWNER` message naming the missing non-secret field, not a grant request.
+Replace the example with the owner's answer. The parser writes a 0600 file in a 0700 directory, rejects secret-looking keys and never executes file content. Do not echo or copy `agent.env` into a transcript. If the owner doesn't provide the required identity, stop with one `NEEDS_OWNER` message naming the missing non-secret field, not a grant request.
 
 ### 3. The one action skill
 
