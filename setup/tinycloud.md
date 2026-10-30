@@ -94,13 +94,17 @@ On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: co
 
 Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.5.0`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tinycloud-cli` skill from an earlier CLI version is a replaceable mismatch. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide. A `tc-cli` folder in the same place is this skill under its old name, from an earlier setup; it can be removed.
 
-If the skill is missing or is a replaceable mismatch, run:
+If the skill is missing or is a replaceable mismatch, run these as two separate shell calls, the download first:
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
 ```
 
-The installer downloads the `tinycloud-cli` skill from `@tinycloud/cli@1.5.0` and checks every served file against `/skills/index.json`. The skill's examples run `tinycloud`. If the block above didn't print `TC_READY` or `TC_LINKED` for `tinycloud`, run the same commands with the full path instead: `$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`. The installer replaces only the `tinycloud-cli` folder and prints `SKILL_INSTALLED tinycloud-cli 1.5.0 <folder>`; anything else means the install failed, so stop and report it.
+```sh
+node "$HOME/.local/share/tinycloud/install.js" cli --agent CLIENT
+```
+
+The installer downloads the `tinycloud-cli` skill from `@tinycloud/cli@1.5.0` and checks every served file against `/skills/index.json`. The skill's examples run `tinycloud`. If the CLI block above didn't print `TC_READY` or `TC_LINKED` for `tinycloud`, run the same commands with the full path instead: `$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`. The installer replaces only the `tinycloud-cli` folder and prints `SKILL_INSTALLED tinycloud-cli 1.5.0 <folder>`; anything else means the install failed, so stop and report it.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 

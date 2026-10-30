@@ -106,6 +106,15 @@ const SKILLS = [
     integrity: "sha512-fkdOsJ9HUK/cNqiLi438er1bShs7X1FxeW5Lb1me/lNDWMXEKve1YMwcd5zQ0uOG8kaWCyXPPmQgst+BwQbTbg==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
+    // Download the installer, then run it in a separate call: some agents refuse a download piped into node.
+    changes: {
+      "INSTALL.md": [
+        [
+          "curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent claude-code\ncurl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code",
+          "mkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code",
+        ],
+      ],
+    },
   },
   {
     short: "courier",
@@ -551,7 +560,7 @@ const llms = [
   "## Optional",
   "",
   `- [Full text](${url("llms-full.txt")}): every guide and skill above in one file.`,
-  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one with \`curl -fsSL ${url("skills/install.js")} | node - <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
+  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one by downloading the installer, then running it in a separate shell call: \`curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" ${url("skills/install.js")}\`, then \`node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
   `- [Source repository](https://github.com/TinyCloudLabs/prompts): where the guides and TinyCloud's own skills are written.`,
   "",
 ].join("\n");

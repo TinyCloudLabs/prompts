@@ -28,7 +28,13 @@ The app pack is pinned to `tinychat-retrieval@0.1.1-onboarding.25`, as served by
 For a missing or replaceable app pack, substitute the current client's installer name (for example `claude-code`, `codex` or `opencode`) for `CLIENT` and run this as a sequential foreground install:
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - chat --agent CLIENT
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
+```
+
+Then, as a separate shell call:
+
+```sh
+node "$HOME/.local/share/tinycloud/install.js" chat --agent CLIENT
 ```
 
 The installer downloads the pack from `agents.tinycloud.xyz`, checks every file against the site's `/skills/index.json`, and prints `SKILL_INSTALLED tinychat-retrieval 0.1.1-onboarding.25 <folder>`. Anything else, including another version, means the install failed or doesn't match this guide: stop and report it. The usual installed directory is `$HOME/.agents/skills/tinychat-retrieval` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Resolve it from the current terminal's `HOME` and `CLAUDE_CONFIG_DIR`. Load its `SKILL.md` once if it is not already loaded; do not search unrelated directories.

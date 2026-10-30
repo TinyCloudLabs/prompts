@@ -71,7 +71,8 @@ A skill's version is its `SKILL.md`'s `metadata.version`, or, for a package skil
 To install a skill without a guide:
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <short name> --agent <claude-code|codex|opencode>
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
+node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>
 ```
 
 The installer checks every file against `/skills/index.json` before writing anything, then swaps in the skill's folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/<name>` for Claude Code, `~/.agents/skills/<name>` for Codex and OpenCode. It refuses a skill name that isn't one plain folder name, any file path that could leave the folder, and any redirect, so every byte comes from the site it was served from. Installs of one skill take turns through a lock folder, `.<name>.lock`, broken only when its process has exited or it is older than any install takes. The old folder stays until the new one is in place and goes back if that fails; a later install restores it if the earlier one exited in between. Its tests: `node --test scripts/install-skill.test.mjs`.

@@ -69,7 +69,8 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 The pages install these for you. To install one yourself, replace `<skill>` and `<client>` (`claude-code`, `codex` or `opencode`; any other agent uses `codex`):
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <skill> --agent <client>
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
+node "$HOME/.local/share/tinycloud/install.js" <skill> --agent <client>
 ```
 
 `<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
