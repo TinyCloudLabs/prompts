@@ -73,7 +73,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (agent-run, codes in chat).** Print the approval message:
+3. **The owner's approval (agent-run, the sign-in code in chat).** Print the approval message:
 
 ```sh
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
@@ -115,11 +115,11 @@ P=$(cat '<STATE>/owner-grant-session/pid'); if ps -p "$P" -o args= | grep -q 'ow
 rm -rf '<STATE>/owner-grant-session'
 ```
 
-   Read `out` again until it shows the OpenKey URL. Send each code the owner pastes with the `printf` line. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. When `out` shows `Done` or an error, or after a cancel, remove the folder with the `rm` line.
+   Read `out` again until it shows the OpenKey URL. Send the sign-in code the owner pastes with the `printf` line; the access link needs none. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. When `out` shows `Done` or an error, or after a cancel, remove the folder with the `rm` line.
 
-   - Relay the OpenKey URL printed by the running process. The owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. Keep it running while waiting for the reply. Do not run a second process or approval for a returned code.
-   - On a fresh computer, the script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL and code the same way. First time: two approvals (sign-in and app); then one per new app.
-   - `auth grant` in CLI `1.3.5` accepts the OpenKey code through the interactive session's stdin. Do not add `--paste` to it: that flag reads a request artifact, not an approval code. Do not close stdin, hide stderr, or run it as a non-interactive one-shot shell call; the block above keeps stdin open through its pipe and stderr in its `out` file.
+   - Relay each OpenKey URL printed by the running process. For the sign-in link, the owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. For the access link there is no code: keep the process running, and when the owner says they've approved, read its output until it shows `Done` or an error. Do not run a second process or approval.
+   - On a fresh computer, the script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL the same way; it needs no code. First time: two approvals (sign-in and app); then one per new app.
+   - `auth grant` in CLI `1.5.0` prints a short OpenKey link and waits until the owner approves it; it reads no code. Do not add `--paste` to it: that flag reads a request artifact, not an approval code. Do not close stdin, hide stderr, or run it as a non-interactive one-shot shell call; the block above keeps stdin open through its pipe and stderr in its `out` file.
    - If the owner sign-in has expired, the agent runs `"$TC_BIN" --profile owner auth login --method openkey --paste` in a live interactive session, relays the link and chat code, then starts the grant script again.
    - If the owner declines or cancels, stop the waiting helper by its recorded PID as above. If the grant fails or `meal-grant.json` is empty, stop, report it in one line, and write nothing. Don't retry in a loop.
    - If a tool step is denied, stop. Explain the step and ask for a chat reply naming it, such as "Go ahead: run the Health Log approval step." Don't edit settings or run it another way.

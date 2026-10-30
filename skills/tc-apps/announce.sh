@@ -23,7 +23,7 @@ EOF
 esac
 cat <<EOF
 The app permission lets me work in your $NAME app for 7 days: $ACCESS.
-Open each link I send, approve in OpenKey, then paste the code back to me here in chat. I'll finish each step and carry on. You don't need a separate terminal.
-If your browser asks to connect to devices on your network, choose Allow. If you cancel, tell me here and I'll stop.
+Open each link I send and approve in OpenKey. If OpenKey shows a code (only the sign-in link does), paste it back to me here in chat; after the app approval, just tell me you're done. I'll finish each step and carry on. You don't need a separate terminal.
+If you cancel, tell me here and I'll stop.
 EOF
 echo 'END OWNER MESSAGE'
