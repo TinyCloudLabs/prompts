@@ -175,46 +175,45 @@ before(() => {
   const built = spawnSync(process.execPath, [join(root, "scripts/build-site.mjs")], { encoding: "utf8" });
   assert.equal(built.status, 0, built.stderr);
 });
-for (const name of ["courier", "cli"]) {
-  test(`${name} skill selects the persisted custom CLI in a fresh shell`, () => {
-    const dir = home();
-    const bin = join(dir, "bin");
-    mkdirSync(bin);
-    const selected = join(bin, "selected-cli");
-    executable(selected, 'case "$*" in "--version") echo 1.2.3 ;; "courier --help") echo COURIER_SELECTED_1.2.3 ;; esac');
-    executable(join(bin, "tc"), 'echo GLOBAL_1.2.1');
-    const selectedEnv = join(dir, "owner/agent.env");
-    const persisted = shell(helperInstall(), { HOME: dir, TC_BIN: selected, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}` });
-    assert.equal(persisted.status, 0, persisted.stderr);
-    const skill = readFileSync(join(root, `_site/skills/${name}/SKILL.md`), "utf8");
-    const result = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, name === "courier" ? /COURIER_SELECTED_1\.2\.3/ : /1\.2\.3/);
-    assert.doesNotMatch(result.stdout, /GLOBAL_1\.2\.1/);
-    const override = join(bin, "override-cli");
-    executable(override, 'case "$*" in "--version") echo OVERRIDE_1.2.4 ;; "courier --help") echo COURIER_OVERRIDE_1.2.4 ;; esac');
-    const overridden = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: selectedEnv, TC_BIN: override, PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.equal(overridden.status, 0, overridden.stderr);
-    assert.match(overridden.stdout, name === "courier" ? /COURIER_OVERRIDE_1\.2\.4/ : /OVERRIDE_1\.2\.4/);
-    symlinkSync(join(dir, "owner"), join(dir, "linked-owner"));
-    const linked = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: join(dir, "linked-owner/agent.env"), PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.notEqual(linked.status, 0);
-    assert.doesNotMatch(linked.stdout, /GLOBAL_1\.2\.1/);
-    const overriddenLinked = shell(block(skill, name === "courier" ? "## Run Courier" : "# TinyCloud CLI", "bash"), {
-      HOME: dir, TC_AGENT_ENV: join(dir, "linked-owner/agent.env"), TC_BIN: override,
-      PATH: `${bin}:${process.env.PATH}`,
-    });
-    assert.equal(overriddenLinked.status, 0, overriddenLinked.stderr);
-    assert.match(overriddenLinked.stdout, name === "courier" ? /COURIER_OVERRIDE_1\.2\.4/ : /OVERRIDE_1\.2\.4/);
-    assert.doesNotMatch(overriddenLinked.stdout, /GLOBAL_1\.2\.1/);
+// The CLI skill has no lookup since 1.5.0 (its examples run `tinycloud` from the PATH); courier still does.
+test("courier skill selects the persisted custom CLI in a fresh shell", () => {
+  const dir = home();
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const selected = join(bin, "selected-cli");
+  executable(selected, 'case "$*" in "--version") echo 1.2.3 ;; "courier --help") echo COURIER_SELECTED_1.2.3 ;; esac');
+  executable(join(bin, "tc"), 'echo GLOBAL_1.2.1');
+  const selectedEnv = join(dir, "owner/agent.env");
+  const persisted = shell(helperInstall(), { HOME: dir, TC_BIN: selected, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}` });
+  assert.equal(persisted.status, 0, persisted.stderr);
+  const skill = readFileSync(join(root, "_site/skills/courier/SKILL.md"), "utf8");
+  const result = shell(block(skill, "## Run Courier", "bash"), {
+    HOME: dir, TC_AGENT_ENV: selectedEnv, PATH: `${bin}:${process.env.PATH}`,
   });
-}
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /COURIER_SELECTED_1\.2\.3/);
+  assert.doesNotMatch(result.stdout, /GLOBAL_1\.2\.1/);
+  const override = join(bin, "override-cli");
+  executable(override, 'case "$*" in "--version") echo OVERRIDE_1.2.4 ;; "courier --help") echo COURIER_OVERRIDE_1.2.4 ;; esac');
+  const overridden = shell(block(skill, "## Run Courier", "bash"), {
+    HOME: dir, TC_AGENT_ENV: selectedEnv, TC_BIN: override, PATH: `${bin}:${process.env.PATH}`,
+  });
+  assert.equal(overridden.status, 0, overridden.stderr);
+  assert.match(overridden.stdout, /COURIER_OVERRIDE_1\.2\.4/);
+  symlinkSync(join(dir, "owner"), join(dir, "linked-owner"));
+  const linked = shell(block(skill, "## Run Courier", "bash"), {
+    HOME: dir, TC_AGENT_ENV: join(dir, "linked-owner/agent.env"), PATH: `${bin}:${process.env.PATH}`,
+  });
+  assert.notEqual(linked.status, 0);
+  assert.doesNotMatch(linked.stdout, /GLOBAL_1\.2\.1/);
+  const overriddenLinked = shell(block(skill, "## Run Courier", "bash"), {
+    HOME: dir, TC_AGENT_ENV: join(dir, "linked-owner/agent.env"), TC_BIN: override,
+    PATH: `${bin}:${process.env.PATH}`,
+  });
+  assert.equal(overriddenLinked.status, 0, overriddenLinked.stderr);
+  assert.match(overriddenLinked.stdout, /COURIER_OVERRIDE_1\.2\.4/);
+  assert.doesNotMatch(overriddenLinked.stdout, /GLOBAL_1\.2\.1/);
+});
 
 test("feed skill is listed and its published relative reference resolves", () => {
   const site = join(root, "_site");

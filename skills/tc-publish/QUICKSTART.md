@@ -7,14 +7,14 @@ Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.5.0-beta.23
+npm install --prefix <dir> @tinycloud/cli@1.5.0
 export TC_BIN=<dir>/node_modules/.bin/tinycloud
 export TC_HOME=<profile store for this agent>
 export TC_OWNER_EMAIL=<owner's email>                    # for owner-only links
 export TC_PUBLISH_STATE=<state dir for this agent>       # optional; default $HOME/.local/state/tc-publish
 ```
 
-Install this `tc-publish` directory into the agent's skill path (`~/.agents/skills/tc-publish/` for Codex and OpenCode, `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-publish/` for Claude Code). The `tc-cli` core skill is a separate install. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent never changes or unsets them. Set `TC_PUBLISH_STATE` (and `TC_HOME`) per agent when several agents share one machine and `$HOME` — for example the owner's agent alongside test agents — so their state files and waiters can't collide. `command -v tc` is not reliable — it can resolve to `/usr/sbin/tc`.
+Install this `tc-publish` directory into the agent's skill path (`~/.agents/skills/tc-publish/` for Codex and OpenCode, `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-publish/` for Claude Code). The `tinycloud-cli` core skill is a separate install. `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE` are operator-set; the agent never changes or unsets them. Set `TC_PUBLISH_STATE` (and `TC_HOME`) per agent when several agents share one machine and `$HOME` — for example the owner's agent alongside test agents — so their state files and waiters can't collide. `command -v tc` is not reliable — it can resolve to `/usr/sbin/tc`.
 
 ## Why every block starts with a preamble
 

@@ -71,9 +71,9 @@ const PAGES = [
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released CLI and Courier skills contain one of these exact resolvers (courier 0.1.3 and
-// CLI 1.2.3 end in `tc`; CLI 1.2.4 and later end in `tinycloud`). Replace it
-// in every published Markdown file, including the core skill's reference pages.
+// The released Courier skill contains one of these exact resolvers (courier 0.1.3
+// ends in `tc`, 0.4.0 in `tinycloud`). Replace it in every published Markdown file.
+// The CLI skill has none since 1.5.0: its examples run `tinycloud` from the PATH.
 const upstreamResolver = (bin) => [
   `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
   `[ -n "\${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/${bin}"   # else a global npm install`,
@@ -101,61 +101,17 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.0-beta.23",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0-beta.23.tgz",
-    integrity: "sha512-7dvXVJlgiYRuqcK2Thsv0b/AP1Dge0IE5ftXa2CGPC71qdKFvKTH1zDnzWd1HKueCx3VAxwv/YUvKVnhGbs/Eg==",
-    dir: "package/skills/tc-cli",
+    version: "1.5.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0.tgz",
+    integrity: "sha512-fkdOsJ9HUK/cNqiLi438er1bShs7X1FxeW5Lb1me/lNDWMXEKve1YMwcd5zQ0uOG8kaWCyXPPmQgst+BwQbTbg==",
+    dir: "package/skills/tinycloud-cli",
     checkCli: true,
-    // The released skill says Node.js 20, and has agents sign in to separate
-    // profiles and the owner run `auth grant`. Here it reuses the profile
-    // /onboarding sets up and asks for more with one OpenKey link; publishing
-    // keeps its own `publisher` profile, because shares live in `default`.
-    changes: {
-      "SKILL.md": [
-        ["Node.js 20 or later runs the CLI.", "Node.js 22.20 or later runs the CLI."],
-        [
-          /^Agents usually run where no browser can reach them\.[\s\S]*?--manifest builtin:share-publishing\n```\n\n`builtin:share-publishing` covers[^\n]*do not create another account\.\n/m,
-          [
-            "After `onboard`, keep using that profile. For access it doesn't have, ask once with one OpenKey link:",
-            "",
-            "```bash",
-            "\"$TC\" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d < /dev/null",
-            "```",
-            "",
-            "It exits 3 and prints the OpenKey link on stderr. Send the owner the link with one line saying what it's for. When they send back the code, run the same command with the code on stdin: `printf '%s\\n' '<the code>' | \"$TC\" auth request --cap '...' --grant --paste --expiry 30d`. ",
-            "",
-            "Publishing is the exception: shares live in the owner's `default` space, so publish from a `publisher` profile with its own single approval. The code is pasted the same way. Full steps: https://agents.tinycloud.xyz/publish.",
-            "",
-            "```bash",
-            "\"$TC\" init --name publisher --key-only",
-            "\"$TC\" --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing",
-            "```",
-            "",
-          ].join("\n"),
-        ],
-        [
-          /^Ask for the narrowest grant that does the job\.[\s\S]*?\n(?=\nThen:)/m,
-          "The onboarded profile already reads and writes the `applications` space, so reading and changing the owner's apps needs no new approval. For anything else, ask once as in \"Sign in\" above. Change an app's data only when the owner asks.\n",
-        ],
-        ["1. `\"$TC\" --profile agent knowledge list`", "1. `\"$TC\" --profile PROFILE knowledge list`"],
-        ["2. `\"$TC\" --profile agent knowledge read APP_ID`", "2. `\"$TC\" --profile PROFILE knowledge read APP_ID`"],
-        [
-          /^An agent installs a catalog app into its own profile\.[\s\S]*?Then read the notes with `knowledge read`\./m,
-          "Install a catalog app from the onboarded profile; it needs no new approval:\n\n```bash\n\"$TC\" --profile PROFILE apps install xyz.tinycloud.sample.healthlog\n```\n\nThis installs the pinned version into the owner's applications space. Then read the notes with `knowledge read`.",
-        ],
-        [
-          " The owner can run the same command on the owner profile (`\"$TC\" --profile owner apps install xyz.tinycloud.sample.healthlog`); that needs no grant.",
-          "",
-        ],
-        ["for OpenCode, Codex and Claude Code", "for your agent"],
-      ],
-    },
   },
   {
     short: "courier",
-    version: "0.1.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.1.3.tgz",
-    integrity: "sha512-7QVW0zeu+5A+cb8axFVO2iZPOGbGC0DC4JDPqq68aaOj8DzRt+8J0gwC9tPV3U2bGGES2mOTquWKiOJTHeiVuA==",
+    version: "0.4.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.0.tgz",
+    integrity: "sha512-AGi2tyygPHj6NB1V56kj8Nz7w0WfuxMPZlZTKBxKHQgfFxIs/6aXvmWdUB8xFVT1tFPKSJt/y5rimIxw3XeEFw==",
     dir: "package/skills/courier",
     checkCli: true,
   },
@@ -170,38 +126,10 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.5.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.3.tgz",
-    integrity: "sha512-DRCQ7qDZUTIH2fK+6WJUQYY2krNQI+i3LE5AN/JNnGY8W70JHLfB2aH0R5xV96RCFUtgFqUDiY8ryRyFO0dMEQ==",
+    version: "0.8.3",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.3.tgz",
+    integrity: "sha512-mkF901Aai0pWdirP4IMXfs7FBAjzwsiiujpiHSaTMidjvf3UVq8Zr3T3mlN4y0z/Hs78hxVMw0QpsqfzD02Yuw==",
     dir: "package/skills/tinycloud-delegated-secrets",
-    changes: {
-      "SKILL.md": [
-        [
-          "Never ask the\nuser to paste a secret value, private key, token, or delegation credential into\nchat.",
-          "Never ask the user for a secret value, private key or token. OpenKey codes and delegations are fine to paste.",
-        ],
-        [
-          "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
-          "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts, elicitation, a generic permission grant, or a secret mutation tool.",
-        ],
-        [
-          "## Account and KV exploration",
-          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for them to say continue, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route.\n\nWith local stdio, use the profile `tinycloud onboard` set up (https://agents.tinycloud.xyz/onboarding). When a tool returns `authority_required`, run `tinycloud auth request --cap '<cap>' --grant --paste --expiry 30d < /dev/null` on that profile and send the owner the OpenKey link it prints. When they send back the code, run the same command with the code on stdin, restart the MCP server and retry the call. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
-        ],
-        [
-          /^1\. A fresh `delegate-session` profile[\s\S]*?restart, and retry sequence when authority is required\./m,
-          [
-            "1. With local stdio, start from the onboarded profile (see above).",
-            "2. Inspect posture with `tinycloud_status` or `tinycloud_auth_status`.",
-            "3. Call `tinycloud_account_spaces_list` and",
-            "   `tinycloud_account_applications_list`. If either returns",
-            "   `authority_required`, ask the owner as described above, then retry.",
-            "4. Choose a non-secrets space from those results. Use `tinycloud_kv_list` with",
-            "   an exact space and prefix. Ask the same way when authority is required.",
-          ].join("\n"),
-        ],
-      ],
-    },
   },
 ];
 
@@ -329,7 +257,7 @@ async function loadSkill(skill) {
     }
     changed.add(path);
   }
-  if (skill.short === "cli" || skill.short === "courier") {
+  if (skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
       const text = body.toString("utf8");
