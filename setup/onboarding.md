@@ -71,6 +71,7 @@ The owner can open the link on any device, their phone included.
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **Exit 8:** OpenKey is unavailable for now. Wait a minute and run `"$TC" onboard` again.
+- **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run `"$TC" onboard` again and send the new link.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
 

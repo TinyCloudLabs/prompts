@@ -106,7 +106,7 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 
 **The sign-in: paste.** Run it when there is no live session. It is one approval; later runs reuse the saved session, up to 30 days. The approval is tied to this profile's key, which the check above creates (`init --name "$PROFILE" --key-only`; say nothing to the owner about it), so use the same `--profile "$PROFILE"` in every call.
 
-Call 1 prints the approval link (it then stops with `PASTE_CODE_MISSING`, which is expected; the link is on its own line); you send the owner the message below and wait for the code; you save the code; call 2 finishes the sign-in.
+Call 1 writes the sign-in's permission list to `$STATE/share-publishing.json` (links only: the capability read OpenKey requires and the three share folders in `default`; no decryption, which links don't use) and prints the approval link (it then stops with `PASTE_CODE_MISSING`, which is expected; the link is on its own line); you send the owner the message below and wait for the code; you save the code; call 2 finishes the sign-in with the same file.
 
 Call 1:
 
@@ -121,7 +121,21 @@ mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -ty
 PROFILE=publisher   # unless the owner names another profile
 
 rm -f "$STATE/approve.url" "$STATE/login.err"
-timeout 60 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
+cat > "$STATE/share-publishing.json" <<'JSON'
+{
+  "app_id": "xyz.tinycloud.share",
+  "name": "TinyCloud Share publishing",
+  "space": "default",
+  "permissions": [
+    { "service": "tinycloud.capabilities", "path": "", "skipPrefix": true, "actions": ["tinycloud.capabilities/read"] },
+    { "service": "tinycloud.kv", "path": "xyz.tinycloud.share/shares/", "skipPrefix": true, "actions": ["tinycloud.kv/get", "tinycloud.kv/put"] },
+    { "service": "tinycloud.kv", "path": "shares/", "skipPrefix": true, "actions": ["tinycloud.kv/get", "tinycloud.kv/metadata", "tinycloud.kv/put", "tinycloud.kv/list"] },
+    { "service": "tinycloud.kv", "path": "artifacts/", "skipPrefix": true, "actions": ["tinycloud.kv/get", "tinycloud.kv/metadata", "tinycloud.kv/put", "tinycloud.kv/list"] }
+  ]
+}
+JSON
+chmod 600 "$STATE/share-publishing.json"
+timeout 60 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest "$STATE/share-publishing.json" --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
 grep -E '^[[:space:]]*https://[^[:space:]]+[[:space:]]*$' "$STATE/login.err" | head -1 | tr -d '[:space:]' > "$STATE/approve.url"
 [ -s "$STATE/approve.url" ] && echo APPROVE_URL_SAVED || { echo NO_URL; sed -E 's#https://[^ ]+#<link>#g' "$STATE/login.err" | head -3; }
 ```
@@ -159,11 +173,11 @@ fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; mkdir -p "$STATE"; chmod 700 "$STATE"
 PROFILE=publisher   # unless the owner names another profile
-if ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null; then echo NO_CODE
+if ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null || [ ! -s "$STATE/share-publishing.json" ]; then echo NO_CODE
 else
   printf '\n' >> "$STATE/code"
   rm -f "$STATE/login.json" "$STATE/login.err"
-  timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
+  timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest "$STATE/share-publishing.json" --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
   python3 - "$?" "$STATE/login.json" "$STATE/login.err" <<'PY'
 import json, re, sys
 rc, out, err = int(sys.argv[1]), sys.argv[2], sys.argv[3]
@@ -196,7 +210,7 @@ rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
 
 - `SIGNED_IN` → go to §3. A `NOT_GRANTED <entry>` line means the owner left that permission out: tell them which.
 - `CODE_EXPIRED` → say exactly: "That short code has expired. Please paste the full code OpenKey shows instead." Then wait for the full code, save it, and run call 2 again.
-- `NO_CODE` → save the code (the step before) and run call 2 again.
+- `NO_CODE` → save the code (the step before) and run call 2 again; if `$STATE/share-publishing.json` is gone, run call 1 again first.
 - `LOGIN_TIMEOUT` or `LOGIN_FAILED <code>` → report the error code and ask the owner to paste their code again (save it and run call 2 again). The second `LOGIN_TIMEOUT` or `LOGIN_FAILED` for a sign-in means the paste sign-in isn't working here: offer the device sign-in below.
 
 **Renewing.** Renew by running the §2 sign-in again (the same profile). Don't use `--replace-session`.
@@ -535,7 +549,7 @@ umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STA
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
-      "$STATE/context.json" "$STATE/context.err"
+      "$STATE/context.json" "$STATE/context.err" "$STATE/share-publishing.json"
 ```
 
 ## Errors — `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text
@@ -552,7 +566,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `SESSION_IN_USE` | 2 | Live session would narrow — ask the owner; never `--replace-session` unprompted |
 | `ORIGIN_MISMATCH` | 2 publish / 5 receive | Share origin vs configured service — check host/viewer-origin config, not re-login |
 | `EXPIRED` / `NOT_FOUND` | 4 | The share expired or the id is wrong |
-| `UNAVAILABLE` | 4 | Not available yet — nothing was shared. Don't retry. Tell the owner in one line that it isn't available yet. |
+| `UNAVAILABLE` | 4 | Nothing was shared. If the message contains "not available in this release": that kind of share isn't available yet — tell the owner in one line, and don't retry. Otherwise (the location registry or the network couldn't be reached): report the CLI's message and suggest trying again later. Never retry in a loop |
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
 | `STORAGE_QUOTA_EXCEEDED` / `STORAGE_LIMIT_REACHED` | 10 (4 on CLIs before the TC-625 release) | The owner's TinyCloud storage is full, or this file is larger than what is left. Newer CLIs include the account's used and plan sizes. Nothing was shared. Tell the owner and point them to https://account.tinycloud.xyz/storage; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |

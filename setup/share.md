@@ -50,7 +50,7 @@ Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`,
 
 Always pass `--expires` and tell the owner the date. Links use 24h unless the owner says otherwise. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
 
-Publish only through the skill's §3 link block (`skills/tc-publish/SKILL.md`). It computes `--expires` and handles `SESSION_ENDING`. Run EXACTLY that block; do not write your own `share publish` command.
+Publish only through the skill's §3 link block (`skills/tc-publish/SKILL.md`). It uses `--expires 24h` unless the owner asks otherwise; the `SESSION_LIFETIME_EXCEEDED` row in the skill's errors table covers an expiry past the session's end. Run EXACTLY that block; do not write your own `share publish` command.
 
 - `--json` prints redacted metadata with `metadata.shareId`; the link is not in it. Get the link as the skill does: `"$TC_BIN" --profile "$PROFILE" share show "$id" --reveal-link`. Never combine `--reveal-link` with `--json`.
 - Everything after `#` in a link is the credential. Follow the skill's handling contract for storing and delivering it. Never retype or chunk a link.

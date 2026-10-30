@@ -87,8 +87,8 @@ const RESOLVER = [
   'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
   '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
   'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"',
+  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
+  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;

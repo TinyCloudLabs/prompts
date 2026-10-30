@@ -39,15 +39,15 @@ Run this as one sequential foreground shell call, exactly as written:
 
 ```sh
 CLI_DIR="$HOME/.local/share/tinycloud/cli"
-TC_BIN="${TC_BIN:-$CLI_DIR/node_modules/.bin/tc}"
-if [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$("$TC_BIN" --version 2>/dev/null)" != 1.5.0 ]; then
+TC_BIN="${TC_BIN:-$CLI_DIR/node_modules/.bin/tinycloud}"
+if [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tinycloud" ] && [ "$("$TC_BIN" --version 2>/dev/null)" != 1.5.0 ]; then
   mkdir -p "$CLI_DIR" && npm install --prefix "$CLI_DIR" --no-audit --no-fund @tinycloud/cli@1.5.0
 fi
 WANT=$("$TC_BIN" --version 2>/dev/null)
 # A private prefix only. Never install or link into npm's global bin.
 # ~/.local/bin may be on the PATH (as many shell profiles add it) before it exists.
 case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
-if [ -z "$WANT" ] || { [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tc" ] && [ "$WANT" != 1.5.0 ]; }; then
+if [ -z "$WANT" ] || { [ "$TC_BIN" = "$CLI_DIR/node_modules/.bin/tinycloud" ] && [ "$WANT" != 1.5.0 ]; }; then
   echo "TC_INSTALL_FAILED $TC_BIN"
 else
   for NAME in tinycloud tc; do
@@ -106,7 +106,7 @@ These commands target the named CLI package and named skill. Preserve unrelated 
 
 ## Verify and return
 
-Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}" --version` reports `1.5.0` (or the version of the owner's `TC_BIN`), and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. Check that the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
+Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}" --version` reports `1.5.0` (or the version of the owner's `TC_BIN`), and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. Check that the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 

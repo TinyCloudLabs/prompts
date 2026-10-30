@@ -79,7 +79,7 @@ A link is about 2.6 KB. An agent that prints a link in pieces and reassembles it
 
 ## Errors
 
-Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text. Branch on `code`, not the exit status — exits 4, 5 and 6 each cover several errors (for example exit 4 is `EXPIRED`, `NOT_FOUND` or `UNAVAILABLE`; exit 6 is `OPENKEY_UNREACHABLE` or `REGISTRY_REJECTED`). `UNAVAILABLE` means nothing was shared and it isn't available yet — don't retry; `REGISTRY_REJECTED` won't improve on retry — report it. The full table, with actions, is in `SKILL.md`.
+Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text. Branch on `code`, not the exit status — exits 4, 5 and 6 each cover several errors (for example exit 4 is `EXPIRED`, `NOT_FOUND` or `UNAVAILABLE`; exit 6 is `OPENKEY_UNREACHABLE` or `REGISTRY_REJECTED`). `UNAVAILABLE` means nothing was shared: with "not available in this release" that kind of share isn't available yet; otherwise the registry or network was unreachable, so report it and try again later, never in a loop. `REGISTRY_REJECTED` won't improve on retry — report it. The full table, with actions, is in `SKILL.md`.
 
 ## Never
 
