@@ -39,7 +39,7 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command.
+**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and its `tc-cli` skill; do both of its install steps.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"

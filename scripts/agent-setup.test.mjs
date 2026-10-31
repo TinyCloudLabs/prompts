@@ -175,9 +175,11 @@ test("/cli serves its install block as a script, and the page tells agents to do
   const shown = guide.split("The script is exactly this block, shown here so you and the owner can read it:\n")[1].match(/^\n```sh\n([\s\S]*?)\n```/)[1];
   const served = readFileSync(join(root, "_site/skills/install-cli.sh"), "utf8").split("\n").slice(2).join("\n");
   assert.equal(served, `${shown}\n`);
-  const steps = block(guide, "## Install the CLI");
+  const steps = guide.split("## Install the CLI")[1].split("## Verify and return")[0];
   assert.match(steps, /curl -fsSL -o "\$HOME\/\.local\/share\/tinycloud\/install-cli\.sh" https:\/\/agents\.tinycloud\.xyz\/skills\/install-cli\.sh/);
-  assert.doesNotMatch(steps, /\| *(sh|bash|node)\b/);
+  assert.match(steps, /^sh "\$HOME\/\.local\/share\/tinycloud\/install-cli\.sh"$/m);
+  assert.match(steps, /^node "\$HOME\/\.local\/share\/tinycloud\/install\.js" cli --agent CLIENT$/m);
+  for (const [, code] of steps.matchAll(/```sh\n([\s\S]*?)\n```/g)) assert.doesNotMatch(code, /\| *(sh|bash|node)\b/);
 });
 
 before(() => {

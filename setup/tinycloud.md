@@ -104,7 +104,7 @@ On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: co
 
 Inspect an existing `tc-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.5.0-beta.28`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tc-cli` skill from an earlier CLI version is a replaceable mismatch. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
 
-If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls:
+This step is required: the skill is how you know the CLI's commands. If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls:
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
@@ -126,4 +126,4 @@ Return to the exact recorded app-guide heading and continue there without anothe
 
 ## Undo
 
-For the owner: delete each link that `TC_LINKED` reported (`tinycloud`, and `tc` if it was linked), if it still points into `~/.local/share/tinycloud/cli`. Then delete that folder and the `tc-cli` skill folder (`~/.agents/skills/tc-cli` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-cli`). Removing them doesn't sign anything out or delete any data.
+For the owner: delete each link that `TC_LINKED` reported (`tinycloud`, and `tc` if it was linked), if it still points into `~/.local/share/tinycloud/cli`. Then delete that folder, the two downloaded setup files `~/.local/share/tinycloud/install-cli.sh` and `~/.local/share/tinycloud/install.js`, and the `tc-cli` skill folder (`~/.agents/skills/tc-cli` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-cli`). Removing them doesn't sign anything out or delete any data.
