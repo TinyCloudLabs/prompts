@@ -93,7 +93,7 @@ It prints one line for `tinycloud`, then one for `tc`:
 - `TC_READY 1.5.0-beta.28 <name>` → that name already runs the pinned CLI.
 - `TC_LINKED 1.5.0-beta.28 <link>` → the block linked that name to the pinned CLI.
 - `TC_CONFLICT <name> other` → another program has that name (`command -v` finds it), usually the Linux traffic-control tool for `tc`. It was left alone, whatever it does when run.
-- `TC_CONFLICT <name> <version>` (or `unknown`) → that name runs another TinyCloud CLI version; the block left it alone.
+- `TC_CONFLICT <name> <version>` (or `unknown`) → that name runs another TinyCloud CLI version, not the traffic-control tool; the block left it alone. Tell the owner: "`<name>` already runs TinyCloud CLI <version>, so I left it alone."
 - `TC_CONFLICT <name> no-path` → nothing has that name, but `~/.local/bin` is not on the `PATH` and writable. For `tinycloud`, tell the owner, in these words: "To use the `tinycloud` command, add this line to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`): `export PATH="$HOME/.local/bin:$PATH"`. Then open a new terminal, start your agent from it, and ask it to run https://agents.tinycloud.xyz/cli again." The rerun creates `~/.local/bin` and links `tinycloud` there; it still leaves any other `tc` alone.
 - `TC_CONFLICT <name> link` → nothing has that name, but the link couldn't be made.
 - `TC_INSTALL_FAILED` → the npm install failed or the owner's `TC_BIN` doesn't run. Stop and report the error. Don't retry with other options or `sudo`.
