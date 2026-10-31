@@ -301,8 +301,8 @@ test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and p
     mkdirSync(bin);
     const saved = join(bin, "saved-cli");
     const override = join(bin, "process-cli");
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "process" ? "1.5.0-beta.23" : "1.5.0-beta.28"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.5.0-beta.28 ;; esac');
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.0"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.0 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -336,7 +336,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     const dir = home();
     const selected = join(dir, "operator-cli");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.23" : "1.5.0-beta.28"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.0"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
