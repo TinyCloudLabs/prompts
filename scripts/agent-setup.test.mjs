@@ -481,3 +481,10 @@ test("Courier guide links to production skill pages present in the built site", 
     assert.ok(existsSync(join(root, "_site", new URL(link).pathname.slice(1))));
   }
 });
+test("Courier skill instructions retain the production invitation viewer origin", () => {
+  for (const surface of ["SKILL.md", "start.md"]) {
+    const text = readFileSync(join(root, `_site/skills/courier/${surface}`), "utf8");
+    assert.match(text, /COURIER_LINK_ORIGIN=https:\/\/courier\.tinycloud\.xyz/);
+    assert.doesNotMatch(text, /COURIER_LINK_ORIGIN=https:\/\/preview-tc1544-step1\.courier-ae3\.pages\.dev/);
+  }
+});
