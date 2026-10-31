@@ -343,8 +343,9 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     if (scenario !== "missing") executable(selected, body);
     if (scenario === "not-executable") chmodSync(selected, 0o600);
     const before = scenario === "missing" ? null : readFileSync(selected);
-    const result = shell(probe, { HOME: dir, TC_BIN: selected });
+    const result = shell(`${probe}\nprintf 'COURIER_LINK_ORIGIN=%s\\n' "$COURIER_LINK_ORIGIN"`, { HOME: dir, TC_BIN: selected });
     assert.equal(result.status === 0, scenario === "current", `${scenario}: ${result.stderr}`);
+    assert.equal(result.stdout.trim(), scenario === "current" ? "COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz" : "");
     if (before) assert.deepEqual(readFileSync(selected), before);
     else assert.equal(existsSync(selected), false);
     assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
@@ -468,3 +469,15 @@ for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_si
     assert.equal(readFileSync(join(cliHome, "sentinel"), "utf8"), "existing CLI context\n");
   });
 }
+test("Courier guide links to production skill pages present in the built site", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const links = [...guide.matchAll(/\[[^\]]+\]\((https:\/\/[^)]+\/skills\/courier\/(?:SKILL|start)\.md)\)/g)]
+    .map((match) => match[1]);
+  assert.deepEqual(links, [
+    "https://agents.tinycloud.xyz/skills/courier/SKILL.md",
+    "https://agents.tinycloud.xyz/skills/courier/start.md",
+  ]);
+  for (const link of links) {
+    assert.ok(existsSync(join(root, "_site", new URL(link).pathname.slice(1))));
+  }
+});

@@ -34,7 +34,7 @@ Keep the owner's original request and any incoming invitation URL exactly as sup
 
 **One extra Courier approval:** CLI `1.5.0` and Courier `0.4.0` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
 
-After onboarding, install or reuse the Courier action skill `0.4.0` through your agent's standard skill mechanism; do not overwrite a modified skill. Read this preview's [`SKILL.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/SKILL.md) and [`start.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/start.md). If your agent cannot install local skills, read those pages directly. This step does not sign in or request a grant.
+After onboarding, install or reuse the Courier action skill `0.4.0` through your agent's standard skill mechanism; do not overwrite a modified skill. Read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). If your agent cannot install local skills, read those pages directly. This step does not sign in or request a grant.
 
 ## Check the installed CLI
 
@@ -59,7 +59,7 @@ COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; 
 for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac
 done
-export COURIER_LINK_ORIGIN='https://preview-tc1544-step1.courier-ae3.pages.dev'
+export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 ```
 
 These are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
