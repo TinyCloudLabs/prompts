@@ -104,10 +104,14 @@ On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: co
 
 Inspect an existing `tc-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tc-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.5.0-beta.28`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tc-cli` skill from an earlier CLI version is a replaceable mismatch. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide.
 
-If the skill is missing or is a replaceable mismatch, run:
+If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls:
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
+```
+
+```sh
+node "$HOME/.local/share/tinycloud/install.js" cli --agent CLIENT
 ```
 
 The installer downloads the `tc-cli` skill from `@tinycloud/cli@1.5.0-beta.28` with this site's pinned resolver overlay and checks every served file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection via the `/agent` helper, then the private installation before global npm. The installer replaces only the `tc-cli` folder and prints `SKILL_INSTALLED tc-cli 1.5.0-beta.28 <folder>`; anything else means the install failed, so stop and report it.
