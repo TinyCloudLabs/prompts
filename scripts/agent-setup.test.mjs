@@ -163,12 +163,21 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   executable(selected, 'echo 1.5.0-beta.28');
   executable(conflicting, 'echo unrelated');
   const original = readFileSync(conflicting);
-  const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  const result = shell(block(guide, "## Install the CLI"), { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` });
+  const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
   assert.deepEqual(readFileSync(conflicting), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
+});
+
+test("/cli serves its install block as a script, and the page tells agents to download and run it", () => {
+  const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  const shown = guide.split("The script is exactly this block, shown here so you and the owner can read it:\n")[1].match(/^\n```sh\n([\s\S]*?)\n```/)[1];
+  const served = readFileSync(join(root, "_site/skills/install-cli.sh"), "utf8").split("\n").slice(2).join("\n");
+  assert.equal(served, `${shown}\n`);
+  const steps = block(guide, "## Install the CLI");
+  assert.match(steps, /curl -fsSL -o "\$HOME\/\.local\/share\/tinycloud\/install-cli\.sh" https:\/\/agents\.tinycloud\.xyz\/skills\/install-cli\.sh/);
+  assert.doesNotMatch(steps, /\| *(sh|bash|node)\b/);
 });
 
 before(() => {
@@ -381,8 +390,7 @@ test("Courier preview installs and serves the approved release pins", () => {
     mkdir -p "$HOME/.local/share/tinycloud/cli/node_modules/.bin"
     printf '#!/bin/sh\\necho 1.5.0-beta.28\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"
     chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"`);
-  const cliGuide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  const installed = shell(block(cliGuide, "## Install the CLI"), { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls });
+  const installed = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls } });
   assert.equal(installed.status, 0, installed.stderr);
   assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.0-beta.28"));
   const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");

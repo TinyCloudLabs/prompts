@@ -35,7 +35,17 @@ The site's skills run the CLI as process `TC_BIN` if set, else read the saved `T
 - **`tinycloud`**, the name the pages tell the owner to type, and **`tc`**: each is linked in `~/.local/bin` only if that directory is already on the `PATH`, writable and has nothing by that name yet.
 - It never replaces or shadows another program. A name counts as taken when `command -v` finds it, whatever it does when run; it counts as TinyCloud's only when its real path is the CLI's. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is. Existing global CLIs are left untouched.
 
-Run this as one sequential foreground shell call, exactly as written:
+Download the install script, then run it, as two separate shell calls. Don't retype the script or run a shorter version of it: its last part links the `tinycloud` command.
+
+```sh
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.sh" https://agents.tinycloud.xyz/skills/install-cli.sh
+```
+
+```sh
+sh "$HOME/.local/share/tinycloud/install-cli.sh"
+```
+
+The script is exactly this block, shown here so you and the owner can read it:
 
 ```sh
 CLI_DIR="$HOME/.local/share/tinycloud/cli"
