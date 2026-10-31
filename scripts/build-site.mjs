@@ -381,6 +381,13 @@ const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
 const siteLine = `const SITE = "${SITE}";`;
 if (!installer.includes(siteLine)) throw new Error(`scripts/install-skill.js: no line ${siteLine}`);
 write("skills/install.js", installer.replace(siteLine, `const SITE = "${BASE}";`));
+// /cli's install block, served as a script: agents download and run it rather
+// than retype a long block from the page. The page shows the same block.
+const cliBlock = readFileSync(join(ROOT, "setup/tinycloud.md"), "utf8")
+  .split("\nThe script is exactly this block, shown here so you and the owner can read it:\n")[1]
+  ?.match(/^\n```sh\n([\s\S]*?)\n```/)?.[1];
+if (!cliBlock) throw new Error("setup/tinycloud.md: no install block after 'The script is exactly this block'");
+write("skills/install-cli.sh", `#!/bin/sh\n# The TinyCloud CLI install block from ${BASE}/cli\n${cliBlock.replaceAll(SITE, BASE)}\n`);
 
 write(
   "skills/index.json",

@@ -35,7 +35,17 @@ The site's skills run the CLI as process `TC_BIN` if set, else read the saved `T
 - **`tinycloud`**, the name the pages tell the owner to type, and **`tc`**: each is linked in `~/.local/bin` only if that directory is already on the `PATH`, writable and has nothing by that name yet.
 - It never replaces or shadows another program. A name counts as taken when `command -v` finds it, whatever it does when run; it counts as TinyCloud's only when its real path is the CLI's. On Linux, `/usr/sbin/tc` is the system's traffic-control tool, so there `tc` stays as it is. Existing global CLIs are left untouched.
 
-Run this as one sequential foreground shell call, exactly as written:
+Download the install script, then run it, as two separate shell calls. Don't retype the script or run a shorter version of it: its last part links the `tinycloud` command.
+
+```sh
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.sh" https://agents.tinycloud.xyz/skills/install-cli.sh
+```
+
+```sh
+sh "$HOME/.local/share/tinycloud/install-cli.sh"
+```
+
+The script is exactly this block, shown here so you and the owner can read it:
 
 ```sh
 CLI_DIR="$HOME/.local/share/tinycloud/cli"
@@ -84,7 +94,7 @@ It prints one line for `tinycloud`, then one for `tc`:
 - `TC_READY 1.5.0 <name>` → that name already runs the pinned CLI.
 - `TC_LINKED 1.5.0 <link>` → the block linked that name to the pinned CLI.
 - `TC_CONFLICT <name> other` → another program has that name (`command -v` finds it), usually the Linux traffic-control tool for `tc`. It was left alone, whatever it does when run.
-- `TC_CONFLICT <name> <version>` (or `unknown`) → that name runs another TinyCloud CLI version; the block left it alone.
+- `TC_CONFLICT <name> <version>` (or `unknown`) → that name already runs a TinyCloud CLI, of another version; it is not the traffic-control tool or any other program. The block left it alone. Tell the owner: "`<name>` already runs TinyCloud CLI <version>, so I left it alone." For `unknown`, say "another TinyCloud CLI" in place of "TinyCloud CLI <version>".
 - `TC_CONFLICT <name> no-path` → nothing has that name, but `~/.local/bin` is not on the `PATH` and writable. For `tinycloud`, tell the owner, in these words: "To use the `tinycloud` command, add this line to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`): `export PATH="$HOME/.local/bin:$PATH"`. Then open a new terminal, start your agent from it, and ask it to run https://agents.tinycloud.xyz/cli again." The rerun creates `~/.local/bin` and links `tinycloud` there; it still leaves any other `tc` alone.
 - `TC_CONFLICT <name> link` → nothing has that name, but the link couldn't be made.
 - `TC_INSTALL_FAILED` → the npm install failed or the owner's `TC_BIN` doesn't run. Stop and report the error. Don't retry with other options or `sudo`.
@@ -95,13 +105,17 @@ On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: co
 
 Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.5.0`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tinycloud-cli` skill from an earlier CLI version is a replaceable mismatch. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide. A `tc-cli` folder in the same place is this skill under its old name, from an earlier setup; it can be removed.
 
-If the skill is missing or is a replaceable mismatch, run:
+This step is required: the skill is how you know the CLI's commands. If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls:
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent CLIENT
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
 ```
 
-The installer downloads the `tinycloud-cli` skill from `@tinycloud/cli@1.5.0` and checks every served file against `/skills/index.json`. The skill's examples run `tinycloud`. If the block above didn't print `TC_READY` or `TC_LINKED` for `tinycloud`, run the same commands with the full path instead: `$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`. The installer replaces only the `tinycloud-cli` folder and prints `SKILL_INSTALLED tinycloud-cli 1.5.0 <folder>`; anything else means the install failed, so stop and report it.
+```sh
+node "$HOME/.local/share/tinycloud/install.js" cli --agent CLIENT
+```
+
+The installer downloads the `tinycloud-cli` skill from `@tinycloud/cli@1.5.0` and checks every served file against `/skills/index.json`. The skill's examples run `tinycloud`. If the install script above didn't print `TC_READY` or `TC_LINKED` for `tinycloud`, run the same commands with the full path instead: `$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`. The installer replaces only the `tinycloud-cli` folder and prints `SKILL_INSTALLED tinycloud-cli 1.5.0 <folder>`; anything else means the install failed, so stop and report it.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
@@ -113,4 +127,4 @@ Return to the exact recorded app-guide heading and continue there without anothe
 
 ## Undo
 
-For the owner: delete each link that `TC_LINKED` reported (`tinycloud`, and `tc` if it was linked), if it still points into `~/.local/share/tinycloud/cli`. Then delete that folder and the `tinycloud-cli` skill folder (`~/.agents/skills/tinycloud-cli` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tinycloud-cli`). Removing them doesn't sign anything out or delete any data.
+For the owner: delete each link that `TC_LINKED` reported (`tinycloud`, and `tc` if it was linked), if it still points into `~/.local/share/tinycloud/cli`. Then delete that folder, the two downloaded setup files `~/.local/share/tinycloud/install-cli.sh` and `~/.local/share/tinycloud/install.js`, and the `tinycloud-cli` skill folder (`~/.agents/skills/tinycloud-cli` or `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tinycloud-cli`). Removing them doesn't sign anything out or delete any data.
