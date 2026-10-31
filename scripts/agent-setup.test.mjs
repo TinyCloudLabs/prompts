@@ -160,7 +160,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   mkdirSync(bin);
   const selected = join(bin, "custom-cli");
   const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.2.3');
+  executable(selected, 'echo 1.5.0-beta.28');
   executable(conflicting, 'echo unrelated');
   const original = readFileSync(conflicting);
   const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
@@ -290,3 +290,180 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
     assert.equal(existsSync(join(root, "functions", `${page}.js`)), true, page);
   }
 });
+
+test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and preserves process precedence", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const probe = block(guide, "## Before onboarding");
+  for (const scenario of ["saved", "process", "old", "unset"]) {
+    const dir = home();
+    const bin = join(dir, "bin");
+    mkdirSync(bin);
+    const saved = join(bin, "saved-cli");
+    const override = join(bin, "process-cli");
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "process" ? "1.5.0-beta.23" : "1.5.0-beta.28"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.0-beta.28 ;; esac');
+    const envFile = join(dir, "owner/agent.env");
+    const config = join(dir, ".config/tinycloud");
+    mkdirSync(config, { recursive: true, mode: 0o700 });
+    const helperPath = join(config, "agent-env.mjs");
+    writeFileSync(helperPath, readFileSync(helper), { mode: 0o600 });
+    if (scenario !== "unset") {
+      assert.equal(shell(`node "${helperPath}" set TC_BIN "${saved}"`, { HOME: dir, TC_AGENT_ENV: envFile }).status, 0);
+    }
+    const result = shell(`${probe}\nprintf 'RESOLVED=%s\\n' "$TC_BIN"`, {
+      HOME: dir,
+      TC_AGENT_ENV: envFile,
+      ...(scenario === "process" ? { TC_BIN: override } : {}),
+      PATH: `${bin}:${process.env.PATH}`,
+    });
+    if (scenario === "old") {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /COURIER_CLI_VERSION/);
+      assert.doesNotMatch(result.stdout, /RESOLVED=/);
+    } else {
+      assert.equal(result.status, 0, result.stderr);
+      const expected = scenario === "process" ? override : scenario === "unset" ? "" : saved;
+      assert.equal(result.stdout.trim(), `RESOLVED=${expected}`);
+    }
+  }
+});
+
+test("Courier preview resolver preserves an explicitly selected binary and checks its release and features", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const probe = block(guide, "## Check the installed CLI");
+  for (const scenario of ["current", "old", "broken", "missing", "not-executable", "no-join"]) {
+    const dir = home();
+    const selected = join(dir, "operator-cli");
+    const body = `case "$*" in
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.23" : "1.5.0-beta.28"}`} ;;
+      "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
+      *) exit 90 ;;
+    esac`;
+    if (scenario !== "missing") executable(selected, body);
+    if (scenario === "not-executable") chmodSync(selected, 0o600);
+    const before = scenario === "missing" ? null : readFileSync(selected);
+    const result = shell(probe, { HOME: dir, TC_BIN: selected });
+    assert.equal(result.status === 0, scenario === "current", `${scenario}: ${result.stderr}`);
+    if (before) assert.deepEqual(readFileSync(selected), before);
+    else assert.equal(existsSync(selected), false);
+    assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
+    if (scenario !== "current") assert.match(result.stderr, /TC_NOT_FOUND|COURIER_CLI/);
+  }
+});
+
+test("Courier preview offers exactly same-owner and anyone and never executes another mode", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const invite = block(guide, "## Choose how to invite");
+  for (const mode of ["same-owner", "anyone", "named", "email", ""]) {
+    const dir = home();
+    const selected = join(dir, "tc");
+    const calls = join(dir, "calls");
+    executable(selected, `printf '%s\\n' "$@" > "$CALLS"`);
+    const result = shell(invite, { HOME: dir, TC: selected, MODE: mode, SESSION_ID: "01M62GPP936EPBR37DK93RWS1H", CALLS: calls });
+    const allowed = mode === "same-owner" || mode === "anyone";
+    assert.equal(result.status === 0, allowed, result.stderr);
+    if (allowed) assert.deepEqual(readFileSync(calls, "utf8").trimEnd().split("\n"),
+      ["courier", "invite", "--session", "01M62GPP936EPBR37DK93RWS1H", "--mode", mode, "--consent"]);
+    else assert.equal(existsSync(calls), false);
+  }
+});
+
+test("Courier preview installs and serves the approved release pins", () => {
+  const skills = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8")).skills;
+  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.0-beta.28");
+  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.0-beta.19");
+  const dir = home();
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const calls = join(dir, "npm-calls");
+  executable(join(bin, "npm"), `printf '%s\\n' "$@" > "$NPM_CALLS"
+    mkdir -p "$HOME/.local/share/tinycloud/cli/node_modules/.bin"
+    printf '#!/bin/sh\\necho 1.5.0-beta.28\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"
+    chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"`);
+  const cliGuide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  const installed = shell(block(cliGuide, "## Install the CLI"), { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls });
+  assert.equal(installed.status, 0, installed.stderr);
+  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.0-beta.28"));
+  const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");
+  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.0-beta.28"]);
+});
+
+for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"]) {
+  test(`Courier remote setup consumes non-TTY codes with the real CLI: ${surface}`, () => {
+    const text = readFileSync(join(root, surface), "utf8");
+    const section = text.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+    assert.ok(section, `${surface}: missing executable remote setup`);
+    const [request, redeem] = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+    assert.ok(request && redeem, `${surface}: missing request or code-import step`);
+    const dir = home();
+    const courierHome = join(dir, "courier");
+    const cliHome = join(dir, "cli");
+    mkdirSync(cliHome, { mode: 0o700 });
+    writeFileSync(join(cliHome, "sentinel"), "existing CLI context\n");
+    const requests = join(dir, "requests.jsonl");
+    const forbidden = join(dir, "forbidden.jsonl");
+    const fence = join(dir, "network-fence.cjs");
+    writeFileSync(fence, `
+      const fs = require("node:fs");
+      const { syncBuiltinESMExports } = require("node:module");
+      const deny = (operation) => () => {
+        fs.appendFileSync(${JSON.stringify(forbidden)}, operation + "\\n");
+        throw Error("COURIER_TEST_NETWORK_DENIED");
+      };
+      globalThis.fetch = async (input, options = {}) => {
+        const url = String(input);
+        if (url !== "https://openkey.example.invalid/api/delegation-codes/abcd-efgh") return deny("fetch")();
+        fs.appendFileSync(${JSON.stringify(requests)}, JSON.stringify({ url, method: options.method || "GET", redirect: options.redirect }) + "\\n");
+        return new Response("{}", { status: 404 });
+      };
+      for (const name of ["http", "https"]) {
+        const module = require("node:" + name);
+        for (const operation of ["get", "request", "createServer"]) module[operation] = deny(name + "." + operation);
+      }
+      for (const [name, operations] of [["net", ["connect", "createConnection", "createServer"]], ["tls", ["connect"]], ["dns", ["lookup"]]]) {
+        const module = require("node:" + name);
+        for (const operation of operations) module[operation] = deny(name + "." + operation);
+      }
+      syncBuiltinESMExports();
+    `);
+    const env = {
+      PATH: process.env.PATH, HOME: dir, TC_HOME: cliHome, TC_PROFILE: "existing-owner",
+      COURIER_HOME: courierHome, COURIER_TEST: "1", COURIER_TEST_HOME: dir,
+      COURIER_HOST: "https://node.example.invalid", COURIER_OPENKEY_HOST: "https://openkey.example.invalid",
+      COURIER_OPENKEY_API_HOST: "https://openkey.example.invalid",
+      TC: join(root, "node_modules/.bin/tinycloud"), NODE_OPTIONS: `--require=${fence}`, FORCE_COLOR: "0",
+    };
+    const run = (script, code) => spawnSync("sh", ["-c", script], {
+      env: { ...env, ...(code === undefined ? {} : { COURIER_CODE: code }) },
+      encoding: "utf8", timeout: 15000,
+    });
+    const issued = run(request);
+    assert.ifError(issued.error);
+    assert.equal(issued.status, 0, issued.stderr);
+    const approval = JSON.parse(issued.stdout);
+    const url = new URL(approval.openkeyUrl);
+    assert.equal(url.origin, "https://openkey.example.invalid");
+    assert.equal(url.searchParams.has("callback"), false);
+    assert.equal("d" in approval.publicJwk, false);
+    assert.equal(JSON.parse(readFileSync(join(courierHome, "profile.json"), "utf8")).courierDid, approval.courierDid);
+    const keyDigest = () => createHash("sha256").update(readFileSync(join(courierHome, "key.json"))).digest("hex");
+    const originalKey = keyDigest();
+    const malformed = run(redeem, "not-a-grant");
+    assert.ifError(malformed.error);
+    assert.equal(malformed.status, 1, malformed.stderr);
+    assert.match(malformed.stderr, /\[bad-grant\]/);
+    assert.equal(existsSync(requests), false);
+    const expired = run(redeem, "ABCD-EFGH");
+    assert.ifError(expired.error);
+    assert.equal(expired.status, 1, expired.stderr);
+    assert.match(expired.stderr, /\[code-not-found\]/);
+    assert.deepEqual(readFileSync(requests, "utf8").trim().split("\n").map((line) => JSON.parse(line)), [{
+      url: "https://openkey.example.invalid/api/delegation-codes/abcd-efgh", method: "GET", redirect: "error",
+    }]);
+    assert.equal(keyDigest(), originalKey);
+    assert.equal(existsSync(join(courierHome, "grant.json")), false);
+    assert.equal(existsSync(forbidden), false);
+    assert.deepEqual(readdirSync(cliHome), ["sentinel"]);
+    assert.equal(readFileSync(join(cliHome, "sentinel"), "utf8"), "existing CLI context\n");
+  });
+}
