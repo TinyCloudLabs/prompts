@@ -301,8 +301,8 @@ test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and p
     mkdirSync(bin);
     const saved = join(bin, "saved-cli");
     const override = join(bin, "process-cli");
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "process" ? "1.5.0-beta.23" : "1.5.0-beta.28"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.5.0-beta.28 ;; esac');
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.0"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.0 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -336,15 +336,16 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     const dir = home();
     const selected = join(dir, "operator-cli");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.23" : "1.5.0-beta.28"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.0"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
     if (scenario !== "missing") executable(selected, body);
     if (scenario === "not-executable") chmodSync(selected, 0o600);
     const before = scenario === "missing" ? null : readFileSync(selected);
-    const result = shell(probe, { HOME: dir, TC_BIN: selected });
+    const result = shell(`${probe}\nprintf 'COURIER_LINK_ORIGIN=%s\\n' "$COURIER_LINK_ORIGIN"`, { HOME: dir, TC_BIN: selected });
     assert.equal(result.status === 0, scenario === "current", `${scenario}: ${result.stderr}`);
+    assert.equal(result.stdout.trim(), scenario === "current" ? "COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz" : "");
     if (before) assert.deepEqual(readFileSync(selected), before);
     else assert.equal(existsSync(selected), false);
     assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
@@ -468,3 +469,22 @@ for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_si
     assert.equal(readFileSync(join(cliHome, "sentinel"), "utf8"), "existing CLI context\n");
   });
 }
+test("Courier guide links to production skill pages present in the built site", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const links = [...guide.matchAll(/\[[^\]]+\]\((https:\/\/[^)]+\/skills\/courier\/(?:SKILL|start)\.md)\)/g)]
+    .map((match) => match[1]);
+  assert.deepEqual(links, [
+    "https://agents.tinycloud.xyz/skills/courier/SKILL.md",
+    "https://agents.tinycloud.xyz/skills/courier/start.md",
+  ]);
+  for (const link of links) {
+    assert.ok(existsSync(join(root, "_site", new URL(link).pathname.slice(1))));
+  }
+});
+test("Courier skill instructions retain the production invitation viewer origin", () => {
+  for (const surface of ["SKILL.md", "start.md"]) {
+    const text = readFileSync(join(root, `_site/skills/courier/${surface}`), "utf8");
+    assert.match(text, /COURIER_LINK_ORIGIN=https:\/\/courier\.tinycloud\.xyz/);
+    assert.doesNotMatch(text, /COURIER_LINK_ORIGIN=https:\/\/preview-tc1544-step1\.courier-ae3\.pages\.dev/);
+  }
+});

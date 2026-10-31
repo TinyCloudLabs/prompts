@@ -13,7 +13,7 @@ Route by capability, not by client name:
 
 ## Before onboarding
 
-Use Node.js 22.20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. A selected path that is missing or not CLI `1.5.0-beta.28` stops here; do not switch binaries. With no selection, continue to onboarding, which installs the default CLI.
+Use Node.js 22.20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. A selected path that is missing or not CLI `1.5.0` stops here; do not switch binaries. With no selection, continue to onboarding, which installs the default CLI.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -26,15 +26,15 @@ fi
 if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
   TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
-  [ "$TC_VERSION" = 1.5.0-beta.28 ] || { echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.5.0-beta.28; binary left unchanged" >&2; exit 1; }
+  [ "$TC_VERSION" = 1.5.0 ] || { echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.5.0; binary left unchanged" >&2; exit 1; }
 fi
 ```
 
 Keep the owner's original request and any incoming invitation URL exactly as supplied. Reuse the existing TinyCloud CLI sign-in from `/onboarding`; do not create another TinyCloud CLI profile for Courier. Codes and delegations are fine in chat; secrets are not. Never ask for an owner key, use hidden code files or owner-run `tc auth grant`, or ask the owner to construct grant JSON.
 
-**One extra Courier approval:** CLI `1.5.0-beta.28` and Courier `0.4.0-beta.19` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
+**One extra Courier approval:** CLI `1.5.0` and Courier `0.4.0` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
 
-After onboarding, install or reuse the Courier action skill `0.4.0-beta.19` through your agent's standard skill mechanism; do not overwrite a modified skill. Read this preview's [`SKILL.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/SKILL.md) and [`start.md`](https://preview-tc1544-step1.tinycloud-agents.pages.dev/skills/courier/start.md). If your agent cannot install local skills, read those pages directly. This step does not sign in or request a grant.
+After onboarding, install or reuse the Courier action skill `0.4.0` through your agent's standard skill mechanism; do not overwrite a modified skill. Read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). If your agent cannot install local skills, read those pages directly. This step does not sign in or request a grant.
 
 ## Check the installed CLI
 
@@ -54,12 +54,12 @@ TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"
 [ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"
 [ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
-[ "$TC_VERSION" = 1.5.0-beta.28 ] || { echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.5.0-beta.28; binary left unchanged" >&2; exit 1; }
+[ "$TC_VERSION" = 1.5.0 ] || { echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.5.0; binary left unchanged" >&2; exit 1; }
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
 for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac
 done
-export COURIER_LINK_ORIGIN='https://preview-tc1544-step1.courier-ae3.pages.dev'
+export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 ```
 
 These are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
