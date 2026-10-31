@@ -160,7 +160,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   mkdirSync(bin);
   const selected = join(bin, "custom-cli");
   const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.5.0-beta.28');
+  executable(selected, 'echo 1.5.0');
   executable(conflicting, 'echo unrelated');
   const original = readFileSync(conflicting);
   const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
@@ -370,7 +370,7 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
 
 test("Courier preview installs and serves the approved release pins", () => {
   const skills = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8")).skills;
-  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.0-beta.28");
+  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.0");
   assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.0-beta.19");
   const dir = home();
   const bin = join(dir, "bin");
@@ -378,14 +378,14 @@ test("Courier preview installs and serves the approved release pins", () => {
   const calls = join(dir, "npm-calls");
   executable(join(bin, "npm"), `printf '%s\\n' "$@" > "$NPM_CALLS"
     mkdir -p "$HOME/.local/share/tinycloud/cli/node_modules/.bin"
-    printf '#!/bin/sh\\necho 1.5.0-beta.28\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"
-    chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc"`);
+    printf '#!/bin/sh\\necho 1.5.0\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+    chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"`);
   const cliGuide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
   const installed = shell(block(cliGuide, "## Install the CLI"), { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls });
   assert.equal(installed.status, 0, installed.stderr);
-  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.0-beta.28"));
+  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.0"));
   const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");
-  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.0-beta.28"]);
+  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.0"]);
 });
 
 for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"]) {
