@@ -71,8 +71,8 @@ const PAGES = [
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released Courier skill contains one of these exact resolvers (courier 0.1.3
-// ends in `tc`, 0.4.0 in `tinycloud`). Replace it in every published Markdown file.
+// The released Courier skill preamble uses one of these exact resolvers. Keep the
+// site's data-only operator selection behavior in every served Markdown file.
 // The CLI skill has none since 1.5.0: its examples run `tinycloud` from the PATH.
 const upstreamResolver = (bin) => [
   `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
@@ -84,13 +84,18 @@ const RESOLVER = [
   '{ set +x; } 2>/dev/null; umask 077',
   'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
   '[ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }',
-  'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
-  '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
+  'if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then',
+  '  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :',
+  '  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi',
   'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
+  'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
+  '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
+  .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+if (!courierSetup) throw new Error("Courier guide is missing executable remote setup.");
+const COURIER_SETUP = `## Set up Courier once\n${courierSetup.trim()}`;
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
 const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
@@ -106,8 +111,17 @@ const SKILLS = [
     integrity: "sha512-fkdOsJ9HUK/cNqiLi438er1bShs7X1FxeW5Lb1me/lNDWMXEKve1YMwcd5zQ0uOG8kaWCyXPPmQgst+BwQbTbg==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
-    // Download the installer, then run it in a separate call: some agents refuse a download piped into node.
+    // The released skill says catalog installs run on the onboarding profile, but
+    // the onboarding grant has no `tinycloud.sql/schema`, which installing needs.
+    // INSTALL.md: download the installer, then run it in a separate call: some
+    // agents refuse a download piped into node.
     changes: {
+      "SKILL.md": [
+        [
+          "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+          "Catalog installation requires `tinycloud.sql/schema` as well as the app's data permissions. The onboarding grant does not include that installation permission; obtain the app's required installation access before running this command:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+        ],
+      ],
       "INSTALL.md": [
         [
           "curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent claude-code\ncurl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code",
@@ -118,11 +132,33 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.4.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.0.tgz",
-    integrity: "sha512-AGi2tyygPHj6NB1V56kj8Nz7w0WfuxMPZlZTKBxKHQgfFxIs/6aXvmWdUB8xFVT1tFPKSJt/y5rimIxw3XeEFw==",
+    version: "0.4.0-beta.19",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.0-beta.19.tgz",
+    integrity: "sha512-cS4icq+3jSz9u9Xj+BCnneGhwAIUVy79HGvjfC6JvqvlHa1Sbj/z0WmQ9OZZt2X7RZAfkSex37+v6iYXVWtBOg==",
     dir: "package/skills/courier",
     checkCli: true,
+    changes: {
+      "SKILL.md": [
+        [
+          "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
+          "For this preview, offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the preview Courier guide's two-choice flow.",
+        ],
+        [
+          "`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey (`tinycloud courier init --paste` also accepts the OpenKey `XXXX-XXXX`\ncode) and decides who to pair with.\nIf OpenKey reports the space is still being set up, `init` waits up to about 2.5 minutes; otherwise use `init --resume`.",
+          "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. For this preview, set COURIER_LINK_ORIGIN=https://preview-tc1544-step1.courier-ae3.pages.dev for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
+        ],
+      ],
+      "start.md": [
+        [
+          "Start Courier for me using the installed courier command. Reuse my existing Courier profile and restricted grant. If setup is required, use the normal courier init approval flow; do not request my owner key or broader permissions.",
+          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote two-command setup below: request one Courier approval, give me its exact openkeyUrl with one plain permission sentence, and import the code I send back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://preview-tc1544-step1.courier-ae3.pages.dev for this preview's invitation viewer, and preserve every returned invitation URL exactly.",
+        ],
+        [
+          "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent. Keep the issuer serving while the recipient joins. Give me its exact handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+        ],
+      ],
+    },
   },
   {
     short: "chat",
@@ -265,6 +301,14 @@ async function loadSkill(skill) {
       files[i] = [path, Buffer.from(text)];
     }
     changed.add(path);
+  }
+  if (skill.short === "courier") {
+    files = files.map(([path, body]) => {
+      if (path !== "start.md") return [path, body];
+      changed.add(path);
+      const prompt = body.toString("utf8").replace(/\bcourier (?=start|init|join|invite|read|send)/g, '"$TC" courier ');
+      return [path, Buffer.from(`${prompt.trimEnd()}\n\n${COURIER_SETUP}\n`)];
+    });
   }
   if (skill.short === "courier") {
     files = files.map(([path, body]) => {
