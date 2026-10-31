@@ -6,15 +6,15 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 > Set me up with TinyCloud: https://agents.tinycloud.xyz/onboarding
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve.
+- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
 ## How this works
 
-The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. With the hosted MCP, approval is by link only; no code is involved.
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each one issues a grant that only that key can use, and the CLI collects it by itself. There's no code to send back: the owner tells the agent when they've approved. With the hosted MCP, approval is by link too.
 
-The code is safe to send in chat: it works only for this computer's CLI, once, within 5 minutes. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
+The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
 ## For the agent
 
@@ -46,37 +46,34 @@ TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0-beta.20 or later.
+No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0-beta.28 or later.
 
-**2. Run onboarding.** Each run does the next approval. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set.
+**2. Run onboarding.** One run does both approvals and keeps running until the owner has approved them. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set. Start it so it keeps running while you talk to the owner: as a background process (your client's own, if it has one) or in an interactive session, with stderr going to a file you read:
 
 ```sh
-"$TC" onboard
+"$TC" onboard > onboard.out 2> onboard.err
 ```
 
-It prints JSON on stdout:
+For each approval it prints `Approve in OpenKey: https://openkey.so/a/…` on stderr: step 1 first, then step 2. Send the owner each link with this line: "Open this link and approve; tell me when you're done." For step 1, start that message with this text, word for word:
 
-- **Exit 8, `"onboarded": false`:** the owner needs to approve. Send them one message with `approvalUrl` and this line, filling in `asks` with its first letter in lower case: "Open this link and sign in or create your account. It lets me <asks> Approve, then send me the short code OpenKey shows (like ABCD-EFGH)." For step 1, start that message with this text, word for word:
+> I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
-  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
+When the owner says they're done, read the files again and wait for the next link or the result:
 
-  When they reply with the code, run this with the code exactly as they sent it:
+- **Exit 0, stdout `"onboarded": true`:** done. Tell the owner in one line that TinyCloud is set up, then go to [the owner's goal](#the-owners-goal). If they asked only for setup, end with a short list of what they can ask you next: keep records, share or publish a page, use a stored API key, ask about their meetings.
+- **The command stopped first** (a tool timeout, a restart): run `"$TC" onboard` again the same way. It keeps what the owner already approved and prints the pending link again.
 
-  ```sh
-  "$TC" onboard --code '<the code>'
-  ```
+Never run `onboard --code`: these links don't produce a code.
 
-  It finishes that approval and either prints the next link (exit 8 again: send it the same way, without the step-1 text) or finishes.
-- **Exit 0, `"onboarded": true`:** done. Tell the owner in one line that TinyCloud is set up, then go to [the owner's goal](#the-owners-goal). If they asked only for setup, end with a short list of what they can ask you next: keep records, share or publish a page, use a stored API key, ask about their meetings.
-
-The owner can open the link on any device, their phone included; OpenKey shows the code there for them to send back to you.
+The owner can open the link on any device, their phone included.
 
 **If something goes wrong:**
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
+- **Exit 8:** OpenKey is unavailable for now. Wait a minute and run `"$TC" onboard` again.
+- **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run `"$TC" onboard` again and send the new link.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
-- **The code is refused:** each code works once and expires after 5 minutes. Send the latest `approvalUrl` again and ask for the new code.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 
 ## MCP
