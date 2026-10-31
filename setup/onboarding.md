@@ -39,14 +39,14 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and its `tc-cli` skill; do both of its install steps.
+**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and its `tinycloud-cli` skill; do both of its install steps.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0-beta.28 or later.
+No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0 or later.
 
 **2. Run onboarding.** One run does both approvals and keeps running until the owner has approved them. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set. Start it so it keeps running while you talk to the owner: as a background process (your client's own, if it has one) or in an interactive session, with stderr going to a file you read:
 

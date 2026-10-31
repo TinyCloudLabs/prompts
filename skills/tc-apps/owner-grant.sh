@@ -1,5 +1,5 @@
 #!/bin/sh
-# Agent-run owner approval: keep stdin attached to the agent's interactive session for chat codes.
+# Agent-run owner approval: keep stdin attached to the agent's interactive session for the sign-in's chat code.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
 if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
@@ -69,21 +69,23 @@ if [ ! -s "$DIR/owner-did.txt" ]; then
   printf '%s\n' "$OWNER_DID" > "$DIR/owner-did.txt"
 fi
 RC=0
+echo 'Access link: the owner approves it in OpenKey and no code comes back. This step finishes on its own after the approval.' >&2
 "$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
 ACTIVE_PID=$!
 wait "$ACTIVE_PID" || RC=$?
 ACTIVE_PID=
 if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
-  echo 'The owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  echo 'APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link.' >&2
+  echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then
-  echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
+  echo 'The grant failed, so nothing was saved. Tell your agent.' >&2
   exit 1
 fi
 if [ ! -s "$TMP" ]; then
-  echo 'The grant printed nothing. Tell your agent; do not retry the browser screen.' >&2
+  echo 'The grant printed nothing, so nothing was saved. Tell your agent.' >&2
   exit 1
 fi
 DONE=1

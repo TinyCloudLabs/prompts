@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records (weight, workouts, goals, todos, anything they track) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, even if they don't mention TinyCloud. The owner approves each app on OpenKey from a link you show them and pastes the code back to you in chat. The agent runs every command.
 metadata:
-  version: "0.2.2"
+  version: "0.2.3"
 ---
 
 # Personal apps in TinyCloud
@@ -31,7 +31,7 @@ An app is in one of two layouts, and §1a decides which, per app. **New layout:*
 
 Operator-set, never change or unset:
 - `TC_BIN`: absolute path to the TinyCloud CLI (`tinycloud`), CLI `1.3.4` or newer, used for Health Log, Recipes and legacy mode. Optional: without it, §1 finds `~/.local/share/tc-apps/tinycloud` (or an earlier install's `tc` in the same folder), the script that the setup at `agents.tinycloud.xyz/apps` installs to run its private CLI and retry dropped connections. Never use `command -v tc`: it can resolve to `/usr/sbin/tc` or to another tool's `tc`.
-- `TC_BETA_BIN`: absolute path to TinyCloud CLI `1.5.0-beta.2` or newer, used only for the new layout (§3 to §9 and `SQL.md`), because the create-only write and the browser sign-in of the new layout need it. Optional: without it, §1a finds the copy the setup installs in `~/.local/share/tc-apps/cli-beta`. It has no retry script: if a command fails with `NETWORK_ERROR`, run it once more.
+- `TC_BETA_BIN`: absolute path to TinyCloud CLI `1.5.0` or newer, used only for the new layout (§3 to §9 and `SQL.md`), because the create-only write and the browser sign-in of the new layout need it. Optional: without it, §1a finds the copy the setup installs in `~/.local/share/tc-apps/cli-beta`. It has no retry script: if a command fails with `NETWORK_ERROR`, run it once more.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
 
@@ -158,7 +158,7 @@ TC_BIN='<TC_BETA>'; umask 077
 "$TC_BIN" context --json --profile tinyapp-<APP>-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.5.0-beta.2` or newer. Otherwise follow the setup link again to install its pinned copy; don't ask the owner to update a CLI or set variables.
+- The first line must be `1.5.0` or newer. Otherwise follow the setup link again to install its pinned copy; don't ask the owner to update a CLI or set variables.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the entry read, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4 for this app, then run this block again.
 - The entry prints a record, and the list prints `"keys"` → the app exists in `applications`: use it. The keys are the app's kind records, `<ID>/catalog/<kind>`; `"keys": []` means no kinds yet. Read the app record `<ID>/catalog` and the kind records you need with §5's blocks. For "what do you keep for me?", list the entries under `xyz.tinycloud.tinyapps.catalog/` with any app's profile (`"$TC_BIN" profile list` names them: `tinyapp-<app>`), then read each app's catalog records the same way; also list the old catalog (`LEGACY.md` §3) for apps still in legacy mode.
 - The entry says `NOT_FOUND` → this app has no entry in `applications` yet: a new app (§1a found no old records, or the owner's move is verified and the entry is being read for the first time). Continue with §4 (its approval) if the sign-in is missing, then rule 1 and rule 2 of §2. If a verified receipt exists for this app but the entry is missing, write nothing and tell the owner.
