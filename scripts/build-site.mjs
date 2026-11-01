@@ -595,6 +595,8 @@ const llms = [
   "",
   `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 22.20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
   "",
+  "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
+  "",
   "## Abilities",
   "",
   ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${examplePrompt(a)}"`),
