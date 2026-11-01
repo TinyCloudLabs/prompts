@@ -1,7 +1,8 @@
 #!/bin/sh
-# Agent-run, owner-requested step: end Health Log access early in an interactive tool session.
+# Agent-run, owner-requested step: end Health Log access early. The owner's request in chat is the
+# confirmation, so it needs no terminal: run it in the background with its output going to a file.
 # Usage: sh owner-undo.sh
-# Relay each [y/N] confirmation through chat to this session, and any OpenKey link to the owner (no code comes back). PROFILE_NOT_FOUND on logout or delete is fine.
+# If it prints an OpenKey link, send it to the owner (no code comes back). PROFILE_NOT_FOUND on logout or delete is fine.
 set -u
 if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; else TC=$TC_BIN; fi
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
@@ -18,7 +19,7 @@ if [ ! -e "$STATE/meal-grant.json" ]; then
   exit 0
 fi
 if ! command -v jq > /dev/null 2>&1; then
-  echo 'jq is needed to read the grant id, so nothing was revoked. Without jq, the agent can read delegationCid from meal-grant.json and run delegation revoke -- <cid> with the same client in an interactive tool session, relaying confirmations and any OpenKey link through chat.' >&2
+  echo 'jq is needed to read the grant id, so nothing was revoked. Without jq, the agent can read delegationCid from meal-grant.json and run `--profile owner delegation revoke --yes -- <cid>` with the same CLI, sending any OpenKey link it prints to the owner.' >&2
   exit 1
 fi
 CIDS=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null | grep -E '^bafkr4i[a-z2-7]{52}$' || true)
@@ -28,7 +29,7 @@ if [ -z "$CIDS" ]; then
 fi
 FAIL=0
 for CID in $CIDS; do
-  "$TC" delegation revoke -- "$CID" < /dev/tty; RC=$?
+  "$TC" --profile owner delegation revoke --yes -- "$CID" < /dev/null; RC=$?
   if [ "$RC" -eq 0 ]; then REVOKED=1; elif [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; else FAIL=1; fi
 done
 if [ "$FAIL" -ne 0 ]; then

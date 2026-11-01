@@ -151,10 +151,10 @@ To go back, the owner asks in chat. Follow `SKILL.md` §9's going-back procedure
 
 The agent's access ends on its own: the Health Log grant after 7 days, and each app's sign-in after 30 days. To end it sooner, ask your agent in chat to undo access.
 
-For the agent: run this helper in a live interactive tool session. Relay each confirmation to the owner in chat and send their answer to that process's stdin. If OpenKey shows a link, relay it; the owner approves there, and no code comes back. Never ask the owner to run a command. Keep the same CLI and state paths used at setup; do not edit `meal-grant.json`.
+For the agent: the owner's request in chat is the confirmation, so the helper asks nothing and needs no terminal. Run it in the background with its output going to a file, and read that file until it shows `Done` or an error. If it prints an OpenKey link, send it to the owner; they approve there, and no code comes back. Never ask the owner to run a command. Keep the same CLI and state paths used at setup; do not edit `meal-grant.json`.
 
 ```sh
-sh "$HOME/.local/share/tc-apps/skill/owner-undo.sh"
+sh "$HOME/.local/share/tc-apps/skill/owner-undo.sh" > "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}/undo.out" 2>&1 &
 ```
 
 The helper ends the earlier `agent-data` sign-ins and revokes the recorded Health Log grant. To end every per-app local sign-in as requested, the agent runs:
