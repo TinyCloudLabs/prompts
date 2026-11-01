@@ -10,12 +10,12 @@ Optional. The agent doesn't need this and won't set it. Claude Code may stop a c
   "autoMode": {
     "allow": [
       "$defaults",
-      "This is not Unauthorized Persistence: saving the owner's TinyCloud sign-in is allowed. The agent may run the TinyCloud CLI that the tc-apps setup installed (~/.local/share/tc-apps/tinycloud or tc, or ~/.local/share/tc-apps/cli/node_modules/.bin/tinycloud or tc) with `init --name agent-data --key-only`, and with `auth login --device --manifest ~/.local/state/tc-apps/agent-data.json --expiry 30d --profile agent-data` (or the same file under $TC_APPS_STATE, if the owner set that), to save a key and a 30-day session in the owner's TinyCloud profile folder (~/.tinycloud, or the TC_HOME the owner already set). That manifest requests only tinycloud.kv on xyz.tinycloud.agent-data/. Only those two commands and only the profile name agent-data. The device link and code may be shown only to the owner, who approves the sign-in on openkey.so."
+      "This is not Unauthorized Persistence: saving the owner's TinyCloud sign-in is allowed. The agent may run the TinyCloud CLI that the tc-apps setup installed (~/.local/share/tc-apps/tinycloud) with `init --name <profile> --key-only`, `init --name owner`, and `auth login --method openkey` (for an app profile, with `--manifest` set to that profile's file in ~/.local/state/tc-apps, or $TC_APPS_STATE if the owner set that, and `--expiry 30d`), to save a key and a session in the owner's TinyCloud profile folder (~/.tinycloud, or the TC_HOME the owner already set). Only the profiles owner, agent-data, agent-data-sql, tinyapp-<app> and tinyapp-<app>-sql; each app manifest requests only that app's folder or index. The OpenKey link may be shown only to the owner, who approves the sign-in on openkey.so."
     ]
   }
 }
 ```
 
-If you added this setting before, paste it again so it also covers the new `tinycloud` name.
+If you added this setting before, paste it again so it covers the current sign-in commands.
 
 To undo it, delete the entry.
