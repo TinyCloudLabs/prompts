@@ -50,8 +50,8 @@ if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
   if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :
   else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi
 fi
-TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"
-[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"
+TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
+[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"
 [ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
 [ "$TC_VERSION" = 1.5.1 ] || { echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.5.1; binary left unchanged" >&2; exit 1; }

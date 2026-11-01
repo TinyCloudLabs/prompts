@@ -363,6 +363,66 @@ test("Courier preview resolver preserves an explicitly selected binary and check
   }
 });
 
+test("Courier check without TC_BIN runs the tinycloud binary from /cli's install, else the global one, never tc", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const probe = block(guide, "## Check the installed CLI");
+  const cli = `case "$*" in
+    --version) echo 1.5.1 ;;
+    "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' '  join link --consent' ;;
+    *) exit 90 ;;
+  esac`;
+  for (const scenario of ["private", "global", "tc-only"]) {
+    const dir = home();
+    const bin = join(dir, "bin");
+    mkdirSync(bin);
+    executable(join(bin, "npm"), `[ "$*" = "prefix --global" ] && echo "$HOME/global"`);
+    const privateBin = join(dir, ".local/share/tinycloud/cli/node_modules/.bin");
+    const globalBin = join(dir, "global/bin");
+    mkdirSync(privateBin, { recursive: true });
+    mkdirSync(globalBin, { recursive: true });
+    if (scenario === "private") executable(join(privateBin, "tinycloud"), cli);
+    if (scenario === "global") executable(join(globalBin, "tinycloud"), cli);
+    executable(join(privateBin, "tc"), cli);
+    executable(join(globalBin, "tc"), cli);
+    const result = shell(`${probe}\nprintf 'TC=%s\\n' "$TC"`, { HOME: dir, PATH: `${bin}:/usr/bin:/bin` });
+    if (scenario === "tc-only") {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /TC_NOT_FOUND: .*\/global\/bin\/tinycloud/);
+    } else {
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout.trim(), `TC=${join(scenario === "private" ? privateBin : globalBin, "tinycloud")}`);
+    }
+  }
+});
+
+test("Asking for more runs auth request --grant in the background with no pasted code", () => {
+  const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
+  const request = block(guide, "### Asking for more later");
+  assert.match(request, /&$/);
+  assert.doesNotMatch(guide.split("### Asking for more later")[1].split("\n## ")[0], /--paste|<the code>|\bpaste\b/i);
+  const dir = home();
+  const tc = join(dir, "tinycloud");
+  executable(tc, `printf '%s\\n' "$@" > "$HOME/calls"; cat > "$HOME/stdin"; echo 'Approve this request in OpenKey: https://openkey.so/a/x#y' >&2; echo '{ "changed": true }'`);
+  const result = shell(`cd "$HOME" && ${request}\nwait`, { HOME: dir, TC: tc });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(readFileSync(join(dir, "calls"), "utf8").trimEnd().split("\n"),
+    ["auth", "request", "--cap", "tinycloud.kv:<space>:<path>:<actions>", "--grant", "--no-popup", "--expiry", "30d"]);
+  assert.equal(readFileSync(join(dir, "stdin"), "utf8"), "");
+  assert.match(readFileSync(join(dir, "request.err"), "utf8"), /^Approve this request in OpenKey: https:\/\/openkey\.so\/a\//);
+  assert.match(readFileSync(join(dir, "request.out"), "utf8"), /"changed": true/);
+});
+
+test("Served CLI skill signs in and asks for more without a pasted code", () => {
+  for (const file of ["SKILL.md", "AUTH.md", "REFERENCE.md"]) {
+    const text = readFileSync(join(root, "_site/skills/cli", file), "utf8");
+    assert.doesNotMatch(text, /--grant --paste|--method openkey --paste|"\$CODE"|pass their code/, file);
+  }
+  const skill = readFileSync(join(root, "_site/skills/cli/SKILL.md"), "utf8");
+  assert.match(skill, /auth request --cap SPEC --grant --no-popup --expiry 30d/);
+  assert.match(skill, /--profile publisher auth login --method openkey --no-popup --manifest share-publishing\.json --expiry 30d > login\.out 2> login\.err < \/dev\/null &/);
+  assert.doesNotMatch(readFileSync(join(root, "_site/skills/cli/INSTALL.md"), "utf8"), /npm uninstall --global/);
+});
+
 test("Courier preview offers exactly same-owner and anyone and never executes another mode", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const invite = block(guide, "## Choose how to invite");
