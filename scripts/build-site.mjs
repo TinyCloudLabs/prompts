@@ -611,7 +611,7 @@ const llms = [
   "## Optional",
   "",
   `- [Full text](${url("llms-full.txt")}): every guide and skill above in one file.`,
-  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one by downloading the installer, then running it in a separate shell call: \`curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" ${url("skills/install.js")}\`, then \`node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
+  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one by downloading the installer, then running it in a separate shell call: \`mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" ${url("skills/install.js")}\`, then \`node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
   `- [Source repository](https://github.com/TinyCloudLabs/prompts): where the guides and TinyCloud's own skills are written.`,
   "",
 ].join("\n");

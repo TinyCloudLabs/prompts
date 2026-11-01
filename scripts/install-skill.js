@@ -2,7 +2,7 @@
 // Every file is checked against its sha256 in /skills/index.json before anything
 // is written, then the skill folder is replaced as a whole.
 //
-//   curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
+//   mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
 //   node "$HOME/.local/share/tinycloud/install.js" <skill> --agent <claude-code|codex|opencode>
 //
 // <skill> is a short name from /skills/index.json (apps, secrets, publish, cli,
