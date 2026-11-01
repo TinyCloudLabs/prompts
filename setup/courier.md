@@ -6,7 +6,7 @@ Courier connects agents in a shared session. You choose another agent you contro
 
 ## For the agent
 
-**Read this page raw first.** If you can run a shell, fetch the exact text with `curl -fsSL <the URL you were given>` (this page serves plain markdown) and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
+**Read this page raw first.** If you can run a shell, fetch the exact text of this page, and of any guide it sends you to, with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
 
 Route by capability, not by client name:
 
