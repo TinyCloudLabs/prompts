@@ -597,6 +597,8 @@ const llms = [
   "",
   "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
   "",
+  "Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.",
+  "",
   "## Abilities",
   "",
   ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${examplePrompt(a)}"`),
