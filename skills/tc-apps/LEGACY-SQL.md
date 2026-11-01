@@ -3,7 +3,7 @@
 Part of the `tc-apps` skill's legacy mode: read `SKILL.md` and `LEGACY.md` first. The index copies every record into a SQLite database, `xyz.tinycloud.agent-data.index`, in the owner's `default` space, so one query can answer a question over many records. The KV records stay the truth: when the index and KV disagree, KV wins, and §6 rebuilds the index from it.
 
 - **Profile:** `agent-data-sql`, separate from `agent-data`.
-- **Sign-in:** the agent runs the sign-in commands. The owner approves on OpenKey, then pastes the code back to the agent in chat; 1b finishes the sign-in.
+- **Sign-in:** the agent runs the sign-in command in the background. The owner approves on OpenKey and tells the agent when they're done; no code comes back.
 - **Lifetime:** 30 days.
 - **Reach:** the grant names one database, but TinyCloud's node also lets it open the space's other SQL databases. The owner accepted this. Always pass exactly `--db xyz.tinycloud.agent-data.index`, never a longer or different name.
 
@@ -13,55 +13,49 @@ Run the blocks as `SKILL.md` says: literal `<TC_BIN>` and `<STATE>` from its §1
 
 ## 1. Ask for the fast copy
 
-`LEGACY.md` §7 sends you here when an answer needed many records and the index is missing or expired, or when the owner asks about it. It takes two steps: you ask in 1a, and finish in 1b once the owner sends the code.
+`LEGACY.md` §7 sends you here when an answer needed many records and the index is missing or expired, or when the owner asks about it. It takes two steps: you start the sign-in and send the link in 1a, and check the result in 1b once the owner says they're done.
 
 When talking to the owner, it's "a fast, searchable copy of your records". Don't say "index", "SQL" or "database"; OpenKey's own page names it, and the message below tells them what they'll see there.
 
-**1a. Get the approval link.**
+**1a. Start the sign-in.** The last line starts the sign-in as a background process, with its output going to files you read, so the block returns at once. Never run the sign-in as a foreground tool call: it waits for the owner, longer than a tool's time limit.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 mkdir -p "$STATE"
 printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":"Personal apps index (agent)","space":"default","defaults":false,"permissions":[{"service":"tinycloud.sql","path":"xyz.tinycloud.agent-data.index","skipPrefix":true,"actions":["read","write","schema"]}]}' > "$STATE/agent-data-sql.json"
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -q PROFILE_NOT_FOUND && "$TC_BIN" init --name agent-data-sql --key-only > /dev/null
-"$TC_BIN" auth login --paste --manifest "$STATE/agent-data-sql.json" --expiry 30d --profile agent-data-sql < /dev/null 2> "$STATE/sql-login.err"
-grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep -q '"PASTE_CODE_MISSING"' "$STATE/sql-login.err" && echo 'waiting for the code' || grep -o '"code": "[A-Z_]*"' "$STATE/sql-login.err"
+"$TC_BIN" auth login --method openkey --manifest "$STATE/agent-data-sql.json" --expiry 30d --profile agent-data-sql > "$STATE/sql-login.out" 2> "$STATE/sql-login.err" < /dev/null &
 ```
 
-- **The link, then `waiting for the code`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
+Then read its error file until it shows `Approve this request in OpenKey: https://openkey.so/a/…`; if it's empty, read it again in a few seconds:
 
-  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then paste the code back to me here in chat. I'll finish the sign-in.
+```sh
+cat '<STATE>/sql-login.err'
+```
 
-  If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
+After your answer, add this, with that exact link, never retyped or shortened, and `<N>` the number of records you just read:
 
-- **Any other code** → `LEGACY.md` §8; `SESSION_IN_USE` means the index is already signed in.
+> That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then tell me when you're done.
 
-Don't open the link yourself, and run 1a only once per approval.
+If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
+
+An `{"error":…}` instead of the link → 1b's list. Don't open the link yourself, and don't start a second sign-in while one is running.
 
 If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: get the approval link for the searchable copy of your records." Then wait. Don't edit their settings files or suggest changing them, and don't run it another way.
 
-**1b. Finish with the owner's code.** The code belongs to your own profile, `agent-data-sql`, so the owner can send it to you in the chat. Run the same sign-in with the code on stdin. The CLI reads only the first non-blank line, so the code must go on one line: remove any code fence, quotes or spaces around it, and join line breaks, before the heredoc. A quoted heredoc keeps every character of the code as it is; `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`, used on both marker lines. Fill `<TC_BIN>` and `<STATE>` as in 1a:
+**1b. When the owner says they're done,** read both files:
 
 ```sh
-TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-"$TC_BIN" auth login --paste --manifest "$STATE/agent-data-sql.json" --expiry 30d --profile agent-data-sql <<'CODE_<MARK>'
-<the code, on one line>
-CODE_<MARK>
-```
-
-After running 1b with the code returned in chat, check the sign-in yourself:
-
-```sh
-TC_BIN='<TC_BIN>'; umask 077
-"$TC_BIN" --profile agent-data-sql auth status --json
+cat '<STATE>/sql-login.out' '<STATE>/sql-login.err'
 ```
 
 - **`"authenticated": true`** → §2, then §6 for every kind the catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
-- **`"authenticated": false`** → ask the owner to paste the code again in chat. Run 1b yourself with that code, then check once more. Don't start a new 1a.
-- **The owner reports `tinycloud.sql/schema` declined** → they unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
-- **The owner reports `OPENKEY_PROOF_INVALID`, or the code was cut short** → ask them to paste the whole code again in chat, then run 1b yourself. Don't start a new 1a.
-- **The owner reports "Delegation code not found or expired"** → the short code has expired, was already used, or was mistyped. Ask them to send the full code OpenKey shows below it.
-- Never reuse a code for another profile.
+- **`"declined"` names `tinycloud.sql/schema`** → they unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
+- **Only the link, no JSON yet** → the sign-in hasn't seen the approval yet: read the files again in a few seconds.
+- **`APPROVAL_REQUEST_EXPIRED`** → the link expired before it was approved: run 1a again and send the new link.
+- **`SESSION_IN_USE`** → the index is already signed in.
+- **The sign-in stopped before it printed a result** (a tool timeout, a restart, or a later conversation) → run 1a again the same way. It picks up the same pending link: don't send the owner a link you already sent.
+- **Another error code** → `LEGACY.md` §8.
 
 ## 2. Create the table and the view
 

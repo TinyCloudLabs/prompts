@@ -38,7 +38,7 @@ const calls = (dir) => (existsSync(join(dir, "calls")) ? readFileSync(join(dir, 
 const section = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 1. Read the paths and the time")[1];
 const firstBlock = section.match(/```sh\n([\s\S]*?)\n```/)[1];
 
-test("SKILL §1 names the tinycloud script, then an earlier tc script, then reports unset; TC_BIN wins", () => {
+test("SKILL §1 names the tinycloud script, else reports unset, and never an earlier tc script; TC_BIN wins", () => {
   const first = (setup, extra = {}) => {
     const h = fresh();
     setup(h);
@@ -48,8 +48,7 @@ test("SKILL §1 names the tinycloud script, then an earlier tc script, then repo
   };
   const both = first(({ work }) => { writeFileSync(join(work, "tinycloud"), ""); writeFileSync(join(work, "tc"), ""); });
   assert.equal(both.line, join(both.h.work, "tinycloud"));
-  const old = first(({ work }) => writeFileSync(join(work, "tc"), ""));
-  assert.equal(old.line, join(old.h.work, "tc"));
+  assert.equal(first(({ work }) => writeFileSync(join(work, "tc"), "")).line, "TC_BIN is unset");
   assert.equal(first(() => {}).line, "TC_BIN is unset");
   assert.equal(first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "/opt/own/cli" }).line, "/opt/own/cli");
   const empty = first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "" });
@@ -70,25 +69,13 @@ test("SKILL §1 prints TC_APPS_STATE if set, else the default state folder", () 
   assert.equal(second({ TC_APPS_STATE: "/opt/own/state" }).line, "/opt/own/state");
 });
 
-test("SKILL §1a's second line is TC_BETA_BIN if set, else the setup's beta CLI, else unset", () => {
+test("one CLI: no tc-apps guide, skill file or script names a second CLI copy or TC_BETA_BIN", () => {
+  const files = ["setup/tc-apps.md", ...readdirSync(skill).map((name) => `skills/tc-apps/${name}`)];
+  const hits = files.flatMap((file) => readFileSync(join(root, file), "utf8").split("\n")
+    .flatMap((line, i) => (/TC_BETA|cli-beta/.test(line) ? [`${file}:${i + 1}`] : [])));
+  assert.deepEqual(hits, []);
   const layoutSection = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 1a. Which layout does this app use?")[1];
-  const betaLine = layoutSection.match(/```sh\n([\s\S]*?)\n```/)[1].split("\n")[1];
-  const beta = (setup, extra = {}) => {
-    const h = fresh();
-    setup(h);
-    const out = run(["sh", "-c", betaLine], { HOME: h.dir, ...extra });
-    assert.equal(out.status, 0, out.stderr);
-    return { line: out.stdout.trim(), h };
-  };
-  const installed = ({ work }) => {
-    mkdirSync(join(work, "cli-beta/node_modules/.bin"), { recursive: true });
-    writeFileSync(join(work, "cli-beta/node_modules/.bin/tinycloud"), "");
-  };
-  const found = beta(installed);
-  assert.equal(found.line, join(found.h.work, "cli-beta/node_modules/.bin/tinycloud"));
-  assert.equal(beta(() => {}).line, "TC_BETA is unset");
-  assert.equal(beta(() => {}, { TC_BETA_BIN: "" }).line, "TC_BETA is unset");
-  assert.equal(beta(installed, { TC_BETA_BIN: "/opt/own/beta" }).line, "/opt/own/beta");
+  assert.equal(layoutSection.match(/```sh\n([\s\S]*?)\n```/)[1].split("\n").length, 1, "§1a prints only the layout");
 });
 
 // Hermes installs a skill from its SKILL.md URL only if its skills guard passes the file. The guard
@@ -107,7 +94,6 @@ for (const [name, argv, expected] of [
 ]) {
   const scenarios = [
     ["tinycloud script when both exist", ["tinycloud", "tc"], {}, "tinycloud"],
-    ["an earlier tc script when it is the only one", ["tc"], {}, "tc"],
     ["TC_BIN over both", ["tinycloud", "tc"], { TC_BIN: "custom" }, "custom"],
   ];
   for (const [label, present, extra, used] of scenarios) {
@@ -125,6 +111,16 @@ for (const [name, argv, expected] of [
     });
   }
 }
+
+test("no script runs an earlier install's tc script, even when it is the only one", () => {
+  for (const args of [["owner-grant.sh", "healthlog"], ["owner-undo.sh"], ["layout.sh", "fitness"], ["migrate.sh", "--dry-run"]]) {
+    const h = fresh();
+    stub(join(h.work, "tc"));
+    writeFileSync(join(h.state, "meal-request.json"), "{}");
+    run(["sh", join(skill, args[0]), ...args.slice(1)], { HOME: h.dir, TC_APPS_STATE: h.state });
+    assert.deepEqual(calls(h.dir), [], args[0]);
+  }
+});
 
 test("owner-undo.sh skips absent profiles quietly: no PROFILE_NOT_FOUND, exit 0", () => {
   const h = fresh();
@@ -150,7 +146,7 @@ test("owner-undo revokes the recorded grant with the owner profile and no termin
   assert.ok(calls(h.dir).some((line) => line.endsWith(`--profile owner delegation revoke --yes -- ${cid}`)), calls(h.dir).join("\n"));
 });
 
-test("owner-grant uses an explicit owner profile when the CLI default is an unsigned agent profile", () => {
+test("owner-grant uses an explicit owner profile when the CLI default is an unsigned agent profile, and its approval steps read no code", () => {
   const h = fresh();
   const cliHome = join(h.dir, ".tinycloud");
   mkdirSync(cliHome, { recursive: true });
@@ -176,7 +172,8 @@ if (args[0] === "profile" && args[1] === "show") {
   console.log(JSON.stringify({ profile }));
 } else if (args[0] === "init") {
   const name = args[args.indexOf("--name") + 1];
-  if (name !== "owner" || !args.includes("--paste")) fail("UNEXPECTED_INIT", 2);
+  if (name !== "owner" || args.includes("--paste")) fail("UNEXPECTED_INIT", 2);
+  fs.appendFileSync(path.join(home, "owner-grant-stdin"), JSON.stringify(fs.readFileSync(0, "utf8")) + "\n");
   state.profiles.push(name);
   state.sessions.push(name);
   fs.writeFileSync(statePath, JSON.stringify(state));
@@ -185,22 +182,25 @@ if (args[0] === "profile" && args[1] === "show") {
   console.log(JSON.stringify({ ownerDid: "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }));
 } else if (args[0] === "auth" && args[1] === "grant") {
   if (!state.sessions.includes(profile)) fail("AUTH_REQUIRED", 3);
+  fs.appendFileSync(path.join(home, "owner-grant-stdin"), JSON.stringify(fs.readFileSync(0, "utf8")) + "\n");
   process.stdout.write("{\"ok\":true}\n");
 } else fail("UNEXPECTED_COMMAND", 2);
 `, { mode: 0o755 });
   chmodSync(cli, 0o755);
 
-  const out = run(["sh", join(skill, "owner-grant.sh"), "healthlog"], {
-    HOME: h.dir,
-    TC_HOME: h.dir,
-    TC_APPS_STATE: h.state,
-    TC_BIN: cli,
+  // The helper's own stdin carries text; the sign-in and the grant must not see it: they get /dev/null.
+  const out = spawnSync("sh", [join(skill, "owner-grant.sh"), "healthlog"], {
+    encoding: "utf8", input: "init-code\n", timeout: 20000,
+    env: { PATH: process.env.PATH, HOME: h.dir, TC_HOME: h.dir, TC_APPS_STATE: h.state, TC_BIN: cli },
   });
   assert.equal(out.status, 0, out.stderr + out.stdout);
+  assert.deepEqual(readFileSync(join(h.dir, "owner-grant-stdin"), "utf8").trim().split("\n").map(JSON.parse), ["", ""]);
+  assert.match(out.stderr, /OpenKey sign-in: the owner approves the link below; no code comes back/);
+  assert.doesNotMatch(out.stderr, /paste/i);
   const calls = readFileSync(join(h.dir, "owner-grant-calls.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
   assert.deepEqual(calls, [
     { argv: ["--profile", "owner", "profile", "show"], profile: "owner" },
-    { argv: ["init", "--name", "owner", "--paste"], profile: "linear-agent" },
+    { argv: ["init", "--name", "owner"], profile: "linear-agent" },
     { argv: ["--profile", "owner", "context", "--json"], profile: "owner" },
     { argv: ["--profile", "owner", "auth", "grant", join(h.state, "meal-request.json")], profile: "owner" },
   ]);
@@ -217,9 +217,9 @@ if (args[0] === "profile" && args[1] === "show") {
     TC_BIN: cli,
   });
   assert.equal(renewal.status, 1);
-  assert.ok(renewal.stderr.includes("The agent must run owner auth login --method openkey --paste in an interactive session"), renewal.stderr);
+  assert.ok(renewal.stderr.includes("The agent must run owner auth login --method openkey in the background, send its link, then run this step again."), renewal.stderr);
   assert.doesNotMatch(renewal.stderr, /linear-agent/);
-  assert.ok(!renewal.stderr.includes(`${cli} auth login --paste`), renewal.stderr);
+  assert.doesNotMatch(renewal.stderr, /paste|interactive session/);
 });
 
 test("the wrapper runs the CLI named in cli-path whatever its own file name is", () => {
@@ -324,7 +324,7 @@ const world = (applications = {}) => {
 const store = (h) => JSON.parse(readFileSync(join(h.dir, "kv-state.json"), "utf8"));
 const control = (h, c) => writeFileSync(join(h.dir, "control.json"), JSON.stringify(c));
 const cliCalls = (h) => (existsSync(join(h.dir, "calls.log")) ? readFileSync(join(h.dir, "calls.log"), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []);
-const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
+const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
 const receiptPath = (h, slug) => join(h.state, "migration", `${slug}.receipt.json`);
 const newKeys = (h, slug) => Object.keys(store(h).applications).filter((k) => k.startsWith(`${NEW(slug)}/`)).sort();
 const notSwitched = (h, out) => {
@@ -590,7 +590,7 @@ test("layout.sh and migrate.sh without jq say so and exit 3 before any CLI call 
   const empty = join(h.dir, "empty-bin");
   mkdirSync(empty);
   for (const args of [[layout, "fitness"], [migrate, "--dry-run", "fitness"], [migrate, "fitness"]]) {
-    const out = spawnSync("/bin/sh", args, { encoding: "utf8", timeout: 20000, env: { PATH: empty, HOME: h.dir, TC_BIN: h.bin, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state } });
+    const out = spawnSync("/bin/sh", args, { encoding: "utf8", timeout: 20000, env: { PATH: empty, HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state } });
     assert.equal(out.status, 3, args.join(" "));
     assert.match(out.stderr, /jq is needed/);
     assert.equal(out.stdout, "");
@@ -625,3 +625,60 @@ test("migrate.sh says plainly that a key contains a tab and changes nothing", ()
   assert.equal(cliCalls(h).some((c) => c.argv[1] === "put"), false);
   assert.deepEqual(readdirSync(h.state), []);
 });
+
+// ---- Sign-ins: each guide's block starts the CLI in the background and returns at once; the CLI prints a short
+// OpenKey link on stderr and waits for the owner's approval; no code is read. Like CLI 1.5.1, --paste is refused here.
+const signinCli = String.raw`#!/usr/bin/env node
+const fs = require("fs"), path = require("path");
+const home = process.env.HOME, argv = process.argv.slice(2);
+const opt = (name) => { const i = argv.indexOf(name); return i < 0 ? undefined : argv[i + 1]; };
+const profile = opt("--profile") || opt("--name"), marker = path.join(home, "profile-" + profile);
+const fail = (code) => { process.stderr.write(JSON.stringify({ error: { code } }) + "\n"); process.exit(2); };
+if (argv.includes("--paste")) fail("UNEXPECTED_PASTE");
+if (argv[0] === "context") { if (!fs.existsSync(marker)) { process.stderr.write('{"error":{"code":"PROFILE_NOT_FOUND"}}\n'); process.exit(4); } console.log("{}"); process.exit(0); }
+if (argv[0] === "init" && argv.includes("--key-only")) { fs.writeFileSync(marker, ""); console.log("{}"); process.exit(0); }
+if (!argv.includes("login") || !fs.existsSync(marker)) fail("UNEXPECTED_COMMAND");
+process.stderr.write("Approve this request in OpenKey: https://openkey.so/a/" + profile + "#k\n");
+const stop = setTimeout(() => process.exit(9), 20000);
+setInterval(() => {
+  if (!fs.existsSync(path.join(home, "approved-" + profile))) return;
+  clearTimeout(stop);
+  console.log(JSON.stringify({ authenticated: true, profile, declined: [] }, null, 2));
+  process.exit(0);
+}, 100);
+`;
+for (const [file, marker, profile] of [
+  ["SKILL.md", "**4a. Start the sign-in.**", "tinyapp-fitness"],
+  ["SQL.md", "**1a. Start the sign-in.**", "tinyapp-fitness-sql"],
+  ["LEGACY-SQL.md", "**1a. Start the sign-in.**", "agent-data-sql"],
+  ["LEGACY.md", "## 4. Sign in", "agent-data"],
+]) {
+  test(`${file}: the sign-in block returns at once, shows the short link, and finishes on approval with no code`, async () => {
+    const section = readFileSync(join(skill, file), "utf8").split(marker)[1].split("\n## ")[0];
+    const blocks = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((m) => m[1]);
+    const [start, readErr] = blocks;
+    const readBoth = blocks.find((b) => b.startsWith("cat '") && b.includes(".out'"));
+    assert.ok(readBoth, "no block reads the sign-in's output");
+    assert.doesNotMatch(section, /--paste|\/delegate\?|<the code|CODE_<MARK>|paste (it|the code|here)/);
+    assert.match(start.split("\n").at(-1), /> "\$STATE\/[^"]+\.out" 2> "\$STATE\/[^"]+\.err" < \/dev\/null &$/);
+    const h = fresh();
+    const bin = join(h.dir, "signin-cli");
+    writeFileSync(bin, signinCli, { mode: 0o755 });
+    const fill = (block) => block.replaceAll("<TC_BIN>", bin).replaceAll("<STATE>", h.state).replaceAll("<APP>", "fitness").replaceAll("<Title>", "Fitness");
+    const sh = (block) => {
+      const out = spawnSync("sh", ["-c", fill(block)], { encoding: "utf8", timeout: 5000, env: { PATH: process.env.PATH, HOME: h.dir } });
+      assert.equal(out.error, undefined, "the block did not return at once");
+      assert.equal(out.status, 0, out.stderr);
+      return out.stdout;
+    };
+    const until = async (check, what) => {
+      for (let i = 0; i < 100; i++) { if (check()) return; await new Promise((r) => setTimeout(r, 100)); }
+      assert.fail(`timed out waiting for ${what}`);
+    };
+    sh(start);
+    await until(() => sh(readErr).includes(`Approve this request in OpenKey: https://openkey.so/a/${profile}#k`), "the link");
+    assert.doesNotMatch(sh(readBoth), /"authenticated"/);
+    writeFileSync(join(h.dir, `approved-${profile}`), "");
+    await until(() => sh(readBoth).includes('"authenticated": true'), "the sign-in result");
+  });
+}

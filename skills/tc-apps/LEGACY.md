@@ -73,10 +73,10 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.3.4` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI `1.3.4` or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
+- The first line must be `1.5.1` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI `1.5.1` or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
-- `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or more powerful sign-in, `--replace-session` or `tc space host`.
+- `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up an OpenKey link, a second or more powerful sign-in, `--replace-session` or `tc space host`.
 - The last line is the fast copy's state (§7). Carry on whatever it says:
   - `"state": "present"` → the fast copy is signed in.
   - `"state": "expired"` → it exists, but needs a new approval.
@@ -86,31 +86,40 @@ Then read the catalog records of the app or apps the request is about, with §5'
 
 ## 4. Sign in
 
-Do this when §3 or §8 sends you here. The block writes the request, creates the profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval. The CLI prints a link and a code, then keeps running until the owner approves, for at most 10 minutes.
+Do this when §3 or §8 sends you here. The block writes the request, creates the profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and starts the sign-in. The sign-in prints a short OpenKey link and keeps running until the owner approves it; no code comes back. The last line starts it as a background process, with its output going to files you read, so the block returns at once. Never run the sign-in as a foreground tool call: it waits for the owner, longer than a tool's time limit.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 mkdir -p "$STATE"
 printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":"Personal apps (agent)","space":"default","defaults":false,"permissions":[{"service":"tinycloud.kv","path":"xyz.tinycloud.agent-data/","skipPrefix":true,"actions":["get","put","list","del"]}]}' > "$STATE/agent-data.json"
 "$TC_BIN" context --json --profile agent-data 2>&1 | grep -q PROFILE_NOT_FOUND && "$TC_BIN" init --name agent-data --key-only > /dev/null
-"$TC_BIN" auth login --device --manifest "$STATE/agent-data.json" --expiry 30d --profile agent-data
+"$TC_BIN" auth login --method openkey --manifest "$STATE/agent-data.json" --expiry 30d --profile agent-data > "$STATE/agent-data-login.out" 2> "$STATE/agent-data-login.err" < /dev/null &
 ```
 
-Its first line is `Approve on your phone: <link> (code <code>)`; the CLI needs a few seconds to print it. Keep the command running until it exits. How depends on your client:
-- **Claude Code:** run the block with `run_in_background: true`. Read the output file it names; if the line isn't there yet, run `sleep 2` and read again. Send the message below and end your turn: Claude Code wakes you when the command exits. Then read the output file again.
-- **Codex:** pass `yield_time_ms: 5000`; it returns with a session id. If the line isn't there yet, poll once with `write_stdin`, empty `chars`. Send the message below as an update, without ending your turn, then call `write_stdin` with that session id, empty `chars` and `yield_time_ms: 300000`. Call it again each time it returns before the command exits.
-- **OpenCode:** you see the output only when the command exits, so first tell the owner: "Open the OpenKey link that appears below and approve the request." Then run the block with `timeout: 660000`.
+Then read its error file until it shows `Approve this request in OpenKey: https://openkey.so/a/…`; if it's empty, read it again in a few seconds:
 
-The message, with the link and code from that line:
+```sh
+cat '<STATE>/agent-data-login.err'
+```
 
-> Open <link> and approve the request on OpenKey. It should show the code <code>. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days. I'll carry on as soon as you approve.
+Send the owner that exact link, never retyped or shortened, in this message, and end your turn:
 
-When the command exits, its output ends with JSON:
+> Open <link> and approve the request on OpenKey. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days. Tell me when you're done.
+
+When the owner says they're done, read both files:
+
+```sh
+cat '<STATE>/agent-data-login.out' '<STATE>/agent-data-login.err'
+```
+
 - `"authenticated": true` and `"declined": []` → run §3 again, then carry on with the request.
 - `"declined"` lists `xyz.tinycloud.agent-data/` → the owner unchecked it, so nothing can be read or saved. Tell them, and stop.
-- An error code → §8.
+- Only the link, no JSON yet → the sign-in hasn't seen the approval yet: read the files again in a few seconds.
+- `APPROVAL_REQUEST_EXPIRED` → the link expired before it was approved: run this block again and send the new link.
+- Another error code → §8.
+- The sign-in stopped before it printed a result (a tool timeout, a restart) → run the block again the same way. It picks up the same pending link: don't send the owner a link you already sent.
 
-Run one sign-in at a time, and never retry in a loop: OpenKey allows 5 per 10 minutes. Don't open the link yourself. If the owner writes while the command is still running, tell them you're waiting for their approval.
+Run one sign-in at a time, and never retry in a loop. Don't open the link yourself.
 
 If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: sign in to TinyCloud to keep your records." Then wait. Don't edit their settings files or suggest changing them, and don't run it another way.
 
@@ -190,7 +199,7 @@ If §3 showed the `agent-data-sql` profile, `present` or `expired`, follow `LEGA
 
 ## 7. The fast copy (SQL index)
 
-The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query, not minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval on OpenKey. The owner approves there and pastes the code back to the agent in chat; the agent finishes the sign-in (`LEGACY-SQL.md` §1b).
+The index keeps a copy of every record in a SQLite database, `xyz.tinycloud.agent-data.index`, so a question over many records takes one query, not minutes of reads. The KV records stay the truth: the index can always be rebuilt from them. It needs its own approval on OpenKey. The owner approves there and tells you when they're done; the sign-in finishes on its own (`LEGACY-SQL.md` §1).
 
 **The owner never has to ask for it, or know the words.** You ask for its permission yourself, once per conversation, the first time an answer needed more than about 40 records while §3 showed no index (`PROFILE_NOT_FOUND`) or an `expired` one:
 - first write your answer from the records you read;
@@ -200,7 +209,7 @@ When talking to the owner, call it "a fast, searchable copy of your records". Ne
 
 Read `LEGACY-SQL.md` in full, at the install path shown below, when:
 - you ask for the fast copy as above, or the owner asks about it;
-- the owner sends you OpenKey's code after you asked, perhaps in a later conversation: a short code of eight letters and digits such as `ABCD-EFGH`, or the full code, a long block of letters and digits that starts with `eyJ`;
+- the owner tells you they approved the fast copy after you asked, perhaps in a later conversation;
 - §3 showed the index (`present` or `expired`) and you write, move or delete a record;
 - §3 showed it `present` and a question needs more than about 40 records.
 
@@ -216,9 +225,7 @@ The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `ERROR` with "persisted SIWE is expired": the 30 days are over. For profile `agent-data` → §4; for `agent-data-sql` → `LEGACY-SQL.md` §7.
 - `AUTH_UNAUTHORIZED` → if the key starts with `xyz.tinycloud.agent-data/` and has no `?`, `#`, space or non-ASCII letter, the sign-in has expired or lost its scope: §4. Otherwise fix the key.
 - `NETWORK_ERROR` → TinyCloud didn't answer, even after `<TC_BIN>`'s own retries. Run the command once more. If it fails again, tell the owner that TinyCloud isn't reachable right now. Ignore the error's hint to switch profiles: the profiles are right.
-- `DEVICE_AUTH_EXPIRED` → nobody approved within 10 minutes. Tell the owner, and run §4 again only when they ask.
-- `DEVICE_AUTH_DENIED` → the owner declined. Stop.
-- `DEVICE_AUTH_RATE_LIMITED` → too many sign-ins from this network. Tell the owner to ask again in 10 minutes.
+- `APPROVAL_REQUEST_EXPIRED` → the sign-in link expired before it was approved: run §4 again and send the new link.
 - `OPENKEY_OWNER_MISMATCH` → they approved with a different account or key than this profile's. Ask them to use the same one as before, and run §4 again when they're ready.
 - `SPACE_NOT_HOSTED` → handle it as in §3.
 - `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` (exit 10) → nothing was saved. Tell the owner their TinyCloud storage is full, their records are still readable, and they can upgrade at https://account.tinycloud.xyz/storage. Don't retry, and don't delete records to make room.

@@ -4,7 +4,7 @@
 # Usage: sh owner-undo.sh
 # If it prints an OpenKey link, send it to the owner (no code comes back). Profiles that don't exist are skipped quietly.
 set -u
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; else TC=$TC_BIN; fi
+TC=${TC_BIN:-$HOME/.local/share/tc-apps/tinycloud}
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 REVOKED=0
 cancel() { if [ "$REVOKED" -eq 0 ]; then echo "Cancelled. Your agent's local access is already removed, but the grant itself was not revoked. Run this again to finish." >&2; else echo 'Cancelled; some access was already revoked. Tell your agent.' >&2; fi; exit "$1"; }

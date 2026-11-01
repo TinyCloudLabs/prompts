@@ -13,7 +13,7 @@ case "$slug" in [a-z]*) ;; *) echo 'usage: sh layout.sh <app>' >&2; exit 2 ;; es
 case "$slug" in *[!a-z0-9-]*) echo 'usage: sh layout.sh <app>' >&2; exit 2 ;; esac
 case "$slug" in catalog|index-stale|healthlog|recipes) echo "'$slug' is a reserved name and cannot be a generic app." >&2; exit 2 ;; esac
 command -v jq > /dev/null 2>&1 || { echo 'jq is needed. Install it, then run this again.' >&2; exit 3; }
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
+TC_BIN=${TC_BIN:-$HOME/.local/share/tc-apps/tinycloud}
 STATE=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 R=xyz.tinycloud.agent-data
 if jq -e --arg a "$slug" '.verified == true and .app == $a' "$STATE/migration/$slug.receipt.json" > /dev/null 2>&1; then

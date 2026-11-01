@@ -7,9 +7,9 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.5.1` from a folder of its own, and a second copy of it from another folder for apps in their own folder (below).
+It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.5.1` from a folder of its own.
 
-A permission slip and the code OpenKey shows after you approve are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
+A permission slip is fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
 ## 0. Setup, in the same prompt
 
@@ -38,12 +38,12 @@ Claude Code and Codex may also ask whether you trust a folder.
 Health Log and Recipes take two approvals on a fresh computer (sign-in and app), then one per new app, for 7 days. For other personal records, each app has one approval for 30 days.
 
 1. You ask, for example "Add a todo: renew my passport." The agent checks whether the `todos` app is signed in, then starts the sign-in.
-2. The agent shows a link:
+2. The agent starts the sign-in in the background and shows a link:
 
-   > Open https://openkey.so/delegate?… and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions: key-value access to that folder for 30 days, reading the list of tiny apps and writing this app's entry in it, and a read of your permissions, which doesn't read your data. Approve, then paste here the code OpenKey shows.
+   > Open https://openkey.so/a/… and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions: key-value access to that folder for 30 days, reading the list of tiny apps and writing this app's entry in it, and a read of your permissions, which doesn't read your data. Approve, then tell me when you're done.
 
 3. Open the link, on this computer or your phone, and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions, key-value access to that folder and a read of your permissions (that doesn't read your data). Then approve.
-4. OpenKey shows a code. Paste it in the chat; the agent sends it to its running sign-in process, finishes the step and carries on. You never run a command yourself.
+4. Tell the agent you're done. Its sign-in has been waiting for your approval and finishes on its own; nothing to paste back. You never run a command yourself.
 
 One approval covers one app. A new app, such as `fitness`, asks once more; nothing covers all your apps at once. Every agent on this computer that uses the same `TC_HOME` shares the apps you've approved.
 
@@ -95,7 +95,7 @@ Pause other agents writing the app while it moves. On another computer, ask that
 You don't need to set anything up. The first time a question needs many records of one app, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of that app's records:
 
 1. The agent shows an OpenKey link. Open it and sign in. Open "Advanced details" to see the request listed as SQL access to `xyz.tinycloud.tinyapps.fitness/index` in your `applications` space, for 30 days; that's the copy.
-2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it in the chat and the agent finishes the sign-in. A short code works once and expires within minutes; if it has expired, paste the full code OpenKey also shows.
+2. Approve, then tell the agent you're done. Nothing to paste back: the agent's sign-in finishes on its own.
 3. The agent finishes, builds the copy from the app's records, and says when it's done. From then on it answers questions over many records of that app with one lookup, without reading every record. The agent's own thinking still takes most of the time.
 
 If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
@@ -104,7 +104,6 @@ Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.
 - **When the index expires** after 30 days, everything keeps working, more slowly, until you approve it again.
 - **Don't rely on the database name as a boundary.** The approval names one database, but TinyCloud's node can also open other SQL databases in the same space. The agent only ever uses that app's index.
-- **The code** is a permission slip for this computer's `tinyapp-<app>-sql` profile, so it's fine to paste in the chat. A short code only works for the sign-in that asked for it, works once, and expires within minutes.
 
 ## What the sign-ins grant
 
@@ -114,7 +113,7 @@ Good to know:
 - **Stopping:** ask the agent in chat to clear the local session for an app. The agent runs the commands below with the same CLI and profile store used during setup; the approvals stay valid on TinyCloud until they expire.
 
   ```sh
-  B=${TC_BETA_BIN:-$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud}
+  B=${TC_BIN:-$HOME/.local/share/tc-apps/tinycloud}
   "$B" --profile tinyapp-<app> auth logout
   "$B" --profile tinyapp-<app>-sql auth logout
   ```
@@ -124,7 +123,7 @@ Good to know:
 ## Why it works this way
 
 - **One folder and one approval per app.** Each app has its own key root, so an approval for `todos` can't read `fitness`, and a new app asks for its own approval. The price is one more approval per app.
-- **Browser approval with a pasted code.** OpenKey allows the phone-code (device) approval only for the `default` space, so apps in `applications` use the browser approval, where you paste a code back.
+- **Browser approval from a short link.** OpenKey allows the phone-code (device) approval only for the `default` space, so apps in `applications` use the browser approval: the agent's sign-in shows a short link and waits until you approve it.
 - **KV first, SQL as a copy.** Key-value records survive agent mistakes, because each record is its own key. The SQL index is rebuildable, so it never holds the only copy of anything.
 - **Reads run side by side.** Each storage command takes 3–5 s against TinyCloud, so the agent fetches up to eight records at once.
 - **Literal paths in commands.** Claude Code can remember an approval only for a command it can work out from the text.

@@ -1,8 +1,9 @@
 #!/bin/sh
-# Agent-run owner approval: keep stdin attached to the agent's interactive session for the sign-in's chat code.
+# Agent-run owner approval, started in the background with its output in a file the agent reads. Each OpenKey step
+# prints a short link and waits until the owner approves it; no code comes back.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
+TC_BIN=${TC_BIN:-$HOME/.local/share/tc-apps/tinycloud}
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "${1:-}" in
   healthlog) REQ=meal-request.json; GRANT=meal-grant.json ;;
@@ -20,8 +21,6 @@ TMP=$(mktemp "$DIR/$GRANT.XXXXXX")
 OWNER_PROFILE=owner
 ACTIVE_PID=
 printf 'OWNER_GRANT_PID=%s\n' "$$" >&2
-# Preserve chat-code input before the shell gives an asynchronous command /dev/null on stdin.
-exec 3<&0
 cleanup() {
   if [ -n "$ACTIVE_PID" ]; then
     kill -TERM "$ACTIVE_PID" 2>/dev/null || true
@@ -38,9 +37,9 @@ trap 'cancel 129' HUP
 # Sign the owner in when the dedicated owner profile doesn't exist yet, or exists without a
 # signed-in owner (a sign-in that was cancelled leaves the profile behind with no owner).
 signin() {
-  echo 'OpenKey sign-in: approve the link and paste the code back to your agent in chat.' >&2
+  echo 'OpenKey sign-in: the owner approves the link below; no code comes back. This step finishes on its own after the approval.' >&2
   INIT_RC=0
-  "$@" <&3 3<&- &
+  "$@" < /dev/null &
   ACTIVE_PID=$!
   wait "$ACTIVE_PID" || INIT_RC=$?
   ACTIVE_PID=
@@ -55,7 +54,7 @@ PROBE_RC=0
 PROBE=$("$TC_BIN" --profile "$OWNER_PROFILE" profile show 2>&1) || PROBE_RC=$?
 if [ "$PROBE_RC" -ne 0 ]; then
   case "$PROBE" in
-    *PROFILE_NOT_FOUND*) signin "$TC_BIN" init --name "$OWNER_PROFILE" --paste ;;
+    *PROFILE_NOT_FOUND*) signin "$TC_BIN" init --name "$OWNER_PROFILE" ;;
     *)
       echo "Couldn't check your TinyCloud sign-in, so nothing was granted. Tell your agent." >&2
       echo "$PROBE" >&2
@@ -63,7 +62,7 @@ if [ "$PROBE_RC" -ne 0 ]; then
       ;;
   esac
 elif CONTEXT=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json 2>/dev/null) && printf '%s' "$CONTEXT" | jq -e '.ownerDid == null' > /dev/null; then
-  signin "$TC_BIN" --profile "$OWNER_PROFILE" auth login --method openkey --paste
+  signin "$TC_BIN" --profile "$OWNER_PROFILE" auth login --method openkey
 fi
 # Bind only to the explicit signed-in owner, never to the imported grant. Keep an existing binding.
 if [ ! -s "$DIR/owner-did.txt" ]; then
@@ -75,14 +74,14 @@ if [ ! -s "$DIR/owner-did.txt" ]; then
 fi
 RC=0
 echo 'Access link: the owner approves it in OpenKey and no code comes back. This step finishes on its own after the approval.' >&2
-"$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
+"$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" < /dev/null > "$TMP" &
 ACTIVE_PID=$!
 wait "$ACTIVE_PID" || RC=$?
 ACTIVE_PID=
 if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
   echo 'APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link.' >&2
-  echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey in the background, send its link, then run this step again.' >&2
   exit 1
 fi
 if [ "$RC" -eq 8 ]; then

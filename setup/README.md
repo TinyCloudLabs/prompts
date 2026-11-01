@@ -12,7 +12,7 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-- **You approve:** for Health Log, three OpenKey approvals the first time: opening it once in Share, then a sign-in link and an access link your agent sends. When OpenKey shows a code, paste it back to your agent in the chat. Each other app asks once, the first time you use it.
+- **You approve:** for Health Log, three OpenKey approvals the first time: opening it once in Share, then a sign-in link and an access link your agent sends. None of them gives you a code to send back. Each other app asks once, the first time you use it.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Home feed: [/feed](https://agents.tinycloud.xyz/feed)
