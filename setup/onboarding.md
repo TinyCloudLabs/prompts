@@ -32,8 +32,8 @@ Follow these on every TinyCloud page.
 1. **Permission comes from the owner.** A grant lets you do only what it names. When you need something you don't have, ask the owner for it through OpenKey; don't work around it.
 2. **Ask as few times as you can.** Ask for what the task needs in one request, and tell the owner up front how many approvals are coming.
 3. **The owner never sees raw permissions.** Give them the OpenKey link; OpenKey shows the request in plain words. Never show them a delegation, a permission list or JSON to approve.
-4. **Every paste comes with its link.** When you ask the owner to paste something, give the link where they get it and one line saying what to do, in the same message.
-5. **Codes are fine; secrets are not.** The code OpenKey shows after an approval, and a delegation, only work for the agent they were made for, so the owner can paste them to you. Never ask for a password, private key, session key, recovery phrase, API key or secret value, and never read out or copy a profile's `key.json` or `session.json`, or the part of a share link after `#`.
+4. **Every request comes with its link.** When you ask the owner to approve or fetch something, give the link and one line saying what to do, in the same message.
+5. **Grants are fine; secrets are not.** An OpenKey link, the grant it produces and a delegation only work for the agent they were made for. Never ask for a password, private key, session key, recovery phrase, API key or secret value, and never read out or copy a profile's `key.json` or `session.json`, or the part of a share link after `#`.
 6. **Send only links you started.** Give the owner only OpenKey links that your own command or tool returned in this conversation.
 7. **No account needed first.** The owner doesn't need to have used TinyCloud before: OpenKey creates their account during the first approval.
 
@@ -103,17 +103,20 @@ With MCP, use the connected TinyCloud tools for the goal. The hosted MCP has no 
 
 ### Asking for more later
 
-When a task needs a permission you don't have, ask for exactly that, once. With the CLI, first get the link:
+When a task needs a permission you don't have, ask for exactly that, once. With the CLI, start the request so it keeps running while you talk to the owner: as a background process (your client's own, if it has one) or in an interactive session, with stdout and stderr going to files you read. Never run it as a foreground tool call: it waits for the owner's approval, often longer than your client's 2-minute tool limit.
 
 ```sh
-"$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d < /dev/null
+"$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --no-popup --expiry 30d > request.out 2> request.err < /dev/null &
 ```
 
-It exits 3 and prints the OpenKey link on stderr, on the line after `Open this URL in a browser to authenticate:`. Send it with one line, as above. When the owner replies with the code, run the same command with the code on stdin instead of `/dev/null`:
+It prints `Approve this request in OpenKey: https://openkey.so/a/…` on stderr. Send the owner that exact link, with one line on what it allows and this line: "Open this link and approve; tell me when you're done." There's no code; never ask the owner for one. A request that covers more than one space prints one link per space, one after another; send each the same way.
 
-```sh
-printf '%s\n' '<the code>' | "$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d
-```
+When the owner says they're done, read the files again:
+
+- **Stdout has JSON with `"changed": true`:** the grant is saved on this profile; continue the task. `"changed": false` means the profile already had it; no link is printed then.
+- **`APPROVAL_REQUEST_EXPIRED` (exit 3) on stderr:** the link expired before it was approved. Run the same command again, the same way, and send the new link.
+- **The command stopped first** (a tool timeout, a restart): run it again the same way. It resumes the same pending link; don't send a link you already sent.
+- **Any other error:** stop and report it to the owner.
 
 ## Undo
 

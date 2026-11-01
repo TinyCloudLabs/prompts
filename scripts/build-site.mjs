@@ -114,18 +114,91 @@ const SKILLS = [
     // The released skill says catalog installs run on the onboarding profile, but
     // the onboarding grant has no `tinycloud.sql/schema`, which installing needs.
     // INSTALL.md: download the installer, then run it in a separate call: some
-    // agents refuse a download piped into node.
+    // agents refuse a download piped into node; /cli installs into a private
+    // prefix, so removal deletes that folder and its links, not a global package.
+    // Sign-ins and `auth request --grant` drop --paste: without it 1.5.1 prints a
+    // short openkey.so/a/ link and collects the approval itself, so the agent runs
+    // the command in the background and the owner sends nothing back. The publisher
+    // manifest matches tc-publish: four entries, no decrypt.
     changes: {
       "SKILL.md": [
         [
           "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
           "Catalog installation requires `tinycloud.sql/schema` as well as the app's data permissions. The onboarding grant does not include that installation permission; obtain the app's required installation access before running this command:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
         ],
+        [
+          "Need more than onboarding grants? Ask once with `tinycloud auth request --cap SPEC --grant --paste --expiry 30d`, send the owner the link and one line on what it allows, and pass their code to the CLI exactly as sent. See [AUTH.md](AUTH.md).",
+          "Need more than onboarding grants? Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. Run it in the background with stdout and stderr going to files, never as a foreground tool call: it waits for the owner's approval. Send the owner the `Approve this request in OpenKey: https://openkey.so/a/…` link from stderr with one line on what it allows. The command saves the grant itself and prints JSON with `\"changed\": true`; there's no code to send back. See [AUTH.md](AUTH.md) and [Asking for more later](https://agents.tinycloud.xyz/onboarding#asking-for-more-later).",
+        ],
+        [
+          "Shares live in the owner's `default` space, so publish from a dedicated profile with one paste sign-in. Send the owner the link and pass their code to the CLI exactly as sent:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d\n```",
+          "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background with stdout and stderr going to files, never as a foreground tool call. Send the owner the `https://openkey.so/a/…` link it prints on stderr; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
+        ],
+      ],
+      "AUTH.md": [
+        [
+          "ask for more with `tinycloud auth request --cap SPEC --grant --paste --expiry 30d` (or `--manifest FILE --grant --paste`), send the owner the link and one line on what it allows, and pass their code to the CLI exactly as sent.",
+          "ask for more with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). Run it in the background with stdout and stderr going to files, never as a foreground tool call. Send the owner the short approval link it prints on stderr, with one line on what it allows; the command waits, saves the grant and exits by itself, with no code to send back.",
+        ],
+        [
+          "The owner approves a scoped paste login whose manifest names the secrets.",
+          "The owner approves a scoped login whose manifest names the secrets.",
+        ],
+        [
+          "LOGIN=(tinycloud --profile agent-secrets auth login --method openkey --paste --manifest agent-secrets.json\n  --owner did:pkh:eip155:1:0xOWNER_ADDRESS --expiry 7d)\n\"${LOGIN[@]}\" < /dev/null   # exits 3 with PASTE_CODE_MISSING; its stderr names the approval URL\n# Send the owner that URL. After they approve and send back the code:\nprintf '%s\\n' \"$CODE\" | \"${LOGIN[@]}\"\n",
+          "LOGIN=(tinycloud --profile agent-secrets auth login --method openkey --no-popup --manifest agent-secrets.json\n  --owner did:pkh:eip155:1:0xOWNER_ADDRESS --expiry 7d)\n\"${LOGIN[@]}\" > login.out 2> login.err < /dev/null &   # in the background: it waits for the owner\n# Send the owner the https://openkey.so/a/… link from login.err. It exits 0 once they approve.\n",
+        ],
+        [
+          "- The approval URL depends only on the profile's session key and the request, so the same command run again accepts the owner's code from stdin. Write the code followed by a newline; a final line without one is also accepted. Nothing is saved until a code verifies.",
+          "- Run the login in the background (or an interactive session), never as a foreground tool call: it keeps polling OpenKey until the owner approves, then exits 0 with JSON on stdout. There's no code to send back. If it stops first, run it again the same way: it resumes the same pending link. A link that isn't approved within about an hour fails with `APPROVAL_REQUEST_EXPIRED` (exit 3): run it again and send the new link.",
+        ],
+        [
+          "the agent sends the owner one message with a request link, redeems the consent short code if the owner approved a scoped login, then waits.",
+          "the agent sends the owner one message with a request link (plus the scoped-login link if the profile has no grant yet), lets that background login finish, then waits.",
+        ],
+        [
+          "# One message to the owner: the url (plus the scoped-login approval URL above if the profile has no grant yet).\n# If the owner sends back a consent short code, redeem it first:\nprintf '%s\\n' \"$CODE\" | \"${LOGIN[@]}\"\n",
+          "# One message to the owner: the url (plus the scoped-login approval link above if the profile has no grant yet).\n# If a scoped login is running in the background, wait for it to exit 0 first.\n",
+        ],
+        [
+          "tinycloud --profile PROFILE auth request --manifest FILE --grant --paste\n",
+          "tinycloud --profile PROFILE auth request --manifest FILE --grant --no-popup > request.out 2> request.err < /dev/null &   # in the background: it waits for the owner\n",
+        ],
+        [
+          "approve again with `tinycloud auth request --grant --paste`, then remove the old CID.",
+          "approve again with `tinycloud auth request --grant --no-popup` (in the background; send the owner its short link), then remove the old CID.",
+        ],
+      ],
+      "REFERENCE.md": [
+        [
+          "tinycloud auth request --cap SPEC --grant --paste --expiry 30d   # more access: ask once\n",
+          "tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d > request.out 2> request.err < /dev/null &   # more access: ask once, in the background\n",
+        ],
+        [
+          "`tinycloud auth request --manifest FILE --grant --paste` adds another space to the onboarding profile: send the owner the link and pass their code to the CLI exactly as sent (",
+          "`tinycloud auth request --manifest FILE --grant --no-popup` adds another space to the onboarding profile: run it in the background, send the owner the short link it prints on stderr, and it saves the grant itself (",
+        ],
+        [
+          "through a scoped OpenKey paste login with a manifest",
+          "through a scoped OpenKey login with a manifest",
+        ],
+        [
+          "tinycloud --profile agent auth login --method openkey --paste --manifest agent.json --owner did:pkh:eip155:1:0xOWNER < /dev/null\n# exits 3 (PASTE_CODE_MISSING) and names the approval URL; the owner approves and returns a code\nprintf '%s\\n' \"$CODE\" | tinycloud --profile agent auth login --method openkey --paste --manifest agent.json --owner did:pkh:eip155:1:0xOWNER\n",
+          "tinycloud --profile agent auth login --method openkey --no-popup --manifest agent.json --owner did:pkh:eip155:1:0xOWNER > login.out 2> login.err < /dev/null &\n# in the background: send the owner the https://openkey.so/a/… link from login.err; it exits 0 once they approve\n",
+        ],
+        [
+          "`tinycloud init --name publisher --key-only`, then `tinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d`.",
+          "`tinycloud init --name publisher --key-only`, then, in the background, `tinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d` with the four-entry manifest in [SKILL.md](SKILL.md); send the owner its short link.",
+        ],
       ],
       "INSTALL.md": [
         [
           "curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent claude-code\ncurl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code",
           "mkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code",
+        ],
+        [
+          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`.",
+          "To remove the CLI, delete the links /cli made, `~/.local/bin/tinycloud` and `~/.local/bin/tc`, if they point into `~/.local/share/tinycloud/cli`, then delete that folder.",
         ],
       ],
     },
