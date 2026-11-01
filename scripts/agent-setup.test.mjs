@@ -408,10 +408,19 @@ const courierSetup = (surface) => {
   const blocks = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
   assert.equal(blocks.length, 4, `${surface}: expected request, wait, code import and read blocks`);
   const [request, wait, redeem] = blocks;
-  assert.match(request, /^"\$TC" courier init --request$/m);
+  assert.match(request, /^"\$TC" courier init --request > "\$COURIER_HOME\/request\.json" &&$/m);
   assert.match(wait, /^"\$TC" courier init --wait --timeout 60s$/m);
   assert.match(redeem, /"\$TC" courier init --grant-file -/);
   return { section, request, wait, redeem };
+};
+// Step 1 prints only the link, on one line, so the agent can copy it without retyping; the full request stays in a private file.
+const requested = (issued, courierHome, surface) => {
+  assert.ifError(issued.error);
+  assert.equal(issued.status, 0, issued.stderr);
+  const approval = JSON.parse(readFileSync(join(courierHome, "request.json"), "utf8"));
+  assert.equal(statSync(join(courierHome, "request.json")).mode & 0o777, 0o600);
+  assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
+  return approval;
 };
 // js-sdk #821's exit-8 sentences, verbatim from its Courier README, skills/courier/SKILL.md and `courier --help`.
 const EXIT_PENDING_RULING = "Exit 8 is not a failure: the approval is still pending. Send the owner the `pending.approvalUrl` (the same link as `openkeyUrl`), ask them to approve it, then re-run `courier init --wait --timeout 60s`. Repeat while it exits 8.";
@@ -513,14 +522,7 @@ for (const surface of COURIER_SURFACES) {
   test(`Courier fallback imports a non-TTY code in the background with the real CLI: ${surface}`, () => {
     const { request, redeem } = courierSetup(surface);
     const { courierHome, requests, run, untouched } = courierSandbox();
-    const issued = run(request);
-    assert.ifError(issued.error);
-    assert.equal(issued.status, 0, issued.stderr);
-    // Step 1 prints only the link, on one line, so the agent can copy it without retyping;
-    // the full request stays in a private file.
-    const approval = JSON.parse(readFileSync(join(courierHome, "request.json"), "utf8"));
-    assert.equal(statSync(join(courierHome, "request.json")).mode & 0o777, 0o600);
-    assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
+    const approval = requested(run(request), courierHome, surface);
     const url = new URL(approval.openkeyUrl);
     assert.equal(url.origin, OPENKEY);
     assert.equal(url.searchParams.has("callback"), false);
@@ -568,14 +570,11 @@ for (const surface of COURIER_SURFACES) {
   }, () => {
     const { request, wait } = courierSetup(surface);
     const { courierHome, polls, run, untouched } = courierSandbox();
-    const issued = run(request);
-    assert.ifError(issued.error);
-    assert.equal(issued.status, 0, issued.stderr);
-    const { openkeyUrl } = JSON.parse(issued.stdout);
+    const { openkeyUrl } = requested(run(request), courierHome, surface);
     assert.match(openkeyUrl, /^https:\/\/openkey\.example\.invalid\/a\/[a-z2-7]{26}#v=4&/);
     assert.equal(statSync(join(courierHome, "approval-pending.json")).mode & 0o777, 0o600);
     // Asking again while the request is open returns the same link.
-    assert.equal(JSON.parse(run(request).stdout).openkeyUrl, openkeyUrl);
+    assert.equal(requested(run(request), courierHome, surface).openkeyUrl, openkeyUrl);
     // The guide's 60 s wait, shortened so the test is quick; the owner never approves.
     assert.equal(wait.split("--timeout 60s").length, 2);
     const started = Date.now();
