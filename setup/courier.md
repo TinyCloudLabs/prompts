@@ -114,19 +114,26 @@ Copy the returned `openkeyUrl` exactly. Send it to the owner with this one sente
 
 The owner may open that link on another computer or phone and paste the code in this chat. Do not send the request's public-key or permissions JSON to the owner, reconstruct the URL, or ask for a private key.
 
-**2. Import the owner's code in the background.** The import uses the code up as soon as it starts and can take a few minutes, so never run it as a foreground tool call: a tool time limit (Claude Code stops foreground calls after 2 minutes) would kill it after the code is spent. Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. Start this with the same `TC` and `COURIER_HOME` so it keeps running while you talk to the owner: as a background process (your client's own, if it has one) or in an interactive session. Despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
+**2. Import the owner's code in the background.** The import uses the code up as soon as it starts and can take a few minutes, so it must never sit inside a foreground tool call: a tool time limit (Claude Code stops foreground calls after 2 minutes) would kill it after the code is spent. Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. This block starts the import in the background and returns at once. Run it exactly as written, as its own tool call (or with your client's own background mode, such as Claude Code's `run_in_background`), with the same `TC` and `COURIER_HOME`. Never add `sleep`, `wait` or a read of the result to the same call. Despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 : "${TC:?Run the CLI preamble}" "${COURIER_CODE:?Use the code returned by the owner}"
 export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
-printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file - > "$COURIER_HOME/import.out" 2> "$COURIER_HOME/import.err"
+: > "$COURIER_HOME/import.rc"
+( trap '' HUP; printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file - > "$COURIER_HOME/import.out" 2> "$COURIER_HOME/import.err"; echo "$?" > "$COURIER_HOME/import.rc" ) < /dev/null > /dev/null 2>&1 &
+echo IMPORT_STARTED
 ```
 
-Then read `$COURIER_HOME/import.out` and `$COURIER_HOME/import.err` whenever your client reports the command ended or the owner writes. While the command is still running, keep talking to the owner and read them again later.
+In a later call, when the owner writes or your client reports the import ended, read the result. While `import.rc` is still empty, the import is running: keep talking to the owner and read it again later.
 
-- **`"ok": true` in `import.out`:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
-- **It ended without `"ok": true`** (any text in `import.err`, or killed, a tool timeout, a restart): first try to finish with the approval the owner already gave. Run `"$TC" courier init --resume` the same way, in the background, with output to the same two files, and read them again:
+```sh
+export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
+cat "$COURIER_HOME/import.rc" "$COURIER_HOME/import.out" "$COURIER_HOME/import.err"
+```
+
+- **`"ok": true` in the output:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+- **It ended without `"ok": true`** (`import.rc` holds a number, or the import was killed, timed out or your session restarted before `import.rc` was written): first try to finish with the approval the owner already gave. Run the same block with `"$TC" courier init --resume < /dev/null` in place of the `printf … | "$TC" courier init --grant-file -` pipeline, then read the result the same way:
   - `"ok": true`: Courier is set up; continue as above.
   - It says OpenKey's space is still being set up: run `--resume` again in a minute; do not ask for another approval.
   - Anything else: the code is used up. Run step 1 again and send the new link with this one line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here." If the import then fails the same way again, stop and tell the owner in one plain line what went wrong instead of asking a third time.

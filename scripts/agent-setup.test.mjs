@@ -459,14 +459,24 @@ for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_si
     assert.equal(JSON.parse(readFileSync(join(courierHome, "profile.json"), "utf8")).courierDid, approval.courierDid);
     const keyDigest = () => createHash("sha256").update(readFileSync(join(courierHome, "key.json"))).digest("hex");
     const originalKey = keyDigest();
-    // The import runs in the background, so its result must land in files the agent reads, private to the owner.
+    // The import must return to the agent at once and finish in the background, with its result in files
+    // private to the owner, so a tool time limit can never kill it after the one-time code is spent.
     const importResult = (code) => {
+      const rcPath = join(courierHome, "import.rc");
+      const started = Date.now();
       const result = run(redeem, code);
       assert.ifError(result.error);
-      assert.equal(result.stdout + result.stderr, "", `${surface}: import printed to the terminal instead of its files`);
-      for (const name of ["import.out", "import.err"]) assert.equal(statSync(join(courierHome, name)).mode & 0o777, 0o600);
+      assert.equal(result.stderr, "");
+      assert.equal(result.stdout, "IMPORT_STARTED\n", `${surface}: the import step must start the import and return`);
+      assert.ok(Date.now() - started < 1500, `${surface}: the import step waited for the import`);
+      const deadline = Date.now() + 15000;
+      while (readFileSync(rcPath, "utf8") === "") {
+        assert.ok(Date.now() < deadline, `${surface}: the background import never wrote import.rc`);
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+      }
+      for (const name of ["import.rc", "import.out", "import.err"]) assert.equal(statSync(join(courierHome, name)).mode & 0o777, 0o600);
       assert.equal(readFileSync(join(courierHome, "import.out"), "utf8"), "");
-      return { status: result.status, err: readFileSync(join(courierHome, "import.err"), "utf8") };
+      return { status: Number(readFileSync(rcPath, "utf8")), err: readFileSync(join(courierHome, "import.err"), "utf8") };
     };
     const malformed = importResult("not-a-grant");
     assert.equal(malformed.status, 1, malformed.err);
