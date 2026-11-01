@@ -131,8 +131,9 @@ test("owner-undo revokes the recorded grant with the owner profile and no termin
   stub(join(h.work, "tinycloud"));
   const cid = `bafkr4i${"a".repeat(52)}`;
   writeFileSync(join(h.state, "meal-grant.json"), JSON.stringify({ delegationCid: cid }));
-  const out = spawnSync("setsid", ["sh", join(skill, "owner-undo.sh")], {
-    encoding: "utf8", input: "", timeout: 20000, env: { PATH: process.env.PATH, HOME: h.dir, TC_APPS_STATE: h.state },
+  // detached starts a new session, so the script has no controlling terminal, as under an agent.
+  const out = spawnSync("sh", [join(skill, "owner-undo.sh")], {
+    encoding: "utf8", input: "", timeout: 20000, detached: true, env: { PATH: process.env.PATH, HOME: h.dir, TC_APPS_STATE: h.state },
   });
   assert.equal(out.status, 0, out.stderr + out.stdout);
   assert.match(out.stdout, /Done: tell your agent/);
