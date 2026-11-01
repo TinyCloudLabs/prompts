@@ -103,7 +103,7 @@ Run only the command for the owner's selection, not both. Keep the active result
 
 Run this only when the owner's requested command reports missing Courier setup, not before trying an incoming invitation. Reuse the owner's existing `COURIER_HOME` if selected; otherwise use `~/.courier`. Keep this same directory and CLI executable throughout both steps. It is separate from the TinyCloud CLI profile; do not create another CLI profile or substitute an onboarding/app grant.
 
-**1. Request the one Courier approval.** This creates or reuses Courier's own agent key, saves the request in `$COURIER_HOME/request.json` and prints one line: the OpenKey approval link. It doesn't wait for a loopback callback:
+**1. Request the one Courier approval.** This creates or reuses Courier's own agent key, saves the request in `$COURIER_HOME` and prints a short OpenKey link. Asking again returns the same link while the request is open:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -114,13 +114,30 @@ mkdir -p -m 700 "$COURIER_HOME"
   node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).openkeyUrl + "\n")' "$COURIER_HOME/request.json"
 ```
 
-The link is long. Send the owner that printed line exactly as printed, copied from the output: never retype, shorten or edit any part of it. Put this one sentence in the same message:
+Copy the returned `openkeyUrl` (a `https://openkey.so/a/…` link) exactly as printed; never retype it. Send it to the owner, and only to the owner, privately, with this one line in the same message:
 
-> Please approve this one-time Courier permission, then paste the short code here.
+> Open this link and approve the one-time Courier permission; tell me when you're done.
 
-The owner may open that link on another computer or phone and paste the code in this chat. Do not send the request's public-key or permissions JSON to the owner, reconstruct the URL, or ask for a private key.
+The first account to approve the link wins. The owner may open it on another computer or phone; there is no code to copy back. Do not send the request's public-key or permissions JSON to the owner, reconstruct the URL, or ask for a private key. If this step reports `[link-unavailable]`, nothing was saved: run it again in a minute.
 
-**2. Import the owner's code in the background.** The import uses the code up as soon as it starts and can take a few minutes, so it must never sit inside a foreground tool call: a tool time limit (Claude Code stops foreground calls after 2 minutes) would kill it after the code is spent. Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. This block starts the import in the background and returns at once. Run it exactly as written, as its own tool call (or with your client's own background mode, such as Claude Code's `run_in_background`), with the same `TC` and `COURIER_HOME`. Never add `sleep`, `wait` or a read of the result to the same call. Despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
+**2. Collect the approval.** Run this right after sending the link, and again whenever the owner says they're done, as a plain foreground call with the same `TC` and `COURIER_HOME`. It waits at most about a minute, so it fits a tool time limit (Claude Code stops foreground calls after 2 minutes). Nothing is used up when it starts, so a killed or interrupted call loses nothing: run it again, with no new link and no second approval.
+
+```sh
+{ set +x; } 2>/dev/null; umask 077
+: "${TC:?Run the CLI preamble}"
+export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
+"$TC" courier init --wait --timeout 60s
+```
+
+- **Exit 0, `"ok": true`:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+- **Exit 8, `{"pending": …}` on stdout:** Exit 8 is not a failure: the approval is still pending. Send the owner the `pending.approvalUrl` (the same link as `openkeyUrl`), ask them to approve it, then re-run `courier init --wait --timeout 60s`. Repeat while it exits 8. If it is the link you already sent, don't send it again; just run this step again. If your messages reach the owner only when your turn ends, end your turn after sending the link and run this step when the owner says they're done.
+- Any other non-zero exit is an error: stderr carries `[code]`.
+  - **`[approval-result-expired]` or `[approval-expired]`:** nothing was installed. Run step 1 again, send the new link with exactly this line: "That link expired before I could finish. Please open this new one and approve; tell me when you're done." Then run this step at once.
+  - **`[no-space]`:** the approval was saved and the owner's space isn't ready yet. Run `"$TC" courier init --resume` as its own call (it waits up to a minute); if it reports the same, run it again in a minute. Do not ask for another approval. If it still reports it after a few minutes, tell the owner in one plain line what stderr says.
+  - **`[approval-unavailable]`:** OpenKey is unreachable and the request is kept. Run this step again in a minute.
+  - **Any other code:** nothing was installed. Stop and tell the owner in one plain line what went wrong; do not request again in a loop.
+
+**If the owner sends a code instead.** Use this only when the owner replies with an OpenKey code (a short `XXXX-XXXX` code) instead of approving the link. The import uses the code up as soon as it starts and can take a few minutes, so it must never sit inside a foreground tool call: a tool time limit would kill it after the code is spent. Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. This block starts the import in the background and returns at once. Run it exactly as written, as its own tool call (or with your client's own background mode, such as Claude Code's `run_in_background`), with the same `TC` and `COURIER_HOME`. Never add `sleep`, `wait` or a read of the result to the same call. Despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -139,13 +156,13 @@ cat "$COURIER_HOME/import.rc" "$COURIER_HOME/import.out" "$COURIER_HOME/import.e
 grep -o '"status": *"[a-z-]*"' "$COURIER_HOME/profile.json"
 ```
 
-- **`"ok": true` in the output:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+- **`"ok": true` in the output:** Courier is set up. Continue as for exit 0 above.
 - **It ended without `"ok": true`** (`import.rc` holds a number, or the import was killed, timed out or your session restarted before `import.rc` was written). Never run the import again with the same code, even if an error suggests pasting it again: each code works only once. Don't change the blocks either: run the next import and every read exactly as written. Then go by the status line:
   - **`"status": "ready"`:** setup finished before the import stopped. Continue as for `"ok": true`.
   - **`"status": "awaiting-space"`:** the owner's approval was saved and OpenKey is still setting up their space. Run the same block with `"$TC" courier init --resume < /dev/null` in place of `printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file -`, keeping everything else, then read the result the same way. If it still says the space is being set up, run it again in a minute; do not ask for another approval.
-  - **Any other status:** the code is used up. Run step 1 again and send the new link with exactly this line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here." If the next import fails the same way, stop and tell the owner in one plain line what went wrong instead of asking a third time.
+  - **Any other status:** the code is used up. Run step 1 again and send the new link with exactly this line: "That didn't finish on my side, and each code works only once. Please open this new link and approve; tell me when you're done." Then collect it with step 2. If that fails the same way, stop and tell the owner in one plain line what went wrong instead of asking a third time.
 
-Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, also kept out of the foreground tool time limit, but do not start a second approval alongside the request above.
+Do not use plain `init`: a remote agent cannot rely on a callback to its machine. Do not start a second approval alongside the request above.
 
 ## Choose how to invite
 
