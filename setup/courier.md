@@ -101,16 +101,18 @@ Run only the command for the owner's selection, not both. Keep the active result
 
 Run this only when the owner's requested command reports missing Courier setup, not before trying an incoming invitation. Reuse the owner's existing `COURIER_HOME` if selected; otherwise use `~/.courier`. Keep this same directory and CLI executable throughout both steps. It is separate from the TinyCloud CLI profile; do not create another CLI profile or substitute an onboarding/app grant.
 
-**1. Request the one Courier approval.** This creates or reuses Courier's own agent key and returns an OpenKey URL without waiting for a loopback callback:
+**1. Request the one Courier approval.** This creates or reuses Courier's own agent key, saves the request in `$COURIER_HOME/request.json` and prints one line: the OpenKey approval link. It doesn't wait for a loopback callback:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 : "${TC:?Run the CLI preamble}"
 export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
-"$TC" courier init --request
+mkdir -p -m 700 "$COURIER_HOME"
+"$TC" courier init --request > "$COURIER_HOME/request.json" &&
+  node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).openkeyUrl + "\n")' "$COURIER_HOME/request.json"
 ```
 
-Copy the returned `openkeyUrl` exactly. Send it to the owner with this one sentence, in the same message:
+The link is long. Send the owner that printed line exactly as printed, copied from the output: never retype, shorten or edit any part of it. Put this one sentence in the same message:
 
 > Please approve this one-time Courier permission, then paste the short code here.
 

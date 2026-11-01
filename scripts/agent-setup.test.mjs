@@ -451,7 +451,11 @@ for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_si
     const issued = run(request);
     assert.ifError(issued.error);
     assert.equal(issued.status, 0, issued.stderr);
-    const approval = JSON.parse(issued.stdout);
+    // Step 1 prints only the link, on one line, so the agent can copy it without retyping;
+    // the full request stays in a private file.
+    const approval = JSON.parse(readFileSync(join(courierHome, "request.json"), "utf8"));
+    assert.equal(statSync(join(courierHome, "request.json")).mode & 0o777, 0o600);
+    assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
     const url = new URL(approval.openkeyUrl);
     assert.equal(url.origin, "https://openkey.example.invalid");
     assert.equal(url.searchParams.has("callback"), false);
