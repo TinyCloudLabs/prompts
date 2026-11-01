@@ -53,10 +53,10 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tinycloud-feed` | `feed` | [`skills/tinycloud-feed`](skills/tinycloud-feed), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
-| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the npm package [`@tinycloud/cli@1.5.0`](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.0) (js-sdk), with one change (below) |
-| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.4.0`](https://www.npmjs.com/package/@tinycloud/courier/v/0.4.0) (js-sdk), with changes (below) |
+| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the npm package [`@tinycloud/cli@1.5.1`](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.1) (js-sdk), with one change (below) |
+| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.4.1`](https://www.npmjs.com/package/@tinycloud/courier/v/0.4.1) (js-sdk), with changes (below) |
 | `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.25`](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz), unchanged |
-| `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.8.3`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.3) (js-sdk), unchanged |
+| `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.8.4`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.4) (js-sdk), unchanged |
 
 Skills written for these guides live in `skills/`. Skills owned by another repository stay authored there: the build downloads the exact release tarball named in `SKILLS` in `scripts/build-site.mjs` and refuses it unless its sha512 matches the pinned `integrity`, so every build, locally or on Cloudflare Pages, serves the same files. Nothing floats on a branch.
 
@@ -82,9 +82,9 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.5.0` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.0) |
-| `courier` skill | `@tinycloud/courier@0.4.0` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.4.0) |
-| `mcp` skill | `@tinycloud/mcp@0.8.3` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.3) |
+| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.5.1` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.1) |
+| `courier` skill | `@tinycloud/courier@0.4.1` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.4.1) |
+| `mcp` skill | `@tinycloud/mcp@0.8.4` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.4) |
 | TinyChat retrieval pack | `0.1.1-onboarding.25` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
 
