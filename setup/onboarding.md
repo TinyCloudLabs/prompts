@@ -39,14 +39,14 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command.
+**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and its `tinycloud-cli` skill; do both of its install steps.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0-beta.28 or later.
+No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0 or later.
 
 **2. Run onboarding.** One run does both approvals and keeps running until the owner has approved them. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set. Start it so it keeps running while you talk to the owner: as a background process (your client's own, if it has one) or in an interactive session, with stderr going to a file you read:
 
@@ -61,7 +61,7 @@ For each approval it prints `Approve in OpenKey: https://openkey.so/a/…` on st
 When the owner says they're done, read the files again and wait for the next link or the result:
 
 - **Exit 0, stdout `"onboarded": true`:** done. Tell the owner in one line that TinyCloud is set up, then go to [the owner's goal](#the-owners-goal). If they asked only for setup, end with a short list of what they can ask you next: keep records, share or publish a page, use a stored API key, ask about their meetings.
-- **The command stopped first** (a tool timeout, a restart): run `"$TC" onboard` again the same way. It keeps what the owner already approved and prints the pending link again.
+- **The command stopped first** (a tool timeout, a restart): run `"$TC" onboard` again the same way. It keeps what the owner already approved and prints the pending link again. If it shows a link you already sent, don't send it again; read the files again in a few seconds.
 
 Never run `onboard --code`: these links don't produce a code.
 
