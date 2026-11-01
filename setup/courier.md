@@ -135,6 +135,7 @@ grep -o '"status": *"[a-z-]*"' "$COURIER_HOME/profile.json"
 
 - **`"ok": true` in the output:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
 - **It ended without `"ok": true`** (`import.rc` holds a number, or the import was killed, timed out or your session restarted before `import.rc` was written). Never run the import again with the same code, even if an error suggests pasting it again: each code works only once. Then go by the status line:
+  - **`"status": "ready"`:** setup finished before the import stopped. Continue as for `"ok": true`.
   - **`"status": "awaiting-space"`:** the owner's approval was saved and OpenKey is still setting up their space. Run the same block with `"$TC" courier init --resume < /dev/null` in place of `printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file -`, keeping everything else, then read the result the same way. If it still says the space is being set up, run it again in a minute; do not ask for another approval.
   - **Any other status:** the code is used up. Run step 1 again and send the new link with exactly this line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here." If the next import fails the same way, stop and tell the owner in one plain line what went wrong instead of asking a third time.
 
