@@ -102,7 +102,7 @@ test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no cur
 });
 
 for (const [name, argv, expected] of [
-  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner context --json", "--profile owner auth grant"]],
+  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner context --json", "--profile owner context --json", "--profile owner auth grant"]],
   ["owner-undo.sh", [], ["--profile agent-data profile show", "--profile agent-data auth logout", "--profile agent-data-sql profile show", "--profile agent-data-sql auth logout", "--profile agent-meal profile show", "profile delete agent-meal"]],
 ]) {
   const scenarios = [
@@ -134,6 +134,20 @@ test("owner-undo.sh skips absent profiles quietly: no PROFILE_NOT_FOUND, exit 0"
   assert.equal(out.status, 0, out.stderr + out.stdout);
   assert.ok(!(out.stdout + out.stderr).includes("PROFILE_NOT_FOUND"), out.stderr + out.stdout);
   assert.deepEqual(calls(h.dir), ["--profile agent-data profile show", "--profile agent-data-sql profile show", "--profile agent-meal profile show"]);
+});
+
+test("owner-undo revokes the recorded grant with the owner profile and no terminal", () => {
+  const h = fresh();
+  stub(join(h.work, "tinycloud"));
+  const cid = `bafkr4i${"a".repeat(52)}`;
+  writeFileSync(join(h.state, "meal-grant.json"), JSON.stringify({ delegationCid: cid }));
+  // detached starts a new session, so the script has no controlling terminal, as under an agent.
+  const out = spawnSync("sh", [join(skill, "owner-undo.sh")], {
+    encoding: "utf8", input: "", timeout: 20000, detached: true, env: { PATH: process.env.PATH, HOME: h.dir, TC_APPS_STATE: h.state },
+  });
+  assert.equal(out.status, 0, out.stderr + out.stdout);
+  assert.match(out.stdout, /Done: tell your agent/);
+  assert.ok(calls(h.dir).some((line) => line.endsWith(`--profile owner delegation revoke --yes -- ${cid}`)), calls(h.dir).join("\n"));
 });
 
 test("owner-grant uses an explicit owner profile when the CLI default is an unsigned agent profile", () => {

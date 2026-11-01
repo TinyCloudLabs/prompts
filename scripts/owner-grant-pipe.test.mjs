@@ -19,13 +19,17 @@ writeFileSync(cli, `#!${process.execPath}
 import { createInterface } from 'node:readline';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-const a = process.argv.slice(2), signed = join(process.env.HOME, 'signed');
-if (a.includes('show')) { if (!existsSync(signed)) { console.error('PROFILE_NOT_FOUND'); process.exit(4); } process.exit(0); }
-if (a.includes('context')) { console.log(JSON.stringify({ ownerDid: '${owner}' })); process.exit(0); }
-// The sign-in (init --paste) reads a code from stdin; the grant prints a link and waits, as CLI 1.5.0 does,
-// until the owner approves (here: until the test writes the approved file).
-if (a.includes('init')) {
-  console.error('READY init');
+// Like CLI 1.5.0: init makes the profile before it asks for the code, so a cancelled sign-in leaves a
+// profile with no signed-in owner; context --json then reports ownerDid null.
+const a = process.argv.slice(2), home = process.env.HOME, signed = join(home, 'signed'), profile = join(home, 'profile');
+if (a.includes('show')) { if (!existsSync(profile)) { console.error('PROFILE_NOT_FOUND'); process.exit(4); } process.exit(0); }
+if (a.includes('context')) { console.log(JSON.stringify({ ownerDid: existsSync(signed) ? '${owner}' : null })); process.exit(0); }
+// The sign-in (init --paste, or auth login --paste on an existing profile) reads a code from stdin; the
+// grant prints a link and waits until the owner approves (here: until the test writes the approved file).
+const login = a.includes('login');
+if (a.includes('init') || login) {
+  writeFileSync(profile, 'profile');
+  console.error(login ? 'READY login' : 'READY init');
   createInterface({ input: process.stdin }).once('line', code => {
     if (code !== 'init-code') process.exit(3);
     writeFileSync(signed, 'signed');
@@ -33,7 +37,7 @@ if (a.includes('init')) {
   });
 } else {
   console.error('READY grant');
-  setInterval(() => { if (existsSync(join(process.env.HOME, 'approved'))) { console.log('{"approved":true}'); process.exit(0); } }, 100);
+  setInterval(() => { if (existsSync(join(home, 'approved'))) { console.log('{"approved":true}'); process.exit(0); } }, 100);
 }
 `, { mode: 0o755 });
 
@@ -68,7 +72,7 @@ function session(name) {
   const dir = join(state, "owner-grant-session");
   return {
     home, state, dir, start: () => sh(block), out: () => sh(step("cat ")), pid: () => Number(readFileSync(join(dir, "pid"), "utf8")),
-    send: (code) => sh(step("printf ").replace("<the code>", code)), cancel: () => sh(step("P=")), clean: () => sh(step("rm ")),
+    send: (code) => sh(step("printf ").replace("<the code>", code)), cancel: () => sh(step("P=")),
   };
 }
 
@@ -85,8 +89,7 @@ test("the sign-in code sent with the doc's own step reaches the sign-in, the gra
   await until(() => s.out().includes("Done: approval saved"), "done");
   await until(() => !alive(pid), "helper exit");
   assert.equal(readFileSync(join(s.state, "meal-grant.json"), "utf8").trim(), '{"approved":true}');
-  s.clean();
-  assert.ok(!existsSync(s.dir));
+  assert.doesNotMatch(block + steps, /\brm\b/, "the helper blocks run no rm");
 });
 
 test("starting again while a helper waits keeps its record, and cancelling stops only that PID", async () => {
@@ -104,6 +107,25 @@ test("starting again while a helper waits keeps its record, and cancelling stops
     assert.equal(readFileSync(join(s.state, "meal-grant.json"), "utf8").trim(), '{"previous":true}');
     assert.ok(alive(bystander.pid), "an unrelated process was stopped");
   } finally { bystander.kill("SIGKILL"); }
+});
+
+test("after a sign-in is cancelled, starting again signs the owner in on the existing profile and finishes", async () => {
+  const s = session("restart");
+  s.start();
+  const first = s.pid();
+  await until(() => s.out().includes("READY init"), "sign-in");
+  s.cancel();
+  await until(() => !alive(first), "helper exit");
+  s.start();
+  const pid = s.pid();
+  await until(() => s.out().includes("READY login"), "sign-in again on the existing profile");
+  assert.doesNotMatch(s.out(), /Could not read the signed-in owner account/);
+  s.send("init-code");
+  await until(() => s.out().includes("READY grant"), "grant");
+  writeFileSync(join(s.home, "approved"), "");
+  await until(() => s.out().includes("Done: approval saved"), "done");
+  await until(() => !alive(pid), "helper exit");
+  assert.equal(readFileSync(join(s.state, "owner-did.txt"), "utf8").trim(), owner);
 });
 
 test("a pid left by an ended helper is ignored: no HELPER_RUNNING, and the cancel step leaves that process alone", async () => {
