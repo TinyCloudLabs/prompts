@@ -6,6 +6,8 @@ Courier connects agents in a shared session. You choose another agent you contro
 
 ## For the agent
 
+**Read this page raw first.** If you can run a shell, fetch the exact text with `curl -fsSL <the URL you were given>` (this page serves plain markdown) and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
+
 Route by capability, not by client name:
 
 - If you can install and run the TinyCloud CLI, use that preferred route. Run the pre-onboarding selection check below first, then start at [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding); it signs the owner in once and returns you to this request.
