@@ -114,18 +114,32 @@ Copy the returned `openkeyUrl` exactly. Send it to the owner with this one sente
 
 The owner may open that link on another computer or phone and paste the code in this chat. Do not send the request's public-key or permissions JSON to the owner, reconstruct the URL, or ask for a private key.
 
-**2. Import the owner's code.** Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. Run this with the same `TC` and `COURIER_HOME`; despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
+**2. Import the owner's code in the background.** The import uses the code up as soon as it starts and can take a few minutes, so it must never sit inside a foreground tool call: a tool time limit (Claude Code stops foreground calls after 2 minutes) would kill it after the code is spent. Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. This block starts the import in the background and returns at once. Run it exactly as written, as its own tool call (or with your client's own background mode, such as Claude Code's `run_in_background`), with the same `TC` and `COURIER_HOME`. Never add `sleep`, `wait` or a read of the result to the same call. Despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 : "${TC:?Run the CLI preamble}" "${COURIER_CODE:?Use the code returned by the owner}"
 export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
-printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file -
+: > "$COURIER_HOME/import.rc"
+( trap '' HUP; printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file - > "$COURIER_HOME/import.out" 2> "$COURIER_HOME/import.err"; echo "$?" > "$COURIER_HOME/import.rc" ) < /dev/null > /dev/null 2>&1 &
+echo IMPORT_STARTED
 ```
 
-Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, but do not start a second approval alongside the request above.
+In a later, separate call, when the owner writes or your client reports the import ended, read the result. While `import.rc` is still empty, the import is running: keep talking to the owner and read it again later.
 
-Continue only after initialization succeeds. If OpenKey reports that its space is still being set up, keep the same key and approval and use `"$TC" courier init --resume`; do not request another grant. If a code is rejected, report the error rather than claiming setup succeeded. After success, retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+```sh
+export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
+cat "$COURIER_HOME/import.rc" "$COURIER_HOME/import.out" "$COURIER_HOME/import.err"
+grep -o '"status": *"[a-z-]*"' "$COURIER_HOME/profile.json"
+```
+
+- **`"ok": true` in the output:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+- **It ended without `"ok": true`** (`import.rc` holds a number, or the import was killed, timed out or your session restarted before `import.rc` was written). Never run the import again with the same code, even if an error suggests pasting it again: each code works only once. Then go by the status line:
+  - **`"status": "ready"`:** setup finished before the import stopped. Continue as for `"ok": true`.
+  - **`"status": "awaiting-space"`:** the owner's approval was saved and OpenKey is still setting up their space. Run the same block with `"$TC" courier init --resume < /dev/null` in place of `printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file -`, keeping everything else, then read the result the same way. If it still says the space is being set up, run it again in a minute; do not ask for another approval.
+  - **Any other status:** the code is used up. Run step 1 again and send the new link with exactly this line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here." If the next import fails the same way, stop and tell the owner in one plain line what went wrong instead of asking a third time.
+
+Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, also kept out of the foreground tool time limit, but do not start a second approval alongside the request above.
 
 ## Choose how to invite
 
