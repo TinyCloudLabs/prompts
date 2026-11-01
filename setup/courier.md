@@ -125,18 +125,18 @@ export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
 echo IMPORT_STARTED
 ```
 
-In a later call, when the owner writes or your client reports the import ended, read the result. While `import.rc` is still empty, the import is running: keep talking to the owner and read it again later.
+In a later, separate call, when the owner writes or your client reports the import ended, read the result. While `import.rc` is still empty, the import is running: keep talking to the owner and read it again later.
 
 ```sh
 export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
 cat "$COURIER_HOME/import.rc" "$COURIER_HOME/import.out" "$COURIER_HOME/import.err"
+grep -o '"status": *"[a-z-]*"' "$COURIER_HOME/profile.json"
 ```
 
 - **`"ok": true` in the output:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
-- **It ended without `"ok": true`** (`import.rc` holds a number, or the import was killed, timed out or your session restarted before `import.rc` was written): first try to finish with the approval the owner already gave. Run the same block with `"$TC" courier init --resume < /dev/null` in place of the `printf … | "$TC" courier init --grant-file -` pipeline, then read the result the same way:
-  - `"ok": true`: Courier is set up; continue as above.
-  - It says OpenKey's space is still being set up: run `--resume` again in a minute; do not ask for another approval.
-  - Anything else: the code is used up. Run step 1 again and send the new link with this one line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here." If the import then fails the same way again, stop and tell the owner in one plain line what went wrong instead of asking a third time.
+- **It ended without `"ok": true`** (`import.rc` holds a number, or the import was killed, timed out or your session restarted before `import.rc` was written). Never run the import again with the same code, even if an error suggests pasting it again: each code works only once. Then go by the status line:
+  - **`"status": "awaiting-space"`:** the owner's approval was saved and OpenKey is still setting up their space. Run the same block with `"$TC" courier init --resume < /dev/null` in place of `printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file -`, keeping everything else, then read the result the same way. If it still says the space is being set up, run it again in a minute; do not ask for another approval.
+  - **Any other status:** the code is used up. Run step 1 again and send the new link with exactly this line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here." If the next import fails the same way, stop and tell the owner in one plain line what went wrong instead of asking a third time.
 
 Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, also kept out of the foreground tool time limit, but do not start a second approval alongside the request above.
 
