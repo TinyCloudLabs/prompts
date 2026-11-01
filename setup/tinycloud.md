@@ -49,6 +49,8 @@ mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tin
 sh "$HOME/.local/share/tinycloud/install-cli.sh"
 ```
 
+If your client blocks the download or asks the owner to confirm it, show the owner the step and this reply to send, then wait: "Go ahead: download the TinyCloud CLI installer from agents.tinycloud.xyz." Run it again once they agree. Don't run a different install.
+
 The script is exactly this block, shown here so you and the owner can read it:
 
 ```sh
