@@ -123,11 +123,13 @@ export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
 printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file - > "$COURIER_HOME/import.out" 2> "$COURIER_HOME/import.err"
 ```
 
-Then read `$COURIER_HOME/import.out` and `$COURIER_HOME/import.err`, again whenever your client reports the command ended or the owner writes, until one of these appears:
+Then read `$COURIER_HOME/import.out` and `$COURIER_HOME/import.err` whenever your client reports the command ended or the owner writes. While the command is still running, keep talking to the owner and read them again later.
 
-- **`"ok": true` in `import.out`:** Courier is set up. After success, retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
-- **A `tinycloud courier: [<code>] …` line in `import.err`:** report the error rather than claiming setup succeeded. If it says OpenKey's space is still being set up, keep the same key and approval and run `"$TC" courier init --resume` the same way, in the background; do not request another grant.
-- **The command ended with neither** (killed, a tool timeout, a restart): the code is used up. Run step 1 again and send the new link with this one line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here."
+- **`"ok": true` in `import.out`:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+- **It ended without `"ok": true`** (any text in `import.err`, or killed, a tool timeout, a restart): first try to finish with the approval the owner already gave. Run `"$TC" courier init --resume` the same way, in the background, with output to the same two files, and read them again:
+  - `"ok": true`: Courier is set up; continue as above.
+  - It says OpenKey's space is still being set up: run `--resume` again in a minute; do not ask for another approval.
+  - Anything else: the code is used up. Run step 1 again and send the new link with this one line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here." If the import then fails the same way again, stop and tell the owner in one plain line what went wrong instead of asking a third time.
 
 Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, also kept out of the foreground tool time limit, but do not start a second approval alongside the request above.
 
