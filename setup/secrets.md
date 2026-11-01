@@ -11,6 +11,10 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 
 ## For the agent
 
+**Read this page raw first.** If you can run a shell, fetch the exact text of this page, and of any guide it sends you to, with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
+
+**Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
+
 Keep the owner's request, read [setup/agent.md](agent.md), select **Secrets** and follow its steps. Install only `tc-secrets`; choose a role-and-purpose-specific `TC_SECRETS_PROFILE` rather than silently sharing `api-keys`. Once setup is ready, read the installed skill's `SKILL.md` and continue the original task from §1 in this conversation. Missing CLI or owner DID is `NEEDS_SETUP`, not a reason to request a value in chat or a broad grant.
 
 ## Undo
