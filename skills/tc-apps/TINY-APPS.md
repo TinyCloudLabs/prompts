@@ -115,7 +115,7 @@ P=$(cat '<STATE>/owner-grant-session/pid'); if ps -p "$P" -o args= | grep -q 'ow
 rm -rf '<STATE>/owner-grant-session'
 ```
 
-   Read `out` again until it shows the OpenKey URL. Send the sign-in code the owner pastes with the `printf` line; the access link needs none. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. When `out` shows `Done` or an error, or after a cancel, remove the folder with the `rm` line.
+   Read `out` again until it shows the OpenKey URL. Send the sign-in code the owner pastes with the `printf` line; the access link needs none. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. When `out` shows `Done` or an error, or after a cancel, remove the folder with the `rm` line. After a cancel, that link no longer works. Don't send it again: run the start block again and send the new link.
 
    - Relay each OpenKey URL printed by the running process. For the sign-in link, the owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. For the access link there is no code: keep the process running, and when the owner says they've approved, read its output until it shows `Done` or an error. Do not run a second process or approval.
    - On a fresh computer, the script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL the same way; it needs no code. First time: two approvals (sign-in and app); then one per new app.
