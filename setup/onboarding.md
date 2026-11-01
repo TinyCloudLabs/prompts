@@ -60,11 +60,17 @@ No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. Th
 "$TC" onboard > onboard.out 2> onboard.err
 ```
 
-For each approval it prints `Approve in OpenKey: https://openkey.so/a/…` on stderr: step 1 first, then step 2. Send the owner each link with this line: "Open this link and approve; tell me when you're done." For step 1, start that message with this text, word for word:
+For each approval it prints `Approve in OpenKey: https://openkey.so/a/…` on stderr: step 1 first, then step 2. Step 2's link appears only after the owner approves step 1. Send the owner each link with this line: "Open this link and approve; tell me when you're done." For step 1, start that message with this text, word for word:
 
 > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
-When the owner says they're done, read the files again and wait for the next link or the result:
+Don't wait for the owner to say they're done. After sending step 1's link, run this wait as its own shell call. It returns as soon as step 2's link or the result appears, or after two minutes:
+
+```sh
+for i in $(seq 1 24); do grep -q 'step 2 of 2' onboard.err && break; grep -q '"onboarded"' onboard.out && break; sleep 5; done; cat onboard.err onboard.out
+```
+
+If it shows step 2's link, send it at once, without the step-1 text. If it shows neither, run the wait again; if the owner writes in the meantime, read the files then. After step 2's link, read the files again when the owner says they're done, until you see the result:
 
 - **Exit 0, stdout `"onboarded": true`:** done. Tell the owner in one line that TinyCloud is set up, then go to [the owner's goal](#the-owners-goal). If they asked only for setup, end with a short list of what they can ask you next: keep records, share or publish a page, use a stored API key, ask about their meetings.
 - **The command stopped first** (a tool timeout, a restart): run `"$TC" onboard` again the same way. It keeps what the owner already approved and prints the pending link again. If it shows a link you already sent, don't send it again; read the files again in a few seconds.
