@@ -132,26 +132,26 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.4.0-beta.19",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.0-beta.19.tgz",
-    integrity: "sha512-cS4icq+3jSz9u9Xj+BCnneGhwAIUVy79HGvjfC6JvqvlHa1Sbj/z0WmQ9OZZt2X7RZAfkSex37+v6iYXVWtBOg==",
+    version: "0.4.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.0.tgz",
+    integrity: "sha512-AGi2tyygPHj6NB1V56kj8Nz7w0WfuxMPZlZTKBxKHQgfFxIs/6aXvmWdUB8xFVT1tFPKSJt/y5rimIxw3XeEFw==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
       "SKILL.md": [
         [
           "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
-          "For this preview, offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the preview Courier guide's two-choice flow.",
+          "Offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the two-choice flow in the Courier guide, https://agents.tinycloud.xyz/courier.",
         ],
         [
           "`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey (`tinycloud courier init --paste` also accepts the OpenKey `XXXX-XXXX`\ncode) and decides who to pair with.\nIf OpenKey reports the space is still being set up, `init` waits up to about 2.5 minutes; otherwise use `init --resume`.",
-          "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. For this preview, set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
+          "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
         ],
       ],
       "start.md": [
         [
           "Start Courier for me using the installed courier command. Reuse my existing Courier profile and restricted grant. If setup is required, use the normal courier init approval flow; do not request my owner key or broader permissions.",
-          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote two-command setup below: request one Courier approval, give me its exact openkeyUrl with one plain permission sentence, and import the code I send back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for this preview's invitation viewer, and preserve every returned invitation URL exactly.",
+          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote two-command setup below: request one Courier approval, give me its exact openkeyUrl with one plain permission sentence, and import the code I send back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
         ],
         [
           "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",

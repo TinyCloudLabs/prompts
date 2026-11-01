@@ -383,7 +383,7 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
 test("Courier preview installs and serves the approved release pins", () => {
   const skills = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8")).skills;
   assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.0");
-  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.0-beta.19");
+  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.0");
   const dir = home();
   const bin = join(dir, "bin");
   mkdirSync(bin);
