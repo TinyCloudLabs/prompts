@@ -7,7 +7,7 @@ Your agent publishes a document or web page from your computer to your own TinyC
 - **Paste into your agent:** `Share this with TinyCloud: https://agents.tinycloud.xyz/share`
 - You need a shell, Node.js 22.20 or later, and npm. An agent that can't run the TinyCloud CLI can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
 - **What it does:** installs the pinned TinyCloud CLI and the `tc-publish` skill, asks you before it makes the link, publishes, and returns the link.
-- **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one sign-in in OpenKey and paste its code back to your agent.
+- **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one OpenKey link your agent sends you. There's nothing to send back.
 - **It asks first.** Anyone with the link can open it, so the agent makes one only after you say yes. If you say no, nothing is published and the file stays on your computer.
 - **Undo:** see [Undo](#undo).
 
@@ -34,7 +34,7 @@ The CLI publishes **files**, not folders. A directory fails with `MAX_BYTES_EXCE
 | HTML page | one self-contained `.html` file | **See the HTML note below.** |
 | JSX component | `App.jsx` or `App.tsx` with a default export (**see Artifacts below**) | Renders as a live page in a sandbox. |
 
-Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`, `json`, `css`, `js`, otherwise `application/octet-stream`. The CLI release after 1.3.0-beta.30 also maps `jsx` to `text/jsx` and `tsx` to `text/tsx`; on any earlier CLI, pass `--media-type text/jsx` (or `text/tsx`). Override with `--media-type` for one file. File names must be one safe path segment; names with spaces are stored under a safe name.
+Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`, `json`, `css`, `js`, `jsx` (`text/jsx`), `tsx` (`text/tsx`), otherwise `application/octet-stream`. Override with `--media-type` for one file. File names must be one safe path segment; names with spaces are stored under a safe name.
 
 **HTML note.** Before publishing HTML, run the skill's self-contained check: external `src`, `href`, CSS `url()` and network calls don't load in the viewer. Tell the owner what to expect: the page renders in a sandboxed frame. If you can't confirm what the recipient sees, say so. Don't promise a rendered site.
 
@@ -42,7 +42,7 @@ Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`,
 
 - **JSX:** `export default function App() { … }` in one file. The libraries available to it are `react` 19 (and `react-dom/client`), `lucide-react` (icons), `recharts` (charts), `d3`, `mermaid` 11 (diagrams) and Tailwind CSS classes (browser runtime). Nothing else can be imported. The code runs sandboxed: no network, no CDN, no storage, no cookies and no access to the page around it, so embed the data. An import that isn't in this list shows a "library not available" panel instead of the page.
 - **TinyCloud style tokens** are available in JSX artifacts only; plain HTML pages don't get them. CSS variables: `var(--tc-color-page|surface|text|text-muted|border|accent|on-accent|link)`, `var(--tc-space-1…7)`, `var(--tc-radius-sm|md|lg)`, `var(--tc-font-sans|mono)`. Tailwind classes map to them: colors `tc-page|surface|subtle|active|text|muted|border|accent|accent-hover|on-accent|success|warning|danger` (`bg-tc-surface`, `text-tc-muted`, `border-tc-border`), `rounded-tc-sm|md|lg`, `font-tc-sans|mono`. Light and dark follow the system. In a plain HTML page the variables are undefined, so any `var(--tc-…)` there needs a fallback value, for example `var(--tc-color-text, #1a1c21)`.
-- **Pin a version:** `--artifact new` stores the file as write-once version 1 and pins the link to it; a later publish of changed content with `--artifact <id>` (the `artifactId` in the JSON) makes version 2 with its own link, and the earlier link keeps showing version 1 (identical bytes to a bearer link return the same version). Needs CLI 1.3.0-beta.10 or newer; the 1.5.1 this site pins has it. Check with `"$TC_BIN" share publish --help | grep -q -- --artifact`. A profile approved on an older CLI must go through the skill's §2 consent again to add the `artifacts/` scope. A pinned share is read-only: `--action edit` is refused with `--artifact`.
+- **Pin a version:** `--artifact new` stores the file as write-once version 1 and pins the link to it; a later publish of changed content with `--artifact <id>` (the `artifactId` in the JSON) makes version 2 with its own link, and the earlier link keeps showing version 1 (identical bytes to a bearer link return the same version). The pinned CLI 1.5.1 has it. A profile approved without the `artifacts/` scope must go through the skill's §2 sign-in again to add it. A pinned share is read-only: `--action edit` is refused with `--artifact`.
 - **Revoke:** `share revoke <id>` closes the link. Copies already opened or downloaded can't be recalled.
 - Never put secrets or tokens in an artifact: everyone who holds the link can read its source.
 
