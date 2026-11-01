@@ -60,22 +60,25 @@ test("§3b writes and checks the manifest before any sign-in", () => {
   assert.ok(!existsSync(join(w.home, "args")), "§3b never starts the CLI");
 });
 
-test("§3c runs the sign-in in the background without a code; §3d sends the link once, then reads the result", async () => {
+test("§3c detaches the sign-in and returns at once, without a code; §3d sends the link once, then reads the result", async () => {
   const w = fresh();
   sh("3b", w.env);
-  const job = spawn("bash", ["-c", block("3c")], { env: w.env, stdio: "ignore" });
+  const started = Date.now();
+  assert.equal(sh("3c", w.env), "LOGIN_STARTED");
+  assert.ok(Date.now() - started < 1500, `§3c took ${Date.now() - started} ms`);
   let first;
   await until(() => !["STARTING", "LOGIN_STOPPED"].includes(first = sh("3d", w.env)));
   assert.equal(first, "APPROVAL_READY new");
   assert.equal(readFileSync(join(w.state, "approve.url"), "utf8"), LINK);
   assert.equal(sh("3d", w.env), "APPROVAL_READY same");
+  assert.ok(!existsSync(join(w.state, "login.rc")), "the CLI is still running");
   const args = readFileSync(join(w.home, "args"), "utf8");
   assert.match(args, /auth login --method openkey --manifest \S+manifest\.json --owner \S+ --expiry 30d --no-popup/);
   assert.doesNotMatch(args, /--paste/);
   assert.equal(readFileSync(join(w.home, "stdin"), "utf8"), "", "stdin is /dev/null");
   assert.equal(sh("3c", w.env), "LOGIN_ALREADY_RUNNING — run §3d");
   writeFileSync(join(w.home, "approved"), "");
-  await new Promise((r) => job.on("exit", r));
+  await until(() => existsSync(join(w.state, "login.rc")) && readFileSync(join(w.state, "login.rc"), "utf8").trim() === "0");
   assert.equal(sh("3d", w.env), "SIGNED_IN expires 2026-12-01T00:00:00.000Z declined []");
   for (const file of ["login.out", "login.err", "login.rc", "login.pid", "approve.url"]) assert.ok(!existsSync(join(w.state, file)), file);
 });
@@ -83,7 +86,7 @@ test("§3c runs the sign-in in the background without a code; §3d sends the lin
 test("§3d refuses any printed link that is not a sealed openkey.so/a/ link, and stops the sign-in", async () => {
   for (const url of ["https://openkey.so/delegate?did=did:key:z6Mk&permissions=e30", "https://openkey.so/a/abc123", "https://openkey.so.evil.example/a/abc#k"]) {
     const w = fresh();
-    const sleeper = spawn("sleep", ["30"], { stdio: "ignore" });
+    const sleeper = spawn("bash", ["-c", "sleep 30; :", "fake", "auth", "login"], { stdio: "ignore" });
     writeFileSync(join(w.state, "login.pid"), `${sleeper.pid}\n`);
     writeFileSync(join(w.state, "login.err"), `Approve this request in OpenKey: ${url}\n`);
     const exited = new Promise((r) => sleeper.on("exit", r));
@@ -93,11 +96,24 @@ test("§3d refuses any printed link that is not a sealed openkey.so/a/ link, and
   }
 });
 
-test("§3d reports a stopped sign-in and CLI errors by code", () => {
+test("§3d and §3c treat a PID that is gone, or is no longer the sign-in, as stopped", async () => {
   const w = fresh();
   writeFileSync(join(w.state, "login.pid"), "999999999\n");
   writeFileSync(join(w.state, "login.err"), `Approve this request in OpenKey: ${LINK}\n`);
   assert.equal(sh("3d", w.env), "LOGIN_STOPPED");
+  const other = spawn("sleep", ["30"], { stdio: "ignore" });
+  writeFileSync(join(w.state, "login.pid"), `${other.pid}\n`);
+  assert.equal(sh("3d", w.env), "LOGIN_STOPPED");
+  assert.equal(other.exitCode, null, "an unrelated process is never signalled");
+  sh("3b", w.env);
+  assert.equal(sh("3c", w.env), "LOGIN_STARTED");
+  other.kill();
+  writeFileSync(join(w.home, "approved"), "");
+  await until(() => existsSync(join(w.state, "login.rc")));
+});
+
+test("§3d reports CLI errors by code", () => {
+  const w = fresh();
   writeFileSync(join(w.state, "login.rc"), "3\n");
   writeFileSync(join(w.state, "login.err"), '{"error":{"code":"APPROVAL_REQUEST_EXPIRED","message":"This approval request expired before it was approved. Start a new request."}}\n');
   assert.equal(sh("3d", w.env), "LOGIN_FAILED APPROVAL_REQUEST_EXPIRED This approval request expired before it was approved. Start a new request.");

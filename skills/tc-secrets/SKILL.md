@@ -56,7 +56,7 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 - **Approval link:** the link completes one sign-in for this profile. There is no code: the CLI collects the owner's approval from OpenKey itself.
   - The link lives in `$STATE/approve.url` (0600). Read it once, to compose your one message to the owner. The CLI also writes it into `$STATE/login.err`, which §3d parses. Never display that file. The link must not appear anywhere else.
 - **Only the owner adds secrets and approves.** Never open the add link or the approval link yourself, and never approve anything for the owner.
-- **The sign-in always runs in the background.** §3c waits until the owner approves, so it runs as a background process with its output in files, never as a foreground tool call. Every other block finishes in under two minutes.
+- **The sign-in always runs in the background.** It waits until the owner approves, so §3c starts it detached, with its output in files, and returns at once. Never run the `auth login` command any other way, and never add `sleep`, `wait` or a file read to §3c. Every block finishes in under two minutes.
 - **Run only the blocks the task needs, as written.**
   - Don't create, rename or delete profiles beyond §3a's `init`, and never run `profile delete`.
   - Don't improvise extra `tinycloud` commands to "test" access: §2 is the access test.
@@ -329,7 +329,7 @@ PY
 - `BAD_INPUT <why>` → fix `TC_OWNER_DID` or the secret names and run this block again.
 - `REQUEST_MISMATCH <why>` → don't start the sign-in. Report what the check said.
 
-**3c. Start the sign-in in the background.** This sign-in keeps running until the owner approves, which takes longer than a tool call may run. **Always run this block as a background process (your client's own, if it has one) or in an interactive session, never as a foreground tool call.** Its output goes to files in `$STATE` that §3d reads, and its stdin is closed. The CLI prints the approval link, then collects the approval from OpenKey by itself as soon as the owner approves. There is no code.
+**3c. Start the sign-in.** The sign-in keeps running until the owner approves, which takes longer than a tool call may run. So this block starts it detached, in the background, with stdin closed and its output in files in `$STATE` that §3d reads, and returns at once with `LOGIN_STARTED`. Run it as its own tool call, exactly as written. Never add `sleep`, `wait` or a read of the files to it. The CLI prints the approval link, then collects the approval from OpenKey by itself as soon as the owner approves. There is no code.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
@@ -342,27 +342,34 @@ fi
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
-if [ -s "$STATE/login.pid" ] && [ ! -e "$STATE/login.rc" ] && kill -0 "$(cat "$STATE/login.pid")" 2>/dev/null; then echo "LOGIN_ALREADY_RUNNING — run §3d"
+P=$(cat "$STATE/login.pid" 2>/dev/null)
+if [ -n "$P" ] && [ ! -e "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -q 'auth login'; then echo "LOGIN_ALREADY_RUNNING — run §3d"
 elif [ ! -s "$STATE/manifest.json" ]; then echo "NO_MANIFEST — run §3b first"
 else
-  rm -f "$STATE/login.out" "$STATE/login.err" "$STATE/login.rc" "$STATE/login.pid"
-  env -u TC_PRIVATE_KEY "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" \
-    --owner "$TC_OWNER_DID" --expiry 30d --no-popup < /dev/null > "$STATE/login.out" 2> "$STATE/login.err" &
-  echo $! > "$STATE/login.pid"
-  wait $!; echo $? > "$STATE/login.rc"
+  rm -f "$STATE/login.out" "$STATE/login.err" "$STATE/login.rc"
+  : > "$STATE/login.pid"
+  ( trap '' HUP
+    env -u TC_PRIVATE_KEY "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" \
+      --owner "$TC_OWNER_DID" --expiry 30d --no-popup < /dev/null > "$STATE/login.out" 2> "$STATE/login.err" &
+    echo $! > "$STATE/login.pid"
+    wait $!; echo $? > "$STATE/login.rc"
+  ) < /dev/null > /dev/null 2>&1 &
+  echo LOGIN_STARTED
 fi
 ```
 
-A few seconds after starting it, run §3d. Don't start this block again while it runs: a second start prints `LOGIN_ALREADY_RUNNING` and changes nothing.
+- `LOGIN_STARTED` → run §3d a few seconds later.
+- `LOGIN_ALREADY_RUNNING` → a sign-in from an earlier start is still running; it changes nothing. Run §3d.
+- `NO_MANIFEST` → run §3b first.
 
-**3d. Read the sign-in.** A quick foreground block. Run it a few seconds after §3c starts, until it prints `APPROVAL_READY`, and again when the owner says they're done. It accepts the link only as the CLI printed it, on the line `Approve this request in OpenKey: https://openkey.so/a/…`, and only if it starts with `https://openkey.so/a/<request id>#`.
+**3d. Read the sign-in.** A quick foreground block. Run it a few seconds after §3c starts, until it prints `APPROVAL_READY`, and again when the owner says they're done. It counts the sign-in as running only while the process in `login.pid` is still the `auth login` command. It accepts the link only as the CLI printed it, on the line `Approve this request in OpenKey: https://openkey.so/a/…`, and only if it starts with `https://openkey.so/a/<request id>#`.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 python3 - "$STATE" <<'PY'
-import json, os, re, signal, sys
+import json, os, re, signal, subprocess, sys
 st = sys.argv[1]
 def read(n):
     try: return open(os.path.join(st, n), errors="replace").read()
@@ -384,8 +391,11 @@ if rc:
     if rc == "0" and isinstance(r, dict) and r.get("authenticated") is True:
         sys.exit(print("SIGNED_IN expires", r.get("expiresAt"), "declined", json.dumps(r.get("declined", []))))
     sys.exit(print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", e.get("message") or "")[:200]))
-try: os.kill(int(pid), 0)
-except (ValueError, OSError): sys.exit(print("LOGIN_STOPPED"))
+if pid == "" and os.path.exists(os.path.join(st, "login.pid")): sys.exit(print("STARTING"))
+def is_login(p):
+    try: return p.isdigit() and "auth login" in subprocess.run(["ps", "-p", p, "-o", "args="], capture_output=True, text=True).stdout
+    except OSError: return False
+if not is_login(pid): sys.exit(print("LOGIN_STOPPED"))
 prefix = "Approve this request in OpenKey: "
 links = {l[len(prefix):].rstrip() for l in err.splitlines() if l.startswith(prefix)}
 if not links: sys.exit(print("STARTING"))
@@ -406,10 +416,10 @@ PY
 - `SIGNED_IN` with a non-empty `declined` → something wasn't granted. Tell the owner which names stay unreadable and why:
   - an item they unticked;
   - or, if the declined entry is the decrypt permission and everything was ticked, an OpenKey deployment too old to grant agent decryption.
-- `LOGIN_STOPPED` → the sign-in stopped without a result (a tool timeout, a restart). Start §3c again the same way, in the background. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again.
-- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired (after about an hour) before the owner approved. Start §3c again in the background, run this block, and send the owner only the new link: "Open this link and approve; tell me when you're done."
-- `LOGIN_FAILED APPROVAL_RESULT_EXPIRED` → the owner approved, but the sign-in wasn't running to collect it within 10 minutes. Same as above: start §3c again and send only the new link.
-- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then start §3c again in the background; it resumes the same link.
+- `LOGIN_STOPPED` → the sign-in stopped without a result (a restart, or its process was ended). Run §3c again. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again.
+- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired (after about an hour) before the owner approved. Run §3c again, then this block, and send the owner only the new link: "Open this link and approve; tell me when you're done."
+- `LOGIN_FAILED APPROVAL_RESULT_EXPIRED` → the owner approved, but the sign-in wasn't running to collect it within 10 minutes. Same as above: run §3c again and send only the new link.
+- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then run §3c again; it resumes the same link.
 - `LOGIN_FAILED <other code>` → the CLI refused or failed. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` → the block stopped the sign-in. Don't send a link; tell the owner what the check reported.
 
