@@ -7,8 +7,9 @@ import { setTimeout as delay } from "node:timers/promises";
 import { after, test } from "node:test";
 
 // TINY-APPS.md §3's blocks for agents without a live interactive session: the helper gets a pipe of its own,
-// codes reach it through that pipe, and cancelling stops only its recorded PID. Every step runs as its own
-// shell call, the way such an agent runs it, so nothing carries over between them.
+// the sign-in code reaches it through that pipe, the grant waits for OpenKey with no code, and cancelling stops
+// only its recorded PID. Every step runs as its own shell call, the way such an agent runs it, so nothing carries
+// over between them.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const base = mkdtempSync("/var/tmp/tc2238-pipe.");
 after(() => rmSync(base, { recursive: true, force: true }));
@@ -21,13 +22,19 @@ import { join } from 'node:path';
 const a = process.argv.slice(2), signed = join(process.env.HOME, 'signed');
 if (a.includes('show')) { if (!existsSync(signed)) { console.error('PROFILE_NOT_FOUND'); process.exit(4); } process.exit(0); }
 if (a.includes('context')) { console.log(JSON.stringify({ ownerDid: '${owner}' })); process.exit(0); }
-const stage = a.includes('init') ? 'init' : 'grant';
-console.error('READY ' + stage);
-createInterface({ input: process.stdin }).once('line', code => {
-  if (code !== stage + '-code') process.exit(3);
-  if (stage === 'init') writeFileSync(signed, 'signed'); else console.log('{"approved":true}');
-  process.exit(0);
-});
+// The sign-in (init --paste) reads a code from stdin; the grant prints a link and waits, as CLI 1.5.0 does,
+// until the owner approves (here: until the test writes the approved file).
+if (a.includes('init')) {
+  console.error('READY init');
+  createInterface({ input: process.stdin }).once('line', code => {
+    if (code !== 'init-code') process.exit(3);
+    writeFileSync(signed, 'signed');
+    process.exit(0);
+  });
+} else {
+  console.error('READY grant');
+  setInterval(() => { if (existsSync(join(process.env.HOME, 'approved'))) { console.log('{"approved":true}'); process.exit(0); } }, 100);
+}
 `, { mode: 0o755 });
 
 const doc = readFileSync(join(root, "skills/tc-apps/TINY-APPS.md"), "utf8");
@@ -60,12 +67,12 @@ function session(name) {
   };
   const dir = join(state, "owner-grant-session");
   return {
-    state, dir, start: () => sh(block), out: () => sh(step("cat ")), pid: () => Number(readFileSync(join(dir, "pid"), "utf8")),
+    home, state, dir, start: () => sh(block), out: () => sh(step("cat ")), pid: () => Number(readFileSync(join(dir, "pid"), "utf8")),
     send: (code) => sh(step("printf ").replace("<the code>", code)), cancel: () => sh(step("P=")), clean: () => sh(step("rm ")),
   };
 }
 
-test("codes sent with the doc's own step reach the sign-in and the grant, and the helper exits by itself", async () => {
+test("the sign-in code sent with the doc's own step reaches the sign-in, the grant finishes on approval, and the helper exits by itself", async () => {
   const s = session("codes");
   s.start();
   const pid = s.pid();
@@ -74,7 +81,7 @@ test("codes sent with the doc's own step reach the sign-in and the grant, and th
   await until(() => s.out().includes("READY init"), "sign-in");
   s.send("init-code");
   await until(() => s.out().includes("READY grant"), "grant");
-  s.send("grant-code");
+  writeFileSync(join(s.home, "approved"), "");
   await until(() => s.out().includes("Done: approval saved"), "done");
   await until(() => !alive(pid), "helper exit");
   assert.equal(readFileSync(join(s.state, "meal-grant.json"), "utf8").trim(), '{"approved":true}');
