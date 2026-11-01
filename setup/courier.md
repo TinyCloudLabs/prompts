@@ -114,18 +114,22 @@ Copy the returned `openkeyUrl` exactly. Send it to the owner with this one sente
 
 The owner may open that link on another computer or phone and paste the code in this chat. Do not send the request's public-key or permissions JSON to the owner, reconstruct the URL, or ask for a private key.
 
-**2. Import the owner's code.** Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. Run this with the same `TC` and `COURIER_HOME`; despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
+**2. Import the owner's code in the background.** The import uses the code up as soon as it starts and can take a few minutes, so never run it as a foreground tool call: a tool time limit (Claude Code stops foreground calls after 2 minutes) would kill it after the code is spent. Set `COURIER_CODE` to the owner's exact reply as literal data, without printing it. Start this with the same `TC` and `COURIER_HOME` so it keeps running while you talk to the owner: as a background process (your client's own, if it has one) or in an interactive session. Despite the flag's name, `--grant-file -` accepts the OpenKey short code on non-TTY stdin:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 : "${TC:?Run the CLI preamble}" "${COURIER_CODE:?Use the code returned by the owner}"
 export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
-printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file -
+printf '%s\n' "$COURIER_CODE" | "$TC" courier init --grant-file - > "$COURIER_HOME/import.out" 2> "$COURIER_HOME/import.err"
 ```
 
-Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, but do not start a second approval alongside the request above.
+Then read `$COURIER_HOME/import.out` and `$COURIER_HOME/import.err`, again whenever your client reports the command ended or the owner writes, until one of these appears:
 
-Continue only after initialization succeeds. If OpenKey reports that its space is still being set up, keep the same key and approval and use `"$TC" courier init --resume`; do not request another grant. If a code is rejected, report the error rather than claiming setup succeeded. After success, retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+- **`"ok": true` in `import.out`:** Courier is set up. After success, retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
+- **A `tinycloud courier: [<code>] …` line in `import.err`:** report the error rather than claiming setup succeeded. If it says OpenKey's space is still being set up, keep the same key and approval and run `"$TC" courier init --resume` the same way, in the background; do not request another grant.
+- **The command ended with neither** (killed, a tool timeout, a restart): the code is used up. Run step 1 again and send the new link with this one line: "That didn't finish on my side, and each code works only once. Please approve this new link and paste the new code here."
+
+Do not use plain `init`: a remote agent cannot rely on a callback to its machine. A persistent interactive session may instead use `"$TC" courier init --paste`, also kept out of the foreground tool time limit, but do not start a second approval alongside the request above.
 
 ## Choose how to invite
 

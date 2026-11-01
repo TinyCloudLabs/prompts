@@ -459,15 +459,22 @@ for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_si
     assert.equal(JSON.parse(readFileSync(join(courierHome, "profile.json"), "utf8")).courierDid, approval.courierDid);
     const keyDigest = () => createHash("sha256").update(readFileSync(join(courierHome, "key.json"))).digest("hex");
     const originalKey = keyDigest();
-    const malformed = run(redeem, "not-a-grant");
-    assert.ifError(malformed.error);
-    assert.equal(malformed.status, 1, malformed.stderr);
-    assert.match(malformed.stderr, /\[bad-grant\]/);
+    // The import runs in the background, so its result must land in files the agent reads, private to the owner.
+    const importResult = (code) => {
+      const result = run(redeem, code);
+      assert.ifError(result.error);
+      assert.equal(result.stdout + result.stderr, "", `${surface}: import printed to the terminal instead of its files`);
+      for (const name of ["import.out", "import.err"]) assert.equal(statSync(join(courierHome, name)).mode & 0o777, 0o600);
+      assert.equal(readFileSync(join(courierHome, "import.out"), "utf8"), "");
+      return { status: result.status, err: readFileSync(join(courierHome, "import.err"), "utf8") };
+    };
+    const malformed = importResult("not-a-grant");
+    assert.equal(malformed.status, 1, malformed.err);
+    assert.match(malformed.err, /^tinycloud courier: \[bad-grant\]/m);
     assert.equal(existsSync(requests), false);
-    const expired = run(redeem, "ABCD-EFGH");
-    assert.ifError(expired.error);
-    assert.equal(expired.status, 1, expired.stderr);
-    assert.match(expired.stderr, /\[code-not-found\]/);
+    const expired = importResult("ABCD-EFGH");
+    assert.equal(expired.status, 1, expired.err);
+    assert.match(expired.err, /^tinycloud courier: \[code-not-found\]/m);
     assert.deepEqual(readFileSync(requests, "utf8").trim().split("\n").map((line) => JSON.parse(line)), [{
       url: "https://openkey.example.invalid/api/delegation-codes/abcd-efgh", method: "GET", redirect: "error",
     }]);
