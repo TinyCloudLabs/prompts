@@ -175,7 +175,7 @@ When the owner says they're done, run the check again:
 
 - `SIGNED_IN` → go to §3.
 - `APPROVE_LINK` again → the approval hasn't arrived yet. If the sign-in command is still running, run the check again in a few seconds; if it still shows the link, ask the owner whether they pressed Approve on that link. If the command stopped (a tool timeout, a restart), start the sign-in block again the same way: it resumes the same pending link. Don't resend a link you already sent.
-- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED` or `APPROVAL_REQUEST_NOT_FOUND` (exit 3) → the link expired before it was approved (about 1 hour), or the approval wasn't collected within 10 minutes. Run the sign-in block again and send the new link with the same line.
+- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED`, `APPROVAL_REQUEST_NOT_FOUND` or `APPROVAL_RESULT_NOT_FOUND` (exit 3) → the link expired before it was approved (about 1 hour), or the approval wasn't collected within 10 minutes. Run the sign-in block again and send the new link with the same line.
 - `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` or `APPROVAL_ACK_PENDING` (exit 8) → OpenKey couldn't be reached for a moment. Start the sign-in block again; it resumes the same request. Don't resend a link you already sent.
 - `LOGIN_FAILED APPROVAL_RESULT_ACKNOWLEDGED` (exit 8) → the sign-in may already be saved: run the session check at the top of §2 again.
 - `LOGIN_FAILED SESSION_IN_USE` → ask the owner; never add `--replace-session` on your own.
@@ -387,7 +387,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
-| `APPROVAL_REQUEST_EXPIRED` / `APPROVAL_RESULT_EXPIRED` / `APPROVAL_REQUEST_NOT_FOUND` | 3 | The sign-in link expired, or the approval wasn't collected in time — run the §2 sign-in again and send the new link |
+| `APPROVAL_REQUEST_EXPIRED` / `APPROVAL_RESULT_EXPIRED` / `APPROVAL_REQUEST_NOT_FOUND` / `APPROVAL_RESULT_NOT_FOUND` | 3 | The sign-in link expired, or the approval wasn't collected in time — run the §2 sign-in again and send the new link |
 | `APPROVAL_REQUEST_UNAVAILABLE` / `APPROVAL_RESULT_UNAVAILABLE` / `APPROVAL_ACK_PENDING` | 8 | OpenKey couldn't be reached for a moment — start the §2 sign-in again; it resumes the same link |
 | `APPROVAL_RESULT_INVALID` | 5 | OpenKey's answer didn't match this request — report; don't retry |
 | `PROFILE_STATE_INCONSISTENT` | 1 | Corrupt local profile state — report; don't delete the profile |
