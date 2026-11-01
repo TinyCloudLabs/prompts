@@ -2,7 +2,7 @@
 # Agent-run, owner-requested step: end Health Log access early. The owner's request in chat is the
 # confirmation, so it needs no terminal: run it in the background with its output going to a file.
 # Usage: sh owner-undo.sh
-# If it prints an OpenKey link, send it to the owner (no code comes back). PROFILE_NOT_FOUND on logout or delete is fine.
+# If it prints an OpenKey link, send it to the owner (no code comes back). Profiles that don't exist are skipped quietly.
 set -u
 if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; else TC=$TC_BIN; fi
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
@@ -11,9 +11,9 @@ cancel() { if [ "$REVOKED" -eq 0 ]; then echo "Cancelled. Your agent's local acc
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
 trap 'cancel 129' HUP
-"$TC" --profile agent-data auth logout
-"$TC" --profile agent-data-sql auth logout
-"$TC" profile delete agent-meal
+"$TC" --profile agent-data profile show > /dev/null 2>&1 && "$TC" --profile agent-data auth logout
+"$TC" --profile agent-data-sql profile show > /dev/null 2>&1 && "$TC" --profile agent-data-sql auth logout
+"$TC" --profile agent-meal profile show > /dev/null 2>&1 && "$TC" profile delete agent-meal
 if [ ! -e "$STATE/meal-grant.json" ]; then
   echo 'No recorded grant to revoke. Nothing was revoked.'
   exit 0

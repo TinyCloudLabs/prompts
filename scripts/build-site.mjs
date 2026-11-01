@@ -106,9 +106,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0.tgz",
-    integrity: "sha512-fkdOsJ9HUK/cNqiLi438er1bShs7X1FxeW5Lb1me/lNDWMXEKve1YMwcd5zQ0uOG8kaWCyXPPmQgst+BwQbTbg==",
+    version: "1.5.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.1.tgz",
+    integrity: "sha512-lwf95fZaZJTn04JqMkn+RkrIsjuJ/IKOuc5rmESLrc/8ZkjTE8tfAVBfSCb0aMFNVzBkrODqzjXJ6Bj8BuVCpw==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     // The released skill says catalog installs run on the onboarding profile, but
@@ -132,9 +132,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.4.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.0.tgz",
-    integrity: "sha512-AGi2tyygPHj6NB1V56kj8Nz7w0WfuxMPZlZTKBxKHQgfFxIs/6aXvmWdUB8xFVT1tFPKSJt/y5rimIxw3XeEFw==",
+    version: "0.4.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.1.tgz",
+    integrity: "sha512-bzJvCaHH6Sj4VmOrEU1NIe6/QHtW4c44w2dzueApbsPPVTYyXE2TvxlhVHnaHKAJxRI4EXAtUDsj+AekH6vuXg==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -171,9 +171,9 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.8.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.3.tgz",
-    integrity: "sha512-mkF901Aai0pWdirP4IMXfs7FBAjzwsiiujpiHSaTMidjvf3UVq8Zr3T3mlN4y0z/Hs78hxVMw0QpsqfzD02Yuw==",
+    version: "0.8.4",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.4.tgz",
+    integrity: "sha512-c8TnYrl10iDwzrhkvIUqmwn7a5gKdhSyO3J10Kr/8O6BngRuxpPGH3OuUsz6KHWrRjN28PBqZPYOY6PQQOcJ8Q==",
     dir: "package/skills/tinycloud-delegated-secrets",
   },
 ];

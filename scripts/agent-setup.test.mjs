@@ -160,7 +160,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   mkdirSync(bin);
   const selected = join(bin, "custom-cli");
   const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.5.0');
+  executable(selected, 'echo 1.5.1');
   executable(conflicting, 'echo unrelated');
   const original = readFileSync(conflicting);
   const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
@@ -311,8 +311,8 @@ test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and p
     mkdirSync(bin);
     const saved = join(bin, "saved-cli");
     const override = join(bin, "process-cli");
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.0"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.5.0 ;; esac');
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.1 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -346,7 +346,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     const dir = home();
     const selected = join(dir, "operator-cli");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.0"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
@@ -382,21 +382,21 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
 
 test("Courier preview installs and serves the approved release pins", () => {
   const skills = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8")).skills;
-  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.0");
-  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.0");
+  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.1");
+  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.1");
   const dir = home();
   const bin = join(dir, "bin");
   mkdirSync(bin);
   const calls = join(dir, "npm-calls");
   executable(join(bin, "npm"), `printf '%s\\n' "$@" > "$NPM_CALLS"
     mkdir -p "$HOME/.local/share/tinycloud/cli/node_modules/.bin"
-    printf '#!/bin/sh\\necho 1.5.0\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+    printf '#!/bin/sh\\necho 1.5.1\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
     chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"`);
   const installed = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls } });
   assert.equal(installed.status, 0, installed.stderr);
-  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.0"));
+  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.1"));
   const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");
-  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.0"]);
+  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.1"]);
 });
 
 for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"]) {

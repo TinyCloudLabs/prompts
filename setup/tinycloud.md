@@ -1,10 +1,10 @@
 # Set up the TinyCloud CLI
 
-This module installs and verifies TinyCloud CLI `1.5.0` and its core skill, `tinycloud-cli`. The CLI's command is `tinycloud`; `tc` is also installed, but may name Linux's traffic-control tool. Preserve an operator's `TC_BIN` and stop if it cannot run the pinned release. App hosts, profiles, permission requests and app behavior belong in the calling guide.
+This module installs and verifies TinyCloud CLI `1.5.1` and its core skill, `tinycloud-cli`. The CLI's command is `tinycloud`; `tc` is also installed, but may name Linux's traffic-control tool. Preserve an operator's `TC_BIN` and stop if it cannot run the pinned release. App hosts, profiles, permission requests and app behavior belong in the calling guide.
 
 ## For the owner
 
-- **What it does:** installs TinyCloud CLI 1.5.0 into `~/.local/share/tinycloud/cli`, makes the `tinycloud` command run it, and installs the `tinycloud-cli` skill for your agent. It also makes `tc` run it when nothing else on your `PATH` is called `tc`; on Linux, `tc` is usually the system's traffic-control tool, which it leaves alone.
+- **What it does:** installs TinyCloud CLI 1.5.1 into `~/.local/share/tinycloud/cli`, makes the `tinycloud` command run it, and installs the `tinycloud-cli` skill for your agent. It also makes `tc` run it when nothing else on your `PATH` is called `tc`; on Linux, `tc` is usually the system's traffic-control tool, which it leaves alone.
 - **Paste into any agent that can install and run the CLI:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat` runs this page for you; `/apps`, `/publish`, `/secrets` and `/courier` install the CLI themselves.
 - **You approve:** nothing. It doesn't sign in or request any access.
 - **Then:** in a new terminal, `tinycloud --help` lists the commands.
@@ -51,13 +51,13 @@ The script is exactly this block, shown here so you and the owner can read it:
 CLI_DIR="$HOME/.local/share/tinycloud/cli"
 if [ "${TC_BIN+x}" != x ]; then
   TC_BIN="$CLI_DIR/node_modules/.bin/tinycloud"
-  if [ "$("$TC_BIN" --version 2>/dev/null)" != 1.5.0 ]; then
-    mkdir -p "$CLI_DIR" && npm install --prefix "$CLI_DIR" --no-audit --no-fund @tinycloud/cli@1.5.0
+  if [ "$("$TC_BIN" --version 2>/dev/null)" != 1.5.1 ]; then
+    mkdir -p "$CLI_DIR" && npm install --prefix "$CLI_DIR" --no-audit --no-fund @tinycloud/cli@1.5.1
   fi
 fi
 [ -x "$TC_BIN" ] || { echo "TC_INSTALL_FAILED: $TC_BIN is not executable; left unchanged" >&2; exit 1; }
 WANT=$("$TC_BIN" --version) || { echo "TC_INSTALL_FAILED: $TC_BIN could not report its version; left unchanged" >&2; exit 1; }
-[ "$WANT" = 1.5.0 ] || { echo "TC_INSTALL_FAILED: $TC_BIN reports $WANT; need 1.5.0; left unchanged" >&2; exit 1; }
+[ "$WANT" = 1.5.1 ] || { echo "TC_INSTALL_FAILED: $TC_BIN reports $WANT; need 1.5.1; left unchanged" >&2; exit 1; }
 # A private prefix only. Never install or link into npm's global bin.
 # ~/.local/bin may be on the PATH (as many shell profiles add it) before it exists.
 case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
@@ -91,8 +91,8 @@ case ":$PATH:" in *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" ;; esac
 
 It prints one line for `tinycloud`, then one for `tc`:
 
-- `TC_READY 1.5.0 <name>` → that name already runs the pinned CLI.
-- `TC_LINKED 1.5.0 <link>` → the block linked that name to the pinned CLI.
+- `TC_READY 1.5.1 <name>` → that name already runs the pinned CLI.
+- `TC_LINKED 1.5.1 <link>` → the block linked that name to the pinned CLI.
 - `TC_CONFLICT <name> other` → another program has that name (`command -v` finds it), usually the Linux traffic-control tool for `tc`. It was left alone, whatever it does when run.
 - `TC_CONFLICT <name> <version>` (or `unknown`) → that name already runs a TinyCloud CLI, of another version; it is not the traffic-control tool or any other program. The block left it alone. Tell the owner: "`<name>` already runs TinyCloud CLI <version>, so I left it alone." For `unknown`, say "another TinyCloud CLI" in place of "TinyCloud CLI <version>".
 - `TC_CONFLICT <name> no-path` → nothing has that name, but `~/.local/bin` is not on the `PATH` and writable. For `tinycloud`, tell the owner, in these words: "To use the `tinycloud` command, add this line to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`): `export PATH="$HOME/.local/bin:$PATH"`. Then open a new terminal, start your agent from it, and ask it to run https://agents.tinycloud.xyz/cli again." The rerun creates `~/.local/bin` and links `tinycloud` there; it still leaves any other `tc` alone.
@@ -103,7 +103,7 @@ On anything but `TC_INSTALL_FAILED`, the pinned CLI is installed at `TC_BIN`: co
 
 ## Install the core skill
 
-Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.5.0`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tinycloud-cli` skill from an earlier CLI version is a replaceable mismatch. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide. A `tc-cli` folder in the same place is this skill under its old name, from an earlier setup; it can be removed.
+Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse it only when its files match the `cli` entry, version `1.5.1`, in `https://agents.tinycloud.xyz/skills/index.json`. A `tinycloud-cli` skill from an earlier CLI version is a replaceable mismatch. Do not overwrite an unrelated or locally modified same-named skill; return that conflict to the calling guide. A `tc-cli` folder in the same place is this skill under its old name, from an earlier setup; it can be removed.
 
 This step is required: the skill is how you know the CLI's commands. If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls:
 
@@ -115,13 +115,13 @@ mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tin
 node "$HOME/.local/share/tinycloud/install.js" cli --agent CLIENT
 ```
 
-The installer downloads the `tinycloud-cli` skill from `@tinycloud/cli@1.5.0` and checks every served file against `/skills/index.json`. The skill's examples run `tinycloud`. If the install script above didn't print `TC_READY` or `TC_LINKED` for `tinycloud`, run the same commands with the full path instead: `$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`. The installer replaces only the `tinycloud-cli` folder and prints `SKILL_INSTALLED tinycloud-cli 1.5.0 <folder>`; anything else means the install failed, so stop and report it.
+The installer downloads the `tinycloud-cli` skill from `@tinycloud/cli@1.5.1` and checks every served file against `/skills/index.json`. The skill's examples run `tinycloud`. If the install script above didn't print `TC_READY` or `TC_LINKED` for `tinycloud`, run the same commands with the full path instead: `$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud`. The installer replaces only the `tinycloud-cli` folder and prints `SKILL_INSTALLED tinycloud-cli 1.5.1 <folder>`; anything else means the install failed, so stop and report it.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
 ## Verify and return
 
-Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}" --version` reports `1.5.0`, and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. A missing, broken or incompatible operator `TC_BIN` stops setup; never replace it or switch binaries. Check that the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
+Verify that `"${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}" --version` reports `1.5.1`, and, if the block printed `TC_READY` or `TC_LINKED` for `tinycloud`, that `tinycloud --version` does too. A missing, broken or incompatible operator `TC_BIN` stops setup; never replace it or switch binaries. Check that the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile, configure a host or space, or request permissions in this shared module.
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 

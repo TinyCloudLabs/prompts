@@ -39,7 +39,7 @@ printenv TC_BIN || "$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycloud" 
 ```
 
 - `node` older than `v22.20.0`, or `node` or `npm` not found → stop and tell the owner: "TinyCloud setup needs Node.js 22.20 or later, with npm. Install or update it, then send your request again." Don't install Node.js yourself.
-- The last line prints a path (the owner set `TC_BIN`) or exactly `1.5.0` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as `1.3.5` from an earlier setup, means run all the steps of §2: step 2 installs `1.5.0` in place of it.
+- The last line prints a path (the owner set `TC_BIN`) or exactly `1.5.1` → the CLI is ready: skip step 2 of §2, and run the other steps as written. Any other version, such as `1.3.5` from an earlier setup, means run all the steps of §2: step 2 installs `1.5.1` in place of it.
 - Anything else, such as `No such file or directory` → run all the steps of §2.
 
 ## 2. Install
@@ -57,13 +57,13 @@ mkdir -p -m 700 "${TC_HOME:-$HOME}/.tinycloud" "${TC_APPS_STATE:-$HOME/.local/st
 **Step 2. The CLI,** unless §1 said it is ready. It goes into a private folder that only this skill uses.
 
 ```sh
-npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.5.0
+npm install --prefix "$HOME/.local/share/tc-apps/cli" --no-audit --no-fund @tinycloud/cli@1.5.1
 ```
 
 **Step 2b. A second copy of the same CLI, for the per-app layout,** in a folder of its own, next to the one above. Health Log, Recipes and an app that still keeps its records in the old layout keep using the copy from step 2. This step skips the install if that version is already there.
 
 ```sh
-B="$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud"; { [ -x "$B" ] && [ "$("$B" --version)" = 1.5.0 ]; } || npm install --prefix "$HOME/.local/share/tc-apps/cli-beta" --no-audit --no-fund @tinycloud/cli@1.5.0
+B="$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud"; { [ -x "$B" ] && [ "$("$B" --version)" = 1.5.1 ]; } || npm install --prefix "$HOME/.local/share/tc-apps/cli-beta" --no-audit --no-fund @tinycloud/cli@1.5.1
 ```
 
 **Step 3. Download the skill's files** and their checksum list from this site. They are saved as plain files. Seven are scripts: `tc-wrapper.sh`, which step 6 installs; `announce.sh`, which prints the owner's approval message; `layout.sh`, which tells the skill which layout an app uses; `healthlog-context.mjs`, which checks Health Log's account and date; and `owner-grant.sh`, `owner-undo.sh` and `migrate.sh`, which the agent runs for approval, Undo and an owner-requested move from the old layout. The owner approves links and returns codes in chat, never in a separate terminal.
@@ -98,7 +98,7 @@ cd "$HOME/.local/share/tc-apps/skill" && mkdir -p "$HOME/.agents/skills/tc-apps"
 printf '%s\n' "${TC_BIN:-$HOME/.local/share/tc-apps/cli/node_modules/.bin/tinycloud}" > "$HOME/.local/share/tc-apps/cli-path" && cp "$HOME/.local/share/tc-apps/skill/tc-wrapper.sh" "$HOME/.local/share/tc-apps/tinycloud" && chmod 755 "$HOME/.local/share/tc-apps/tinycloud"
 ```
 
-**Step 7. Check the CLIs run.** The first prints `1.5.0`, or the version of the owner's `TC_BIN`; the second prints `1.5.0`, or the version of the owner's `TC_BETA_BIN`.
+**Step 7. Check the CLIs run.** The first prints `1.5.1`, or the version of the owner's `TC_BIN`; the second prints `1.5.1`, or the version of the owner's `TC_BETA_BIN`.
 
 ```sh
 "$HOME/.local/share/tc-apps/tinycloud" --version
