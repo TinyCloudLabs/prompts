@@ -6,7 +6,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 - **What it does:** installs the TinyCloud CLI and the `tc-apps` skill for your user, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-  - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
+  - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
   - **Codex:** before you paste, type `/permissions` and choose "Ask for approval", then approve each step it asks for.
 - **You approve:** for Health Log, three OpenKey approvals the first time. Opening Health Log once at https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.healthlog is the first. Then your agent sends you two links: one signs it in, and one gives it access to Health Log. When OpenKey shows you a code (only the sign-in link does), paste it back to your agent in the chat, even though the OpenKey page mentions a terminal. Each other app asks once, the first time you use it. The agent runs every command and finishes the request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
@@ -151,10 +151,10 @@ To go back, the owner asks in chat. Follow `SKILL.md` §9's going-back procedure
 
 The agent's access ends on its own: the Health Log grant after 7 days, and each app's sign-in after 30 days. To end it sooner, ask your agent in chat to undo access.
 
-For the agent: run this helper in a live interactive tool session. Relay each confirmation to the owner in chat and send their answer to that process's stdin. If OpenKey shows a link, relay it; the owner approves there, and no code comes back. Never ask the owner to run a command. Keep the same CLI and state paths used at setup; do not edit `meal-grant.json`.
+For the agent: the owner's request in chat is the confirmation, so the helper asks nothing and needs no terminal. Run it in the background with its output going to a file, and read that file until it shows `Done` or an error. If it prints an OpenKey link, send it to the owner; they approve there, and no code comes back. Never ask the owner to run a command. Keep the same CLI and state paths used at setup; do not edit `meal-grant.json`.
 
 ```sh
-sh "$HOME/.local/share/tc-apps/skill/owner-undo.sh"
+sh "$HOME/.local/share/tc-apps/skill/owner-undo.sh" > "${TC_APPS_STATE:-$HOME/.local/state/tc-apps}/undo.out" 2>&1 &
 ```
 
 The helper ends the earlier `agent-data` sign-ins and revokes the recorded Health Log grant. To end every per-app local sign-in as requested, the agent runs:

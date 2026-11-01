@@ -21,7 +21,7 @@ The rest of this page is what to run once the skill's §1 and §2 are done, and 
 
 ### 1. Ask before making the link
 
-Only link shares are available for now: always pass `--to anyone`, never `email:`, `domain:` or `did:`. Before publishing, ask the owner in one line: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer. If they ask to share with an email address, a domain or only themselves, say that isn't available yet, then ask the same question.
+Only link shares are available for now: always pass `--to anyone`, never `email:`, `domain:` or `did:`. Before publishing, ask the owner in one line: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer, and don't offer another place to publish or share it. If they ask to share with an email address, a domain or only themselves, say that isn't available yet, then ask the same question.
 
 ### 2. Pick the content
 

@@ -100,7 +100,7 @@ kill -TERM '<OWNER_GRANT_PID>'
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"; umask 077
 S="$STATE/owner-grant-session"
 P=$(cat "$S/pid" 2>/dev/null); if [ -n "$P" ] && ps -p "$P" -o args= 2>/dev/null | grep -q 'owner-grant\.sh'; then echo "HELPER_RUNNING"; cat "$S/out"; else
-rm -rf "$S"; mkdir -p "$S"; mkfifo "$S/in"
+mkdir -p "$S"; [ -p "$S/in" ] || mkfifo "$S/in"
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/owner-grant.sh" ]; then G="$d/owner-grant.sh"; break; fi; done
 nohup sh -c 'exec 3<>"$1"; exec sh "$2" healthlog <&3' _ "$S/in" "$G" > "$S/out" 2>&1 < /dev/null &
 echo "$!" > "$S/pid"; sleep 2; cat "$S/out"; fi
@@ -112,10 +112,9 @@ echo "$!" > "$S/pid"; sleep 2; cat "$S/out"; fi
 cat '<STATE>/owner-grant-session/out'
 printf '%s\n' '<the code>' > '<STATE>/owner-grant-session/in'
 P=$(cat '<STATE>/owner-grant-session/pid'); if ps -p "$P" -o args= | grep -q 'owner-grant\.sh'; then kill -TERM "$P"; else echo NOT_RUNNING; fi
-rm -rf '<STATE>/owner-grant-session'
 ```
 
-   Read `out` again until it shows the OpenKey URL. Send the sign-in code the owner pastes with the `printf` line; the access link needs none. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. When `out` shows `Done` or an error, or after a cancel, remove the folder with the `rm` line.
+   Read `out` again until it shows the OpenKey URL. Send the sign-in code the owner pastes with the `printf` line; the access link needs none. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. The folder stays; the next start reuses it. After a cancel, if the owner still wants to approve, run the start block again and send the link it prints, even if it looks the same as before; don't resend a link from earlier messages.
 
    - Relay each OpenKey URL printed by the running process. For the sign-in link, the owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. For the access link there is no code: keep the process running, and when the owner says they've approved, read its output until it shows `Done` or an error. Do not run a second process or approval.
    - On a fresh computer, the script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL the same way; it needs no code. First time: two approvals (sign-in and app); then one per new app.
@@ -247,7 +246,7 @@ Use `SKILL.md` §1a to §9 only for a domain that no catalog app owns. In the ne
 
 Meal data commands use only `agent-meal`, which step 1 of §3 creates and step 0 recreates on renewal. The agent runs the sign-in/grant helper with the explicit `owner` profile only to complete the owner's approvals and save its address. Never read the owner's profile directory or session keys, or use that profile for meal data commands.
 
-For an owner-requested Undo, follow `setup/tc-apps.md`: the agent runs the helper in an interactive tool session and relays confirmations and OpenKey codes through chat.
+For an owner-requested Undo, follow `setup/tc-apps.md`: the owner's request is the confirmation, so the agent runs the helper in the background, reads its output, and sends the owner any OpenKey link it prints.
 
 ## 8. Wording to the owner
 

@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.0"
+  version: "0.6.1"
 ---
 
 # Publish documents and HTML with `tinycloud share`
@@ -44,7 +44,7 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 Only links are available for now: anyone who has the link can open it. Sharing with an email address, a domain, a DID or only the owner is not available yet; if the owner asks for one, say so in one line.
 
-Before every publish, ask the owner exactly: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer. Never decide on your own that content is shareable, and never publish without that yes.
+Before every publish, ask the owner exactly: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer, and don't offer another place to publish or share it. Never decide on your own that content is shareable, and never publish without that yes.
 
 Always pass `--to anyone`. Never pass `email:`, `domain:` or `did:`, and never rely on the CLI's default target.
 

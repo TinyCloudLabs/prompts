@@ -35,34 +35,39 @@ trap cleanup EXIT
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
 trap 'cancel 129' HUP
-# Sign in as the owner first only when the dedicated owner profile does not exist.
+# Sign the owner in when the dedicated owner profile doesn't exist yet, or exists without a
+# signed-in owner (a sign-in that was cancelled leaves the profile behind with no owner).
+signin() {
+  echo 'OpenKey sign-in: approve the link and paste the code back to your agent in chat.' >&2
+  INIT_RC=0
+  "$@" <&3 3<&- &
+  ACTIVE_PID=$!
+  wait "$ACTIVE_PID" || INIT_RC=$?
+  ACTIVE_PID=
+  if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
+  if [ "$INIT_RC" -ne 0 ]; then
+    echo "Sign-in didn't finish, so nothing was granted. Tell your agent." >&2
+    exit 1
+  fi
+}
+DID_RE='^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$'
 PROBE_RC=0
 PROBE=$("$TC_BIN" --profile "$OWNER_PROFILE" profile show 2>&1) || PROBE_RC=$?
 if [ "$PROBE_RC" -ne 0 ]; then
   case "$PROBE" in
-    *PROFILE_NOT_FOUND*)
-      echo 'OpenKey sign-in: approve the link and paste the code back to your agent in chat.' >&2
-      INIT_RC=0
-      "$TC_BIN" init --name "$OWNER_PROFILE" --paste <&3 3<&- &
-      ACTIVE_PID=$!
-      wait "$ACTIVE_PID" || INIT_RC=$?
-      ACTIVE_PID=
-      if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
-      if [ "$INIT_RC" -ne 0 ]; then
-        echo "Sign-in didn't finish, so nothing was granted. Tell your agent." >&2
-        exit 1
-      fi
-      ;;
+    *PROFILE_NOT_FOUND*) signin "$TC_BIN" init --name "$OWNER_PROFILE" --paste ;;
     *)
       echo "Couldn't check your TinyCloud sign-in, so nothing was granted. Tell your agent." >&2
       echo "$PROBE" >&2
       exit 1
       ;;
   esac
+elif CONTEXT=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json 2>/dev/null) && printf '%s' "$CONTEXT" | jq -e '.ownerDid == null' > /dev/null; then
+  signin "$TC_BIN" --profile "$OWNER_PROFILE" auth login --method openkey --paste
 fi
 # Bind only to the explicit signed-in owner, never to the imported grant. Keep an existing binding.
 if [ ! -s "$DIR/owner-did.txt" ]; then
-  OWNER_DID=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json | jq -er '.ownerDid | select(test("^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$"))') || {
+  OWNER_DID=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json | jq -er --arg re "$DID_RE" '.ownerDid | select(test($re))') || {
     echo 'Could not read the signed-in owner account; nothing was granted.' >&2
     exit 1
   }
