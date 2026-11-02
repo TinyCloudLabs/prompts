@@ -22,6 +22,8 @@ The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
 **Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
 
+**If `onboard` keeps exiting 8 with `APPROVAL_REQUEST_UNAVAILABLE` and `(HTTP 400)`,** its link expired before it was approved: after three tries a minute apart, run `"$TC" auth logout` (same `--profile` if you used one), run `"$TC" onboard` again, and send the new link. Never edit the CLI's files.
+
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
 
 Pick the route for where you run:
