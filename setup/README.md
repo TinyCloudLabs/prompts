@@ -47,7 +47,7 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 - **What it does:** your agent uses API keys you keep in TinyCloud Secrets without the value ever appearing in the conversation. If a key is missing, it sends you a link to add it.
 - **Paste into your agent:** `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets`
-- **You approve:** a Secret Manager link to add a missing key, and one OpenKey link to let your agent read the keys it names, for 30 days.
+- **You approve:** a Secret Manager link to add a missing key, and one OpenKey link to let your agent read the keys it names, for 30 days. There's nothing to send back.
 - **Undo:** `auth logout` is local only; [the page](secrets.md#undo) explains the distinction.
 
 ## Agent-to-agent threads: [/courier](courier.md)

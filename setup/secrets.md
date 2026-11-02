@@ -6,7 +6,7 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 
 - **Paste into your agent:** `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets`
 - Your agent follows [the shared setup](agent.md) for this task: it installs the pinned CLI into the shared private prefix, records your account DID as a non-secret owner default, installs the Secrets skill, then continues the same request. If it doesn't know the DID of your Secrets account, give it the address shown in Secret Manager; do not send it an API key.
-- **You approve:** a Secret Manager `/request` link if a name is missing and a separate OpenKey request when the agent needs read access. The current read grant includes network-wide decrypt authority, not only the named secret. Check the exact items; you may decline any item. Return only the short OpenKey code in the 1:1 channel, never a value.
+- **You approve:** a Secret Manager `/request` link if a name is missing and a separate OpenKey request when the agent needs read access. The current read grant includes network-wide decrypt authority, not only the named secret. Check the exact items; you may decline any item. Then tell your agent you're done; there's no code to send back, and never send a value.
 - **Undo:** `auth logout` clears only the agent's local session. Its grant remains valid until expiry or owner revocation; a provider key already read may require rotation.
 
 ## For the agent
