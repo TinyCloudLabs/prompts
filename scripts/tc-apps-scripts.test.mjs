@@ -10,8 +10,9 @@ import { after, test } from "node:test";
 // macOS /var is a symlink to /private/var; the /agent helper refuses linked paths.
 const base = realpathSync(mkdtempSync(join("/var/tmp", "TC-1943.")));
 for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) process.env[key] = base;
-assert.ok(base.startsWith("/var/tmp/TC-1943."));
-for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) assert.ok(process.env[key].startsWith("/var/tmp/TC-1943."), key);
+const underTestRoot = (path) => /^(\/private)?\/var\/tmp\/TC-1943\./.test(path);
+assert.ok(underTestRoot(base));
+for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) assert.ok(underTestRoot(process.env[key]), key);
 after(() => rmSync(base, { recursive: true, force: true }));
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
