@@ -42,9 +42,11 @@ Follow [the shared CLI setup](tinycloud.md) only if it has not already completed
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. Later conversations find the same CLI the way every TinyCloud skill does: process `TC_BIN`, then the selection in `~/.config/tinycloud/agent.env`, then the shared private install. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 
+The skill's §1 checks the selected CLI against `1.5.2` every conversation. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: follow the shared CLI setup once (even if it already ran in this conversation; it upgrades a CLI the agent installed), then run §1 again. That is for you only; don't tell the owner. If it prints `TC_OLDER`, stop with the one-line notice above.
+
 ## 2. Install only the skill
 
-If the installed `tc-apps` skill is version `0.3.5` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+If the installed `tc-apps` skill is version `0.3.6` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 
@@ -62,7 +64,7 @@ Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-
 node (Join-Path $D 'install.cjs') apps --agent '<CLIENT>'
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.3.5 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.3.6 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 

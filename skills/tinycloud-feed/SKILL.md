@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Post owner-requested cards into TinyCloud Home's feed from a bot's scoped folder, using its profile and five built-in card formats.
 metadata:
-  version: "0.1.3"
+  version: "0.1.4"
 ---
 
 This is how an agent adds cards to your TinyCloud Home feed. It writes only to its own folder, and only what you asked it to post.
@@ -17,7 +17,24 @@ Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `we
 
 ### Install and sign in (weight bot example)
 
-Use the CLI selected by https://agents.tinycloud.xyz/cli, stable `1.5.2`: new installs and older agent-owned installs get it. Do not install a separate beta or a global CLI. If it is not set up, follow that shared guide and return here. The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path instead. Check that selected CLI with `--version` before continuing. If it is older than `1.5.2`, follow the shared guide once (it upgrades a CLI the agent installed); if it prints `TC_OLDER`, the operator selected that older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop.
+Use the CLI selected by https://agents.tinycloud.xyz/cli, stable `1.5.2`: new installs and older agent-owned installs get it. Do not install a separate beta or a global CLI. The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
+
+```sh
+B=${TC_BIN:-}; O=$B; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
+if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; case $B in "$P"/*) ;; *) O=$B ;; esac; fi
+[ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
+[ -x "$B" ] || B=$(command -v tinycloud) || { echo 'TC_NOT_FOUND: set up the CLI at https://agents.tinycloud.xyz/cli, then rerun this block'; exit 1; }
+V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
+if printf '%s\n' "$V" | awk -F. -v p=1.5.2 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.5.2; keeping this operator-selected CLI"
+  else echo "CLI_OLDER $V $B: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
+  exit 1
+fi
+```
+
+- `TC_NOT_FOUND` → follow that shared guide and return here.
+- `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. This is for you only; don't tell the owner.
+- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop.
 
 Save this as `feed-weight.manifest.json` in the current directory. For another bot, change `weight` in the folder, app id, display name and profile name:
 

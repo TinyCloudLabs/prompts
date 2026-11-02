@@ -59,6 +59,14 @@ CLAUDE_DIR=${CLAUDE_CONFIG_DIR-}; CLAUDE_DIR=${CLAUDE_DIR#"${CLAUDE_DIR%%[![:spa
 [ -f "${CLAUDE_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md" ] || [ -f "$HOME/.agents/skills/tinycloud-cli/SKILL.md" ] ||
   { echo 'SKILL_MISSING tinycloud-cli: run the "Install the core skill" step at https://agents.tinycloud.xyz/cli (it is required), then rerun this block' | tee onboard.err >&2; exit 1; }
 TC='<TC_BIN>'
+V=$("$TC" --version)
+if printf '%s\n' "$V" | awk -F. -v p=1.5.2 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  O=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
+  if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; case $O in "$HOME/.local/share/tinycloud/cli/"*) O= ;; esac; fi
+  if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.5.2; keeping this operator-selected CLI"
+  else M="CLI_OLDER $V $TC: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
+  echo "$M" | tee onboard.err >&2; exit 1
+fi
 "$TC" onboard > onboard.out 2> onboard.err
 ```
 
@@ -76,6 +84,8 @@ Never run `onboard --code` or wait for pending JSON on stdout: normal short-link
 **If something goes wrong:**
 
 - **`SKILL_MISSING`:** install the `tinycloud-cli` skill as in [the CLI setup's "Install the core skill" step](tinycloud.md#install-the-core-skill), then rerun the block; this is for you only, so don't tell the owner.
+- **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.5.2` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block; this is for you only, so don't tell the owner.
+- **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.5.2`, and stop; don't replace it.
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **Exit 8:** OpenKey couldn't be reached. Wait a minute and run `"$TC" onboard` again the same way, at most three times in a row. If it still exits 8, stop and report it to the owner; don't retry. Never edit or delete the CLI's files yourself.
 - **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run `"$TC" onboard` again and send the new link.
