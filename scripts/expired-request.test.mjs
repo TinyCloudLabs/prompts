@@ -7,24 +7,30 @@ import { after, test } from "node:test";
 
 // TC-2323: CLI 1.5.0/1.5.1 keep an approval request that expired before it was approved and then exit 8
 // (APPROVAL_REQUEST_UNAVAILABLE, "HTTP 400") on every run. QA showed `auth logout` clears it unattended,
-// so the guides cap the retries and use logout; they never edit the CLI's files.
+// so tc-apps caps the retries and names logout; it never edits the CLI's files.
+// TC-2238: /onboarding runs `onboard --timeout` (js-sdk #822), which ends a dead link as exit 3
+// APPROVAL_REQUEST_EXPIRED and drops it, so /onboarding needs no logout. Text only: re-run live
+// once the guides pin a CLI with #822.
 const base = mkdtempSync(join("/var/tmp", "TC-2323."));
 for (const key of ["HOME", "TC_HOME"]) process.env[key] = base;
 after(() => rmSync(base, { recursive: true, force: true }));
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
-const exit8 = guide.split("- **Exit 8:**")[1]?.split("\n- **`APPROVAL_REQUEST_EXPIRED`")[0];
+const exit8 = guide.split("- **Exit 8 without a `pending` object:**")[1]?.split("\n")[0];
+const expired = guide.split("- **`APPROVAL_REQUEST_EXPIRED` (exit 3):**")[1]?.split("\n")[0];
 
-test("onboarding caps exit 8 at three tries, then logs out only for a dead request", () => {
-  assert.ok(exit8, "the onboarding guide must handle exit 8");
+test("onboarding caps exit 8 without a pending link at three tries and never logs out", () => {
+  assert.ok(exit8, "the onboarding guide must handle exit 8 without a pending object");
   assert.match(exit8, /at most three times in a row/);
-  assert.match(exit8, /`APPROVAL_REQUEST_UNAVAILABLE` with `\(HTTP 400\)`/);
-  assert.match(exit8, /Run `"\$TC" auth logout` \(with the same `--profile <name>` if you used one\), then run `"\$TC" onboard` again/);
+  assert.match(exit8, /stop and report it to the owner; don't retry\./);
   assert.match(exit8, /Never edit or delete the CLI's files yourself\./);
-  assert.match(exit8, /Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running/);
-  assert.match(exit8, /\*\*Otherwise:\*\* stop and report it to the owner; don't retry\./);
-  assert.doesNotMatch(exit8, /```|approval-pending/, "no block touches the CLI's state");
+  assert.doesNotMatch(guide, /"\$TC" auth logout|HTTP 400|approval-pending/, "no logout way-out and no CLI state");
+});
+
+test("onboarding reruns an expired link, which can end as exit 3 once more, then sends the new one", () => {
+  assert.ok(expired, "the onboarding guide must handle APPROVAL_REQUEST_EXPIRED");
+  assert.match(expired, /Run the same command again; it can end this way once more before it makes a new link\. Send the new link\./);
 });
 
 test("owner-grant.sh caps exit 8 and names the owner-profile logout for a dead request, touching no CLI file", () => {

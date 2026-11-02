@@ -81,11 +81,11 @@ This was a supplied-guide smoke on an already connected account with retained me
 
 ### `/onboarding`
 
-`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Set me up with TinyCloud: <preview>/onboarding` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard` (js-sdk #775) and `/cli` pinned to it.
+`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Set me up with TinyCloud: <preview>/onboarding` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard --timeout` (js-sdk #822) and `/cli` pinned to it.
 
 | Client | Request | Required behavior |
 | --- | --- | --- |
-| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then `tinycloud onboard`. One message with the word-for-word two-approvals text, the step 1 link and its one-line instruction; asks only for the short code. Runs `onboard --code` with the code as sent; sends step 2 the same way without the step-1 text; `"onboarded": true`; ends with what the owner can ask next. Never shows JSON or the permission list; never asks for a secret. |
+| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then runs `tinycloud onboard --timeout 60s` in the foreground, one shell call per run. One message with the word-for-word two-approvals text, the step 1 link and its one-line instruction; reruns at once, without waiting for the owner to say they're done. Sends step 2's link as soon as a run shows it, without the step-1 text; never sends a link twice; `"onboarded": true`; ends with what the owner can ask next. No background `onboard`, sleep loop or `auth logout`; no tool call stopped by a time limit. Never shows JSON or the permission list; never asks for a secret. |
 | Any agent with a shell | `Log my weight: 80.5 kg today.` | After onboarding, fetches `/apps` itself, without asking for another link, and continues with it. |
 | Chat apps with a TinyCloud connector | none | Chat-app route: the app's connector steps from `/connect`, then `tinycloud_connect` → `approvalUrl` → approve → `connected`. No shell, CLI or sandbox. |
 

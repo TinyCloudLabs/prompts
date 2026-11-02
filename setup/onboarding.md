@@ -22,8 +22,6 @@ The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
 
 **Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
 
-**If `onboard` keeps exiting 8 with `APPROVAL_REQUEST_UNAVAILABLE` and `(HTTP 400)`,** its link expired before it was approved: after three tries a minute apart, run `"$TC" auth logout` (same `--profile` if you used one), run `"$TC" onboard` again, and send the new link. Never edit the CLI's files.
-
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
 
 Pick the route for where you run:
@@ -49,31 +47,27 @@ Follow these on every TinyCloud page.
 
 ```sh
 TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
-"$TC" onboard --help >/dev/null && echo ONBOARD_READY
+"$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY
 ```
 
-No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0 or later.
+No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need a CLI whose `onboard` takes `--timeout`.
 
-**2. Run onboarding.** One run does both approvals and keeps running until the owner has approved them. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set. Start it so it keeps running while you talk to the owner: as a background process (your client's own, if it has one) or in an interactive session, with stderr going to a file you read:
+**2. Run onboarding.** It asks for both approvals, step 1 first, then step 2. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set. Run this in the foreground, as its own shell call. Each run waits at most a minute for the owner and ends within about two minutes:
 
 ```sh
-"$TC" onboard > onboard.out 2> onboard.err
+"$TC" onboard --timeout 60s
 ```
 
-For each approval it prints `Approve in OpenKey: https://openkey.so/a/…` on stderr: step 1 first, then step 2. Step 2's link appears only after the owner approves step 1. Send the owner each link with this line: "Open this link and approve; tell me when you're done." For step 1, start that message with this text, word for word:
+Run it again until it exits 0, and go by its exit code each time.
+
+**Exit 8 with a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link after `Approve in OpenKey:`. Step 2's link appears only after the owner approves step 1. Send the owner each new link with this line: "Open this link and approve; tell me when you're done." For step 1, start that message with this text, word for word:
 
 > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
-Don't wait for the owner to say they're done. After sending step 1's link, run this wait as its own shell call. It returns as soon as step 2's link, the result or an error appears, or after about a minute and a half:
-
-```sh
-for i in $(seq 1 18); do grep -q -e 'step 2 of 2' -e '"error"' onboard.err && break; grep -q '"onboarded"' onboard.out && break; sleep 5; done; cat onboard.err onboard.out
-```
-
-If it shows step 2's link, send it at once, without the step-1 text. If it shows an error, follow the matching case below. If it shows none of these, run the wait again; if the owner writes in the meantime, read the files then. After step 2's link, read the files again when the owner says they're done, until you see the result:
+Don't wait for the owner to say they're done. Right after sending a link, run the same command again. When it shows step 2's link, send it at once, without the step-1 text, and run the command again. When it shows a link you already sent, don't send it again; just run the command again. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
 
 - **Exit 0, stdout `"onboarded": true`:** done. Tell the owner in one line that TinyCloud is set up, then go to [the owner's goal](#the-owners-goal). If they asked only for setup, end with a short list of what they can ask you next: keep records, share or publish a page, use a stored API key, ask about their meetings.
-- **The command stopped first** (a tool timeout, a restart): run `"$TC" onboard` again the same way. It keeps what the owner already approved and prints the pending link again. If it shows a link you already sent, don't send it again; read the files again in a few seconds.
+- **The command stopped first** (a tool timeout, a restart): run the same command again. It keeps what the owner already approved and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.
 
 Never run `onboard --code`: these links don't produce a code.
 
@@ -82,12 +76,10 @@ The owner can open the link on any device, their phone included.
 **If something goes wrong:**
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
-- **Exit 8:** OpenKey couldn't be reached. Wait a minute and run `"$TC" onboard` again the same way, at most three times in a row.
-  - **If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`:** the link expired before it was approved, and this CLI keeps asking OpenKey for it. Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running (stop any background `onboard`/`auth grant` you started): a command still waiting on a link would be orphaned. Run `"$TC" auth logout` (with the same `--profile <name>` if you used one), then run `"$TC" onboard` again the same way and send the new link, as for `APPROVAL_REQUEST_EXPIRED` below. Never edit or delete the CLI's files yourself.
-  - **Otherwise:** stop and report it to the owner; don't retry.
-- **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run `"$TC" onboard` again and send the new link.
-- **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
-- **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
+- **Exit 8 without a `pending` object:** OpenKey couldn't be reached. Wait a minute and run the same command again, at most three times in a row. If it still fails, stop and report it to the owner; don't retry. Never edit or delete the CLI's files yourself.
+- **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run the same command again; it can end this way once more before it makes a new link. Send the new link.
+- **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run the same command again. Don't ask for another approval.
+- **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard --timeout 60s` and use `--profile owner` from then on.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 
 ## MCP
