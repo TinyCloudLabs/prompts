@@ -353,6 +353,9 @@ test("Courier preview resolver preserves an explicitly selected binary and check
   for (const scenario of ["current", "old", "broken", "missing", "not-executable", "no-join"]) {
     const dir = home();
     const selected = join(dir, "operator-cli");
+    // The Courier skill is installed, so the block reaches its CLI checks.
+    mkdirSync(join(dir, ".agents/skills/courier"), { recursive: true });
+    writeFileSync(join(dir, ".agents/skills/courier/SKILL.md"), "");
     const body = `case "$*" in
       --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.2" : "1.6.0-beta.1"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
