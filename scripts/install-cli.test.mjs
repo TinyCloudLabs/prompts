@@ -140,6 +140,38 @@ test("a process TC_BIN is an operator override and is not written to agent.env",
   assert.equal(existsSync(join(config, "agent.env")), false);
 });
 
+for (const name of ["tinycloud", "tc"]) test(`a process TC_BIN naming the older private ${name} is the agent's own: upgraded in place and selected as tinycloud`, { skip: windows }, () => {
+  const dir = home();
+  const bin = privateCli(dir, "1.5.1");
+  const log = [];
+  const selected = installCli({ env: { ...envFor(dir), TC_BIN: join(dirname(bin), name), PATH: fakeNpm(dir) }, log: (line) => log.push(line) });
+  assert.deepEqual(selected, { bin, version: CLI_VERSION, source: "installed" });
+  assert.match(selected.bin, /node_modules\/\.bin\/tinycloud$/);
+  assertPrivateOnly(dir);
+  assert.ok(!log.some((line) => line.startsWith("TC_OLDER")));
+});
+
+// agent-env.mjs `get` answers with the process value, so `tc` (selected as `tinycloud`) is what would trigger a save.
+test("a process TC_BIN demoted to the private install upgrades it and leaves an operator path in agent.env untouched", { skip: windows }, () => {
+  const dir = home();
+  const bin = privateCli(dir, "1.5.1");
+  const operator = join(dir, "operator", "tinycloud");
+  executable(operator, "1.5.1");
+  const config = join(dir, ".config/tinycloud");
+  mkdirSync(config, { recursive: true, mode: 0o700 });
+  copyFileSync(helper, join(config, "agent-env.mjs"));
+  const saved = join(config, "agent.env");
+  writeFileSync(saved, `TC_BIN=${operator}\n`, { mode: 0o600 });
+  const before = { bytes: readFileSync(saved), mtime: statSync(saved).mtimeMs };
+  const log = [];
+  const selected = installCli({ env: { ...envFor(dir), TC_BIN: join(dirname(bin), "tc"), PATH: fakeNpm(dir) }, log: (line) => log.push(line) });
+  assert.deepEqual(selected, { bin, version: CLI_VERSION, source: "installed" });
+  assertPrivateOnly(dir);
+  assert.ok(!log.some((line) => line.startsWith("TC_OLDER")));
+  assert.deepEqual(readFileSync(saved), before.bytes);
+  assert.equal(statSync(saved).mtimeMs, before.mtime);
+});
+
 for (const [where, version] of [["TC_BIN", "1.5.1"], ["agent-env", "1.5.1"], ["TC_BIN", "1.3.5"]]) test(`an older operator CLI (${version}) from ${where} is kept with a notice and left untouched`, { skip: windows }, () => {
   const dir = home();
   const operator = join(dir, "operator", "tinycloud");

@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { Marked } from "marked";
 import { gfmHeadingId } from "marked-gfm-heading-id";
+import { CLI_VERSION } from "./install-cli.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
@@ -239,6 +240,17 @@ const envPins = [...envGuide.matchAll(/(?:const pin = )"([a-f0-9]{64})"/g)].map(
 if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
   throw new Error("setup/agent.md agent-env.mjs pin differs from served helper");
 }
+
+// Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin.
+// Markdown is served byte for byte, so each block spells the pin out; it must be the installer's.
+const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));
+const stalePins = pinFiles.flatMap((path) =>
+  [...readFileSync(join(ROOT, path), "utf8").matchAll(/awk -F\. -v p=(\S+) |older than the pinned (\S+);/g)]
+    .map((match) => match[1] ?? match[2])
+    .filter((pin) => pin !== CLI_VERSION)
+    .map((pin) => `${path}: ${pin}`),
+);
+if (stalePins.length) throw new Error(`CLI version gates that differ from install-cli.mjs's ${CLI_VERSION}:\n  ${stalePins.join("\n  ")}`);
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;

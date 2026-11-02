@@ -70,7 +70,7 @@ const guarded = {
     // <TC_BIN> is replaced by the selected CLI.
     run: (run, env) => exec("sh", ["-c", guarded.onboarding.block.replaceAll("<TC_BIN>", run.tc)], { cwd: run.cwd, env }),
     ran: (run) => {
-      assert.equal(callsOf(run), "onboard\n");
+      assert.equal(callsOf(run), "--version\nonboard\n");
       assert.equal(readFileSync(join(run.cwd, "onboard.out"), "utf8"), '{"onboarded": true}\n');
       assert.equal(readFileSync(join(run.cwd, "onboard.err"), "utf8"), "");
     },
