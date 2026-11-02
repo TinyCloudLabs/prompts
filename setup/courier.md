@@ -237,17 +237,17 @@ INVITE=$(node -e 'for (const line of require("fs").readFileSync(process.argv[1],
 if [ "$RC" = 0 ]; then echo "NEXT: paired; continue."
 elif [ "$RC" = 1 ] && [ -n "$INVITE" ] && grep -q '\[invite-pending\]' "$OUT.err"; then
   echo "INVITATION_ID=${INVITE%% *}"
-  echo "NEXT: send the owner this invitation link now, on its own line: ${INVITE#* } Then run the serve block below now, in the same turn."
+  echo "NEXT: before anything else, send the owner this invitation link, on its own line: ${INVITE#* } Only after that message is sent, run the serve block below, in the same turn."
 else echo "INVITE_EXIT $RC"; fi
 rm -f "$OUT" "$OUT.rc" "$OUT.err"
 exit "$RC"
 ```
 
-Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. With `--wait 1` it returns within seconds: its first JSON line has `status: invitation`, and it then exits 1 with `[invite-pending]` on stderr. That first `[invite-pending]` is expected: the invitation is kept. Give the owner its `link` at once, exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL. Then, in the same turn, keep the issuer serving as below. The block's last lines say the same: `INVITATION_ID=<id>`, then a `NEXT:` line with the link; do what it says. `INVITE_EXIT <code>` means: go by the list under "Keep the issuer serving".
+Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. With `--wait 1` it returns within seconds: its first JSON line has `status: invitation`, and it then exits 1 with `[invite-pending]` on stderr. That first `[invite-pending]` is expected: the invitation is kept. Give the owner its `link` at once, exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL. Only after that message is sent, in the same turn, keep the issuer serving as below. The block's last lines say the same: `INVITATION_ID=<id>`, then a `NEXT:` line with the link; do what it says. `INVITE_EXIT <code>` means: go by the list under "Keep the issuer serving".
 
 ## Keep the issuer serving
 
-Serve the **same** invitation with its `invitationId`, for at most a minute per call (`--wait 60`), so each call fits a tool time limit (Claude Code stops foreground calls after 2 minutes):
+First send the owner the invitation link: serving before the link has been sent is useless, because nobody can join a link they don't have. Only then serve the **same** invitation with its `invitationId`, for at most a minute per call (`--wait 60`), so each call fits a tool time limit (Claude Code stops foreground calls after 2 minutes):
 
 ```sh
 ERR=$(mktemp) || exit 1
