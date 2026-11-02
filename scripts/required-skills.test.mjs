@@ -188,3 +188,29 @@ test("/courier names the two-call skill install, served unchanged, for the skill
   // The /cli step this one points at uses the same download.
   assert.ok(readFileSync(join(root, "setup/tinycloud.md"), "utf8").includes(download));
 });
+
+test("every onboard-first route says the owner's request is the go-ahead, as written and as served", () => {
+  const goAhead = "The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner.";
+  for (const [source, served] of [
+    ["skills/tc-apps/SKILL.md", "_site/skills/apps/SKILL.md"],
+    ["skills/tc-apps/TINY-APPS.md", "_site/skills/apps/TINY-APPS.md"],
+    ["setup/tc-apps.md", "_site/apps"],
+  ]) {
+    for (const file of [source, served]) {
+      // The paragraph that sends an onboard-first agent to /onboarding.
+      const routes = readFileSync(join(root, file), "utf8").split("\n\n")
+        .filter((p) => p.includes("onboard-first") && p.includes("https://agents.tinycloud.xyz/onboarding") && p.includes("follow it now"));
+      assert.equal(routes.length, 1, file);
+      assert.ok(routes[0].includes(`keeping the owner's original request. ${goAhead}`), file);
+    }
+  }
+});
+
+test("/apps and the tc-apps forward test require the tc-apps version the site serves", () => {
+  const { skills } = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8"));
+  const { version } = skills.find((skill) => skill.name === "tc-apps");
+  const setup = readFileSync(join(root, "setup/tc-apps.md"), "utf8");
+  assert.ok(setup.includes(`If the installed \`tc-apps\` skill is version \`${version}\` or newer`));
+  assert.ok(setup.includes(`Require \`SKILL_INSTALLED tc-apps ${version} <folder>\``));
+  assert.ok(readFileSync(join(root, "forward-tests-tc-apps.md"), "utf8").includes(`\`SKILL_INSTALLED tc-apps ${version} …\``));
+});
