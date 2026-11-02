@@ -70,16 +70,24 @@ if printf '%s\n' "$V" | awk -F. -v p=1.6.0 '{split(p,q,".");for(i=1;i<4;i++){n=$
   else M="CLI_OLDER $V $TC: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
   echo "$M" >&2; exit 1
 fi
-"$TC" onboard --timeout 60s
+OUT=$(mktemp) || exit 1
+{ "$TC" onboard --timeout 60s; echo "$?" > "$OUT.rc"; } | tee "$OUT"
+RC=$(cat "$OUT.rc")
+URL=$(node -e 'try{const p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).pending;if(p&&typeof p.approvalUrl==="string")console.log(p.approvalUrl)}catch{}' "$OUT")
+rm -f "$OUT" "$OUT.rc"
+if [ "$RC" = 0 ]; then echo "NEXT: onboarding is done; continue with the owner's goal."
+elif [ "$RC" = 8 ] && [ -n "$URL" ]; then echo "NEXT: send the owner this link now, on its own line, with the onboarding guide's message for it: $URL Then, in the same turn and without waiting for a reply, run this block again. If you already sent this exact link, don't send it again; just run this block again now."
+else echo "ONBOARD_EXIT $RC"; fi
+exit "$RC"
 ```
 
-Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. Run it again until it exits 0, and go by its exit code each time.
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below. Run the block again until it exits 0, and go by its exit code each time.
 
-**Exit 8 with a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve; tell me when you're done." Then, in the same turn and without waiting for a reply, run the same command again: the owner's "done" is not needed, the command itself sees the approval. Before the first link, say this text word for word:
+**Exit 8 with a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve; tell me when you're done." Then, in the same turn and without waiting for a reply, run the block again: the owner's "done" is not needed, the command itself sees the approval. Before the first link, say this text word for word:
 
 > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
-When a rerun shows step 2's link, send it at once, without the step-1 text, and run the command again. When it shows a link you already sent, don't send it again; just run the command again. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
+When a rerun shows step 2's link, send it at once, without the step-1 text, and run the block again. When it shows a link you already sent, don't send it again; just run the block again. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
 
 - **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, report success, then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. For setup only, end with what the owner can ask next: records, sharing, stored API keys or meetings.
 - **The command stopped first** (a tool timeout, a restart): rerun the identical command/profile. It preserves completed approvals and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.

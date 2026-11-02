@@ -20,7 +20,8 @@ test("onboarding runs one bounded foreground command, with no background run, fi
   assert.ok(run, "the onboarding guide must have its run step");
   // One block: the skill and CLI-version gates, then the one bounded onboard run.
   assert.equal(blocks(run).length, 1);
-  assert.equal(blocks(run)[0].split("\n").at(-1), '"$TC" onboard --timeout 60s');
+  assert.ok(blocks(run)[0].includes('\n{ "$TC" onboard --timeout 60s; echo "$?" > "$OUT.rc"; } | tee "$OUT"\n'));
+  assert.equal(blocks(run)[0].split("\n").at(-1), 'exit "$RC"');
   assert.doesNotMatch(blocks(run)[0], /&\s*$|\bnohup\b|\bwhile\b|\buntil\b/m);
   assert.match(run, /Run this in the foreground, as its own shell call\./);
   assert.doesNotMatch(guide, /\bsleep\b|seq 1|onboard\.(err|out)|background process|read the files/);
@@ -28,7 +29,7 @@ test("onboarding runs one bounded foreground command, with no background run, fi
 
 test("the --timeout is one #822 accepts and keeps a call under a 2-minute tool limit", () => {
   // #822 accepts Ns or Nm, more than 0, at most 9m; a call ends within timeout + 30 s grace + 3 s + one 10 s link request.
-  const durations = [...guide.matchAll(/onboard --timeout (\S+?)[`\s]/g)].map((match) => match[1]);
+  const durations = [...guide.matchAll(/onboard --timeout (\S+?)[`;\s]/g)].map((match) => match[1]);
   assert.ok(durations.length >= 2);
   for (const duration of durations) {
     const match = /^(\d+)([sm])$/.exec(duration);
@@ -48,8 +49,8 @@ test("exit 8 with a pending link: send each new link at once, rerun, never resen
   const pending = run.split("**Exit 8 with a `pending` object on stdout**")[1]?.split("\n- **Exit 0")[0];
   assert.ok(pending, "the guide must handle exit 8 with a pending object");
   assert.match(pending, /`step` \(1 or 2\), `of` \(2\), `approvalUrl` \(the link\) and `expiresAt`/);
-  assert.match(pending, /When a rerun shows step 2's link, send it at once, without the step-1 text, and run the command again\./);
-  assert.match(pending, /When it shows a link you already sent, don't send it again; just run the command again\./);
+  assert.match(pending, /When a rerun shows step 2's link, send it at once, without the step-1 text, and run the block again\./);
+  assert.match(pending, /When it shows a link you already sent, don't send it again; just run the block again\./);
   assert.match(pending, /never counts toward a retry limit/);
   for (const code of ["APPROVAL_REQUEST_EXPIRED", "SPACE_SETUP_PENDING", "PROFILE_NOT_ONBOARDABLE"]) assert.ok(run.includes(`**\`${code}\``), code);
   assert.match(run, /\*\*Exit 8 without a `pending` object:\*\*/);
@@ -133,6 +134,10 @@ const sandbox = (answer) => {
   return { onboard, polled: () => readFileSync(polls, "utf8").trim().split("\n"), untouched };
 };
 const PROMPT = "Approve in OpenKey (open the complete link):";
+// The block shows the CLI's stdout in full, then one line of its own: what to do next.
+const lastLine = (result) => result.stdout.trimEnd().split("\n").at(-1);
+const cliStdout = (result) => result.stdout.trimEnd().split("\n").slice(0, -1).join("\n");
+const next = (url) => `NEXT: send the owner this link now, on its own line, with the onboarding guide's message for it: ${url} Then, in the same turn and without waiting for a reply, run this block again. If you already sent this exact link, don't send it again; just run this block again now.`;
 
 test("the real CLI's first run exits 8 with step 1's pending link, and a rerun waits and shows the same link", () => {
   assert.ok(run.includes(`stderr shows the same link on the line after \`${PROMPT}\``));
@@ -140,7 +145,8 @@ test("the real CLI's first run exits 8 with step 1's pending link, and a rerun w
   const first = onboard();
   assert.ifError(first.error);
   assert.equal(first.status, 8, first.stderr);
-  const { pending } = JSON.parse(first.stdout);
+  const { pending } = JSON.parse(cliStdout(first));
+  assert.equal(lastLine(first), next(pending.approvalUrl));
   assert.deepEqual(Object.keys(pending), ["step", "of", "approvalUrl", "expiresAt"]);
   assert.deepEqual({ step: pending.step, of: pending.of }, { step: 1, of: 2 });
   assert.match(pending.approvalUrl, /^https:\/\/openkey\.example\.invalid\/a\/[a-z2-7]{26}#v=4&/);
@@ -151,7 +157,8 @@ test("the real CLI's first run exits 8 with step 1's pending link, and a rerun w
   const again = onboard();
   assert.equal(again.status, 8, again.stderr);
   assert.ok(Date.now() - started >= 2000, "the rerun waits for the owner until --timeout");
-  assert.deepEqual(JSON.parse(again.stdout), { pending });
+  assert.deepEqual(JSON.parse(cliStdout(again)), { pending });
+  assert.equal(lastLine(again), next(pending.approvalUrl));
   const id = new URL(pending.approvalUrl).pathname.split("/").pop();
   assert.deepEqual([...new Set(polled())], [`${OPENKEY}/api/approval-requests/${id}/result`]);
   untouched();
@@ -163,7 +170,8 @@ test("the real CLI ends an expired link as exit 3 APPROVAL_REQUEST_EXPIRED, and 
     assert.equal(onboard().status, 8);
     const result = onboard();
     assert.equal(result.status, answer === "expired" ? 3 : 8, result.stderr);
-    assert.equal(result.stdout, "");
+    // No pending link: the block prints the exit code, no NEXT line.
+    assert.equal(result.stdout, `ONBOARD_EXIT ${answer === "expired" ? 3 : 8}\n`);
     assert.equal(JSON.parse(result.stderr.slice(result.stderr.indexOf("{"))).error.code, code);
     untouched();
   }
@@ -173,7 +181,7 @@ test("the real CLI ends an expired link as exit 3 APPROVAL_REQUEST_EXPIRED, and 
 // and piped the run through `tail`, losing `"onboarded": true`. The rerun is in the same paragraph as the owner line,
 // and the block says not to filter its output; on the source and the served page.
 const OWNER_LINE = '"Open this link and approve; tell me when you\'re done."';
-const SAME_TURN = 'Then, in the same turn and without waiting for a reply, run the same command again: the owner\'s "done" is not needed, the command itself sees the approval.';
+const SAME_TURN = 'Then, in the same turn and without waiting for a reply, run the block again: the owner\'s "done" is not needed, the command itself sees the approval.';
 const NO_FILTER = "Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output.";
 test("the same-turn rerun follows the owner line in its paragraph, and the run's output is read unfiltered", () => {
   for (const file of ["setup/onboarding.md", "_site/onboarding.md"]) {
@@ -183,8 +191,30 @@ test("the same-turn rerun follows the owner line in its paragraph, and the run's
     const paragraphs = step.split("\n\n").filter((paragraph) => paragraph.includes(OWNER_LINE));
     assert.equal(paragraphs.length, 1, file);
     assert.ok(paragraphs[0].includes(`followed by: ${OWNER_LINE} ${SAME_TURN}`), file);
-    const block = step.indexOf('"$TC" onboard --timeout 60s\n```');
+    const block = step.indexOf('exit "$RC"\n```');
     assert.ok(block > 0, file);
     assert.ok(step.slice(block).split("\n\n")[1].startsWith(NO_FILTER), `${file}: the no-filter line follows the block`);
+  }
+});
+
+// The block itself says what to do next (agents follow tool output more reliably than page prose): exit 0 →
+// the done line, with the CLI's JSON still shown; any exit other than 0, or 8 with a pending link → ONBOARD_EXIT.
+test("the run block prints the done line on exit 0 and only ONBOARD_EXIT on other exits, after the CLI's full stdout", () => {
+  for (const [exit, stdout, last] of [
+    [0, '{\n  "onboarded": true,\n  "profile": "default"\n}', "NEXT: onboarding is done; continue with the owner's goal."],
+    [1, "", "ONBOARD_EXIT 1"],
+    [8, "", "ONBOARD_EXIT 8"],
+    [8, '{"pending":{"step":2,"of":2}}', "ONBOARD_EXIT 8"],
+  ]) {
+    const dir = mkdtempSync(join(base, "fake-"));
+    mkdirSync(join(dir, ".agents/skills/tinycloud-cli"), { recursive: true });
+    writeFileSync(join(dir, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
+    const cli = join(dir, "tinycloud");
+    writeFileSync(cli, `#!/bin/sh\ncase "$*" in --version) echo 9.9.9 ;; "onboard --timeout 60s") printf '%s\\n' '${stdout}' | sed '/^$/d'; echo 'cli stderr' >&2; exit ${exit} ;; esac\n`, { mode: 0o700 });
+    const result = spawnSync("sh", ["-c", blocks(run)[0].replace("<TC_BIN>", cli)], { cwd: dir, env: { PATH: process.env.PATH, HOME: dir }, encoding: "utf8" });
+    assert.equal(result.status, exit, result.stderr);
+    assert.equal(result.stderr, "cli stderr\n");
+    assert.equal(result.stdout, `${stdout ? `${stdout}\n` : ""}${last}\n`);
+    assert.equal(result.stdout.split("\n").filter((line) => line.startsWith("NEXT:")).length, exit === 0 ? 1 : 0);
   }
 });

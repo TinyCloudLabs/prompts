@@ -72,7 +72,7 @@ const guarded = {
     // A foreground run: the result is on stdout.
     ran: (run, result) => {
       assert.equal(callsOf(run), "--version\nonboard --timeout 60s\n");
-      assert.equal(result.stdout, '{"onboarded": true}\n');
+      assert.equal(result.stdout, '{"onboarded": true}\nNEXT: onboarding is done; continue with the owner\'s goal.\n');
       assert.equal(result.stderr, "");
     },
   },
