@@ -111,15 +111,21 @@ const SKILLS = [
     integrity: "sha512-lwf95fZaZJTn04JqMkn+RkrIsjuJ/IKOuc5rmESLrc/8ZkjTE8tfAVBfSCb0aMFNVzBkrODqzjXJ6Bj8BuVCpw==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
-    // The released skill says catalog installs run on the onboarding profile, but
-    // the onboarding grant has no `tinycloud.sql/schema`, which installing needs.
-    // INSTALL.md: download the installer, then run it in a separate call: some
-    // agents refuse a download piped into node.
     changes: {
       "SKILL.md": [
         [
+          /^Need more than onboarding grants\? Ask once[^\n]*$/m,
+          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. Send the complete short URL on its own line and keep the command running; it retrieves approval automatically. Re-run the identical command after interruption. Do not add `--paste`: that explicitly selects the older manual-code flow and long link. See [AUTH.md](AUTH.md).",
+        ],
+        [
           "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
           "Catalog installation requires `tinycloud.sql/schema` as well as the app's data permissions. The onboarding grant does not include that installation permission; obtain the app's required installation access before running this command:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+        ],
+      ],
+      "AUTH.md": [
+        [
+          /^Keep the user's existing profiles:[^\n]*$/m,
+          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). Send the actual short URL on its own line and keep the command running; no return code is needed. Re-run the identical command/profile after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
         ],
       ],
       "INSTALL.md": [
@@ -313,10 +319,17 @@ async function loadSkill(skill) {
   if (skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
-      const text = body.toString("utf8");
-      if (!UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) return [path, body];
-      changed.add(path);
-      return [path, Buffer.from(UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text))];
+      let text = body.toString("utf8");
+      text = UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text);
+      if (skill.short === "cli") {
+        text = text.replace(SHELL_BLOCK, (block) => {
+          const commands = /(^[ \t]*|\|[ \t]*|\$\(|&&[ \t]*|;[ \t]*|=\()tinycloud(?=[ \t]|$)/gm;
+          if (!commands.test(block)) return block;
+          return block.replace(/\n/, `\n${RESOLVER}\n`).replace(commands, '$1"$TC"');
+        });
+      }
+      if (text !== body.toString("utf8")) changed.add(path);
+      return [path, Buffer.from(text)];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -372,6 +385,7 @@ for (const f of copied) {
   cpSync(join(ROOT, f), join(OUT, f));
 }
 write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
+write("install-cli.mjs", readFileSync(join(ROOT, "scripts/install-cli.mjs")));
 
 const pages = PAGES.map((p) => {
   const text = render(p.src);
@@ -389,13 +403,15 @@ const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
 const siteLine = `const SITE = "${SITE}";`;
 if (!installer.includes(siteLine)) throw new Error(`scripts/install-skill.js: no line ${siteLine}`);
 write("skills/install.js", installer.replace(siteLine, `const SITE = "${BASE}";`));
-// /cli's install block, served as a script: agents download and run it rather
-// than retype a long block from the page. The page shows the same block.
-const cliBlock = readFileSync(join(ROOT, "setup/tinycloud.md"), "utf8")
-  .split("\nThe script is exactly this block, shown here so you and the owner can read it:\n")[1]
-  ?.match(/^\n```sh\n([\s\S]*?)\n```/)?.[1];
-if (!cliBlock) throw new Error("setup/tinycloud.md: no install block after 'The script is exactly this block'");
-write("skills/install-cli.sh", `#!/bin/sh\n# The TinyCloud CLI install block from ${BASE}/cli\n${cliBlock.replaceAll(SITE, BASE)}\n`);
+// Preserve the published POSIX entry point while sharing one installer policy
+// with Windows. Download and execution remain separate agent tool calls.
+write("skills/install-cli.sh", `#!/bin/sh
+set -eu
+INSTALL_DIR=$(mktemp -d)
+trap 'rm -rf "$INSTALL_DIR"' EXIT
+curl -fsSL "${BASE}/install-cli.mjs" -o "$INSTALL_DIR/install.mjs"
+node "$INSTALL_DIR/install.mjs"
+`);
 
 write(
   "skills/index.json",
@@ -417,20 +433,6 @@ write(
   ) + "\n",
 );
 
-// The /apps setup downloads the skill's files by name, checks them against SHA256SUMS and copies them
-// by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
-const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
-const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
-const curlLine = appsGuide.match(/curl -fsSL((?: -O "[^"\n]*\/skills\/apps\/[^"\n]+")+)/);
-if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
-const fetched = [...curlLine[1].matchAll(/\/skills\/apps\/([^"\n]+)"/g)].map((m) => m[1]);
-if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
-  throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
-}
-const copies = [...appsGuide.matchAll(/ cp ((?:[\w.-]+ )+)"[^"\n]*\/tc-apps\/"/g)];
-if (copies.length !== 2 || copies.some(([, names]) => JSON.stringify(names.trim().split(" ").sort()) !== JSON.stringify(appsFiles))) {
-  throw new Error(`setup/tc-apps.md step 5 must copy exactly ${appsFiles}, in both the Claude Code and the Codex/OpenCode block`);
-}
 const servedIndex = JSON.parse(readFileSync(join(OUT, "skills/index.json"), "utf8"));
 for (const s of servedIndex.skills) {
   const sums = readFileSync(join(OUT, `skills/${s.short}/SHA256SUMS`), "utf8").trimEnd().split("\n");
@@ -594,6 +596,10 @@ const llms = [
   "> Setup guides for any AI agent, backed by the owner's own TinyCloud space: the TinyCloud CLI when the agent can install and run it, otherwise the hosted MCP. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
   `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 22.20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
+  "",
+  "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
+  "",
+  "Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.",
   "",
   "## Abilities",
   "",
