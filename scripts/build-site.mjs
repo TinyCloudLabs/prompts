@@ -19,7 +19,6 @@
 // index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
-import { renderMatrix } from "./matrix.mjs";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -631,7 +630,7 @@ write(
     .join("\n"),
 );
 
-const sitemapPaths = ["", ...indexed.map((p) => p.url), "matrix", "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+const sitemapPaths = ["", ...indexed.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -776,16 +775,12 @@ ${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<co
     <ul>
 ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
-    <p><a href="/matrix">How many steps each skill asks of you</a></p>
   </main>
   <footer>Agents: start at <a href="/onboarding">/onboarding</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
 </body>
 </html>
 `,
 );
-
-// /matrix: steps each skill asks of the owner, from matrix/interactions.json.
-write("matrix.html", renderMatrix(JSON.parse(readFileSync(join(ROOT, "matrix/interactions.json"), "utf8")), style));
 
 // Without a 404 page, Pages serves index.html with 200 for missing paths.
 write(
