@@ -55,7 +55,8 @@ Record the fetched format, actual reply, word count and pass/fail per case. A lo
 | Claude Code, Codex | `How did my last meeting go?` | Fetches `/chat`; the TinyChat sign-in. |
 | Claude Code, Codex | `Set up Courier so my agent can trade tasks with another person's agent.` | Fetches `/courier`. |
 | Cursor, OpenClaw, Hermes | none | Takes the coding route, not a connector; installs into `~/.agents/skills`. |
-| Grok, Perplexity, Gemini | none | That app's own section: `https://mcp.tinycloud.xyz/mcp`, OAuth, OpenKey. No shell, CLI or sandbox; no plan caveat; never asks for a key or token. |
+| Grok / GrokBot | none | Uses CLI onboarding only when its runtime can install and run commands; otherwise hosted MCP only when Streamable HTTP and OAuth are supported. Never invents a native connector screen. |
+| Perplexity, Gemini | none | Uses the hosted MCP/OAuth route where the actual client supports it, following that client's current `/connect` section; no local CLI substitution in a chat sandbox. |
 | Meta Muse | none | Executes native connector setup from the original prompt, without asking for another “create a connector” prompt. Requests `tinycloud:mcp offline_access` and resource `https://mcp.tinycloud.xyz/mcp` on the first OAuth flow; pauses for owner consent; verifies live tools and connection, then completes the setup-only record recipe and read-back. No local TinyCloud CLI substitution or owner-supplied credentials. |
 | ChatGPT | the regression cases above | Unchanged: four steps, at most 120 words. |
 
@@ -85,7 +86,7 @@ This was a supplied-guide smoke on an already connected account with retained me
 
 | Client | Request | Required behavior |
 | --- | --- | --- |
-| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then `tinycloud onboard`. One message with the word-for-word two-approvals text, the step 1 link and its one-line instruction; asks only for the short code. Runs `onboard --code` with the code as sent; sends step 2 the same way without the step-1 text; `"onboarded": true`; ends with what the owner can ask next. Never shows JSON or the permission list; never asks for a secret. |
+| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then `tinycloud onboard`. Explains both approvals once; sends each actual short link complete on its own line and keeps the command running. No pasted code. An interruption resumes with the identical command/profile. Success is `"onboarded": true`; app setup then reuses that CLI/profile and covered grants. |
 | Any agent with a shell | `Log my weight: 80.5 kg today.` | After onboarding, fetches `/apps` itself, without asking for another link, and continues with it. |
 | Chat apps with a TinyCloud connector | none | Chat-app route: the app's connector steps from `/connect`, then `tinycloud_connect` → `approvalUrl` → approve → `connected`. No shell, CLI or sandbox. |
 
@@ -95,10 +96,10 @@ This was a supplied-guide smoke on an already connected account with retained me
 
 From TC-1278 (the routing spec is not in this repo). Every client starts from the same prompt. Rules for every page: lead with the router, state unsupported routes honestly, never ask for a password, private key, session key, recovery phrase, API key, secret value or access token in chat.
 
-- **Chat apps (ChatGPT web, Claude web, Desktop, mobile, Grok, Perplexity, Gemini, Meta Muse):** hosted MCP. Add `https://mcp.tinycloud.xyz/mcp` (with `/mcp`), authentication **OAuth** (OpenKey), sign in, approve the `tinycloud_connect` link and any per-resource links.
+- **Chat apps with remote MCP and OAuth support:** use hosted MCP at `https://mcp.tinycloud.xyz/mcp`, authenticate through OpenKey, and approve only the access needed by the original request. A brand name alone is not a capability check; follow the current `/connect` client section.
   - ChatGPT: Plugins → Add → Add custom MCP server, web only.
   - Claude: Connectors → Add custom connector, on web or Desktop; it then works on mobile.
-  - Grok: grok.com/connectors → New Connector → Custom. Perplexity: Account settings → Connectors → + Custom connector → Remote. Gemini: Settings → Connected Apps → Custom apps (personal account, US).
+  - Grok / GrokBot: choose by actual runtime capabilities, not an assumed native connector. WhatsApp / Instinct: the bot runtime determines the route; the reported two-hour read-only Todos success is not blanket MCP or mobile approval certification.
   - Meta Muse: performs native custom-connector setup from the original request; requests `tinycloud:mcp offline_access` and the MCP resource, resumes after owner approval, then verifies real tools and completes the original task.
 - **Coding agents with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes):** CLI + skill, the install flow from the guide for the request unchanged: `/apps` for records or setup only, `/secrets`, `/publish`, `/chat` or `/courier` otherwise. Codex asks for a sandbox escalation; OpenCode needs a restart. Agents other than Claude Code, Codex and OpenCode install into `~/.agents/skills`, as Codex does.
 - **Other MCP clients (VS Code, Gemini CLI):** hosted URL with OAuth if remote MCP is supported, else local stdio. Not tested here.
@@ -143,7 +144,7 @@ Three things get called `tc` or `tinycloud`. Don't mix them up.
 
 | What | How to find it | Expected |
 |---|---|---|
-| **CLI under test** (the TinyCloud CLI the skill installs; npm package `@tinycloud/cli`) | `"$H/.local/share/tc-apps/tinycloud" --version` | The version in the table's "CLI version installed" cell, currently `1.3.5` (the version `/apps` installs). |
+| **CLI under test** (the selected TinyCloud CLI; npm package `@tinycloud/cli`) | `TC="$(cat "$H/.local/share/tc-apps/cli-path")"; "$TC" --version` | A clean install selects `1.5.0`; a compatible existing/newer CLI is reused. App setup must not install a second CLI or a separate beta. |
 | **System `tc`** (Linux traffic control, in the clean-shell `PATH`) | `/usr/sbin/tc -V` | A line starting `tc utility, iproute2`. This is not TinyCloud. |
 | **Global TinyCloud CLI**, if the machine has one (npm global, `command -v tinycloud` or `command -v tc` outside the clean shell) | From a plain shell, not the test shell: `command -v tc; tc --version` | Any version; it must be **identical before and after** the run. The test must not touch it. |
 
@@ -157,19 +158,19 @@ The page calls the CLI `tinycloud`; the skill's wrapper is named `tinycloud`. Al
 
 ## Checking a record
 
-"Record saved" is true only if the tester sees the record, not only the assistant's claim. Records land under **`xyz.tinycloud.agent-data/` in the account's `default` space**. Catalog entries (`xyz.tinycloud.agent-data/catalog/...`) are not records.
+"Record saved" requires an actual read-back, not the assistant's claim. New generic records live under **`xyz.tinycloud.tinyapps.<APP>/` in the owner's `applications` space**. Catalog metadata is not a record. Existing legacy apps remain under `xyz.tinycloud.agent-data/` in `default` until an owner-requested verified migration. Health Log and Recipes use their pinned app layout and knowledge, not generic fitness keys.
 
-Coding agents, from the client's `$H` and `TC_HOME`:
+For a generic app, use the exact profile and full space ID returned by `app-context.mjs`, from the client's `$H` and `TC_HOME`:
 
 ```sh
-TC_BIN="$H/.local/share/tc-apps/tinycloud"
-"$TC_BIN" kv list --prefix xyz.tinycloud.agent-data/ --space default --json --profile agent-data
-"$TC_BIN" kv get '<key from the list>' --space default --json --profile agent-data
+TC_BIN="$(cat "$H/.local/share/tc-apps/cli-path")"
+"$TC_BIN" --profile '<APP_PROFILE>' kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/' --space '<APP_SPACE>' --all --json
+"$TC_BIN" --profile '<APP_PROFILE>' kv get '<key from the list>' --space '<APP_SPACE>' --json
 ```
 
-- **Pass:** the list prints `"keys"` with at least one key outside `catalog/`, and `"count"` of 1 or more; `kv get` prints a JSON object with `v`, `at`, `data`, `by`. For T1, the key is `xyz.tinycloud.agent-data/fitness/weight/<YYYY-MM>/<date>` and `data` holds 80.5 kg.
+- **Pass:** the exact requested record is read back as `{v, at, data, by}` with the expected value, not just a nonempty list. For the Health Log weight request, use its knowledge and account-guarded SQL read-back to verify 80.5 kg; do not create a generic fitness record.
 - **Fail:** `"keys": []`, only `catalog/` keys, or `data` that is a plain string.
-- **O:** the record is the default todo: key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, `data` holds the title "Try my personal apps". The assistant must also have read it back, saved it only after sign-in was approved, told the owner the key and how to delete it, and must not have asked what to save. A re-run in the same account must not create a second record, including after the todo is marked done (open key gone, `todos/todo/done/try-my-personal-apps` present).
+- **O:** in a new generic layout, the default todo is `xyz.tinycloud.tinyapps.todos/todo/open/try-my-personal-apps`, with title "Try my personal apps". It is saved only after access is approved, read back, and the owner is told its key and deletion option. A rerun must not duplicate it, including after it moves to `todo/done/`. An existing legacy app uses the corresponding old-layout key, with no forced migration.
 
 Chat apps: the pass is the assistant's read-back of the saved record through the connector, shown in the transcript. If the tester can also run the CLI above signed in to the same test account, run it too. Say which check was used.
 
@@ -193,8 +194,8 @@ A row passes only if every line for its client holds.
 - A chat app that cannot read the page fails here as **fail: page not read** until TC-1361 ships.
 
 **Coding agents**
-- **O, S, T1 (the `/apps` setup):** §2 step 4 prints `OK` for the four skill files and step 7 prints the CLI version. **T2, T3, T4:** the installer prints `SKILL_INSTALLED <skill> <version> <folder>`. In both cases the version matches the site's `/skills/index.json`.
-- Shows the OpenKey link and code in its own output.
+- The checksum-verifying installer reports `SKILL_INSTALLED <skill> <version> <folder>`, or an already-compatible install is reused. The version and files match the site's `/skills/index.json`; app setup uses the CLI selected during onboarding.
+- Shows the complete short OpenKey approval URL on its own line, not a request to copy a code. Existing sufficient grants produce no new approval.
 - **O, S, T1:** record saved per Checking a record (S: explains the route, and with no record named saves the default todo, rather than silently installing).
 - **T2:** an owner-only link, not a public one.
 - **T3:** the key is used without appearing in the transcript; with no key stored, a link to add one.
