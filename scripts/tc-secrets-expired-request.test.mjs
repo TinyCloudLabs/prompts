@@ -24,6 +24,7 @@ test("tc-secrets caps exit 8 at three tries, then logs out only for a dead reque
   assert.match(exit8, /at most three times in a row/);
   assert.match(exit8, /If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `\(HTTP 400\)`/);
   assert.match(exit8, /runs `"\$TC_BIN" --profile "\$PROFILE" auth logout` on the sign-in profile, then run §3c again, then §3d, and send the owner only the new link, as for `APPROVAL_REQUEST_EXPIRED` above\./);
+  assert.ok(exit8.includes("Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running (stop any background sign-in you started): a command still waiting on a link would be orphaned. Run the block below"));
   assert.match(exit8, /Never edit or delete the CLI's files yourself\./);
   assert.match(exit8, /- Otherwise: stop and report it; don't retry\./);
   assert.doesNotMatch(skill, /approval-pending/, "nothing touches the CLI's request file");

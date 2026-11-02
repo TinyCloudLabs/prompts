@@ -420,7 +420,7 @@ PY
 - `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired (after about an hour) before the owner approved. Run §3c again, then this block, and send the owner only the new link: "Open this link and approve; tell me when you're done."
 - `LOGIN_FAILED APPROVAL_RESULT_EXPIRED` → the owner approved, but the sign-in wasn't running to collect it within 10 minutes. Same as above: run §3c again and send only the new link.
 - `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then run §3c again, at most three times in a row; it resumes the same link. §3d prints the CLI's message after the code.
-  - If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`: the link expired before the owner approved, and this CLI keeps asking OpenKey for it. Run the block below, which runs `"$TC_BIN" --profile "$PROFILE" auth logout` on the sign-in profile, then run §3c again, then §3d, and send the owner only the new link, as for `APPROVAL_REQUEST_EXPIRED` above. Never edit or delete the CLI's files yourself.
+  - If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`: the link expired before the owner approved, and this CLI keeps asking OpenKey for it. Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running (stop any background sign-in you started): a command still waiting on a link would be orphaned. Run the block below, which runs `"$TC_BIN" --profile "$PROFILE" auth logout` on the sign-in profile, then run §3c again, then §3d, and send the owner only the new link, as for `APPROVAL_REQUEST_EXPIRED` above. Never edit or delete the CLI's files yourself.
 
     ```sh
     { set +x; } 2>/dev/null; set +e; umask 077
