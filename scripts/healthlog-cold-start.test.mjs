@@ -77,6 +77,7 @@ process.exit(2);
   const doc = readFileSync(join(root, "skills/tc-apps/TINY-APPS.md"), "utf8");
   const block = [...doc.matchAll(/```sh\n([\s\S]*?)\n```/g)].map(m => m[1]).find(b => b.includes("INSERT INTO meal"));
   const replacements = { "<TC_BIN>": cli, "<STATE>": state, "<HEALTHLOG_CONTEXT>": helper,
+    "<CATALOG_PROFILE>": "agent-meal", "<CATALOG_HOST>": "https://node.example",
     "<MARK>": "coldtest", "<OP_ID>": "cold-meal", "<SLOT>": "breakfast", "<KCAL>": "350",
     "<the owner's meal name, exactly as typed (line breaks allowed)>": "Eggs and toast" };
   let command = block;

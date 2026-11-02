@@ -19,7 +19,6 @@
 // index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
-import { renderMatrix } from "./matrix.mjs";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -106,20 +105,31 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.1",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.1.tgz",
-    integrity: "sha512-lwf95fZaZJTn04JqMkn+RkrIsjuJ/IKOuc5rmESLrc/8ZkjTE8tfAVBfSCb0aMFNVzBkrODqzjXJ6Bj8BuVCpw==",
+    version: "1.6.0-beta.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.0-beta.1.tgz",
+    integrity: "sha512-KUK25jShE0qe7lCwcLMDN4i+xV6fgGc/Z7dFBjbuaFtHEKI+2vMRdiQ3vtZgMYOKG5ed/Ej6SQBfn60flQ/vdA==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
-    // The released skill says catalog installs run on the onboarding profile, but
-    // the onboarding grant has no `tinycloud.sql/schema`, which installing needs.
-    // INSTALL.md: download the installer, then run it in a separate call: some
-    // agents refuse a download piped into node.
     changes: {
       "SKILL.md": [
         [
+          /^Need more than onboarding grants\? Ask once[^\n]*$/m,
+          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. Send the complete short URL on its own line and keep the command running; it retrieves approval automatically. Re-run the identical command after interruption. Do not add `--paste`: that explicitly selects the older manual-code flow and long link. See [AUTH.md](AUTH.md).",
+        ],
+        [
           "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
           "Catalog installation requires `tinycloud.sql/schema` as well as the app's data permissions. The onboarding grant does not include that installation permission; obtain the app's required installation access before running this command:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+        ],
+        [
+          "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.0-beta.1`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+        ],
+      ],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.0-beta.1 <2.0.0"']],
+      "AUTH.md": [
+        [
+          /^Keep the user's existing profiles:[^\n]*$/m,
+          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). Send the actual short URL on its own line and keep the command running; no return code is needed. Re-run the identical command/profile after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
         ],
       ],
       "INSTALL.md": [
@@ -127,14 +137,18 @@ const SKILLS = [
           "curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent claude-code\ncurl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code",
           "mkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code",
         ],
+        [
+          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`.",
+          "To remove the CLI, follow the Undo steps at https://agents.tinycloud.xyz/cli: it is installed in a private prefix, not globally.",
+        ],
       ],
     },
   },
   {
     short: "courier",
-    version: "0.4.1",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.1.tgz",
-    integrity: "sha512-bzJvCaHH6Sj4VmOrEU1NIe6/QHtW4c44w2dzueApbsPPVTYyXE2TvxlhVHnaHKAJxRI4EXAtUDsj+AekH6vuXg==",
+    version: "0.5.0-beta.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.0-beta.0.tgz",
+    integrity: "sha512-xf/uE4mqGK0S35mg2HuAtEuGZinutJaUXzY4lHm8CnT0gfGV99FeyDBEB5LWj3FZXrF/NzGzOBARRFynFKh0hg==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -144,14 +158,14 @@ const SKILLS = [
           "Offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the two-choice flow in the Courier guide, https://agents.tinycloud.xyz/courier.",
         ],
         [
-          "`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey (`tinycloud courier init --paste` also accepts the OpenKey `XXXX-XXXX`\ncode) and decides who to pair with.\nIf OpenKey reports the space is still being set up, `init` waits up to about 2.5 minutes; otherwise use `init --resume`.",
+          /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
           "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
         ],
       ],
       "start.md": [
         [
           "Start Courier for me using the installed courier command. Reuse my existing Courier profile and restricted grant. If setup is required, use the normal courier init approval flow; do not request my owner key or broader permissions.",
-          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote two-command setup below: request one Courier approval, give me its exact openkeyUrl with one plain permission sentence, and import the code I send back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
+          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote setup below: request one Courier approval, give me its exact openkeyUrl with one plain line, then collect my approval with courier init --wait --timeout 60s and run it again while it exits 8 (still pending, not a failure). Import a code only if I send one back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
         ],
         [
           "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
@@ -171,9 +185,9 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.8.4",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.4.tgz",
-    integrity: "sha512-c8TnYrl10iDwzrhkvIUqmwn7a5gKdhSyO3J10Kr/8O6BngRuxpPGH3OuUsz6KHWrRjN28PBqZPYOY6PQQOcJ8Q==",
+    version: "0.8.5",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.5.tgz",
+    integrity: "sha512-yL9vnJVPHMVGhm6Rmct6gQixq2Mh6ivsGWHWiPZZyrYAUcS3mnb+LTi4irAD+XixZlJU7NJIZW83RoSNxw1bLA==",
     dir: "package/skills/tinycloud-delegated-secrets",
   },
 ];
@@ -313,10 +327,17 @@ async function loadSkill(skill) {
   if (skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
-      const text = body.toString("utf8");
-      if (!UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) return [path, body];
-      changed.add(path);
-      return [path, Buffer.from(UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text))];
+      let text = body.toString("utf8");
+      text = UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text);
+      if (skill.short === "cli") {
+        text = text.replace(SHELL_BLOCK, (block) => {
+          const commands = /(^[ \t]*|\|[ \t]*|\$\(|&&[ \t]*|;[ \t]*|=\()tinycloud(?=[ \t]|$)/gm;
+          if (!commands.test(block)) return block;
+          return block.replace(/\n/, `\n${RESOLVER}\n`).replace(commands, '$1"$TC"');
+        });
+      }
+      if (text !== body.toString("utf8")) changed.add(path);
+      return [path, Buffer.from(text)];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -372,6 +393,7 @@ for (const f of copied) {
   cpSync(join(ROOT, f), join(OUT, f));
 }
 write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
+write("install-cli.mjs", readFileSync(join(ROOT, "scripts/install-cli.mjs")));
 
 const pages = PAGES.map((p) => {
   const text = render(p.src);
@@ -389,13 +411,15 @@ const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
 const siteLine = `const SITE = "${SITE}";`;
 if (!installer.includes(siteLine)) throw new Error(`scripts/install-skill.js: no line ${siteLine}`);
 write("skills/install.js", installer.replace(siteLine, `const SITE = "${BASE}";`));
-// /cli's install block, served as a script: agents download and run it rather
-// than retype a long block from the page. The page shows the same block.
-const cliBlock = readFileSync(join(ROOT, "setup/tinycloud.md"), "utf8")
-  .split("\nThe script is exactly this block, shown here so you and the owner can read it:\n")[1]
-  ?.match(/^\n```sh\n([\s\S]*?)\n```/)?.[1];
-if (!cliBlock) throw new Error("setup/tinycloud.md: no install block after 'The script is exactly this block'");
-write("skills/install-cli.sh", `#!/bin/sh\n# The TinyCloud CLI install block from ${BASE}/cli\n${cliBlock.replaceAll(SITE, BASE)}\n`);
+// Preserve the published POSIX entry point while sharing one installer policy
+// with Windows. Download and execution remain separate agent tool calls.
+write("skills/install-cli.sh", `#!/bin/sh
+set -eu
+INSTALL_DIR=$(mktemp -d)
+trap 'rm -rf "$INSTALL_DIR"' EXIT
+curl -fsSL "${BASE}/install-cli.mjs" -o "$INSTALL_DIR/install.mjs"
+node "$INSTALL_DIR/install.mjs"
+`);
 
 write(
   "skills/index.json",
@@ -417,20 +441,6 @@ write(
   ) + "\n",
 );
 
-// The /apps setup downloads the skill's files by name, checks them against SHA256SUMS and copies them
-// by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
-const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
-const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
-const curlLine = appsGuide.match(/curl -fsSL((?: -O "[^"\n]*\/skills\/apps\/[^"\n]+")+)/);
-if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
-const fetched = [...curlLine[1].matchAll(/\/skills\/apps\/([^"\n]+)"/g)].map((m) => m[1]);
-if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
-  throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
-}
-const copies = [...appsGuide.matchAll(/ cp ((?:[\w.-]+ )+)"[^"\n]*\/tc-apps\/"/g)];
-if (copies.length !== 2 || copies.some(([, names]) => JSON.stringify(names.trim().split(" ").sort()) !== JSON.stringify(appsFiles))) {
-  throw new Error(`setup/tc-apps.md step 5 must copy exactly ${appsFiles}, in both the Claude Code and the Codex/OpenCode block`);
-}
 const servedIndex = JSON.parse(readFileSync(join(OUT, "skills/index.json"), "utf8"));
 for (const s of servedIndex.skills) {
   const sums = readFileSync(join(OUT, `skills/${s.short}/SHA256SUMS`), "utf8").trimEnd().split("\n");
@@ -593,7 +603,7 @@ const llms = [
   "",
   "> Setup guides for any AI agent, backed by the owner's own TinyCloud space: the TinyCloud CLI when the agent can install and run it, otherwise the hosted MCP. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 22.20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
+  `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
   "",
   "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
   "",
@@ -629,7 +639,7 @@ write(
     .join("\n"),
 );
 
-const sitemapPaths = ["", ...indexed.map((p) => p.url), "matrix", "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+const sitemapPaths = ["", ...indexed.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -749,7 +759,7 @@ ${style}
   <main>
     <h1>Give your agent abilities</h1>
     <p>${esc(desc)}</p>
-    <p>Works with any agent that can install and run the TinyCloud CLI (Node.js 22.20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
+    <p>Works with any agent that can install and run the TinyCloud CLI (Node.js 20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
     <p>Everything starts at <a href="/onboarding"><code>${esc(url("onboarding"))}</code></a>. <a href="/setup">/setup</a> lists what each ability does, what to paste, what you approve and how to undo it.</p>
 
     <h2>How it works</h2>
@@ -774,16 +784,12 @@ ${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<co
     <ul>
 ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
-    <p><a href="/matrix">How many steps each skill asks of you</a></p>
   </main>
   <footer>Agents: start at <a href="/onboarding">/onboarding</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
 </body>
 </html>
 `,
 );
-
-// /matrix: steps each skill asks of the owner, from matrix/interactions.json.
-write("matrix.html", renderMatrix(JSON.parse(readFileSync(join(ROOT, "matrix/interactions.json"), "utf8")), style));
 
 // Without a 404 page, Pages serves index.html with 200 for missing paths.
 write(

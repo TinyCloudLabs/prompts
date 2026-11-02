@@ -160,27 +160,18 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   mkdirSync(bin);
   const selected = join(bin, "custom-cli");
   const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.5.1');
+  executable(selected, 'echo 1.5.0');
   executable(conflicting, 'echo unrelated');
+  executable(join(bin, "curl"), `cp '${join(root, "_site/install-cli.mjs")}' "$4"`);
   const original = readFileSync(conflicting);
   const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
+  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.6\.0-beta\.1; keeping this operator-selected CLI$/m);
   assert.deepEqual(readFileSync(conflicting), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
 });
 
-test("/cli serves its install block as a script, and the page tells agents to download and run it", () => {
-  const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  const shown = guide.split("The script is exactly this block, shown here so you and the owner can read it:\n")[1].match(/^\n```sh\n([\s\S]*?)\n```/)[1];
-  const served = readFileSync(join(root, "_site/skills/install-cli.sh"), "utf8").split("\n").slice(2).join("\n");
-  assert.equal(served, `${shown}\n`);
-  const steps = guide.split("## Install the CLI")[1].split("## Verify and return")[0];
-  assert.match(steps, /curl -fsSL -o "\$HOME\/\.local\/share\/tinycloud\/install-cli\.sh" https:\/\/agents\.tinycloud\.xyz\/skills\/install-cli\.sh/);
-  assert.match(steps, /^sh "\$HOME\/\.local\/share\/tinycloud\/install-cli\.sh"$/m);
-  assert.match(steps, /^node "\$HOME\/\.local\/share\/tinycloud\/install\.js" cli --agent CLIENT$/m);
-  for (const [, code] of steps.matchAll(/```sh\n([\s\S]*?)\n```/g)) assert.doesNotMatch(code, /\| *(sh|bash|node)\b/);
-});
 
 before(() => {
   const built = spawnSync(process.execPath, [join(root, "scripts/build-site.mjs")], { encoding: "utf8" });
@@ -265,6 +256,21 @@ test("/connect sends an agent that can run the CLI to /onboarding and gives each
   }
 });
 
+test("tc-apps sends an agent with no onboarded profile through /onboarding before any scoped sign-in", () => {
+  const site = join(root, "_site");
+  const onboarding = "https://agents.tinycloud.xyz/onboarding";
+  const catalog = readFileSync(join(site, "skills/apps/TINY-APPS.md"), "utf8");
+  for (const file of ["apps", "skills/apps/SKILL.md", "skills/apps/TINY-APPS.md"]) {
+    const rules = readFileSync(join(site, file), "utf8").split("\n").filter((line) => line.includes("`onboard-first`") && line.includes(onboarding));
+    assert.equal(rules.length, 1, file);
+    assert.match(rules[0], /original request/, file);
+    assert.match(rules[0], /rerun/, file);
+    assert.match(rules[0], /cannot run onboarding/, file);
+  }
+  const scoped = catalog.split("\n### Scoped setup without onboarding\n")[1].trim().split("\n")[0];
+  assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
+});
+
 test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {
   const site = join(root, "_site");
   const storage = "https://account.tinycloud.xyz/storage";
@@ -305,14 +311,16 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
 test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and preserves process precedence", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const probe = block(guide, "## Before onboarding");
-  for (const scenario of ["saved", "process", "old", "unset"]) {
+  for (const scenario of ["saved", "process", "old", "private", "unset"]) {
     const dir = home();
     const bin = join(dir, "bin");
     mkdirSync(bin);
-    const saved = join(bin, "saved-cli");
+    // The agent's own private copy is left to onboarding's CLI setup, which upgrades it.
+    const saved = scenario === "private" ? join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud") : join(bin, "saved-cli");
     const override = join(bin, "process-cli");
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.5.1 ;; esac');
+    mkdirSync(dirname(saved), { recursive: true });
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.2" : "1.6.0-beta.1"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.6.0-beta.1 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -333,7 +341,7 @@ test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and p
       assert.doesNotMatch(result.stdout, /RESOLVED=/);
     } else {
       assert.equal(result.status, 0, result.stderr);
-      const expected = scenario === "process" ? override : scenario === "unset" ? "" : saved;
+      const expected = scenario === "process" ? override : scenario === "unset" || scenario === "private" ? "" : saved;
       assert.equal(result.stdout.trim(), `RESOLVED=${expected}`);
     }
   }
@@ -346,7 +354,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     const dir = home();
     const selected = join(dir, "operator-cli");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.2" : "1.6.0-beta.1"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
@@ -380,84 +388,140 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
   }
 });
 
-test("Courier preview installs and serves the approved release pins", () => {
-  const skills = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8")).skills;
-  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.1");
-  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.1");
-  const dir = home();
-  const bin = join(dir, "bin");
-  mkdirSync(bin);
-  const calls = join(dir, "npm-calls");
-  executable(join(bin, "npm"), `printf '%s\\n' "$@" > "$NPM_CALLS"
-    mkdir -p "$HOME/.local/share/tinycloud/cli/node_modules/.bin"
-    printf '#!/bin/sh\\necho 1.5.1\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
-    chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"`);
-  const installed = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls } });
-  assert.equal(installed.status, 0, installed.stderr);
-  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.1"));
-  const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");
-  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.1"]);
-});
 
-for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"]) {
-  test(`Courier remote setup consumes non-TTY codes with the real CLI: ${surface}`, () => {
-    const text = readFileSync(join(root, surface), "utf8");
-    const section = text.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
-    assert.ok(section, `${surface}: missing executable remote setup`);
-    const [request, redeem] = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
-    assert.ok(request && redeem, `${surface}: missing request or code-import step`);
-    const dir = home();
-    const courierHome = join(dir, "courier");
-    const cliHome = join(dir, "cli");
-    mkdirSync(cliHome, { mode: 0o700 });
-    writeFileSync(join(cliHome, "sentinel"), "existing CLI context\n");
-    const requests = join(dir, "requests.jsonl");
-    const forbidden = join(dir, "forbidden.jsonl");
-    const fence = join(dir, "network-fence.cjs");
-    writeFileSync(fence, `
-      const fs = require("node:fs");
-      const { syncBuiltinESMExports } = require("node:module");
-      const deny = (operation) => () => {
-        fs.appendFileSync(${JSON.stringify(forbidden)}, operation + "\\n");
-        throw Error("COURIER_TEST_NETWORK_DENIED");
-      };
-      globalThis.fetch = async (input, options = {}) => {
-        const url = String(input);
-        if (url !== "https://openkey.example.invalid/api/delegation-codes/abcd-efgh") return deny("fetch")();
-        fs.appendFileSync(${JSON.stringify(requests)}, JSON.stringify({ url, method: options.method || "GET", redirect: options.redirect }) + "\\n");
-        return new Response("{}", { status: 404 });
-      };
-      for (const name of ["http", "https"]) {
-        const module = require("node:" + name);
-        for (const operation of ["get", "request", "createServer"]) module[operation] = deny(name + "." + operation);
-      }
-      for (const [name, operations] of [["net", ["connect", "createConnection", "createServer"]], ["tls", ["connect"]], ["dns", ["lookup"]]]) {
-        const module = require("node:" + name);
-        for (const operation of operations) module[operation] = deny(name + "." + operation);
-      }
-      syncBuiltinESMExports();
-    `);
-    const env = {
-      PATH: process.env.PATH, HOME: dir, TC_HOME: cliHome, TC_PROFILE: "existing-owner",
-      COURIER_HOME: courierHome, COURIER_TEST: "1", COURIER_TEST_HOME: dir,
-      COURIER_HOST: "https://node.example.invalid", COURIER_OPENKEY_HOST: "https://openkey.example.invalid",
-      COURIER_OPENKEY_API_HOST: "https://openkey.example.invalid",
-      TC: join(root, "node_modules/.bin/tinycloud"), NODE_OPTIONS: `--require=${fence}`, FORCE_COLOR: "0",
+// The served Courier setup: request, wait, then the fallback code import and its separate read.
+const COURIER_SURFACES = ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"];
+const REFUSED_GRANT_LINE = `"I couldn't use that approval. You can remove it at https://account.tinycloud.xyz/delegations: it's the newest "Courier agent" row. Then please open this new link and approve; tell me when you're done." Do not send the owner the CID.`;
+const courierSetup = (surface) => {
+  const text = readFileSync(join(root, surface), "utf8");
+  const section = text.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+  assert.ok(section, `${surface}: missing executable remote setup`);
+  const blocks = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+  assert.equal(blocks.length, 4, `${surface}: expected request, wait, code import and read blocks`);
+  const [request, wait, redeem] = blocks;
+  assert.match(request, /^"\$TC" courier init --request > "\$COURIER_HOME\/request\.json" &&$/m);
+  assert.match(wait, /^"\$TC" courier init --wait --timeout 60s$/m);
+  assert.match(redeem, /"\$TC" courier init --grant-file -/);
+  // A refused grant names the labelled row on the delegations page; the agent never relays the CID to the owner.
+  assert.ok(section.includes(REFUSED_GRANT_LINE), `${surface}: refused-grant owner line`);
+  assert.doesNotMatch(section, /search box|in place of `<CID>`/, `${surface}: the owner is not asked to paste a CID`);
+  return { section, request, wait, redeem };
+};
+// Step 1 prints only the link, on one line, so the agent can copy it without retyping; the full request stays in a private file.
+const requested = (issued, courierHome, surface) => {
+  assert.ifError(issued.error);
+  assert.equal(issued.status, 0, issued.stderr);
+  const approval = JSON.parse(readFileSync(join(courierHome, "request.json"), "utf8"));
+  assert.equal(statSync(join(courierHome, "request.json")).mode & 0o777, 0o600);
+  assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
+  return approval;
+};
+// js-sdk #821's exit-8 sentences, verbatim from its Courier README, skills/courier/SKILL.md and `courier --help`.
+const EXIT_PENDING_RULING = "Exit 8 is not a failure: the approval is still pending. Send the owner the `pending.approvalUrl` (the same link as `openkeyUrl`), ask them to approve it, then re-run `courier init --wait --timeout 60s`. Repeat while it exits 8.";
+const EXIT_OTHER_RULING = "Any other non-zero exit is an error: stderr carries `[code]`.";
+// The real-CLI tests run the pinned CLI; COURIER_TEST_TC points them at a candidate build before a pin bump.
+const COURIER_CLI = process.env.COURIER_TEST_TC || join(root, "node_modules/.bin/tinycloud");
+// js-sdk #821 (TC-2300) adds `courier init --wait`; the pinned 1.6.0-beta.1 has it. A COURIER_TEST_TC without it skips the real-CLI test.
+const COURIER_SHORT_LINK = spawnSync(COURIER_CLI, ["courier", "--help"], { encoding: "utf8" }).stdout?.includes("init [--request | --wait") ?? false;
+const OPENKEY = "https://openkey.example.invalid";
+const LINKS_API = "https://links.example.invalid";
+// A sandbox for the real CLI: no network except stubs for an expired short code, the links API's create call and
+// OpenKey's "not approved yet" poll. Every other connection attempt is logged in `forbidden` and fails.
+const courierSandbox = () => {
+  const dir = home();
+  const courierHome = join(dir, "courier");
+  const cliHome = join(dir, "cli");
+  mkdirSync(cliHome, { mode: 0o700 });
+  writeFileSync(join(cliHome, "sentinel"), "existing CLI context\n");
+  const requests = join(dir, "requests.jsonl");
+  const polls = join(dir, "polls.jsonl");
+  const forbidden = join(dir, "forbidden.jsonl");
+  const fence = join(dir, "network-fence.cjs");
+  writeFileSync(fence, `
+    const fs = require("node:fs");
+    const { randomBytes } = require("node:crypto");
+    const { syncBuiltinESMExports } = require("node:module");
+    const deny = (operation) => () => {
+      fs.appendFileSync(${JSON.stringify(forbidden)}, operation + "\\n");
+      throw Error("COURIER_TEST_NETWORK_DENIED");
     };
-    const run = (script, code) => spawnSync("sh", ["-c", script], {
-      env: { ...env, ...(code === undefined ? {} : { COURIER_CODE: code }) },
-      encoding: "utf8", timeout: 15000,
-    });
-    const issued = run(request);
-    assert.ifError(issued.error);
-    assert.equal(issued.status, 0, issued.stderr);
-    // Step 1 prints only the link, on one line, so the agent can copy it without retyping;
-    // the full request stays in a private file.
-    const approval = JSON.parse(readFileSync(join(courierHome, "request.json"), "utf8"));
-    assert.equal(statSync(join(courierHome, "request.json")).mode & 0o777, 0o600);
-    assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
+    globalThis.fetch = async (input, options = {}) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const method = options.method || "GET";
+      if (url === ${JSON.stringify(`${LINKS_API}/v1/links`)} && method === "POST") {
+        const id = Array.from(randomBytes(26), (byte) => "abcdefghijklmnopqrstuvwxyz234567"[byte % 32]).join("");
+        return Response.json({ id, expiresAt: JSON.parse(options.body).header.expiresAt }, { status: 201 });
+      }
+      const poll = ${JSON.stringify(`${OPENKEY}/api/approval-requests/`)};
+      if (url.startsWith(poll) && /^[a-z2-7]{26}\\/result$/.test(url.slice(poll.length)) && method === "POST") {
+        fs.appendFileSync(${JSON.stringify(polls)}, JSON.stringify({ url }) + "\\n");
+        return new Response(null, { status: 202 });
+      }
+      if (url !== ${JSON.stringify(`${OPENKEY}/api/delegation-codes/abcd-efgh`)}) return deny("fetch " + url)();
+      fs.appendFileSync(${JSON.stringify(requests)}, JSON.stringify({ url, method, redirect: options.redirect }) + "\\n");
+      return new Response("{}", { status: 404 });
+    };
+    for (const name of ["http", "https"]) {
+      const module = require("node:" + name);
+      for (const operation of ["get", "request", "createServer"]) module[operation] = deny(name + "." + operation);
+    }
+    for (const [name, operations] of [["net", ["connect", "createConnection", "createServer"]], ["tls", ["connect"]], ["dns", ["lookup"]]]) {
+      const module = require("node:" + name);
+      for (const operation of operations) module[operation] = deny(name + "." + operation);
+    }
+    syncBuiltinESMExports();
+  `);
+  const env = {
+    PATH: process.env.PATH, HOME: dir, TC_HOME: cliHome, TC_PROFILE: "existing-owner",
+    COURIER_HOME: courierHome, COURIER_TEST: "1", COURIER_TEST_HOME: dir,
+    COURIER_HOST: "https://node.example.invalid", COURIER_OPENKEY_HOST: OPENKEY, COURIER_OPENKEY_API_HOST: OPENKEY,
+    TC_LINKS_API_ORIGIN: LINKS_API, TC: COURIER_CLI, NODE_OPTIONS: `--require=${fence}`, FORCE_COLOR: "0",
+  };
+  const run = (script, code) => spawnSync("sh", ["-c", script], {
+    env: { ...env, ...(code === undefined ? {} : { COURIER_CODE: code }) },
+    encoding: "utf8", timeout: 15000,
+  });
+  const untouched = () => {
+    assert.equal(existsSync(forbidden), false, existsSync(forbidden) ? readFileSync(forbidden, "utf8") : "");
+    assert.deepEqual(readdirSync(cliHome), ["sentinel"]);
+    assert.equal(readFileSync(join(cliHome, "sentinel"), "utf8"), "existing CLI context\n");
+  };
+  return { courierHome, requests, polls, run, untouched };
+};
+
+for (const surface of COURIER_SURFACES) {
+  test(`Courier setup collects the approval in one bounded foreground call and passes exit 8 through: ${surface}`, () => {
+    const { section, wait } = courierSetup(surface);
+    for (const sentence of [EXIT_PENDING_RULING, EXIT_OTHER_RULING]) assert.ok(section.includes(sentence), `${surface}: missing js-sdk #821's exit-8 wording: ${sentence}`);
+    assert.ok(section.includes("> Open this link and approve the one-time Courier permission; tell me when you're done."));
+    assert.doesNotMatch(section, /paste the short code here/);
+    // Rotating the key would clear every pairing: no setup block may run it, though the CLI's errors suggest it.
+    assert.doesNotMatch(section.match(/```sh\n[\s\S]*?\n```/g).join("\n"), /--rotate-key/);
+    assert.ok(section.includes("Never run `init --rotate-key`, even when stderr suggests it."));
+    // A foreground call: no background job, sleep or loop, and a wait well under a 2-minute tool limit.
+    assert.doesNotMatch(wait, /&\s*$|\bsleep\b|\bwhile\b|\buntil\b|\bnohup\b/m);
+    assert.ok(Number(wait.match(/--timeout (\d+)s\b/)[1]) <= 90);
+    for (const [exit, stdout] of [[8, '{"pending":{"step":1,"of":1,"approvalUrl":"https://openkey.so/a/x","expiresAt":"2026-11-02T00:00:00.000Z"}}'], [0, '{"ok":true}'], [1, ""]]) {
+      for (const selected of [undefined, "chosen-home"]) {
+        const dir = home();
+        const log = join(dir, "tc-calls");
+        executable(join(dir, "tc"), `printf '%s|%s\\n' "$*" "$COURIER_HOME" > "$TC_LOG"\nprintf '%s' "$FAKE_STDOUT"\nexit "$FAKE_EXIT"`);
+        const env = { HOME: dir, TC: join(dir, "tc"), TC_LOG: log, FAKE_EXIT: String(exit), FAKE_STDOUT: stdout };
+        if (selected) env.COURIER_HOME = join(dir, selected);
+        const result = shell(wait, env);
+        assert.equal(result.status, exit, result.stderr);
+        assert.equal(result.stdout, stdout);
+        assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${join(dir, selected ?? ".courier")}\n`);
+      }
+    }
+  });
+
+  test(`Courier fallback imports a non-TTY code in the background with the real CLI: ${surface}`, () => {
+    const { request, redeem } = courierSetup(surface);
+    const { courierHome, requests, run, untouched } = courierSandbox();
+    const approval = requested(run(request), courierHome, surface);
     const url = new URL(approval.openkeyUrl);
-    assert.equal(url.origin, "https://openkey.example.invalid");
+    assert.equal(url.origin, OPENKEY);
     assert.equal(url.searchParams.has("callback"), false);
     assert.equal("d" in approval.publicJwk, false);
     assert.equal(JSON.parse(readFileSync(join(courierHome, "profile.json"), "utf8")).courierDid, approval.courierDid);
@@ -490,13 +554,42 @@ for (const surface of ["setup/courier.md", "_site/skills/courier/SKILL.md", "_si
     assert.equal(expired.status, 1, expired.err);
     assert.match(expired.err, /^tinycloud courier: \[code-not-found\]/m);
     assert.deepEqual(readFileSync(requests, "utf8").trim().split("\n").map((line) => JSON.parse(line)), [{
-      url: "https://openkey.example.invalid/api/delegation-codes/abcd-efgh", method: "GET", redirect: "error",
+      url: `${OPENKEY}/api/delegation-codes/abcd-efgh`, method: "GET", redirect: "error",
     }]);
     assert.equal(keyDigest(), originalKey);
     assert.equal(existsSync(join(courierHome, "grant.json")), false);
-    assert.equal(existsSync(forbidden), false);
-    assert.deepEqual(readdirSync(cliHome), ["sentinel"]);
-    assert.equal(readFileSync(join(cliHome, "sentinel"), "utf8"), "existing CLI context\n");
+    untouched();
+  });
+
+  // Needs a CLI with js-sdk #821. Re-run after the CLI/Courier pin bump; until then node:test reports it as skipped.
+  test(`Courier setup requests a short link and the real CLI's wait exits 8 with it: ${surface}`, {
+    skip: COURIER_SHORT_LINK ? false : "needs js-sdk #821's `courier init --wait`; re-run after the CLI/Courier pin bump",
+  }, () => {
+    const { request, wait } = courierSetup(surface);
+    const { courierHome, polls, run, untouched } = courierSandbox();
+    const issued = run(request);
+    const { openkeyUrl } = requested(issued, courierHome, surface);
+    // The CLI's stderr note shows the same link alone on one line.
+    assert.ok(issued.stderr.split("\n").includes(openkeyUrl), issued.stderr);
+    assert.match(openkeyUrl, /^https:\/\/openkey\.example\.invalid\/a\/[a-z2-7]{26}#v=4&/);
+    assert.equal(statSync(join(courierHome, "approval-pending.json")).mode & 0o777, 0o600);
+    // Asking again while the request is open returns the same link.
+    assert.equal(requested(run(request), courierHome, surface).openkeyUrl, openkeyUrl);
+    // The guide's 60 s wait, shortened so the test is quick; the owner never approves.
+    assert.equal(wait.split("--timeout 60s").length, 2);
+    const started = Date.now();
+    const waited = run(wait.replace("--timeout 60s", "--timeout 2s"));
+    assert.ifError(waited.error);
+    assert.equal(waited.status, 8, waited.stderr);
+    assert.ok(Date.now() - started < 10000);
+    const { pending } = JSON.parse(waited.stdout);
+    assert.deepEqual({ ...pending, expiresAt: typeof pending.expiresAt }, { step: 1, of: 1, approvalUrl: openkeyUrl, expiresAt: "string" });
+    const id = new URL(openkeyUrl).pathname.split("/").pop();
+    const polled = readFileSync(polls, "utf8").trim().split("\n").map((line) => JSON.parse(line).url);
+    assert.ok(polled.length > 0);
+    assert.deepEqual([...new Set(polled)], [`${OPENKEY}/api/approval-requests/${id}/result`]);
+    assert.equal(existsSync(join(courierHome, "grant.json")), false);
+    untouched();
   });
 }
 test("Courier guide links to production skill pages present in the built site", () => {

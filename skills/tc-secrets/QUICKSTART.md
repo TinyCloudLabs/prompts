@@ -2,14 +2,14 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli@1.2.0-beta.2` or later; pin an exact version. The `tinycloud` command needs 1.2.3 or later; on older versions, run the same commands as `tc`. 1.0.0-beta.23 still works through the skill's old-CLI steps (no `secrets request`/`wait`; the owner sends OpenKey's long code). Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.0-beta.1`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature checks decide: 1.0.0-beta.23 still works through the skill's old-CLI steps (no `secrets request`/`wait`; the owner sends OpenKey's long code). Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-npm install --prefix <dir> @tinycloud/cli@1.5.1
-<dir>/node_modules/.bin/tinycloud --profile api-keys auth caps   # once per existing profile after an upgrade
-export TC_BIN=<dir>/node_modules/.bin/tinycloud
+# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.6.0-beta.1).
+export TC_BIN='<selected absolute executable path>'
+"$TC_BIN" --profile api-keys auth caps   # once per existing profile after an upgrade
 export TC_OWNER_DID=did:pkh:eip155:1:<owner address>    # the account that owns the secrets
 export TC_HOME=<profile store for this agent>             # optional
 export TC_SECRETS_PROFILE=api-keys                        # optional

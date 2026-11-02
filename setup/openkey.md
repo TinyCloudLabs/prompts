@@ -17,7 +17,7 @@ Before starting, retain the user's original task, the current agent client, the 
 
 ## Requirements
 
-Use Node.js **22.20 or later** and npm, the minimum every page on this site uses.
+Use Node.js **20 or later** and npm, the minimum every page on this site uses.
 
 ## Reuse or install
 

@@ -2,14 +2,14 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.2"
+  version: "0.6.6"
 ---
 
 # Publish documents and HTML with `tinycloud share`
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-Requires `@tinycloud/cli` **1.0.0-beta.18 or newer** (TC-540 device login with `--manifest` and `enable share`; TC-577 file names with spaces and storage-quota errors). The §1 feature probe is authoritative — trust it over the version string. It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
+Requires `@tinycloud/cli` **1.6.0-beta.1**: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept; then the §1 feature probe is authoritative (it needs 1.0.0-beta.18 or newer: TC-540 device login with `--manifest` and `enable share`; TC-577 file names with spaces and storage-quota errors). It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
 
 Operator defaults `TC_BIN` and `TC_OWNER_EMAIL` come from process variables first, then `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host), read as data through the pinned parser installed by [setup/agent.md](https://agents.tinycloud.xyz/agent). Never source the data file. `TC_HOME` (CLI home root) and `TC_PUBLISH_STATE` (this skill's state, default `$HOME/.local/state/tc-publish`) stay role-specific. Without `TC_BIN`, use the shared private CLI or `tinycloud` on `PATH`, never bare `tc`.
 
@@ -68,7 +68,7 @@ else echo STALE; fi
 [ -z "$TC_BIN" ] || "$TC_BIN" --version
 ```
 
-If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task.
+If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If the version it prints is older than `1.6.0-beta.1`, follow https://agents.tinycloud.xyz/cli once (it upgrades a CLI the agent installed) and run this block again. If that setup prints `TC_OLDER`, the operator selected the older CLI: keep it, tell the operator once that `1.6.0-beta.1` is required, and continue with what this block reports.
 
 ## 2. Sign in — only when there is no live session
 
