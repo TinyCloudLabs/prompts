@@ -4,7 +4,7 @@ Give your AI agent abilities that keep your data in your own TinyCloud space. Ag
 
 **New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). It works in any agent: you sign in or create an account with OpenKey, approve two OpenKey screens, and your agent carries on with your request.
 
-The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
+The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
 **Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI, signs the owner in and gives the starting grant, then sends you to the page below for the request. Most pages reuse that; publish/share and Secrets each have their own single approval.
 
@@ -19,7 +19,7 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 - **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
 - **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
-- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. Reuse the CLI selected by [/cli](tinycloud.md), stable `1.5.0` or newer; fresh installs pin `1.5.1`, which includes create-only writes.
+- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. It uses the CLI selected by [/cli](tinycloud.md), stable `1.5.2`, which includes create-only writes.
 - **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
@@ -75,4 +75,4 @@ node "$HOME/.local/share/tinycloud/install.js" <skill> --agent <client>
 
 `<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
 
-`mcp` is the skill that goes with the TinyCloud MCP server (`@tinycloud/mcp` 0.8.4), for agents that already run that server. Agents that support remote MCP connect to the hosted server at `https://mcp.tinycloud.xyz/mcp` instead and sign in with OpenKey; [`/connect`](https://agents.tinycloud.xyz/connect) has the steps. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).
+`mcp` is the skill that goes with the TinyCloud MCP server (`@tinycloud/mcp` 0.8.5), for agents that already run that server. Agents that support remote MCP connect to the hosted server at `https://mcp.tinycloud.xyz/mcp` instead and sign in with OpenKey; [`/connect`](https://agents.tinycloud.xyz/connect) has the steps. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).

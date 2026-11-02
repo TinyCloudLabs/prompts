@@ -167,6 +167,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
+  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.5\.2; keeping this operator-selected CLI$/m);
   assert.deepEqual(readFileSync(conflicting), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
 });
@@ -255,6 +256,21 @@ test("/connect sends an agent that can run the CLI to /onboarding and gives each
   }
 });
 
+test("tc-apps sends an agent with no onboarded profile through /onboarding before any scoped sign-in", () => {
+  const site = join(root, "_site");
+  const onboarding = "https://agents.tinycloud.xyz/onboarding";
+  const catalog = readFileSync(join(site, "skills/apps/TINY-APPS.md"), "utf8");
+  for (const file of ["apps", "skills/apps/SKILL.md", "skills/apps/TINY-APPS.md"]) {
+    const rules = readFileSync(join(site, file), "utf8").split("\n").filter((line) => line.includes("`onboard-first`") && line.includes(onboarding));
+    assert.equal(rules.length, 1, file);
+    assert.match(rules[0], /original request/, file);
+    assert.match(rules[0], /rerun/, file);
+    assert.match(rules[0], /cannot run onboarding/, file);
+  }
+  const scoped = catalog.split("\n### Scoped setup without onboarding\n")[1].trim().split("\n")[0];
+  assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
+});
+
 test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {
   const site = join(root, "_site");
   const storage = "https://account.tinycloud.xyz/storage";
@@ -295,14 +311,16 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
 test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and preserves process precedence", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const probe = block(guide, "## Before onboarding");
-  for (const scenario of ["saved", "process", "old", "unset"]) {
+  for (const scenario of ["saved", "process", "old", "private", "unset"]) {
     const dir = home();
     const bin = join(dir, "bin");
     mkdirSync(bin);
-    const saved = join(bin, "saved-cli");
+    // The agent's own private copy is left to onboarding's CLI setup, which upgrades it.
+    const saved = scenario === "private" ? join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud") : join(bin, "saved-cli");
     const override = join(bin, "process-cli");
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.5.1 ;; esac');
+    mkdirSync(dirname(saved), { recursive: true });
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.1" : "1.5.2"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.2 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -323,7 +341,7 @@ test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and p
       assert.doesNotMatch(result.stdout, /RESOLVED=/);
     } else {
       assert.equal(result.status, 0, result.stderr);
-      const expected = scenario === "process" ? override : scenario === "unset" ? "" : saved;
+      const expected = scenario === "process" ? override : scenario === "unset" || scenario === "private" ? "" : saved;
       assert.equal(result.stdout.trim(), `RESOLVED=${expected}`);
     }
   }
@@ -336,7 +354,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     const dir = home();
     const selected = join(dir, "operator-cli");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.1" : "1.5.2"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;

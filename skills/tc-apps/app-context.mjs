@@ -100,6 +100,12 @@ export function appContext(cli, app, { write = false, remove = false, sql = fals
   // An explicit profile is a boundary, not a hint to switch accounts.
   const candidates = env.TC_PROFILE ? [active] : [active, dedicated].filter((profile, index, all) => profile && all.indexOf(profile) === index);
   const required = appPermissions(app, { write, remove, sql, schema, catalog });
+  // No profile with an owner or a session: onboarding sets one up for every app. The scoped
+  // sign-in flows (profile/missing below) are only for an agent that cannot run onboarding.
+  // The SQL index check stays informational.
+  if (!sql && !candidates.some((profile) => profile && (profile.authenticated || profile.ownerDid || applicationsOwner(profile.spaceId)))) {
+    return catalog ? { status: "onboard-first" } : { status: "onboard-first", profile: candidates.find(Boolean)?.name || env.TC_PROFILE || dedicatedName, missing: required };
+  }
   let selectedOwner = active?.ownerDid || applicationsOwner(active?.spaceId);
   let selectedHost = env.TC_HOST || active?.host || null;
   let fallback;

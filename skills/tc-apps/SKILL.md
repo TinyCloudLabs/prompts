@@ -2,12 +2,14 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.1"
+  version: "0.3.4"
 ---
 
 # Personal apps in TinyCloud
 
-**Install rule: reuse the single compatible CLI selected by https://agents.tinycloud.xyz/cli. New installs use stable `1.5.1`; a compatible `1.5.0` or newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**Install rule: use the single CLI selected by https://agents.tinycloud.xyz/cli, stable `1.5.2`. New installs and older agent-owned installs get `1.5.2`; an operator-selected CLI is kept, and a newer one is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+
+**Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
@@ -30,7 +32,7 @@ If a catalog app owns the domain, follow its fast path in that file: it checks t
 An app is in one of two layouts, selected by §1a. **New layout:** records live in the owner's `applications` space under `xyz.tinycloud.tinyapps.<app>/`, with an app catalog and discovery entry. §3 reuses the selected onboarding profile when its current permissions cover the task; otherwise it checks an existing app-scoped profile for the same owner and host. Request only missing access. **Legacy mode:** records stay in `default` under `xyz.tinycloud.agent-data/`, through `LEGACY.md`, until the owner requests and verifies a move (§9). Never move or delete records merely to reuse a CLI.
 
 Operator-set, never change or unset:
-- `TC_BIN`: the selected absolute TinyCloud CLI path, version `1.5.0` or newer. Otherwise use the path saved by setup in `~/.local/share/tc-apps/cli-path`. The same executable handles every layout. Never resolve a bare `tc`: it may be the Linux traffic-control tool.
+- `TC_BIN`: the selected absolute TinyCloud CLI path. Without it, §1 uses the selection saved in `~/.config/tinycloud/agent.env` (read through /agent's data-only helper), then the shared private install, then `tinycloud` on `PATH`, like every TinyCloud skill. The same executable handles every layout. Never resolve a bare `tc`: it may be the Linux traffic-control tool.
 - `TC_PROFILE` and `TC_HOST`: explicit profile and host selections, when set. Never switch away from them to avoid a permission error.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.
@@ -51,16 +53,22 @@ The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domain
 ## 1. Read the paths and the time
 
 ```sh
-if [ -n "${TC_BIN:-}" ]; then printf '%s\n' "$TC_BIN"; elif [ -r "$HOME/.local/share/tc-apps/cli-path" ]; then cat "$HOME/.local/share/tc-apps/cli-path"; else echo 'TC_BIN is unset'; fi
+B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
+[ -n "$B" ] || B="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+[ -x "$B" ] || B=$(command -v tinycloud) || B=
+if [ -n "$B" ]; then printf '%s\n' "$B"; else echo 'TC_BIN is unset'; fi
 { [ -n "${TC_APPS_STATE:-}" ] && echo "$TC_APPS_STATE"; } || echo "$HOME/.local/state/tc-apps"
 date +%Y-%m-%dT%H:%M%z | sed 's/..$/:&/'
 date -u +%FT%TZ
+[ -z "$B" ] || "$B" --version
 ```
 
-It prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`, one per line.
+It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per line.
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id, for generic apps. Health Log instead uses its validated owner timezone and fresh clock from `healthlog-context.mjs` (`TINY-APPS.md` §4).
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
-- `TC_BIN is unset` → follow the shared CLI setup, save its selected path as the apps setup describes, then continue this request. Do not install a second CLI.
+- `TC_BIN is unset` → follow the shared CLI setup, then continue this request with the path from its `TC_SELECTED`. Do not install a second CLI.
+- A CLI version older than `1.5.2` → follow the shared CLI setup once and run §1 again: it upgrades a CLI the agent installed. If the setup prints `TC_OLDER`, the operator selected that older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop. Don't replace it.
 
 ## 1a. Which layout does this app use?
 
@@ -156,6 +164,7 @@ For `SPACE_NOT_HOSTED`, a new account may still be provisioning. Tell the owner,
 
 - `status: ready`: copy `profile`, `host` and `spaceId` as `<APP_PROFILE>`, `<APP_HOST>` and `<APP_SPACE>`. **Do not sign in again.** Read the returned catalog keys and the app's `<ID>/catalog` with §5. An empty catalog is not a missing grant: create the app/kind metadata and discovery entry before the first record (§2).
 - `status: grant-required`: keep the returned profile, host and owner; §4 requests only the returned `missing` permissions.
+- `status: onboard-first`: no profile on this computer has an owner or a session. Onboard first (see the top of this file), then rerun this check. Only if you cannot run onboarding, use the returned `profile` and `missing` as for `sign-in-required`.
 - `status: sign-in-required`: §4 creates/signs in the named app-scoped profile. Never replace an existing session.
 - An account/host mismatch, incomplete listing, network error or permission denial from the actual read is a failure, not a reason to switch profiles or request broader access. Report it and write nothing.
 

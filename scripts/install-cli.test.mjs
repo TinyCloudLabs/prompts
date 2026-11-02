@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, test } from "node:test";
-import { appendUserPath, cliInvocation, compatible, installCli, linkCommands, resolveCli } from "./install-cli.mjs";
+import { appendUserPath, CLI_VERSION, cliInvocation, compatible, installCli, linkCommands, resolveCli } from "./install-cli.mjs";
 
 const windows = process.platform === "win32";
 const homes = [];
@@ -26,16 +26,46 @@ const privateCli = (dir, version) => {
   const target = join(root, "@tinycloud/cli/cli.js");
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(join(dirname(target), "package.json"), JSON.stringify({ name: "@tinycloud/cli" }));
-  const bin = join(root, ".bin", windows ? "tc.cmd" : "tc");
-  if (windows) {
-    executable(bin, version);
-    writeFileSync(bin, `${readFileSync(bin, "utf8")}rem ../@tinycloud/cli/cli.js\r\n`);
-  } else {
-    executable(target, version);
-    mkdirSync(dirname(bin), { recursive: true });
-    symlinkSync(target, bin);
+  for (const name of ["tc", "tinycloud"]) {
+    const bin = join(root, ".bin", windows ? `${name}.cmd` : name);
+    if (windows) {
+      executable(bin, version);
+      writeFileSync(bin, `${readFileSync(bin, "utf8")}rem ../@tinycloud/cli/cli.js\r\n`);
+    } else {
+      executable(target, version);
+      mkdirSync(dirname(bin), { recursive: true });
+      symlinkSync(target, bin);
+    }
   }
+  return join(root, ".bin", windows ? "tinycloud.cmd" : "tinycloud");
+};
+// Stands in for npm: records its arguments and lays out the requested release like `npm install --prefix`.
+const fakeNpm = (dir) => {
+  const bin = join(dir, "npm-bin");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, "npm"), `#!${process.execPath}
+const fs = require("node:fs"), path = require("node:path");
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(join(dir, "npm-calls"))}, JSON.stringify(args) + "\\n");
+const prefix = args[args.indexOf("--prefix") + 1];
+const version = args[args.length - 1].split("@").pop();
+const root = path.join(prefix, "node_modules"), cli = path.join(root, "@tinycloud/cli/cli.js");
+fs.mkdirSync(path.dirname(cli), { recursive: true });
+fs.mkdirSync(path.join(root, ".bin"), { recursive: true });
+fs.writeFileSync(path.join(root, "@tinycloud/cli/package.json"), JSON.stringify({ name: "@tinycloud/cli", version }));
+fs.writeFileSync(cli, "#!/bin/sh\\nprintf '%s\\\\n' '" + version + "'\\n", { mode: 0o700 });
+fs.chmodSync(cli, 0o700);
+for (const name of ["tc", "tinycloud"]) { const link = path.join(root, ".bin", name); fs.rmSync(link, { force: true }); fs.symlinkSync(cli, link); }
+`, { mode: 0o700 });
+  chmodSync(join(bin, "npm"), 0o700);
   return bin;
+};
+const npmCalls = (dir) => existsSync(join(dir, "npm-calls")) ? readFileSync(join(dir, "npm-calls"), "utf8").trim().split("\n").map((line) => JSON.parse(line)) : [];
+const privatePrefix = (dir) => join(dir, ".local/share/tinycloud/cli");
+const assertPrivateOnly = (dir) => {
+  const calls = npmCalls(dir);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], ["install", "--prefix", privatePrefix(dir), "--no-audit", "--no-fund", `@tinycloud/cli@${CLI_VERSION}`]);
 };
 afterEach(() => { for (const dir of homes.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 
@@ -50,13 +80,108 @@ test("user PATH append preserves long raw values and is idempotent across Window
   assert.equal(appendUserPath("", directory), directory);
 });
 
-test("automatic reuse excludes the old approval protocol but does not downgrade newer releases", () => {
+test("automatic reuse needs the pinned release and never downgrades a newer one", () => {
   assert.equal(compatible("1.5.0-beta.23"), false);
-  assert.equal(compatible("1.5.0"), true);
-  assert.equal(compatible("1.5.1-beta.1"), true);
+  assert.equal(compatible("1.5.0"), false);
+  assert.equal(compatible("1.5.1"), false);
+  assert.equal(compatible("1.5.2-beta.4"), false);
+  assert.equal(compatible(CLI_VERSION), true);
+  assert.equal(compatible("1.5.3-beta.1"), true);
+  assert.equal(compatible("1.6.0"), true);
   assert.equal(compatible("2.0.0"), true);
-  assert.equal(compatible("1.4.9"), false);
   assert.equal(compatible("not-a-cli-version"), false);
+});
+
+test("an older private CLI is upgraded in place to the pin and selected as tinycloud", { skip: windows }, () => {
+  const dir = home();
+  const bin = privateCli(dir, "1.5.1");
+  const log = [];
+  const selected = installCli({ env: { ...envFor(dir), PATH: fakeNpm(dir) }, log: (line) => log.push(line) });
+  assert.deepEqual(selected, { bin, version: CLI_VERSION, source: "installed" });
+  assert.match(bin, /node_modules\/\.bin\/tinycloud$/);
+  assertPrivateOnly(dir);
+  assert.ok(!log.some((line) => line.startsWith("TC_OLDER")));
+});
+
+test("a saved selection inside the private install is the agent's own: upgraded, then saved as tinycloud", { skip: windows }, () => {
+  const dir = home();
+  const bin = privateCli(dir, "1.5.1");
+  const config = join(dir, ".config/tinycloud");
+  mkdirSync(config, { recursive: true, mode: 0o700 });
+  copyFileSync(helper, join(config, "agent-env.mjs"));
+  writeFileSync(join(config, "agent.env"), `TC_BIN=${join(dirname(bin), "tc")}\n`, { mode: 0o600 });
+  const selected = installCli({ env: { ...envFor(dir), PATH: fakeNpm(dir) }, log: () => {} });
+  assert.deepEqual(selected, { bin, version: CLI_VERSION, source: "installed" });
+  assertPrivateOnly(dir);
+  assert.equal(readFileSync(join(config, "agent.env"), "utf8"), `TC_BIN=${bin}\n`);
+});
+
+test("with /agent's helper installed, the installer saves its selection in agent.env, the one saved location", { skip: windows }, () => {
+  const dir = home();
+  const config = join(dir, ".config/tinycloud");
+  mkdirSync(config, { recursive: true, mode: 0o700 });
+  copyFileSync(helper, join(config, "agent-env.mjs"));
+  const selected = installCli({ env: { ...envFor(dir), PATH: fakeNpm(dir) }, log: () => {} });
+  assert.equal(selected.source, "installed");
+  assert.equal(readFileSync(join(config, "agent.env"), "utf8"), `TC_BIN=${selected.bin}\n`);
+  const before = statSync(join(config, "agent.env")).mtimeMs;
+  assert.equal(installCli({ env: { ...envFor(dir), PATH: fakeNpm(dir) }, log: () => {} }).source, "private");
+  assert.equal(statSync(join(config, "agent.env")).mtimeMs, before);
+});
+
+test("a process TC_BIN is an operator override and is not written to agent.env", { skip: windows }, () => {
+  const dir = home();
+  const config = join(dir, ".config/tinycloud");
+  mkdirSync(config, { recursive: true, mode: 0o700 });
+  copyFileSync(helper, join(config, "agent-env.mjs"));
+  const operator = join(dir, "operator", "tinycloud");
+  executable(operator, CLI_VERSION);
+  installCli({ env: { ...envFor(dir), TC_BIN: operator, PATH: fakeNpm(dir) }, log: () => {} });
+  assert.equal(existsSync(join(config, "agent.env")), false);
+});
+
+for (const [where, version] of [["TC_BIN", "1.5.1"], ["agent-env", "1.5.1"], ["TC_BIN", "1.3.5"]]) test(`an older operator CLI (${version}) from ${where} is kept with a notice and left untouched`, { skip: windows }, () => {
+  const dir = home();
+  const operator = join(dir, "operator", "tinycloud");
+  executable(operator, version);
+  const before = readFileSync(operator);
+  const env = { ...envFor(dir), PATH: fakeNpm(dir) };
+  if (where === "TC_BIN") env.TC_BIN = operator;
+  else {
+    const config = join(dir, ".config/tinycloud");
+    mkdirSync(config, { recursive: true, mode: 0o700 });
+    copyFileSync(helper, join(config, "agent-env.mjs"));
+    writeFileSync(join(config, "agent.env"), `TC_BIN=${operator}\n`, { mode: 0o600 });
+  }
+  const log = [];
+  const selected = installCli({ env, log: (line) => log.push(line) });
+  assert.deepEqual(selected, { bin: operator, version, source: where });
+  assert.deepEqual(log.filter((line) => line.startsWith("TC_OLDER")), [`TC_OLDER ${version} ${operator} is older than the pinned ${CLI_VERSION}; keeping this operator-selected CLI`]);
+  assert.deepEqual(readFileSync(operator), before);
+  assert.deepEqual(npmCalls(dir), []);
+  assert.equal(existsSync(privatePrefix(dir)), false);
+});
+
+test("an older CLI on PATH is left alone while the private pin is installed and selected", { skip: windows }, () => {
+  const dir = home();
+  const global = join(dir, "global");
+  const target = join(global, "lib/node_modules/@tinycloud/cli/cli.js");
+  executable(target, "1.5.1");
+  mkdirSync(join(global, "bin"), { recursive: true });
+  symlinkSync(target, join(global, "bin/tinycloud"));
+  const before = readFileSync(target);
+  const selected = installCli({ env: { ...envFor(dir), PATH: `${join(global, "bin")}:${fakeNpm(dir)}` }, log: () => {} });
+  assert.deepEqual(selected, { bin: join(privatePrefix(dir), "node_modules/.bin/tinycloud"), version: CLI_VERSION, source: "installed" });
+  assertPrivateOnly(dir);
+  assert.deepEqual(readFileSync(target), before);
+});
+
+for (const version of [CLI_VERSION, "1.6.0"]) test(`a private CLI at ${version} is reused without npm or a downgrade`, { skip: windows }, () => {
+  const dir = home();
+  const bin = privateCli(dir, version);
+  const selected = installCli({ env: { ...envFor(dir), PATH: fakeNpm(dir) }, log: () => {} });
+  assert.deepEqual(selected, { bin, version, source: "private" });
+  assert.deepEqual(npmCalls(dir), []);
 });
 
 test("resolver reuses a newer private CLI without creating launchers or installations", () => {
@@ -97,12 +222,12 @@ test("explicit CLI and persisted selection take precedence without replacement",
   assert.equal(existsSync(join(dir, ".local")), false);
 });
 
-test("an incompatible explicit CLI is rejected without changing its files or installing another copy", () => {
+test("an explicit CLI that reports no version is rejected without changing its files or installing another copy", () => {
   const dir = home();
   const selected = join(dir, windows ? "selected.cmd" : "selected");
-  executable(selected, "1.3.5");
+  executable(selected, "not a version");
   const before = readFileSync(selected);
-  assert.throws(() => installCli({ env: { ...envFor(dir), TC_BIN: selected } }), /Selected CLI 1\.3\.5.*incompatible/);
+  assert.throws(() => installCli({ env: { ...envFor(dir), TC_BIN: selected } }), /not a TinyCloud CLI version/);
   assert.deepEqual(readFileSync(selected), before);
   assert.equal(existsSync(join(dir, ".local")), false);
 });

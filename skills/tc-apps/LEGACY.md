@@ -2,7 +2,7 @@
 
 Part of the `tc-apps` skill: read `SKILL.md` first, and use this file only for an app that `layout.sh` printed `legacy` for: its records are in the owner's `default` space under `xyz.tinycloud.agent-data/` and no verified move exists for it on this computer. Follow §2 to §8 below exactly, with the CLI `<TC_BIN>` that `SKILL.md` §1 prints and no other grant or profile than `agent-data` (and `agent-data-sql`). Section numbers here are this file's, except §1, which is `SKILL.md` §1 (the paths and the time). The new per-app layout in `SKILL.md` is not used for this app until the move is verified (`SKILL.md` §9).
 
-Operator-set, never change or unset: `TC_BIN` (the TinyCloud CLI, `1.3.4` or newer), `TC_HOME`, `TC_APPS_STATE`, as in `SKILL.md`. Run the blocks as `SKILL.md` says. §4 is the exception to its 60 s wait: it waits for the owner.
+Operator-set, never change or unset: `TC_BIN` (the TinyCloud CLI from `SKILL.md` §1, `1.5.2`), `TC_HOME`, `TC_APPS_STATE`, as in `SKILL.md`. Run the blocks as `SKILL.md` says. §4 is the exception to its 60 s wait: it waits for the owner.
 
 ## 2. How the records are organised
 
@@ -73,7 +73,7 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
 ```
 
-- The first line must be `1.3.4` or newer. Otherwise stop and tell the owner that `<TC_BIN>` must be TinyCloud CLI `1.3.4` or newer: for the setup's own copy, they send their request with the setup link again, which upgrades it; a `TC_BIN` they set themselves, they update.
+- The first line must be `1.5.2` or newer. Otherwise follow the CLI-version rule in `SKILL.md` §1.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
 - `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or more powerful sign-in, `--replace-session` or `tc space host`.

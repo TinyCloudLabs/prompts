@@ -1,16 +1,18 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
 // Every home and tool home lives in one /var/tmp directory; the process environment is pointed there
 // before any file is written, and checked.
-const base = mkdtempSync(join("/var/tmp", "TC-1943."));
+// macOS /var is a symlink to /private/var; the /agent helper refuses linked paths.
+const base = realpathSync(mkdtempSync(join("/var/tmp", "TC-1943.")));
 for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) process.env[key] = base;
-assert.ok(base.startsWith("/var/tmp/TC-1943."));
-for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) assert.ok(process.env[key].startsWith("/var/tmp/TC-1943."), key);
+const underTestRoot = (path) => /^(\/private)?\/var\/tmp\/TC-1943\./.test(path);
+assert.ok(underTestRoot(base));
+for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) assert.ok(underTestRoot(process.env[key]), key);
 after(() => rmSync(base, { recursive: true, force: true }));
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -434,6 +436,29 @@ test("layout.sh rejects a name that is not a plain slug or is reserved, before a
   const h = world();
   for (const slug of ["Fitness", "../x", "-x", "healthlog", "catalog", ""]) assert.equal(runLayout(h, slug).status, 2, slug);
   assert.equal(cliCalls(h).length, 0);
+});
+
+test("tc-apps scripts find the CLI like every skill: agent.env, then the shared private install; there is no cli-path", () => {
+  const saved = world();
+  const config = join(saved.dir, ".config/tinycloud");
+  mkdirSync(config, { recursive: true, mode: 0o700 });
+  const helperPath = join(config, "agent-env.mjs");
+  writeFileSync(helperPath, readFileSync(join(root, "scripts/agent-env.mjs")), { mode: 0o600 });
+  assert.equal(run(["node", helperPath, "set", "TC_BIN", saved.bin], { HOME: saved.dir }).status, 0);
+  writeFileSync(join(saved.work, "cli-path"), "/nonexistent/tinycloud\n");
+  const fromSaved = runLayout(saved, "fitness", { TC_BIN: "" });
+  assert.equal(fromSaved.stdout.trim(), "legacy", fromSaved.stderr);
+  assert.equal(cliCalls(saved).length, 1);
+  const own = world();
+  const privateBin = join(own.dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud");
+  mkdirSync(dirname(privateBin), { recursive: true });
+  writeFileSync(privateBin, standInCli, { mode: 0o755 });
+  const fromPrivate = runLayout(own, "fitness", { TC_BIN: "" });
+  assert.equal(fromPrivate.stdout.trim(), "legacy", fromPrivate.stderr);
+  assert.equal(cliCalls(own).length, 1);
+  for (const script of ["layout.sh", "migrate.sh", "owner-grant.sh", "owner-undo.sh", "SKILL.md"]) {
+    assert.doesNotMatch(readFileSync(join(skill, script), "utf8"), /cli-path/, script);
+  }
 });
 
 // ---- layout.sh and migrate.sh: paged catalog, missing jq, local work copy, tab in a key ----

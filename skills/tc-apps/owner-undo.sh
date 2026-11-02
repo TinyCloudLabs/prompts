@@ -4,7 +4,13 @@
 # Usage: sh owner-undo.sh
 # If it prints an OpenKey link, send it to the owner (no code comes back). Profiles that don't exist are skipped quietly.
 set -u
-if [ -n "${TC_BIN:-}" ]; then TC=$TC_BIN; else TC=$(cat "$HOME/.local/share/tc-apps/cli-path") || exit 1; fi
+# The same CLI as every TinyCloud skill: process TC_BIN, then /agent's agent.env, then the shared private install, then `tinycloud` on PATH.
+TC=${TC_BIN:-}
+if [ -z "$TC" ]; then
+  if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC=; }; fi
+  [ -n "$TC" ] || TC="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+  [ -x "$TC" ] || TC=$(command -v tinycloud) || exit 1
+fi
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 REVOKED=0
 cancel() { if [ "$REVOKED" -eq 0 ]; then echo "Cancelled. Your agent's local access is already removed, but the grant itself was not revoked. Run this again to finish." >&2; else echo 'Cancelled; some access was already revoked. Tell your agent.' >&2; fi; exit "$1"; }
