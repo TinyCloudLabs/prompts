@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.4"
+  version: "0.6.5"
 ---
 
 # Publish documents and HTML with `tinycloud share`
@@ -176,21 +176,7 @@ When the owner says they're done, run the check again:
 - `SIGNED_IN` → go to §3.
 - `APPROVE_LINK` again → the approval hasn't arrived yet. If the sign-in command is still running, run the check again in a few seconds; if it still shows the link, ask the owner whether they pressed Approve on that link. If the command stopped (a tool timeout, a restart), start the sign-in block again the same way: it resumes the same pending link. Don't resend a link you already sent.
 - `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED`, `APPROVAL_REQUEST_NOT_FOUND` or `APPROVAL_RESULT_NOT_FOUND` (exit 3) → the link expired before it was approved (about 1 hour), or the approval wasn't collected within 10 minutes. Run the sign-in block again and send the new link with the same line.
-- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` or `APPROVAL_ACK_PENDING` (exit 8) → OpenKey couldn't be reached for a moment. Wait a minute and start the sign-in block again, at most three times in a row; it resumes the same request. Don't resend a link you already sent. The check prints the CLI's message after the code.
-  - If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`: the link expired before it was approved, and this CLI keeps asking OpenKey for it. Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running (stop any background sign-in you started): a command still waiting on a link would be orphaned. Run the block below, which runs `"$TC_BIN" --profile "$PROFILE" auth logout` on the sign-in profile, then start the sign-in block again and send the new link with the same line, as for `APPROVAL_REQUEST_EXPIRED` above. Never edit or delete the CLI's files yourself.
-
-    ```sh
-    { set +x; } 2>/dev/null; set +e; umask 077
-    ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-    if [ -r "$ENV_HELPER" ]; then
-      [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-    fi
-    [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
-    PROFILE=publisher   # unless the owner names another profile
-    "$TC_BIN" --profile "$PROFILE" auth logout < /dev/null
-    ```
-
-  - Otherwise: stop and report the code; don't retry.
+- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` or `APPROVAL_ACK_PENDING` (exit 8) → OpenKey couldn't be reached for a moment. Wait a minute and start the sign-in block again, at most three times in a row; it resumes the same request. Don't resend a link you already sent. The check prints the CLI's message after the code. If it still fails, stop and report the code; don't retry. Never edit or delete the CLI's files yourself.
 - `LOGIN_FAILED APPROVAL_RESULT_ACKNOWLEDGED` (exit 8) → the sign-in may already be saved: run the session check at the top of §2 again.
 - `LOGIN_FAILED SESSION_IN_USE` → ask the owner; never add `--replace-session` on your own.
 - Any other `LOGIN_FAILED <code>` → report the code; don't retry.
@@ -402,7 +388,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
 | `APPROVAL_REQUEST_EXPIRED` / `APPROVAL_RESULT_EXPIRED` / `APPROVAL_REQUEST_NOT_FOUND` / `APPROVAL_RESULT_NOT_FOUND` | 3 | The sign-in link expired, or the approval wasn't collected in time — run the §2 sign-in again and send the new link |
-| `APPROVAL_REQUEST_UNAVAILABLE` / `APPROVAL_RESULT_UNAVAILABLE` / `APPROVAL_ACK_PENDING` | 8 | OpenKey couldn't be reached for a moment — wait a minute and start the §2 sign-in again, at most three times in a row; it resumes the same link. If each says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`, run the §2 `auth logout` block, then sign in again and send the new link; otherwise stop and report |
+| `APPROVAL_REQUEST_UNAVAILABLE` / `APPROVAL_RESULT_UNAVAILABLE` / `APPROVAL_ACK_PENDING` | 8 | OpenKey couldn't be reached for a moment — wait a minute and start the §2 sign-in again, at most three times in a row; it resumes the same link. If it still fails, stop and report. Never edit or delete the CLI's files yourself |
 | `APPROVAL_RESULT_INVALID` | 5 | OpenKey's answer didn't match this request — report; don't retry |
 | `PROFILE_STATE_INCONSISTENT` | 1 | Corrupt local profile state — report; don't delete the profile |
 
