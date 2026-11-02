@@ -15,9 +15,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const hourAgo = new Date(Date.now() - 3600_000).toISOString();
 const inAnHour = new Date(Date.now() + 3600_000).toISOString();
 const entries = () => [
-  { requestId: "dead", requestExpiresAt: hourAgo },
-  { requestId: "live", requestExpiresAt: inAnHour },
-  { requestId: "approved", requestExpiresAt: hourAgo, resultRef: "r", resultEnvelope: "e" },
+  { version: 1, requestId: "dead", requestExpiresAt: hourAgo },
+  { version: 1, requestId: "live", requestExpiresAt: inAnHour },
+  { version: 1, requestId: "approved", requestExpiresAt: hourAgo, resultRef: "r", resultEnvelope: "e" },
 ];
 let count = 0;
 const home = (profile, items) => {
@@ -32,8 +32,14 @@ const ids = (file) => JSON.parse(readFileSync(file, "utf8")).map((item) => item.
 const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
 const exit8 = guide.split("- **Exit 8:**")[1]?.split("\n- **`APPROVAL_REQUEST_EXPIRED`")[0];
 const dropBlock = exit8?.match(/```sh\n([\s\S]*?)\n\s*```/)?.[1];
-const runDrop = (dir, env = {}) => spawnSync("sh", ["-c", dropBlock], {
-  encoding: "utf8", timeout: 20000, env: { PATH: process.env.PATH, HOME: dir, TC_HOME: dir, ...env },
+// A stand-in for "$TC": only `--version` is called by the block.
+const fakeTc = (dir, version) => {
+  const tc = join(dir, "tc-version");
+  writeFileSync(tc, `#!/bin/sh\necho ${version}\n`, { mode: 0o755 });
+  return tc;
+};
+const runDrop = (dir, env = {}, version = "1.5.1") => spawnSync("sh", ["-c", dropBlock], {
+  encoding: "utf8", timeout: 20000, env: { PATH: process.env.PATH, HOME: dir, TC_HOME: dir, TC: fakeTc(dir, version), ...env },
 });
 
 test("onboarding caps exit 8 at three tries before dropping the dead request", () => {
@@ -62,15 +68,39 @@ test("onboarding's block changes nothing when no request has expired, or there i
   assert.equal(existsSync(none.file), false);
 });
 
-test("onboarding's block follows TC_PROFILE", () => {
-  const h = home("owner", entries());
-  const out = runDrop(h.dir, { TC_PROFILE: "owner" });
-  assert.equal(out.stdout.trim(), "DROPPED", out.stderr);
-  assert.deepEqual(ids(h.file), ["live", "approved"]);
+test("onboarding's block changes nothing for another CLI version or an unfamiliar file shape", () => {
+  const newer = home("default", entries());
+  const before = readFileSync(newer.file, "utf8");
+  assert.equal(runDrop(newer.dir, {}, "1.6.0").stdout.trim(), "UNKNOWN");
+  assert.equal(readFileSync(newer.file, "utf8"), before);
+  for (const items of [{ entries: entries() }, [...entries(), { requestId: "v2", version: 2, requestExpiresAt: hourAgo }], [{ requestId: "x" }]]) {
+    const odd = home("default", items);
+    const raw = readFileSync(odd.file, "utf8");
+    assert.equal(runDrop(odd.dir).stdout.trim(), "UNKNOWN");
+    assert.equal(readFileSync(odd.file, "utf8"), raw);
+  }
+  const broken = home("default");
+  writeFileSync(broken.file, "{not json", { mode: 0o600 });
+  assert.equal(runDrop(broken.dir).stdout.trim(), "UNKNOWN");
+  assert.equal(readFileSync(broken.file, "utf8"), "{not json");
+});
+
+test("onboarding's block finds the profile onboard used: PROFILE, then TC_PROFILE, then the CLI's default profile", () => {
+  for (const [env, setup] of [
+    [{ PROFILE: "owner" }, () => {}],
+    [{ TC_PROFILE: "owner" }, () => {}],
+    [{}, (dir) => writeFileSync(join(dir, ".tinycloud", "config.json"), JSON.stringify({ defaultProfile: "owner" }))],
+  ]) {
+    const h = home("owner", entries());
+    setup(h.dir);
+    const out = runDrop(h.dir, env);
+    assert.equal(out.stdout.trim(), "DROPPED", JSON.stringify(env) + out.stderr);
+    assert.deepEqual(ids(h.file), ["live", "approved"]);
+  }
 });
 
 // owner-grant.sh: a stand-in CLI that, like CLI 1.5.1, exits 8 on `auth grant` while a dead request is stored.
-const ownerGrant = (items) => {
+const ownerGrant = (items, version = "1.5.1") => {
   const h = home("owner", items);
   const state = join(h.dir, "state");
   mkdirSync(state);
@@ -79,6 +109,7 @@ const ownerGrant = (items) => {
   const cli = join(h.dir, "tinycloud");
   writeFileSync(cli, String.raw`#!/usr/bin/env node
 const fs = require("node:fs");
+if (process.argv[2] === "--version") { console.log(process.env.FAKE_VERSION || "1.5.1"); process.exit(0); }
 const args = process.argv.slice(2).slice(2);
 const file = ${JSON.stringify(h.file)};
 const items = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
@@ -94,7 +125,7 @@ else if (args[0] === "auth" && args[1] === "grant") {
 `, { mode: 0o755 });
   const out = spawnSync("sh", [join(root, "skills/tc-apps/owner-grant.sh"), "healthlog"], {
     encoding: "utf8", input: "", timeout: 20000,
-    env: { PATH: process.env.PATH, HOME: h.dir, TC_HOME: h.dir, TC_APPS_STATE: state, TC_BIN: cli },
+    env: { PATH: process.env.PATH, HOME: h.dir, TC_HOME: h.dir, TC_APPS_STATE: state, TC_BIN: cli, FAKE_VERSION: version },
   });
   return { ...h, out };
 };
@@ -107,6 +138,12 @@ test("owner-grant.sh drops a dead access request first, so the grant gets a fres
   assert.equal(statSync(file).mode & 0o777, 0o600);
 });
 
+test("owner-grant.sh leaves the request file alone for another CLI version", () => {
+  const { file, out } = ownerGrant(entries(), "1.6.0");
+  assert.equal(out.status, 1);
+  assert.deepEqual(ids(file), ["dead", "live", "approved"]);
+});
+
 test("owner-grant.sh caps exit 8: rerun in a minute, stop and tell the owner after three", () => {
   // An unexpired request that OpenKey still can't serve: nothing is dropped and the helper says when to stop.
   const items = [{ requestId: "live", requestExpiresAt: inAnHour }];
@@ -116,7 +153,7 @@ test("owner-grant.sh caps exit 8: rerun in a minute, stop and tell the owner aft
   writeFileSync(join(state, "meal-request.json"), "{}");
   writeFileSync(join(state, "owner-did.txt"), "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
   const cli = join(h.dir, "tinycloud");
-  writeFileSync(cli, `#!/bin/sh\ncase " $* " in *" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; *" auth grant "*) exit 8 ;; esac\n`, { mode: 0o755 });
+  writeFileSync(cli, `#!/bin/sh\ncase " $* " in *" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; *" auth grant "*) exit 8 ;; esac\ncase "$1" in --version) echo 1.5.1 ;; esac\n`, { mode: 0o755 });
   const out = spawnSync("sh", [join(root, "skills/tc-apps/owner-grant.sh"), "healthlog"], {
     encoding: "utf8", input: "", timeout: 20000,
     env: { PATH: process.env.PATH, HOME: h.dir, TC_HOME: h.dir, TC_APPS_STATE: state, TC_BIN: cli },

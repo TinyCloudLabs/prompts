@@ -20,6 +20,7 @@ import { createInterface } from 'node:readline';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 const a = process.argv.slice(2), signed = join(process.env.HOME, 'signed');
+if (a[0] === '--version') { console.log('1.5.1'); process.exit(0); }
 if (a.includes('show')) {
   if (!existsSync(signed)) { console.error('PROFILE_NOT_FOUND'); process.exit(4); }
   process.exit(0);

@@ -102,7 +102,7 @@ test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no cur
 });
 
 for (const [name, argv, expected] of [
-  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner context --json", "--profile owner context --json", "--profile owner auth grant"]],
+  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner context --json", "--profile owner context --json", "--version", "--profile owner auth grant"]],
   ["owner-undo.sh", [], ["--profile agent-data profile show", "--profile agent-data auth logout", "--profile agent-data-sql profile show", "--profile agent-data-sql auth logout", "--profile agent-meal profile show", "profile delete agent-meal"]],
 ]) {
   const scenarios = [
@@ -202,6 +202,7 @@ if (args[0] === "profile" && args[1] === "show") {
     { argv: ["--profile", "owner", "profile", "show"], profile: "owner" },
     { argv: ["init", "--name", "owner", "--paste"], profile: "linear-agent" },
     { argv: ["--profile", "owner", "context", "--json"], profile: "owner" },
+    { argv: ["--version"], profile: "linear-agent" },
     { argv: ["--profile", "owner", "auth", "grant", join(h.state, "meal-request.json")], profile: "owner" },
   ]);
   assert.equal(JSON.parse(readFileSync(join(cliHome, "config.json"), "utf8")).defaultProfile, "linear-agent");

@@ -73,20 +73,25 @@ if [ ! -s "$DIR/owner-did.txt" ]; then
   }
   printf '%s\n' "$OWNER_DID" > "$DIR/owner-did.txt"
 fi
-# CLI 1.5.x keeps an access request that expired unapproved and then exits 8 on every run.
-# Drop only such dead requests from the owner profile, so a rerun prints a fresh link.
+# CLI 1.5.0 and 1.5.1 keep an access request that expired unapproved and then exit 8 on every run.
+# Drop only such dead requests from the owner profile, so a rerun prints a fresh link; another
+# CLI version or an unfamiliar file shape is left untouched.
 node -e '
 const fs = require("node:fs"), path = require("node:path");
-const file = path.join(process.env.TC_HOME || process.env.HOME, ".tinycloud", "profiles", process.argv[1], "approval-pending.json");
+const [profile, version] = process.argv.slice(1);
+if (!["1.5.0", "1.5.1"].includes(version)) process.exit(0);
+const file = path.join(process.env.TC_HOME || process.env.HOME, ".tinycloud", "profiles", profile, "approval-pending.json");
 let items;
-try { items = JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { if (e.code === "ENOENT") process.exit(0); throw e; }
+try { items = JSON.parse(fs.readFileSync(file, "utf8")); } catch { process.exit(0); }
+const known = (i) => i && typeof i === "object" && i.version === 1 && typeof i.requestId === "string" && !Number.isNaN(Date.parse(i.requestExpiresAt));
+if (!Array.isArray(items) || !items.every(known)) process.exit(0);
 const dead = (i) => !i.resultRef && !i.resultEnvelope && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
 const keep = items.filter((i) => !dead(i));
 if (keep.length === items.length) process.exit(0);
 const tmp = file + "." + process.pid + ".tmp";
 fs.writeFileSync(tmp, JSON.stringify(keep, null, 2) + "\n", { mode: 0o600, flag: "wx" });
 fs.renameSync(tmp, file);
-' "$OWNER_PROFILE"
+' "$OWNER_PROFILE" "$("$TC_BIN" --version 2>/dev/null || true)"
 RC=0
 echo 'Access link: the owner approves it in OpenKey and no code comes back. This step finishes on its own after the approval.' >&2
 "$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
