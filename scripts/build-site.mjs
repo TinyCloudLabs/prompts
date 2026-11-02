@@ -19,6 +19,7 @@
 // index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
+import { isUtf8 } from "node:buffer";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,7 +66,9 @@ const PAGES = [
 // `version` is used when SKILL.md has no metadata.version: the package's version.
 // `changes` adjusts a released file for this site: either [find, replace] pairs,
 // each of which must match exactly once (find is a string or a RegExp), or a
-// repository path whose file replaces it.
+// repository path whose file replaces it. On a preview, as in the guides, every
+// production URL in a skill's text files points at the preview, before the
+// files' checksums are taken.
 // `checkCli`: the build fails unless every served file of the skill runs the
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
@@ -179,7 +182,7 @@ const SKILLS = [
     tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz",
     integrity: "sha512-o+kAbwivfO7kKQUyoaOlrYIREX7RUpb8X91SeBa/SjQkP01PcpmIei5n8N6B15UaFu8ftrajjgRt2eeUxtjG2Q==",
     dir: "package",
-    // Served unchanged: since 0.1.1-onboarding.25 the pack runs TC_BIN, else the
+    // No `changes`: since 0.1.1-onboarding.25 the pack runs TC_BIN, else the
     // `tinycloud` that /onboarding installs, else `tinycloud` on PATH. Never `tc`.
     checkCli: true,
   },
@@ -338,6 +341,13 @@ async function loadSkill(skill) {
       }
       if (text !== body.toString("utf8")) changed.add(path);
       return [path, Buffer.from(text)];
+    });
+  }
+  if (BASE !== SITE) {
+    files = files.map(([path, body]) => {
+      if (!body.includes(SITE) || !isUtf8(body)) return [path, body];
+      changed.add(path);
+      return [path, Buffer.from(body.toString("utf8").replaceAll(SITE, BASE))];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -799,7 +809,10 @@ write(
 
 // Every released CLI/Courier Markdown block has the persisted-selection
 // resolver; no upstream process/private/global-only resolver may survive.
-// Other checked skills use their own explicit CLI selection.
+// Other checked skills use their own explicit CLI selection. On a preview, the
+// resolvers' install URL points at the preview, like the rest of the skill.
+const servedResolver = RESOLVER.replaceAll(SITE, BASE);
+const servedUpstream = UPSTREAM_RESOLVERS.map((resolver) => resolver.replaceAll(SITE, BASE));
 const SCRIPT_TC = /\bexecutable\s*=\s*['"]tc['"]|\b(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)\(\s*['"]tc\b|\breturn\s+['"]tc['"]/;
 const wrongCli = skills
   .filter((s) => s.checkCli)
@@ -807,10 +820,10 @@ const wrongCli = skills
     s.files.flatMap((f) => {
       const text = f.body.toString("utf8");
       const lookups = text.split("npm prefix --global").length - 1;
-      const upstream = UPSTREAM_RESOLVERS.some((resolver) => text.includes(resolver));
+      const upstream = servedUpstream.some((resolver) => text.includes(resolver));
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
       const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
-      return !upstream && lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
+      return !upstream && lookups === text.split(servedResolver).length - 1 && !bare && !scriptDefault ? [] : [f.url];
     }),
   );
 if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);
