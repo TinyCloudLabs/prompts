@@ -6,7 +6,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const CLI_VERSION = "1.5.2";
-const MIN_CLI_VERSION = "1.5.0";
 const names = ["tinycloud", "tc"];
 const marker = ":: TinyCloud CLI launcher ";
 const real = (file) => { try { return realpathSync(file); } catch { return ""; } };
@@ -17,12 +16,14 @@ const options = (input = {}) => {
   return { ...input, env, platform, home: input.home || (platform === "win32" ? env.USERPROFILE || env.HOME : env.HOME) || homedir(), log: input.log || console.log };
 };
 
-// A prerelease of the next version is compatible; a prerelease of the minimum is not.
-export function compatible(version, minimumVersion = MIN_CLI_VERSION) {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?(?:\+.*)?$/.exec(version);
+const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?(?:\+.*)?$/;
+
+// The pinned release or newer; a prerelease of the next version counts, a prerelease of the pin does not.
+export function compatible(version) {
+  const match = VERSION.exec(version);
   if (!match) return false;
   const current = match.slice(1, 4).map(Number);
-  const minimum = minimumVersion.split(".").map(Number);
+  const minimum = CLI_VERSION.split(".").map(Number);
   for (let i = 0; i < 3; i++) if (current[i] !== minimum[i]) return current[i] > minimum[i];
   return !match[4];
 }
@@ -146,7 +147,8 @@ export function resolveCli(input = {}) {
   if (selected !== undefined) {
     if (!path.isAbsolute(selected) || /[\x00-\x1f]/.test(selected)) throw new Error("TC_BIN must be an absolute executable path");
     const version = versionOf(selected, opts);
-    if (!compatible(version)) throw new Error(`Selected CLI ${version} at ${selected} is incompatible; requires ${MIN_CLI_VERSION} or newer. Preserve TC_BIN and upgrade that installation explicitly.`);
+    if (!VERSION.test(version)) throw new Error(`Selected CLI at ${selected} reports "${version}", not a TinyCloud CLI version. Preserve TC_BIN and fix that installation explicitly.`);
+    // An operator selection is kept even when older than the pin; installCli reports it.
     return { bin: selected, version, source };
   }
   if (opts.platform === "win32" && opts.searchPath === undefined) {
@@ -161,7 +163,9 @@ export function resolveCli(input = {}) {
     const target = ownedTarget(candidate, opts.platform);
     if (!target) continue;
     const version = versionOf(target, opts);
-    if (compatible(version)) return { bin: target, version, source: candidate === privateBin(opts) ? "private" : "PATH" };
+    // The agent's own private copy is selected at any version so installCli upgrades it in place;
+    // another CLI on PATH is reused only at the pin or newer.
+    if (candidate === privateBin(opts) ? VERSION.test(version) : compatible(version)) return { bin: target, version, source: candidate === privateBin(opts) ? "private" : "PATH" };
   }
   return null;
 }
@@ -255,7 +259,7 @@ export function installCli(input = {}) {
     opts.searchPath = opts.searchPath.replace(/%([^%]+)%/g, (all, name) => Object.entries(opts.env).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? all);
   }
   let selected = resolveCli(opts);
-  if (selected && !compatible(selected.version, CLI_VERSION)) {
+  if (selected && !compatible(selected.version)) {
     // Never modify an operator's binary. An older private copy is upgraded in place; an older PATH CLI stays untouched beside the new private copy.
     if (selected.source === "TC_BIN" || selected.source === "agent-env") opts.log(`TC_OLDER ${selected.version} ${selected.bin} is older than the pinned ${CLI_VERSION}; keeping this operator-selected CLI`);
     else selected = null;
@@ -283,6 +287,17 @@ export function installCli(input = {}) {
     selected = { bin, version, source: "installed" };
   }
   opts.log(`TC_SELECTED ${JSON.stringify(selected)}`);
+  // One saved location: where /agent installed its data-only helper, agent.env names the agent's own
+  // selection for later sessions. An operator selection (process or saved TC_BIN) is never rewritten.
+  const helper = path.join(opts.home, ".config/tinycloud/agent-env.mjs");
+  if (selected.source !== "TC_BIN" && selected.source !== "agent-env" && existsSync(helper)) {
+    const saved = spawnSync(process.execPath, [helper, "get", "TC_BIN"], { env: opts.env, encoding: "utf8" });
+    if (saved.status !== 0 && saved.status !== 1) throw new Error(saved.stderr.trim() || "Unsafe saved CLI selection");
+    if (saved.status === 1 || saved.stdout.trim() !== selected.bin) {
+      const result = spawnSync(process.execPath, [helper, "set", "TC_BIN", selected.bin], { env: opts.env, encoding: "utf8" });
+      if (result.status !== 0) throw new Error(result.stderr.trim() || "Cannot save the selected CLI in agent.env");
+    }
+  }
   linkCommands(selected, opts);
   if (opts.platform === "win32") {
     try { repairWindowsPath(opts); }

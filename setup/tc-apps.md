@@ -38,13 +38,13 @@ Run each block as one shell tool call. Use the same `TC_BIN`, `TC_HOME` and sele
 
 ## 1. Reuse the CLI
 
-Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 22.20 or later with npm. New installs and older agent-owned installs use the pinned release, `1.5.2`; an operator-selected CLI is kept, and a newer one is never downgraded. Preserve an operator-provided `TC_BIN`; a missing, broken or incompatible override is an explicit error, not permission to replace it. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
+Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 20 or later with npm. New installs and older agent-owned installs use the pinned release, `1.5.2`; an operator-selected CLI is kept, and a newer one is never downgraded. Preserve an operator-provided `TC_BIN`; a missing or broken override is an explicit error, not permission to replace it. If it prints `TC_OLDER`, the operator selected a CLI older than `1.5.2`: tell the owner in one line that it is older than the required `1.5.2`, and stop. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
 
-Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
+Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. Later conversations find the same CLI the way every TinyCloud skill does: process `TC_BIN`, then the selection in `~/.config/tinycloud/agent.env`, then the shared private install. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 
 ## 2. Install only the skill
 
-If the installed `tc-apps` skill is version `0.3.3` or newer and its helpers are present, skip the installer, save the selected path below, and read the skill in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+If the installed `tc-apps` skill is version `0.3.4` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 
@@ -62,15 +62,9 @@ Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-
 node (Join-Path $D 'install.cjs') apps --agent '<CLIENT>'
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.3.3 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.3.4 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
-Save the selected executable as data for later conversations, also when the skill was already installed, so an older saved path (such as `node_modules/.bin/tc`) becomes the selected `tinycloud` one; this does not install another CLI or change its profile store:
-
-```sh
-node -e 'const fs=require("node:fs"),p=require("node:path"),os=require("node:os");const d=p.join(os.homedir(),".local/share/tc-apps");fs.mkdirSync(d,{recursive:true,mode:0o700});fs.writeFileSync(p.join(d,"cli-path"),process.argv[1]+"\n",{mode:0o600});' '<TC_BIN>'
-```
-
-This Node command is the same in Bash and PowerShell. Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
+Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
 If something goes wrong:
 - **Codex:** its default sandbox can block network access and writes outside the workspace. Use the client's documented approval flow for the installation. If escalation is unavailable or network access is blocked, tell the owner in one line to type `/permissions`, choose "Ask for approval", and send the request again. Don't send terminal commands or ask the owner to restart.

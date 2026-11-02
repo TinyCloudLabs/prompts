@@ -7,7 +7,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-Claude Code, Codex and OpenCode need Node.js 22.20 or later with npm. Reuse the CLI selected during onboarding. New installs and older agent-owned installs use stable `1.5.2`; an operator-selected CLI is kept, and there is no separate app CLI or beta installation.
+Claude Code, Codex and OpenCode need Node.js 20 or later with npm. Reuse the CLI selected during onboarding, stable `1.5.2`: new installs and older agent-owned installs get it; an operator-selected older CLI stops setup with a one-line notice. There is no separate app CLI or beta installation.
 
 Never share private keys or session files. Approval links also contain request material: send the complete link only to the approving owner, never to a URL shortener. See [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
@@ -18,7 +18,7 @@ Add the setup link to your first request:
 > Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
-1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
+1. It checks Node.js and npm. If either is missing, or Node.js is older than 20, it stops and tells you; it doesn't install them.
 2. It reuses the CLI from shared setup, or installs (or upgrades) one private copy in `~/.local/share/tinycloud/cli`. Unrelated commands on PATH are preserved.
 3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
 4. It checks existing grants and actual app access, then carries out the requested record operation. Only missing permissions need approval.

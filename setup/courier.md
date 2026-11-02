@@ -17,20 +17,21 @@ Route by capability, not by client name:
 
 ## Before onboarding
 
-Use Node.js 22.20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. A selected path that is missing or not CLI `1.5.2` (or the earlier stable `1.5.1`) stops here; do not switch binaries. With no selection, continue to onboarding, which installs the default CLI.
+Use Node.js 20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. A saved path inside the shared private install is the agent's own copy: onboarding's CLI setup upgrades it, so this check leaves it to onboarding. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. Any other selected path that is missing or not CLI `1.5.2` stops here; do not switch binaries. With no selection, continue to onboarding, which installs the default CLI.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 [ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }
 if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
-  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then export TC_BIN
+  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then
+    case "$TC_BIN" in "$HOME/.local/share/tinycloud/cli/"*) unset TC_BIN ;; *) export TC_BIN ;; esac
   else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi
 fi
 if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
   TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
-  case "$TC_VERSION" in 1.5.2|1.5.1) ;; *) echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.5.2; binary left unchanged" >&2; exit 1 ;; esac
+  [ "$TC_VERSION" = 1.5.2 ] || { echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.5.2; binary left unchanged" >&2; exit 1; }
 fi
 ```
 
@@ -42,7 +43,7 @@ After onboarding, install or reuse the Courier action skill `0.4.2` through your
 
 ## Check the installed CLI
 
-After onboarding, use Node.js 22.20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks the pinned release and required subcommands. Without a selection, it uses the installed CLI. An incompatible selected binary stops this flow; report its path and version.
+After onboarding, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks the pinned release `1.5.2` and required subcommands. Without a selection, it uses the installed CLI. A selected binary that is not `1.5.2` stops this flow; report its path and version.
 
 Run this in the same shell as the later commands:
 
@@ -54,11 +55,11 @@ if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
   if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :
   else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi
 fi
-TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"
-[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"
+TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
+[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"
 [ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
-case "$TC_VERSION" in 1.5.2|1.5.1) ;; *) echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.5.2; binary left unchanged" >&2; exit 1 ;; esac
+[ "$TC_VERSION" = 1.5.2 ] || { echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.5.2; binary left unchanged" >&2; exit 1; }
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
 for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac

@@ -311,14 +311,16 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
 test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and preserves process precedence", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const probe = block(guide, "## Before onboarding");
-  for (const scenario of ["saved", "process", "old", "unset"]) {
+  for (const scenario of ["saved", "process", "old", "private", "unset"]) {
     const dir = home();
     const bin = join(dir, "bin");
     mkdirSync(bin);
-    const saved = join(bin, "saved-cli");
+    // The agent's own private copy is left to onboarding's CLI setup, which upgrades it.
+    const saved = scenario === "private" ? join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud") : join(bin, "saved-cli");
     const override = join(bin, "process-cli");
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.5.1 ;; esac');
+    mkdirSync(dirname(saved), { recursive: true });
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.1" : "1.5.2"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.2 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -339,7 +341,7 @@ test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and p
       assert.doesNotMatch(result.stdout, /RESOLVED=/);
     } else {
       assert.equal(result.status, 0, result.stderr);
-      const expected = scenario === "process" ? override : scenario === "unset" ? "" : saved;
+      const expected = scenario === "process" ? override : scenario === "unset" || scenario === "private" ? "" : saved;
       assert.equal(result.stdout.trim(), `RESOLVED=${expected}`);
     }
   }
@@ -352,7 +354,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     const dir = home();
     const selected = join(dir, "operator-cli");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.1" : "1.5.2"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;

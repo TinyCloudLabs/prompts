@@ -4,7 +4,7 @@ Give your AI agent abilities that keep your data in your own TinyCloud space. Ag
 
 **New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). It works in any agent: you sign in or create an account with OpenKey, approve two OpenKey screens, and your agent carries on with your request.
 
-The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
+The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
 **Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI, signs the owner in and gives the starting grant, then sends you to the page below for the request. Most pages reuse that; publish/share and Secrets each have their own single approval.
 
@@ -19,7 +19,7 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 - **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
 - **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
-- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. Reuse the CLI selected by [/cli](tinycloud.md): new installs and older agent-owned installs use `1.5.2`, which includes create-only writes; an operator-selected CLI (`1.5.0` or newer) is kept.
+- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. It uses the CLI selected by [/cli](tinycloud.md), stable `1.5.2`, which includes create-only writes.
 - **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)

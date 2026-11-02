@@ -120,7 +120,12 @@ const SKILLS = [
           "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
           "Catalog installation requires `tinycloud.sql/schema` as well as the app's data permissions. The onboarding grant does not include that installation permission; obtain the app's required installation access before running this command:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
         ],
+        [
+          "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.5.2`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+        ],
       ],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.5.2 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -131,6 +136,10 @@ const SKILLS = [
         [
           "curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent claude-code\ncurl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code",
           "mkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code",
+        ],
+        [
+          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`.",
+          "To remove the CLI, follow the Undo steps at https://agents.tinycloud.xyz/cli: it is installed in a private prefix, not globally.",
         ],
       ],
     },
@@ -594,7 +603,7 @@ const llms = [
   "",
   "> Setup guides for any AI agent, backed by the owner's own TinyCloud space: the TinyCloud CLI when the agent can install and run it, otherwise the hosted MCP. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 22.20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
+  `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
   "",
   "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
   "",
@@ -750,7 +759,7 @@ ${style}
   <main>
     <h1>Give your agent abilities</h1>
     <p>${esc(desc)}</p>
-    <p>Works with any agent that can install and run the TinyCloud CLI (Node.js 22.20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
+    <p>Works with any agent that can install and run the TinyCloud CLI (Node.js 20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
     <p>Everything starts at <a href="/onboarding"><code>${esc(url("onboarding"))}</code></a>. <a href="/setup">/setup</a> lists what each ability does, what to paste, what you approve and how to undo it.</p>
 
     <h2>How it works</h2>

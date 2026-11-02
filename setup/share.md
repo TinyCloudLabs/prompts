@@ -5,7 +5,7 @@ Your agent publishes a document or web page from your computer to your own TinyC
 ## For the owner
 
 - **Paste into your agent:** `Share this with TinyCloud: https://agents.tinycloud.xyz/share`
-- You need a shell, Node.js 22.20 or later, and npm. An agent that can't run the TinyCloud CLI can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
+- You need a shell, Node.js 20 or later, and npm. An agent that can't run the TinyCloud CLI can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
 - **What it does:** installs the pinned TinyCloud CLI and the `tc-publish` skill, asks you before it makes the link, publishes, and returns the link.
 - **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one sign-in in OpenKey and paste its code back to your agent.
 - **It asks first.** Anyone with the link can open it, so the agent makes one only after you say yes. If you say no, nothing is published and the file stays on your computer.

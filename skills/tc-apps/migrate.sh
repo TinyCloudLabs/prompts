@@ -31,8 +31,12 @@ if [ -n "$SLUG" ]; then
 fi
 command -v jq > /dev/null 2>&1 || { echo 'jq is needed. Install it, then run this again.' >&2; exit 3; }
 if command -v sha256sum > /dev/null 2>&1; then sha() { sha256sum | cut -d' ' -f1; }; else sha() { shasum -a 256 | cut -d' ' -f1; }; fi
-# Use the same selected CLI as onboarding and every record layout.
-if [ -z "${TC_BIN+x}" ]; then TC_BIN=$(cat "$HOME/.local/share/tc-apps/cli-path") || exit 3; fi
+# The same CLI as every TinyCloud skill: process TC_BIN, then /agent's agent.env, then the shared private install, then `tinycloud` on PATH.
+if [ -z "${TC_BIN:-}" ]; then
+  if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC_BIN=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 3; TC_BIN=; }; fi
+  [ -n "${TC_BIN:-}" ] || TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+  [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || exit 3
+fi
 STATE=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 R=xyz.tinycloud.agent-data
 TAB=$(printf '\t')

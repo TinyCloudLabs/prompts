@@ -436,6 +436,29 @@ test("layout.sh rejects a name that is not a plain slug or is reserved, before a
   assert.equal(cliCalls(h).length, 0);
 });
 
+test("tc-apps scripts find the CLI like every skill: agent.env, then the shared private install; there is no cli-path", () => {
+  const saved = world();
+  const config = join(saved.dir, ".config/tinycloud");
+  mkdirSync(config, { recursive: true, mode: 0o700 });
+  const helperPath = join(config, "agent-env.mjs");
+  writeFileSync(helperPath, readFileSync(join(root, "scripts/agent-env.mjs")), { mode: 0o600 });
+  assert.equal(run(["node", helperPath, "set", "TC_BIN", saved.bin], { HOME: saved.dir }).status, 0);
+  writeFileSync(join(saved.work, "cli-path"), "/nonexistent/tinycloud\n");
+  const fromSaved = runLayout(saved, "fitness", { TC_BIN: "" });
+  assert.equal(fromSaved.stdout.trim(), "legacy", fromSaved.stderr);
+  assert.equal(cliCalls(saved).length, 1);
+  const own = world();
+  const privateBin = join(own.dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud");
+  mkdirSync(dirname(privateBin), { recursive: true });
+  writeFileSync(privateBin, standInCli, { mode: 0o755 });
+  const fromPrivate = runLayout(own, "fitness", { TC_BIN: "" });
+  assert.equal(fromPrivate.stdout.trim(), "legacy", fromPrivate.stderr);
+  assert.equal(cliCalls(own).length, 1);
+  for (const script of ["layout.sh", "migrate.sh", "owner-grant.sh", "owner-undo.sh", "SKILL.md"]) {
+    assert.doesNotMatch(readFileSync(join(skill, script), "utf8"), /cli-path/, script);
+  }
+});
+
 // ---- layout.sh and migrate.sh: paged catalog, missing jq, local work copy, tab in a key ----
 test("layout.sh follows the old catalog's pages: an app whose key is on a later page is legacy", () => {
   const h = world();

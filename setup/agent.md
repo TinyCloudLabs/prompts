@@ -22,7 +22,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### 1. CLI
 
-Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. New installs and older agent-owned installs in `~/.local/share/tinycloud/cli` use `@tinycloud/cli@1.5.2`; an operator-selected CLI is kept. Preserve the operator's `TC_BIN`; a missing, broken or incompatible selected binary stops setup instead of being replaced. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
+Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. New installs and older agent-owned installs in `~/.local/share/tinycloud/cli` use `@tinycloud/cli@1.5.2`; an operator-selected CLI is kept. Preserve the operator's `TC_BIN`; a missing or broken selected binary stops setup instead of being replaced. If the setup printed `TC_OLDER` (an operator-selected CLI older than `1.5.2`): for Courier, tell the owner in one line that it is older than the required `1.5.2`, and stop; Secrets and publish/share continue, and their skill's §1 feature check decides. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
 
 ### 2. Non-secret owner defaults
 
