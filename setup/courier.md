@@ -93,10 +93,17 @@ export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 If the owner included an invitation, do this before any `start`, discovery or new-session command. Put the full original URL in the shell variable `INVITATION_URL` without trimming, decoding, re-encoding, or retyping its opaque fragment. The owner's request to join supplies consent to share read access to their side of that session.
 
 ```sh
-"$TC" courier join "$INVITATION_URL" --consent --wait 60
+ERR=$(mktemp) || exit 1
+{ { "$TC" courier join "$INVITATION_URL" --consent --wait 60; echo "$?" > "$ERR.rc"; } 2>&1 1>&3 | tee "$ERR" >&2; } 3>&1
+RC=$(cat "$ERR.rc")
+if [ "$RC" = 0 ]; then echo "NEXT: joined; continue."
+elif [ "$RC" = 1 ] && grep -q '\[invite-pending\]' "$ERR"; then echo "NEXT: the issuer has not finished pairing yet; run this block again now, in the same turn."
+else echo "JOIN_EXIT $RC"; fi
+rm -f "$ERR" "$ERR.rc"
+exit "$RC"
 ```
 
-Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. It waits at most a minute for the issuer, so the call fits a tool time limit (Claude Code stops foreground calls after 2 minutes). If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same command again, at most 10 times in a row; then stop and report the result. If the command reports missing Courier setup, complete [Set up Courier once](#set-up-courier-once), then retry this exact invitation with the same `COURIER_HOME`. If invitation verification fails, stop and report the result; do not initialize again or create a replacement session. Continue with the returned session ID and peer handle.
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. It waits at most a minute for the issuer, so the call fits a tool time limit (Claude Code stops foreground calls after 2 minutes). If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same block again, at most 10 times in a row; then stop and report the result. `JOIN_EXIT <code>` means: read stderr and go by the rest of this paragraph. If the command reports missing Courier setup, complete [Set up Courier once](#set-up-courier-once), then retry this exact invitation with the same `COURIER_HOME`. If invitation verification fails, stop and report the result; do not initialize again or create a replacement session. Continue with the returned session ID and peer handle.
 
 ## Discover the owner's chats
 
@@ -146,11 +153,27 @@ The owner may open it on another computer or phone; there is no code to copy bac
 { set +x; } 2>/dev/null; umask 077
 : "${TC:?Run the CLI preamble}"
 export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
-"$TC" courier init --wait --timeout 60s
+OUT=$(mktemp) || exit 1
+{ "$TC" courier init --wait --timeout 60s; echo "$?" > "$OUT.rc"; } | tee "$OUT"
+RC=$(cat "$OUT.rc")
+node -e '
+const fs = require("fs"), [out, rc, home] = process.argv.slice(1);
+const read = (file) => { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return {}; } };
+const result = read(out), url = rc === "8" ? result.pending?.approvalUrl : undefined;
+let shown = ""; try { shown = fs.readFileSync(home + "/shown-link", "utf8"); } catch {}
+if (rc === "0" && result.ok === true) console.log("NEXT: Courier is set up; continue.");
+else if (typeof url !== "string") console.log("COURIER_EXIT " + rc);
+else if (url === read(home + "/request.json").openkeyUrl || url === shown) console.log("NEXT: the owner already has this link; do not send it again. Just run this block again now, in the same turn.");
+else { try { fs.writeFileSync(home + "/shown-link", url, { mode: 0o600 }); } catch {} console.log("NEXT: this is a new link; send it to the owner now, on its own line, with the step 1 line: " + url + " Then run this block again now, in the same turn."); }
+' "$OUT" "$RC" "$COURIER_HOME"
+rm -f "$OUT" "$OUT.rc"
+exit "$RC"
 ```
 
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. `COURIER_EXIT <code>` means: go by the exit code and stderr below.
+
 - **Exit 0, `"ok": true`:** Courier is set up. Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
-- **Exit 8, `{"pending": …}` on stdout:** Exit 8 is not a failure: the approval is still pending. Send the owner the `pending.approvalUrl` (the same link as `openkeyUrl`), ask them to approve it, then re-run `courier init --wait --timeout 60s`. Repeat while it exits 8. If it is the link you already sent, don't send it again; just run this step again. If it is a different link, send it with the step 1 line. If your messages reach the owner only when your turn ends, end your turn after sending the link and run this step when the owner says they're done. This ends by itself: once `pending.expiresAt` has passed, the next `--wait` either finishes (the owner approved just in time) or reports `[approval-expired]`; handle either as below.
+- **Exit 8, `{"pending": …}` on stdout:** Exit 8 is not a failure: the approval is still pending. Send the owner the `pending.approvalUrl` (the same link as `openkeyUrl`), ask them to approve it, then re-run `courier init --wait --timeout 60s`. Repeat while it exits 8. The block's `NEXT:` line says which: the link the owner already has (just run this step again now, in the same turn), or a different link (send it with the step 1 line, then run this step again now, in the same turn). The one exception: if your messages reach the owner only when your turn ends, end your turn after sending the link and run this step when the owner says they're done. This ends by itself: once `pending.expiresAt` has passed, the next `--wait` either finishes (the owner approved just in time) or reports `[approval-expired]`; handle either as below.
 - **Exit 2, `[usage]`:** no approval request is waiting to be collected. If stderr names `init --resume`, do as for `[no-space]` below. Otherwise rerun the owner's original command (the incoming invitation's `join`, or `"$TC" courier start`): if it works, Courier is set up; continue. If it reports missing setup (`setup-required`), run step 1, send its link with the step 1 line, then run this step.
 - Any other non-zero exit is an error: stderr carries `[code]`.
   - **`[approval-result-expired]` or `[approval-expired]`:** nothing was installed. Run step 1 again, send the new link with exactly this line: "That link expired. Please open this new one and approve; tell me when you're done." Then run this step at once.
@@ -217,13 +240,20 @@ Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly
 Serve the **same** invitation with its `invitationId`, for at most a minute per call (`--wait 60`), so each call fits a tool time limit (Claude Code stops foreground calls after 2 minutes):
 
 ```sh
-"$TC" courier invite serve "$INVITATION_ID" --wait 60
+ERR=$(mktemp) || exit 1
+{ { "$TC" courier invite serve "$INVITATION_ID" --wait 60; echo "$?" > "$ERR.rc"; } 2>&1 1>&3 | tee "$ERR" >&2; } 3>&1
+RC=$(cat "$ERR.rc")
+if [ "$RC" = 0 ]; then echo "NEXT: paired; continue."
+elif [ "$RC" = 1 ] && grep -q '\[invite-pending\]' "$ERR"; then echo "NEXT: no one has joined yet; run this block again now, in the same turn."
+else echo "INVITE_EXIT $RC"; fi
+rm -f "$ERR" "$ERR.rc"
+exit "$RC"
 ```
 
-Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. Go by the result of each call:
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says; `INVITE_EXIT <code>` means: go by the list below. The block doesn't count runs: keep the 10-run cap below yourself. Go by the result of each call:
 
 - **Exit 0, `"status": "paired"` on stdout:** pairing is complete.
-- **Exit 1, `[invite-pending]` on stderr** ("No claim received"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` command again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count. Then stop running it: don't issue a new invitation or send another link. The same invitation stays open until its `expiresAt`, so run `invite serve` again when the owner asks.
+- **Exit 1, `[invite-pending]` on stderr** ("No claim received"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` block again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count. Then stop running it: don't issue a new invitation or send another link. The same invitation stays open until its `expiresAt`, so run `invite serve` again when the owner asks.
 - **Exit 1, `[invite-expired]`:** the invitation passed its `expiresAt`; no session was created. Don't issue a new invitation unless the owner asks for one.
 - **The call stopped first** (a tool timeout, a restart): run the `invite serve` command again; it resumes the same invitation.
 - **Any other error:** stop and report the result.
