@@ -176,39 +176,21 @@ When the owner says they're done, run the check again:
 - `SIGNED_IN` → go to §3.
 - `APPROVE_LINK` again → the approval hasn't arrived yet. If the sign-in command is still running, run the check again in a few seconds; if it still shows the link, ask the owner whether they pressed Approve on that link. If the command stopped (a tool timeout, a restart), start the sign-in block again the same way: it resumes the same pending link. Don't resend a link you already sent.
 - `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED`, `APPROVAL_REQUEST_NOT_FOUND` or `APPROVAL_RESULT_NOT_FOUND` (exit 3) → the link expired before it was approved (about 1 hour), or the approval wasn't collected within 10 minutes. Run the sign-in block again and send the new link with the same line.
-- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` or `APPROVAL_ACK_PENDING` (exit 8) → OpenKey couldn't be reached for a moment. Wait a minute and start the sign-in block again; it resumes the same request. Don't resend a link you already sent. If the third start in a row ends this way, stop retrying and run this block once. It removes only a request that expired before it was approved, and only for the CLI versions and file shape it knows; otherwise it changes nothing:
+- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` or `APPROVAL_ACK_PENDING` (exit 8) → OpenKey couldn't be reached for a moment. Wait a minute and start the sign-in block again, at most three times in a row; it resumes the same request. Don't resend a link you already sent. The check prints the CLI's message after the code.
+  - If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`: the link expired before it was approved, and this CLI keeps asking OpenKey for it. Run the block below, which runs `"$TC_BIN" --profile "$PROFILE" auth logout` on the sign-in profile, then start the sign-in block again and send the new link with the same line, as for `APPROVAL_REQUEST_EXPIRED` above. Never edit or delete the CLI's files yourself.
 
-  ```sh
-  { set +x; } 2>/dev/null; set +e; umask 077
-  ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-  if [ -r "$ENV_HELPER" ]; then
-    [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-  fi
-  [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
-  PROFILE=publisher   # unless the owner names another profile
+    ```sh
+    { set +x; } 2>/dev/null; set +e; umask 077
+    ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+    if [ -r "$ENV_HELPER" ]; then
+      [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+    fi
+    [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+    PROFILE=publisher   # unless the owner names another profile
+    "$TC_BIN" --profile "$PROFILE" auth logout < /dev/null
+    ```
 
-  node -e '
-  const fs = require("node:fs"), path = require("node:path");
-  const [profile, version] = process.argv.slice(1);
-  if (!["1.5.0", "1.5.1"].includes(version)) { console.log("UNKNOWN"); process.exit(0); }
-  const file = path.join(process.env.TC_HOME || process.env.HOME, ".tinycloud", "profiles", profile, "approval-pending.json");
-  let items;
-  try { items = JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { console.log(e.code === "ENOENT" ? "NONE_EXPIRED" : "UNKNOWN"); process.exit(0); }
-  const known = (i) => i && typeof i === "object" && i.version === 1 && typeof i.requestId === "string" && !Number.isNaN(Date.parse(i.requestExpiresAt));
-  if (!Array.isArray(items) || !items.every(known)) { console.log("UNKNOWN"); process.exit(0); }
-  const dead = (i) => !i.resultRef && !i.resultEnvelope && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
-  const keep = items.filter((i) => !dead(i));
-  if (keep.length === items.length) { console.log("NONE_EXPIRED"); process.exit(0); }
-  const tmp = file + "." + process.pid + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(keep, null, 2) + "\n", { mode: 0o600, flag: "wx" });
-  fs.renameSync(tmp, file);
-  console.log("DROPPED");
-  ' "$PROFILE" "$("$TC_BIN" --version 2>/dev/null)"
-  ```
-
-  - `DROPPED` → the link expired before it was approved. Run the sign-in block again and send the new link with the same line, as for `APPROVAL_REQUEST_EXPIRED` above.
-  - `NONE_EXPIRED` → OpenKey is still unavailable. Stop and report; don't retry.
-  - `UNKNOWN` → stop and report; don't retry or change the file yourself.
+  - Otherwise: stop and report the code; don't retry.
 - `LOGIN_FAILED APPROVAL_RESULT_ACKNOWLEDGED` (exit 8) → the sign-in may already be saved: run the session check at the top of §2 again.
 - `LOGIN_FAILED SESSION_IN_USE` → ask the owner; never add `--replace-session` on your own.
 - Any other `LOGIN_FAILED <code>` → report the code; don't retry.
@@ -420,7 +402,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
 | `APPROVAL_REQUEST_EXPIRED` / `APPROVAL_RESULT_EXPIRED` / `APPROVAL_REQUEST_NOT_FOUND` / `APPROVAL_RESULT_NOT_FOUND` | 3 | The sign-in link expired, or the approval wasn't collected in time — run the §2 sign-in again and send the new link |
-| `APPROVAL_REQUEST_UNAVAILABLE` / `APPROVAL_RESULT_UNAVAILABLE` / `APPROVAL_ACK_PENDING` | 8 | OpenKey couldn't be reached for a moment — wait a minute and start the §2 sign-in again; it resumes the same link. After the third in a row, stop retrying and run the §2 exit 8 block once |
+| `APPROVAL_REQUEST_UNAVAILABLE` / `APPROVAL_RESULT_UNAVAILABLE` / `APPROVAL_ACK_PENDING` | 8 | OpenKey couldn't be reached for a moment — wait a minute and start the §2 sign-in again, at most three times in a row; it resumes the same link. If each says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`, run the §2 `auth logout` block, then sign in again and send the new link; otherwise stop and report |
 | `APPROVAL_RESULT_INVALID` | 5 | OpenKey's answer didn't match this request — report; don't retry |
 | `PROFILE_STATE_INCONSISTENT` | 1 | Corrupt local profile state — report; don't delete the profile |
 
