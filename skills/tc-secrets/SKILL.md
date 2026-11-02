@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.14"
+  version: "0.5.15"
 ---
 
 # Read secrets from TinyCloud with `tinycloud secrets`
@@ -419,21 +419,7 @@ PY
 - `LOGIN_STOPPED` → the sign-in stopped without a result (a restart, or its process was ended). Run §3c again. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again.
 - `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired (after about an hour) before the owner approved. Run §3c again, then this block, and send the owner only the new link: "Open this link and approve; tell me when you're done."
 - `LOGIN_FAILED APPROVAL_RESULT_EXPIRED` → the owner approved, but the sign-in wasn't running to collect it within 10 minutes. Same as above: run §3c again and send only the new link.
-- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then run §3c again, at most three times in a row; it resumes the same link. §3d prints the CLI's message after the code.
-  - If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`: the link expired before the owner approved, and this CLI keeps asking OpenKey for it. Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running (stop any background sign-in you started): a command still waiting on a link would be orphaned. Run the block below, which runs `"$TC_BIN" --profile "$PROFILE" auth logout` on the sign-in profile, then run §3c again, then §3d, and send the owner only the new link, as for `APPROVAL_REQUEST_EXPIRED` above. Never edit or delete the CLI's files yourself.
-
-    ```sh
-    { set +x; } 2>/dev/null; set +e; umask 077
-    ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-    if [ -r "$ENV_HELPER" ]; then
-      [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-    fi
-    [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-    PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
-    env -u TC_PRIVATE_KEY "$TC_BIN" --profile "$PROFILE" auth logout < /dev/null
-    ```
-
-  - Otherwise: stop and report it; don't retry.
+- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then run §3c again, at most three times in a row; it resumes the same link, so don't send it again. §3d prints the CLI's message after the code. If it still fails, stop and report it; don't retry. Never edit or delete the CLI's files yourself.
 - `LOGIN_FAILED <other code>` → the CLI refused or failed. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` → the block stopped the sign-in. Don't send a link; tell the owner what the check reported.
 
@@ -536,7 +522,7 @@ Branch on `code`, never on the exit status alone: exit 8 means "still pending" o
 | `SESSION_IN_USE` | A new request would narrow or shorten the live session | Ask the owner. Never add `--replace-session` on your own |
 | `INVALID_LOGIN_SCOPE` | The request has no secrets, or mixes spaces | Rebuild the manifest with §3b |
 | `APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED` (exit 3) | The approval link expired unapproved, or an approval wasn't collected in time | §3c again; send only the new link |
-| `APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` (exit 8) | OpenKey is unavailable for now | Wait a minute, then §3c again, at most three times in a row; it resumes the same link. If each says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`, run the §3d `auth logout` block, then §3c and §3d again and send only the new link; otherwise stop and report it |
+| `APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` (exit 8) | OpenKey is unavailable for now | Wait a minute, then §3c again, at most three times in a row; it resumes the same link. If it still fails, stop and report it. Never edit or delete the CLI's files yourself |
 | `DEVICE_AUTH_UNSUPPORTED_SCOPE` | Device login can't grant secrets | Use §3, never `--device` |
 
 ## 6. Lifecycle

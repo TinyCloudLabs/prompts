@@ -5,34 +5,32 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
-// TC-2323: CLI 1.5.0/1.5.1 keep a sign-in request that expired before it was approved and then exit 8
-// (APPROVAL_REQUEST_UNAVAILABLE, "HTTP 400") on every run. `auth logout` clears it, so tc-secrets caps
-// the retries at three and then logs out the sign-in profile; it never edits the CLI's files.
+// TC-2323: since OpenKey #407, a request that expired before it was approved gets 410 expired_request,
+// and CLI 1.5.1 exits 3 (APPROVAL_REQUEST_EXPIRED) and drops it. tc-secrets sends the new link on exit 3,
+// caps exit-8 retries at three, and never logs out or edits the CLI's files to get past an expired link.
 const base = mkdtempSync(join("/var/tmp", "TC-2323-secrets."));
 after(() => rmSync(base, { recursive: true, force: true }));
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const skill = readFileSync(join(root, "skills/tc-secrets/SKILL.md"), "utf8");
-const exit8 = skill.split("- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`")[1]?.split("\n- `LOGIN_FAILED <other code>`")[0];
-const logoutBlock = exit8?.match(/```sh\n([\s\S]*?)\n\s*```/)?.[1].replace(/^ {4}/gm, "");
+const exit8 = skill.split("- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`")[1]?.split("\n- ")[0];
+const expired = skill.split("- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`")[1]?.split("\n- ")[0];
 const reader = skill.slice(skill.indexOf("**3d.")).match(/```sh\n([\s\S]*?)\n```/)?.[1];
-const row = skill.split("\n").find((line) => line.startsWith("| `APPROVAL_REQUEST_UNAVAILABLE`"));
-const MESSAGE = "OpenKey could not discover this request (HTTP 400). Retry the command to resume.";
+const row = (code) => skill.split("\n").find((line) => line.startsWith(`| \`${code}\``));
+const MESSAGE = "OpenKey could not discover this request (HTTP 503). Retry the command to resume.";
 
-test("tc-secrets caps exit 8 at three tries, then logs out only for a dead request", () => {
-  assert.ok(exit8, "§3d must handle exit 8");
-  assert.match(exit8, /at most three times in a row/);
-  assert.match(exit8, /If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `\(HTTP 400\)`/);
-  assert.match(exit8, /runs `"\$TC_BIN" --profile "\$PROFILE" auth logout` on the sign-in profile, then run §3c again, then §3d, and send the owner only the new link, as for `APPROVAL_REQUEST_EXPIRED` above\./);
-  assert.ok(exit8.includes("Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running (stop any background sign-in you started): a command still waiting on a link would be orphaned. Run the block below"));
-  assert.match(exit8, /Never edit or delete the CLI's files yourself\./);
-  assert.match(exit8, /- Otherwise: stop and report it; don't retry\./);
-  assert.doesNotMatch(skill, /approval-pending/, "nothing touches the CLI's request file");
-  assert.match(row, /at most three times in a row/);
-  assert.match(row, /`APPROVAL_REQUEST_UNAVAILABLE` with `\(HTTP 400\)`, run the §3d `auth logout` block/);
+test("tc-secrets caps exit 8 at three tries, then stops; an expired link is exit 3 and gets a new link", () => {
+  assert.ok(exit8 && expired, "§3d must handle exit 8 and exit 3");
+  assert.match(exit8, /at most three times in a row; it resumes the same link, so don't send it again\./);
+  assert.match(exit8, /If it still fails, stop and report it; don't retry\. Never edit or delete the CLI's files yourself\.$/);
+  assert.match(expired, /Run §3c again, then this block, and send the owner only the new link/);
+  assert.match(row("APPROVAL_REQUEST_UNAVAILABLE"), /at most three times in a row; it resumes the same link\. If it still fails, stop and report it\. Never edit or delete the CLI's files yourself \|$/);
+  assert.match(row("APPROVAL_REQUEST_EXPIRED"), /\(exit 3\) \| .*\| §3c again; send only the new link \|$/);
+  assert.doesNotMatch(`${exit8}\n${row("APPROVAL_REQUEST_UNAVAILABLE")}`, /logout|HTTP 400/, "exit 8 names no logout");
+  assert.doesNotMatch(skill, /HTTP 400|approval-pending|orphaned/, "no logout or file way-out for an expired link");
 });
 
-test("§3d prints the CLI's (HTTP 400) message with the exit 8 code", () => {
+test("§3d prints the CLI's message with the exit 8 code", () => {
   const state = join(base, "reader");
   mkdirSync(state, { recursive: true });
   writeFileSync(join(state, "login.out"), "");
@@ -41,16 +39,4 @@ test("§3d prints the CLI's (HTTP 400) message with the exit 8 code", () => {
   writeFileSync(join(state, "login.pid"), "1\n");
   const out = spawnSync("bash", ["-c", reader], { encoding: "utf8", timeout: 20000, env: { PATH: process.env.PATH, HOME: base, TC_SECRETS_STATE: state } });
   assert.equal(out.stdout.trim(), `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE ${MESSAGE}`, out.stderr);
-});
-
-test("tc-secrets's logout block logs out only the sign-in profile", () => {
-  for (const [env, profile] of [[{}, "api-keys"], [{ TC_SECRETS_PROFILE: "keys" }, "keys"]]) {
-    const home = join(base, `logout-${profile}`);
-    mkdirSync(home, { recursive: true });
-    const cli = join(home, "tinycloud");
-    writeFileSync(cli, `#!/bin/sh\necho "$*" >> "$HOME/calls"\n`, { mode: 0o755 });
-    const out = spawnSync("sh", ["-c", logoutBlock], { encoding: "utf8", timeout: 20000, env: { PATH: process.env.PATH, HOME: home, TC_BIN: cli, ...env } });
-    assert.equal(out.status, 0, out.stderr);
-    assert.equal(readFileSync(join(home, "calls"), "utf8"), `--profile ${profile} auth logout\n`);
-  }
 });
