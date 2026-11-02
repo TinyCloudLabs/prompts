@@ -501,6 +501,9 @@ for (const surface of COURIER_SURFACES) {
     for (const sentence of [EXIT_PENDING_RULING, EXIT_OTHER_RULING]) assert.ok(section.includes(sentence), `${surface}: missing js-sdk #821's exit-8 wording: ${sentence}`);
     assert.ok(section.includes("> Open this link and approve the one-time Courier permission; tell me when you're done."));
     assert.doesNotMatch(section, /paste the short code here/);
+    // Rotating the key would clear every pairing: no setup block may run it, though the CLI's errors suggest it.
+    assert.doesNotMatch(section.match(/```sh\n[\s\S]*?\n```/g).join("\n"), /--rotate-key/);
+    assert.ok(section.includes("Never run `init --rotate-key`, even when stderr suggests it."));
     // A foreground call: no background job, sleep or loop, and a wait well under a 2-minute tool limit.
     assert.doesNotMatch(wait, /&\s*$|\bsleep\b|\bwhile\b|\buntil\b|\bnohup\b/m);
     assert.ok(Number(wait.match(/--timeout (\d+)s\b/)[1]) <= 90);
@@ -570,7 +573,10 @@ for (const surface of COURIER_SURFACES) {
   }, () => {
     const { request, wait } = courierSetup(surface);
     const { courierHome, polls, run, untouched } = courierSandbox();
-    const { openkeyUrl } = requested(run(request), courierHome, surface);
+    const issued = run(request);
+    const { openkeyUrl } = requested(issued, courierHome, surface);
+    // The CLI's stderr note shows the same link alone on one line.
+    assert.ok(issued.stderr.split("\n").includes(openkeyUrl), issued.stderr);
     assert.match(openkeyUrl, /^https:\/\/openkey\.example\.invalid\/a\/[a-z2-7]{26}#v=4&/);
     assert.equal(statSync(join(courierHome, "approval-pending.json")).mode & 0o777, 0o600);
     // Asking again while the request is open returns the same link.
