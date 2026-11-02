@@ -2,7 +2,7 @@
 # Agent-run owner approval: keep stdin attached to the agent's interactive session for the sign-in's chat code.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
+if [ -z "${TC_BIN:-}" ]; then TC_BIN=$(cat "$HOME/.local/share/tc-apps/cli-path") || exit 1; fi
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "${1:-}" in
   healthlog) REQ=meal-request.json; GRANT=meal-grant.json ;;
@@ -83,6 +83,11 @@ if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
   echo 'APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link.' >&2
   echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  exit 1
+fi
+if [ "$RC" -eq 8 ]; then
+  echo "OpenKey couldn't be reached, so nothing was granted. Run this step again in a minute, at most three times in a row." >&2
+  echo "If each time the error above says APPROVAL_REQUEST_UNAVAILABLE with (HTTP 400), the access link expired before it was approved. Before auth logout, make sure none of your own tinycloud commands for that profile is still running (stop any other run of this step, sign-in or auth grant you started): a command still waiting on a link would be orphaned. Then run the CLI with --profile $OWNER_PROFILE auth logout, then run this step again; the owner signs in again first. That logout signs the owner profile out for every app until they sign in again. Otherwise stop and tell the owner." >&2
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then

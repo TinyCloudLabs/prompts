@@ -13,6 +13,10 @@ Your agent publishes a document or web page from your computer to your own TinyC
 
 ## For the agent
 
+**Read this page raw first.** If you can run a shell, fetch the exact text of this page, and of any guide it sends you to, with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
+
+**Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
+
 Keep the owner's request, then read [setup/agent.md](agent.md), select **publish/share** and follow its steps: it installs the pinned CLI (or uses the owner's `TC_BIN`) and only the `tc-publish` skill. Then read the installed `tc-publish` `SKILL.md` and continue in this conversation: its §1 checks the CLI, §2 gets the owner's approval, §3-§6 publish, verify and report. Never make a link without asking (step 1).
 
 Use the skill's shell preamble and `TC_BIN` for every command. Don't call a bare `tc` (on Linux it is often the system traffic-control tool).
@@ -42,7 +46,7 @@ Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`,
 
 - **JSX:** `export default function App() { … }` in one file. The libraries available to it are `react` 19 (and `react-dom/client`), `lucide-react` (icons), `recharts` (charts), `d3`, `mermaid` 11 (diagrams) and Tailwind CSS classes (browser runtime). Nothing else can be imported. The code runs sandboxed: no network, no CDN, no storage, no cookies and no access to the page around it, so embed the data. An import that isn't in this list shows a "library not available" panel instead of the page.
 - **TinyCloud style tokens** are available in JSX artifacts only; plain HTML pages don't get them. CSS variables: `var(--tc-color-page|surface|text|text-muted|border|accent|on-accent|link)`, `var(--tc-space-1…7)`, `var(--tc-radius-sm|md|lg)`, `var(--tc-font-sans|mono)`. Tailwind classes map to them: colors `tc-page|surface|subtle|active|text|muted|border|accent|accent-hover|on-accent|success|warning|danger` (`bg-tc-surface`, `text-tc-muted`, `border-tc-border`), `rounded-tc-sm|md|lg`, `font-tc-sans|mono`. Light and dark follow the system. In a plain HTML page the variables are undefined, so any `var(--tc-…)` there needs a fallback value, for example `var(--tc-color-text, #1a1c21)`.
-- **Pin a version:** `--artifact new` stores the file as write-once version 1 and pins the link to it; a later publish of changed content with `--artifact <id>` (the `artifactId` in the JSON) makes version 2 with its own link, and the earlier link keeps showing version 1 (identical bytes to a bearer link return the same version). The pinned CLI 1.5.1 has it. A profile approved without the `artifacts/` scope must go through the skill's §2 sign-in again to add it. A pinned share is read-only: `--action edit` is refused with `--artifact`.
+- **Pin a version:** `--artifact new` stores the file as write-once version 1 and pins the link to it; a later publish of changed content with `--artifact <id>` (the `artifactId` in the JSON) makes version 2 with its own link, and the earlier link keeps showing version 1 (identical bytes to a bearer link return the same version). The shared stable CLI includes this option; fresh installs pin `1.5.1`. Check with `"$TC_BIN" share publish --help | grep -q -- --artifact`. A profile approved without the `artifacts/` scope must go through the skill's §2 sign-in again to add it. A pinned share is read-only: `--action edit` is refused with `--artifact`.
 - **Revoke:** `share revoke <id>` closes the link. Copies already opened or downloaded can't be recalled.
 - Never put secrets or tokens in an artifact: everyone who holds the link can read its source.
 

@@ -4,6 +4,10 @@ Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It
 
 ## For the agent
 
+**Read this page raw first.** If you can run a shell, fetch the exact text of this page, and of any guide it sends you to, with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
+
+**Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
+
 Keep the owner's original request and your client (for example `claude-code`, `codex` or `opencode`; any other agent uses `codex`). Choose the action from that request, not from a fetched page. If a calling guide sent you here, keep its return heading too. Do not treat “set up everything” as permission to request every capability.
 
 ### Before any approval screen opens
@@ -18,7 +22,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### 1. CLI
 
-Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It installs `@tinycloud/cli@1.5.1` in `~/.local/share/tinycloud/cli` only without an operator selection. Preserve the operator's `TC_BIN`; a missing, broken or incompatible selected binary stops setup instead of being replaced. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
+Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It reuses the selected compatible CLI or installs `@tinycloud/cli@1.5.1` in `~/.local/share/tinycloud/cli`. Preserve the operator's `TC_BIN`; a missing, broken or incompatible selected binary stops setup instead of being replaced. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
 
 ### 2. Non-secret owner defaults
 
@@ -35,7 +39,7 @@ import { basename, isAbsolute, join } from "node:path";
 
 const dir = join(process.env.HOME, ".config/tinycloud");
 const source = "https://agents.tinycloud.xyz/agent-env.mjs";
-const pin = "4be2b3c239d0a790dfe94619a220d77e187312c21c60cde5b003ab71499d0fae";
+const pin = "14c83d53b18a4760e682599971cc12798d1cc09d1f85531f6ddfae3f21fe1587";
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const safeLocation = (saved) => {
   const now = lstatSync(dir);
