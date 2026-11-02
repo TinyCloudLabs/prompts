@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
 // Every home and tool home lives in one /var/tmp directory; the process environment is pointed there
 // before any file is written, and checked.
-const base = mkdtempSync(join("/var/tmp", "TC-1943."));
+// macOS /var is a symlink to /private/var; the /agent helper refuses linked paths.
+const base = realpathSync(mkdtempSync(join("/var/tmp", "TC-1943.")));
 for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) process.env[key] = base;
 assert.ok(base.startsWith("/var/tmp/TC-1943."));
 for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) assert.ok(process.env[key].startsWith("/var/tmp/TC-1943."), key);
