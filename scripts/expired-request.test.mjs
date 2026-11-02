@@ -18,7 +18,14 @@ const entries = () => [
   { version: 1, requestId: "dead", requestExpiresAt: hourAgo },
   { version: 1, requestId: "live", requestExpiresAt: inAnHour },
   { version: 1, requestId: "approved", requestExpiresAt: hourAgo, resultRef: "r", resultEnvelope: "e" },
+  // Entries the CLI still needs after expiry: a finished command, a committed or an acknowledged result.
+  { version: 1, requestId: "command", requestExpiresAt: hourAgo, commandIntent: "auth-grant:x", command: { result: {} } },
+  { version: 1, requestId: "committed", requestExpiresAt: hourAgo, committed: true },
+  { version: 1, requestId: "acked", requestExpiresAt: hourAgo, acknowledged: true },
+  // An unapproved auth grant carries only its command intent: it is dead once it expires.
+  { version: 1, requestId: "grant-dead", requestExpiresAt: hourAgo, commandIntent: "auth-grant:y" },
 ];
+const kept = ["live", "approved", "command", "committed", "acked"];
 let count = 0;
 const home = (profile, items) => {
   const dir = join(base, `h${++count}`);
@@ -53,12 +60,12 @@ test("onboarding's block drops only requests that expired with no result, keepin
   const out = runDrop(h.dir);
   assert.equal(out.status, 0, out.stderr);
   assert.equal(out.stdout.trim(), "DROPPED");
-  assert.deepEqual(ids(h.file), ["live", "approved"]);
+  assert.deepEqual(ids(h.file), kept);
   assert.equal(statSync(h.file).mode & 0o777, 0o600);
 });
 
 test("onboarding's block changes nothing when no request has expired, or there is no request file", () => {
-  const live = home("default", entries().slice(1));
+  const live = home("default", entries().filter((i) => kept.includes(i.requestId)));
   const before = readFileSync(live.file, "utf8");
   const out = runDrop(live.dir);
   assert.equal(out.stdout.trim(), "NONE_EXPIRED", out.stderr);
@@ -95,7 +102,7 @@ test("onboarding's block finds the profile onboard used: PROFILE, then TC_PROFIL
     setup(h.dir);
     const out = runDrop(h.dir, env);
     assert.equal(out.stdout.trim(), "DROPPED", JSON.stringify(env) + out.stderr);
-    assert.deepEqual(ids(h.file), ["live", "approved"]);
+    assert.deepEqual(ids(h.file), kept);
   }
 });
 
@@ -116,7 +123,7 @@ const items = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : 
 if (args[0] === "profile") console.log("{}");
 else if (args[0] === "context") console.log(JSON.stringify({ ownerDid: "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }));
 else if (args[0] === "auth" && args[1] === "grant") {
-  if (items.some((i) => !i.resultRef && Date.parse(i.requestExpiresAt) < Date.now())) {
+  if (items.some((i) => !i.resultRef && !i.command && !i.committed && !i.acknowledged && Date.parse(i.requestExpiresAt) < Date.now())) {
     process.stderr.write('{"error":{"code":"APPROVAL_REQUEST_UNAVAILABLE"}}\n');
     process.exit(8);
   }
@@ -134,14 +141,14 @@ test("owner-grant.sh drops a dead access request first, so the grant gets a fres
   const { file, out } = ownerGrant(entries());
   assert.equal(out.status, 0, out.stderr + out.stdout);
   assert.match(out.stdout, /Done: approval saved for the agent\./);
-  assert.deepEqual(ids(file), ["live", "approved"]);
+  assert.deepEqual(ids(file), kept);
   assert.equal(statSync(file).mode & 0o777, 0o600);
 });
 
 test("owner-grant.sh leaves the request file alone for another CLI version", () => {
   const { file, out } = ownerGrant(entries(), "1.6.0");
   assert.equal(out.status, 1);
-  assert.deepEqual(ids(file), ["dead", "live", "approved"]);
+  assert.deepEqual(ids(file), entries().map((i) => i.requestId));
 });
 
 test("owner-grant.sh caps exit 8: rerun in a minute, stop and tell the owner after three", () => {

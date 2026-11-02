@@ -85,7 +85,7 @@ let items;
 try { items = JSON.parse(fs.readFileSync(file, "utf8")); } catch { process.exit(0); }
 const known = (i) => i && typeof i === "object" && i.version === 1 && typeof i.requestId === "string" && !Number.isNaN(Date.parse(i.requestExpiresAt));
 if (!Array.isArray(items) || !items.every(known)) process.exit(0);
-const dead = (i) => !i.resultRef && !i.resultEnvelope && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
+const dead = (i) => !i.resultRef && !i.resultEnvelope && !i.command && !i.committed && !i.acknowledged && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
 const keep = items.filter((i) => !dead(i));
 if (keep.length === items.length) process.exit(0);
 const tmp = file + "." + process.pid + ".tmp";
