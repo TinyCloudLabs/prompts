@@ -2,7 +2,12 @@
 # Agent-run owner approval: keep stdin attached to the agent's interactive session for the sign-in's chat code.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
+# The same CLI as every TinyCloud skill: process TC_BIN, then /agent's agent.env, then the shared private install, then `tinycloud` on PATH.
+if [ -z "${TC_BIN:-}" ]; then
+  if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC_BIN=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC_BIN=; }; fi
+  [ -n "${TC_BIN:-}" ] || TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+  [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || exit 1
+fi
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "${1:-}" in
   healthlog) REQ=meal-request.json; GRANT=meal-grant.json ;;
@@ -83,6 +88,10 @@ if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
   echo 'APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link.' >&2
   echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  exit 1
+fi
+if [ "$RC" -eq 8 ]; then
+  echo "OpenKey couldn't be reached, so nothing was granted. Run this step again in a minute, at most three times in a row; if it still fails, stop and tell the owner." >&2
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then

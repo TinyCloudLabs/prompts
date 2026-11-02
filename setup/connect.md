@@ -1,6 +1,6 @@
 # Set up TinyCloud
 
-Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in any AI agent: one that can install and run the TinyCloud CLI, such as Claude Code, Codex, OpenCode, Cursor, OpenClaw or Hermes, or one that supports remote MCP, such as ChatGPT, Claude, Grok, Perplexity, Gemini or Meta Muse.
+Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in a runtime that can install and run the TinyCloud CLI, such as Claude Code, Codex or OpenCode, or a client with remote MCP and OAuth support. A product or bot name alone does not establish those capabilities; see the client-specific routes below.
 
 **Paste this into your app or agent:**
 
@@ -16,9 +16,9 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 Those guides are the authority for prerequisites, installation, permissions, sign-in, troubleshooting and cleanup. If you can run the CLI, don't use the MCP steps below. Where a guide asks for your client, use yours; any other agent uses `codex` (its skills go in `~/.agents/skills`).
 
-**Agents that can't run the CLI but support remote MCP** (for example ChatGPT, Claude, Grok, Perplexity, Gemini or Meta Muse): use the steps below. Do not run the CLI setup in a temporary code sandbox. The hosted MCP has no meeting tools yet; meetings use the CLI route.
+**Agents that can't run the CLI but support remote MCP with OAuth:** use the applicable steps below. Do not run the CLI setup in a temporary code sandbox. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
-Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other MCP clients](#other-mcp-clients).
+Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok / GrokBot](#grok), [WhatsApp / Instinct](#whatsapp-and-instinct), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other MCP clients](#other-mcp-clients).
 
 ## ChatGPT
 
@@ -31,14 +31,16 @@ Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Perplexity](#per
 
 **Troubleshooting only after a reported or observed blocker:** do not infer that an account cannot connect from its plan name, generic availability documentation, or TinyCloud's absence from the app directory. Do not run an eligibility preflight or recommend an upgrade or developer mode speculatively. A successful connection takes precedence over a contrary documentation assumption. If the option is missing or an action is rejected, address that specific UI state or error briefly; ask one targeted question only if needed to choose the next action. Once enabled, follow [Approve access and continue](#approve-access-and-continue) when the tools request approval, not as an extra initial setup section.
 
+This is a **custom remote MCP connection**, not a claim that TinyCloud is listed or approved in ChatGPT's app directory, or verified on every ChatGPT surface.
+
 ## Claude
 
-Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+**Claude app (web, Desktop, iOS, Android):** use the hosted MCP connector, not a local CLI or skill install. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, with **OAuth** through OpenKey. **Claude Code** uses the CLI route above.
 
 1. On Claude web or Desktop, open [Customize → Connectors](https://claude.ai/customize/connectors), then **+ Add → Add custom connector**.
 2. Name it **TinyCloud**, enter **`https://mcp.tinycloud.xyz/mcp`**, and continue. Review the detected OAuth settings and choose to sign in with OpenKey.
 3. Finish adding the connector. In your conversation, use **+ → Connectors** to enable TinyCloud, then make your original request.
-4. Follow [Approve access and continue](#approve-access-and-continue) below. Once connected, you can also use it in Claude's mobile apps.
+4. Follow [Approve access and continue](#approve-access-and-continue) below. Use the configured connector on mobile where the Claude client exposes it; availability and settings are controlled by the client.
 
 For a managed workspace, an owner or administrator may need to add the connector first. See [Claude's custom-connector instructions](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp).
 
@@ -46,14 +48,21 @@ If you want to approve record-writing tools once rather than on every call, find
 
 ## Grok
 
-Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+For **Grok or GrokBot**, choose by the actual runtime, not the name:
 
-1. In a browser, open [grok.com/connectors](https://grok.com/connectors), click **New Connector**, then select **Custom**.
-2. Enter **`https://mcp.tinycloud.xyz/mcp`** and complete the authentication Grok asks for by signing in with OpenKey.
-3. In a conversation, make your original request. Grok makes the connector's tools available in your conversations.
-4. Follow [Approve access and continue](#approve-access-and-continue) below.
+- If the bot can install and run commands, use [CLI onboarding](onboarding.md) and the agent skills.
+- If it cannot run the CLI but supports **Streamable HTTP MCP with OAuth**, connect **`https://mcp.tinycloud.xyz/mcp`**, sign in with OpenKey, and follow [Approve access and continue](#approve-access-and-continue).
+- If neither capability is available, explain that specific limitation. Do not invent a connector screen or ask for credentials in chat.
 
-On Grok Business or Enterprise, a team admin must add the connector first. See [xAI's connector instructions](https://docs.x.ai/grok/connectors).
+These instructions do not verify a native Grok connector or universal GrokBot installation support.
+
+## WhatsApp and Instinct
+
+WhatsApp is the conversation channel; the bot's runtime determines whether it can use the CLI or hosted MCP route above. Do not ask the user to install a CLI inside WhatsApp.
+
+In Cian's reported test, Instinct read a Claude Code-written note using a **two-hour, read-only Todos delegation**, with no writes. Preserve that scope and expiry; a known app's read does not need a broader discovery or write grant. This is not proof of native WhatsApp MCP support, installation support for every bot, or approval compatibility on every mobile device.
+
+Send an approval URL complete, on its own line. If the in-app browser loses the fragment or cannot continue sign-in, reopen the original complete link in the normal browser. If the message itself was truncated or the request expired, ask the requesting agent for its current link; never reconstruct the secret fragment.
 
 ## Perplexity
 

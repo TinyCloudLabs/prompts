@@ -1,7 +1,23 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { closeSync, constants, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, parse } from "node:path";
+import { homedir } from "node:os";
+
+const windows = process.platform === "win32";
+function rejectLink(path) {
+  const stat = lstatSync(path);
+  if (stat.isSymbolicLink()) throw new Error("AGENT_ENV_UNSAFE_PATH");
+  if (windows) {
+    const script = "$ErrorActionPreference='Stop'; if ((Get-Item -LiteralPath $env:TC_ENV_CHECK -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { exit 2 }";
+    const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], {
+      env: { ...process.env, TC_ENV_CHECK: path }, encoding: "utf8", windowsHide: true,
+    });
+    if (result.error || result.status !== 0) throw new Error("AGENT_ENV_UNSAFE_PATH");
+  }
+  return stat;
+}
 
 const keys = ["TC_BIN", "TC_OWNER_DID", "TC_OWNER_EMAIL"];
 const valid = (key, value) => {
@@ -13,8 +29,10 @@ const valid = (key, value) => {
     default: return false;
   }
 };
-const file = process.env.TC_AGENT_ENV || join(process.env.HOME, ".config/tinycloud/agent.env");
-const parts = file.split("/").filter(Boolean);
+const home = (windows ? process.env.USERPROFILE || process.env.HOME : process.env.HOME) || homedir();
+const file = process.env.TC_AGENT_ENV || join(home, ".config/tinycloud/agent.env");
+const root = parse(file).root;
+const parts = file.slice(root.length).split(windows ? /[\\/]/ : "/").filter(Boolean);
 if (!isAbsolute(file) || parts.some((part) => part === "." || part === "..") || parts.length === 0) {
   console.error("AGENT_ENV_UNSAFE_PATH");
   process.exit(2);
@@ -25,7 +43,7 @@ const { O_RDONLY, O_WRONLY, O_CREAT, O_EXCL, O_NOFOLLOW } = constants;
 // A same-UID actor can race the initial check/chdir; it already controls this
 // user's home. Once chdir succeeds, later pathname swaps cannot redirect writes.
 function parent(create) {
-  let path = "/";
+  let path = root;
   for (const part of parts) {
     path = join(path, part);
     if (create) {
@@ -33,7 +51,7 @@ function parent(create) {
       catch (error) { if (error.code !== "EEXIST") throw error; }
     }
     let stat;
-    try { stat = lstatSync(path); }
+    try { stat = rejectLink(path); }
     catch (error) { if (!create && error.code === "ENOENT") return false; throw error; }
     if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("AGENT_ENV_UNSAFE_DIR");
   }
@@ -43,7 +61,7 @@ function parent(create) {
   const opened = statSync(".");
   if (after.isSymbolicLink() || after.dev !== before.dev || after.ino !== before.ino ||
     opened.dev !== before.dev || opened.ino !== before.ino) throw new Error("AGENT_ENV_UNSAFE_DIR");
-  if (create && (opened.uid !== process.getuid() || (opened.mode & 0o777) !== 0o700)) {
+  if (create && !windows && (opened.uid !== process.getuid() || (opened.mode & 0o777) !== 0o700)) {
     throw new Error("AGENT_ENV_UNSAFE_DIR");
   }
   return true;
@@ -52,6 +70,7 @@ function current(found) {
   if (!found) return { text: "", stat: null };
   let opened;
   try {
+    if (windows) rejectLink(filename);
     opened = openSync(filename, O_RDONLY | O_NOFOLLOW);
   } catch (error) {
     if (error.code === "ENOENT") return { text: "", stat: null };
@@ -59,7 +78,11 @@ function current(found) {
   }
   try {
     const stat = fstatSync(opened);
-    if (!stat.isFile() || (stat.mode & 0o777) !== 0o600) throw new Error("AGENT_ENV_UNSAFE_FILE");
+    if (!stat.isFile() || (!windows && (stat.mode & 0o777) !== 0o600)) throw new Error("AGENT_ENV_UNSAFE_FILE");
+    if (windows) {
+      const checked = rejectLink(filename);
+      if (checked.dev !== stat.dev || checked.ino !== stat.ino) throw new Error("AGENT_ENV_UNSAFE_FILE");
+    }
     return { text: readFileSync(opened, "utf8"), stat };
   } finally {
     closeSync(opened);
@@ -71,13 +94,13 @@ function save(values, previous) {
   try {
     const opened = openSync(temp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600);
     try {
-      fchmodSync(opened, 0o600);
+      if (!windows) fchmodSync(opened, 0o600);
       writeFileSync(opened, keys.filter((name) => values[name]).map((name) => `${name}=${values[name]}\n`).join(""));
     } finally {
       closeSync(opened);
     }
     let now = null;
-    try { now = lstatSync(destination); }
+    try { now = rejectLink(destination); }
     catch (error) { if (error.code !== "ENOENT") throw error; }
     if (now?.isSymbolicLink() || Boolean(now) !== Boolean(previous) ||
       (now && (now.ino !== previous.ino || now.dev !== previous.dev))) throw new Error("AGENT_ENV_FILE_CONFLICT");

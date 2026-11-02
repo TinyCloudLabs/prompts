@@ -17,3 +17,140 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node --test scripts/*.test.mjs
       - run: node scripts/build-site.mjs
+  windows-installer:
+    name: Native Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run portable installer tests
+        run: node --test scripts/install-cli.test.mjs
+      - name: Install and reuse released CLI with native launchers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $node = (Get-Command node.exe).Source
+          $installer = Join-Path $PWD 'scripts/install-cli.mjs'
+          $root = Join-Path $env:RUNNER_TEMP ("TinyCloud native smoke " + [guid]::NewGuid())
+          $userKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment')
+          $machineKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('SYSTEM\CurrentControlSet\Control\Session Manager\Environment')
+          function Read-RawPath($key) {
+            $exists = $key.GetValueNames() -contains 'Path'
+            [pscustomobject]@{
+              Exists = $exists
+              Value = if ($exists) { $key.GetValue('Path', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames) } else { $null }
+              Kind = if ($exists) { $key.GetValueKind('Path') } else { $null }
+            }
+          }
+          function Assert-PathState($actual, $expected, $label) {
+            if ($actual.Exists -ne $expected.Exists -or $actual.Value -cne $expected.Value -or $actual.Kind -ne $expected.Kind) {
+              throw "$label raw PATH value/type changed unexpectedly"
+            }
+          }
+          function Invoke-Installer {
+            $lines = @(& $node $installer)
+            if ($LASTEXITCODE -ne 0) { throw "Installer exited $LASTEXITCODE" }
+            $lines | ForEach-Object { Write-Host $_ }
+            $selections = @($lines | Where-Object { $_.StartsWith('TC_SELECTED ') })
+            if ($selections.Count -ne 1) { throw 'Expected one installer selection' }
+            $selections[0].Substring('TC_SELECTED '.Length) | ConvertFrom-Json
+          }
+          function Read-InstallTree($prefix) {
+            # NTFS directory mtimes can settle after npm exits. Preserve directory
+            # identity, and compare every installed file's identity, metadata and bytes.
+            @(Get-ChildItem -LiteralPath $prefix -Recurse -Force | Sort-Object FullName | ForEach-Object {
+              if ($_.PSIsContainer) {
+                '{0}|directory|{1}' -f $_.FullName, $_.CreationTimeUtc.Ticks
+              } else {
+                $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+                '{0}|file|{1}|{2}|{3}|{4}' -f $_.FullName, $_.Length, $_.CreationTimeUtc.Ticks, $_.LastWriteTimeUtc.Ticks, $hash
+              }
+            }) -join "`n"
+          }
+          $originalUser = Read-RawPath $userKey
+          $originalMachine = Read-RawPath $machineKey
+          try {
+            New-Item -ItemType Directory -Path $root | Out-Null
+            # No inherited account selection or persisted production configuration.
+            Get-ChildItem Env:TC_* | Remove-Item
+            $env:HOME = $root
+            $env:USERPROFILE = $root
+            $env:TC_HOME = Join-Path $root 'state'
+            $env:APPDATA = Join-Path $root 'AppData\Roaming'
+            $env:LOCALAPPDATA = Join-Path $root 'AppData\Local'
+            $env:npm_config_cache = Join-Path $root 'npm cache'
+            $env:npm_config_userconfig = Join-Path $root 'empty npmrc'
+            New-Item -ItemType File -Path $env:npm_config_userconfig | Out-Null
+            $env:TC_NATIVE_PATH_SENTINEL = Join-Path $root 'unexpanded sentinel'
+            # Include raw expansion tokens and a value beyond setx's historical limit.
+            $fixture = [string]$originalUser.Value
+            if ($fixture -and -not $fixture.EndsWith(';')) { $fixture += ';' }
+            $fixture += '%TC_NATIVE_PATH_SENTINEL%\tools;'
+            $fixture += ((1..160 | ForEach-Object { Join-Path $root "unused path $_" }) -join ';') + ';'
+            $userKey.SetValue('Path', $fixture, [Microsoft.Win32.RegistryValueKind]::ExpandString)
+            $binDir = Join-Path $root '.local\bin'
+            $prefix = Join-Path $root '.local\share\tinycloud\cli'
+            $expectedBin = Join-Path $prefix 'node_modules\.bin\tinycloud.cmd'
+            $expectedPath = [pscustomobject]@{
+              Exists = $true
+              Value = $fixture + $binDir
+              Kind = [Microsoft.Win32.RegistryValueKind]::ExpandString
+            }
+            $pin = (& $node --input-type=module -e "import { CLI_VERSION } from './scripts/install-cli.mjs'; console.log(CLI_VERSION)").Trim()
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot read installer release pin' }
+            $first = Invoke-Installer
+            if ($first.source -cne 'installed' -or $first.bin -ine $expectedBin -or $first.version -cne $pin) {
+              throw 'Fresh install did not select the pinned private CLI'
+            }
+            Assert-PathState (Read-RawPath $userKey) $expectedPath 'Installed user'
+            Assert-PathState (Read-RawPath $machineKey) $originalMachine 'Machine'
+            $manifest = Get-Content -LiteralPath (Join-Path $prefix 'node_modules\@tinycloud\cli\package.json') -Raw | ConvertFrom-Json
+            if ($manifest.name -cne '@tinycloud/cli' -or $manifest.version -cne $pin) { throw 'Wrong released package installed' }
+            # Existing processes must refresh PATH themselves; do not persist this merged process PATH.
+            $env:Path += ";$binDir"
+            foreach ($name in @('tinycloud', 'tc')) {
+              $launcher = Join-Path $binDir "$name.cmd"
+              $resolved = (Get-Command "$name.cmd" -CommandType Application).Source
+              if ($resolved -ine $launcher) { throw "PowerShell selected the wrong $name launcher" }
+              $version = @(& $resolved --version)
+              if ($LASTEXITCODE -ne 0 -or ($version -join "`n").Trim() -cne $pin) { throw "PowerShell $name failed" }
+              $cmdResolved = @(& $env:ComSpec /d /c "where.exe $name.cmd")
+              if ($LASTEXITCODE -ne 0 -or $cmdResolved[0].Trim() -ine $launcher) { throw "cmd selected the wrong $name launcher" }
+              $version = @(& $env:ComSpec /d /c "$name.cmd --version")
+              if ($LASTEXITCODE -ne 0 -or ($version -join "`n").Trim() -cne $pin) { throw "cmd $name failed" }
+            }
+            $tree = Read-InstallTree $prefix
+            # A second download cannot mask a reuse regression.
+            $env:npm_config_cache = Join-Path $root 'empty offline cache'
+            $env:npm_config_offline = 'true'
+            $second = Invoke-Installer
+            if ($second.source -cne 'private' -or $second.bin -cne $first.bin -or $second.version -cne $first.version) {
+              throw 'Second invocation did not reuse the same private executable'
+            }
+            $after = Read-InstallTree $prefix
+            if ($after -cne $tree) {
+              Compare-Object ($tree -split "`n") ($after -split "`n") | ForEach-Object { Write-Host "$($_.SideIndicator) $($_.InputObject)" }
+              throw 'Reuse changed the private installation'
+            }
+            $resolved = @(& $node $installer --resolve)
+            if ($LASTEXITCODE -ne 0 -or ($resolved -join "`n").Trim() -ine $expectedBin) { throw 'Resolver changed the selected executable' }
+            Assert-PathState (Read-RawPath $userKey) $expectedPath 'Reused user'
+            Assert-PathState (Read-RawPath $machineKey) $originalMachine 'Machine'
+            Write-Host "Native install/reuse verified for released CLI $pin, both launchers and both shells."
+          } finally {
+            try {
+              if ($originalUser.Exists) {
+                $userKey.SetValue('Path', $originalUser.Value, $originalUser.Kind)
+              } else {
+                $userKey.DeleteValue('Path', $false)
+              }
+              Assert-PathState (Read-RawPath $userKey) $originalUser 'Restored user'
+              Assert-PathState (Read-RawPath $machineKey) $originalMachine 'Machine'
+            } finally {
+              $userKey.Close()
+              $machineKey.Close()
+              if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
+            }
+          }

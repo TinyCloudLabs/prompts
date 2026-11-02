@@ -160,27 +160,18 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   mkdirSync(bin);
   const selected = join(bin, "custom-cli");
   const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.5.1');
+  executable(selected, 'echo 1.5.0');
   executable(conflicting, 'echo unrelated');
+  executable(join(bin, "curl"), `cp '${join(root, "_site/install-cli.mjs")}' "$4"`);
   const original = readFileSync(conflicting);
   const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
+  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.5\.2; keeping this operator-selected CLI$/m);
   assert.deepEqual(readFileSync(conflicting), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
 });
 
-test("/cli serves its install block as a script, and the page tells agents to download and run it", () => {
-  const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  const shown = guide.split("The script is exactly this block, shown here so you and the owner can read it:\n")[1].match(/^\n```sh\n([\s\S]*?)\n```/)[1];
-  const served = readFileSync(join(root, "_site/skills/install-cli.sh"), "utf8").split("\n").slice(2).join("\n");
-  assert.equal(served, `${shown}\n`);
-  const steps = guide.split("## Install the CLI")[1].split("## Verify and return")[0];
-  assert.match(steps, /curl -fsSL -o "\$HOME\/\.local\/share\/tinycloud\/install-cli\.sh" https:\/\/agents\.tinycloud\.xyz\/skills\/install-cli\.sh/);
-  assert.match(steps, /^sh "\$HOME\/\.local\/share\/tinycloud\/install-cli\.sh"$/m);
-  assert.match(steps, /^node "\$HOME\/\.local\/share\/tinycloud\/install\.js" cli --agent CLIENT$/m);
-  for (const [, code] of steps.matchAll(/```sh\n([\s\S]*?)\n```/g)) assert.doesNotMatch(code, /\| *(sh|bash|node)\b/);
-});
 
 before(() => {
   const built = spawnSync(process.execPath, [join(root, "scripts/build-site.mjs")], { encoding: "utf8" });
@@ -265,6 +256,21 @@ test("/connect sends an agent that can run the CLI to /onboarding and gives each
   }
 });
 
+test("tc-apps sends an agent with no onboarded profile through /onboarding before any scoped sign-in", () => {
+  const site = join(root, "_site");
+  const onboarding = "https://agents.tinycloud.xyz/onboarding";
+  const catalog = readFileSync(join(site, "skills/apps/TINY-APPS.md"), "utf8");
+  for (const file of ["apps", "skills/apps/SKILL.md", "skills/apps/TINY-APPS.md"]) {
+    const rules = readFileSync(join(site, file), "utf8").split("\n").filter((line) => line.includes("`onboard-first`") && line.includes(onboarding));
+    assert.equal(rules.length, 1, file);
+    assert.match(rules[0], /original request/, file);
+    assert.match(rules[0], /rerun/, file);
+    assert.match(rules[0], /cannot run onboarding/, file);
+  }
+  const scoped = catalog.split("\n### Scoped setup without onboarding\n")[1].trim().split("\n")[0];
+  assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
+});
+
 test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {
   const site = join(root, "_site");
   const storage = "https://account.tinycloud.xyz/storage";
@@ -305,14 +311,16 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
 test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and preserves process precedence", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const probe = block(guide, "## Before onboarding");
-  for (const scenario of ["saved", "process", "old", "unset"]) {
+  for (const scenario of ["saved", "process", "old", "private", "unset"]) {
     const dir = home();
     const bin = join(dir, "bin");
     mkdirSync(bin);
-    const saved = join(bin, "saved-cli");
+    // The agent's own private copy is left to onboarding's CLI setup, which upgrades it.
+    const saved = scenario === "private" ? join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud") : join(bin, "saved-cli");
     const override = join(bin, "process-cli");
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.5.1 ;; esac');
+    mkdirSync(dirname(saved), { recursive: true });
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.1" : "1.5.2"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.5.2 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -333,7 +341,7 @@ test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and p
       assert.doesNotMatch(result.stdout, /RESOLVED=/);
     } else {
       assert.equal(result.status, 0, result.stderr);
-      const expected = scenario === "process" ? override : scenario === "unset" ? "" : saved;
+      const expected = scenario === "process" ? override : scenario === "unset" || scenario === "private" ? "" : saved;
       assert.equal(result.stdout.trim(), `RESOLVED=${expected}`);
     }
   }
@@ -346,7 +354,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     const dir = home();
     const selected = join(dir, "operator-cli");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.0-beta.28" : "1.5.1"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.1" : "1.5.2"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
@@ -380,24 +388,6 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
   }
 });
 
-test("Courier preview installs and serves the approved release pins", () => {
-  const skills = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8")).skills;
-  assert.equal(skills.find((entry) => entry.short === "cli").version, "1.5.1");
-  assert.equal(skills.find((entry) => entry.short === "courier").version, "0.4.1");
-  const dir = home();
-  const bin = join(dir, "bin");
-  mkdirSync(bin);
-  const calls = join(dir, "npm-calls");
-  executable(join(bin, "npm"), `printf '%s\\n' "$@" > "$NPM_CALLS"
-    mkdir -p "$HOME/.local/share/tinycloud/cli/node_modules/.bin"
-    printf '#!/bin/sh\\necho 1.5.1\\n' > "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
-    chmod 700 "$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"`);
-  const installed = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, PATH: `${bin}:${process.env.PATH}`, NPM_CALLS: calls } });
-  assert.equal(installed.status, 0, installed.stderr);
-  assert.ok(readFileSync(calls, "utf8").split("\n").includes("@tinycloud/cli@1.5.1"));
-  const agentGuide = readFileSync(join(root, "setup/agent.md"), "utf8");
-  assert.deepEqual([...agentGuide.matchAll(/@tinycloud\/cli@([0-9A-Za-z.-]+)/g)].map((match) => match[1]), ["1.5.1"]);
-});
 
 // The served Courier setup: request, wait, then the fallback code import and its separate read.
 const COURIER_SURFACES = ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"];

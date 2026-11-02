@@ -22,7 +22,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### 1. CLI
 
-Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It installs `@tinycloud/cli@1.5.1` in `~/.local/share/tinycloud/cli` only without an operator selection. Preserve the operator's `TC_BIN`; a missing, broken or incompatible selected binary stops setup instead of being replaced. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
+Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. New installs and older agent-owned installs in `~/.local/share/tinycloud/cli` use `@tinycloud/cli@1.5.2`; an operator-selected CLI is kept. Preserve the operator's `TC_BIN`; a missing or broken selected binary stops setup instead of being replaced. If the setup printed `TC_OLDER` (an operator-selected CLI older than `1.5.2`): for Courier, tell the owner in one line that it is older than the required `1.5.2`, and stop; Secrets and publish/share continue, and their skill's §1 feature check decides. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
 
 ### 2. Non-secret owner defaults
 
@@ -39,7 +39,7 @@ import { basename, isAbsolute, join } from "node:path";
 
 const dir = join(process.env.HOME, ".config/tinycloud");
 const source = "https://agents.tinycloud.xyz/agent-env.mjs";
-const pin = "4be2b3c239d0a790dfe94619a220d77e187312c21c60cde5b003ab71499d0fae";
+const pin = "14c83d53b18a4760e682599971cc12798d1cc09d1f85531f6ddfae3f21fe1587";
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const safeLocation = (saved) => {
   const now = lstatSync(dir);
