@@ -29,7 +29,7 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 
 Use `recipes` instead of `healthlog` for Recipes; omit `--write` for a read-only request. A `ready` result means the existing profile already has onboarding's access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` as `<CATALOG_PROFILE>`, `<CATALOG_HOST>`, `<CATALOG_SPACE>` and `<OWNER_DID>`. Do **not** run another sign-in or owner-grant helper.
 
-`onboard-first` means no profile on this computer has an owner or a session yet. Fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. When it reports `"onboarded": true`, rerun the check above and continue from its result. Do not start the scoped setup below instead, unless you cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
+`onboard-first` means no profile on this computer has an owner or a session yet. Fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. When it reports `"onboarded": true`, rerun the check above and continue from its result. Do not start the scoped setup below instead, unless you cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 
 For Health Log, bind the selected owner and applications space without replacing an earlier binding:
 

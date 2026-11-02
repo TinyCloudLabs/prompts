@@ -2,14 +2,14 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.4"
+  version: "0.3.5"
 ---
 
 # Personal apps in TinyCloud
 
 **Install rule: use the single CLI selected by https://agents.tinycloud.xyz/cli, stable `1.5.2`. New installs and older agent-owned installs get `1.5.2`; an operator-selected CLI is kept, and a newer one is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
-**Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
+**Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
