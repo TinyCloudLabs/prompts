@@ -106,9 +106,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.1",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.1.tgz",
-    integrity: "sha512-lwf95fZaZJTn04JqMkn+RkrIsjuJ/IKOuc5rmESLrc/8ZkjTE8tfAVBfSCb0aMFNVzBkrODqzjXJ6Bj8BuVCpw==",
+    version: "1.5.2",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.2.tgz",
+    integrity: "sha512-M7bCmhZPNcKALcIzhrLMpLoxsl/f9iqyo1PpOGscSyb3Re+O/CLhqhCWuNzcNehjcTpVo5ZPFUikSC7RZco4qQ==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -138,9 +138,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.4.1",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.1.tgz",
-    integrity: "sha512-bzJvCaHH6Sj4VmOrEU1NIe6/QHtW4c44w2dzueApbsPPVTYyXE2TvxlhVHnaHKAJxRI4EXAtUDsj+AekH6vuXg==",
+    version: "0.4.2",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.2.tgz",
+    integrity: "sha512-fTDhPUZ5iRLt2ZtazwIyvty8CefyBnImEnU2PXDAlmtdp0IBeeLaex51Ghg7qySWP1eGQ5suvMCw5fQ0r6dOjw==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -177,9 +177,9 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.8.4",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.4.tgz",
-    integrity: "sha512-c8TnYrl10iDwzrhkvIUqmwn7a5gKdhSyO3J10Kr/8O6BngRuxpPGH3OuUsz6KHWrRjN28PBqZPYOY6PQQOcJ8Q==",
+    version: "0.8.5",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.5.tgz",
+    integrity: "sha512-yL9vnJVPHMVGhm6Rmct6gQixq2Mh6ivsGWHWiPZZyrYAUcS3mnb+LTi4irAD+XixZlJU7NJIZW83RoSNxw1bLA==",
     dir: "package/skills/tinycloud-delegated-secrets",
   },
 ];

@@ -36,7 +36,7 @@ Run each block as one shell tool call. Use the same `TC_BIN`, `TC_HOME` and sele
 
 ## 1. Reuse the CLI
 
-Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 22.20 or later with npm, reuses a compatible existing CLI and otherwise installs the single pinned release, `1.5.1`. It never downgrades a compatible newer version; stable `1.5.0` remains compatible. Preserve an operator-provided `TC_BIN`; a missing, broken or incompatible override is an explicit error, not permission to replace it. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
+Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 22.20 or later with npm, reuses a compatible existing CLI and otherwise installs the single pinned release, `1.5.2`. It never downgrades a compatible newer version; stable `1.5.0` remains compatible. Preserve an operator-provided `TC_BIN`; a missing, broken or incompatible override is an explicit error, not permission to replace it. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 

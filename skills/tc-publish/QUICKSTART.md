@@ -7,7 +7,7 @@ Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.5.1).
+# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.5.2).
 export TC_BIN='<selected absolute executable path>'
 export TC_HOME=<profile store for this agent>
 export TC_PUBLISH_STATE=<state dir for this agent>       # optional; default $HOME/.local/state/tc-publish

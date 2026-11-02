@@ -1,10 +1,10 @@
 # Set up the TinyCloud CLI
 
-This module installs and verifies only the TinyCloud CLI and its core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. New installations use **@tinycloud/cli 1.5.1**. Compatible existing versions are reused without downgrading. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
+This module installs and verifies only the TinyCloud CLI and its core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. New installations use **@tinycloud/cli 1.5.2**. Compatible existing versions are reused without downgrading. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
 
 ## For the owner
 
-- **What it does:** reuses your selected compatible CLI or installs `1.5.1` into `~/.local/share/tinycloud/cli`, then installs the `tinycloud-cli` skill. Windows gets non-overwriting launchers in `%USERPROFILE%\.local\bin` when names are free, and a safe append to your user PATH. Unix links free names only when `~/.local/bin` is already on PATH. Unrelated commands are left alone.
+- **What it does:** reuses your selected compatible CLI or installs `1.5.2` into `~/.local/share/tinycloud/cli`, then installs the `tinycloud-cli` skill. Windows gets non-overwriting launchers in `%USERPROFILE%\.local\bin` when names are free, and a safe append to your user PATH. Unix links free names only when `~/.local/bin` is already on PATH. Unrelated commands are left alone.
 - **Paste into an agent that can run shell commands:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat`, `/apps`, `/publish`, `/secrets` and `/courier` use this shared selection instead of installing an app-specific CLI.
 - **You approve:** nothing. It doesn't sign in or request any access.
 - **Then:** in a new terminal, `tinycloud --help` lists the commands.
@@ -119,7 +119,7 @@ Mention command-name conflicts to the owner in one line and continue with the co
 
 ## Install the core skill
 
-Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse files matching the `cli` entry, version `1.5.1`, in `https://agents.tinycloud.xyz/skills/index.json`. Do not overwrite unrelated or locally modified files. An older managed `tc-cli` skill has a different name: retire that obsolete folder only after checking it is an unmodified TinyCloud-installed skill, so both versions are not loaded.
+Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse files matching the `cli` entry, version `1.5.2`, in `https://agents.tinycloud.xyz/skills/index.json`. Do not overwrite unrelated or locally modified files. An older managed `tc-cli` skill has a different name: retire that obsolete folder only after checking it is an unmodified TinyCloud-installed skill, so both versions are not loaded.
 
 This step is required: the skill is how you know the CLI's commands. If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls:
 
@@ -147,13 +147,13 @@ node $skillInstaller cli --agent CLIENT
 if ($LASTEXITCODE -ne 0) { throw "Core skill installation failed." }
 ```
 
-The installer downloads `tinycloud-cli` from `@tinycloud/cli@1.5.1` with this site's pinned resolver overlay and checks every file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection, then the private installation before global npm. It replaces only `tinycloud-cli` and prints `SKILL_INSTALLED tinycloud-cli 1.5.1 <folder>`; any failure stops setup.
+The installer downloads `tinycloud-cli` from `@tinycloud/cli@1.5.2` with this site's pinned resolver overlay and checks every file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection, then the private installation before global npm. It replaces only `tinycloud-cli` and prints `SKILL_INSTALLED tinycloud-cli 1.5.2 <folder>`; any failure stops setup.
 
 These commands target the named CLI package and named skill. Preserve unrelated npm packages, skills, agent configuration and model/provider settings.
 
 ## Verify and return
 
-Verify the selected absolute path from `TC_SELECTED`: `"<TC_BIN>" --version` in POSIX or `& "<TC_BIN>" --version` in PowerShell. New installs report `1.5.1`; compatible existing selections retain their version. An incompatible explicit selection is reported, never replaced. If `tinycloud` was `TC_READY` or `TC_LINKED`, verify `tinycloud --version` after refreshing PATH or restarting the terminal. Check the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile or host, or request permissions here.
+Verify the selected absolute path from `TC_SELECTED`: `"<TC_BIN>" --version` in POSIX or `& "<TC_BIN>" --version` in PowerShell. New installs report `1.5.2`; compatible existing selections retain their version. An incompatible explicit selection is reported, never replaced. If `tinycloud` was `TC_READY` or `TC_LINKED`, verify `tinycloud --version` after refreshing PATH or restarting the terminal. Check the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile or host, or request permissions here.
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 

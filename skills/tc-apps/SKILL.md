@@ -2,12 +2,12 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.1"
+  version: "0.3.2"
 ---
 
 # Personal apps in TinyCloud
 
-**Install rule: reuse the single compatible CLI selected by https://agents.tinycloud.xyz/cli. New installs use stable `1.5.1`; a compatible `1.5.0` or newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**Install rule: reuse the single compatible CLI selected by https://agents.tinycloud.xyz/cli. New installs use stable `1.5.2`; a compatible `1.5.0` or newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 

@@ -10,6 +10,6 @@
     "marked-gfm-heading-id": "4.1.4"
   },
   "devDependencies": {
-    "@tinycloud/cli": "1.5.1"
+    "@tinycloud/cli": "1.5.2"
   }
 }
