@@ -16,6 +16,8 @@ This module installs and verifies only the TinyCloud CLI and its core skill, `ti
 
 **Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
 
+**Upgrades go through this guide.** Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
+
 Before starting, retain all of the following from the caller:
 
 - the user's original task;
