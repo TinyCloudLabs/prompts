@@ -39,7 +39,21 @@ Keep the owner's original request and any incoming invitation URL exactly as sup
 
 **One extra Courier approval:** CLI `1.6.0-beta.1` and Courier `0.5.0-beta.0` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
 
-After onboarding, install or reuse the Courier action skill `0.5.0-beta.0` through your agent's standard skill mechanism; do not overwrite a modified skill. Read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). If your agent cannot install local skills, read those pages directly. This step does not sign in or request a grant.
+## Install the Courier skill
+
+After onboarding, install or reuse the Courier action skill `courier` `0.5.0-beta.0`. This step is required: the skill is how you run Courier. Inspect an existing `courier/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/courier/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Reuse files matching the `courier` entry, version `0.5.0-beta.0`, in `https://agents.tinycloud.xyz/skills/index.json`; do not overwrite a modified skill.
+
+If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls. Skip the download if [the CLI setup](tinycloud.md#install-the-core-skill) already saved `$HOME/.local/share/tinycloud/install.js` in this conversation. `CLIENT` is `claude-code`, `codex` or `opencode`, as there.
+
+```sh
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
+```
+
+```sh
+node "$HOME/.local/share/tinycloud/install.js" courier --agent CLIENT
+```
+
+It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 0.5.0-beta.0 <folder>`; any failure stops setup. Then read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). Only if your client is none of those three, read SKILL.md and start.md directly instead, and set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
 
 ## Check the installed CLI
 
@@ -49,6 +63,9 @@ Run this in the same shell as the later commands:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
+CLAUDE_DIR=${CLAUDE_CONFIG_DIR-}; CLAUDE_DIR=${CLAUDE_DIR#"${CLAUDE_DIR%%[![:space:]]*}"}; CLAUDE_DIR=${CLAUDE_DIR%"${CLAUDE_DIR##*[![:space:]]}"}
+[ "${COURIER_SKILL-}" = read ] || [ -f "${CLAUDE_DIR:-$HOME/.claude}/skills/courier/SKILL.md" ] || [ -f "$HOME/.agents/skills/courier/SKILL.md" ] ||
+  { echo 'SKILL_MISSING courier: run the "Install the Courier skill" step at https://agents.tinycloud.xyz/courier (it is required), then rerun this block' >&2; exit 1; }
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 [ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }
 if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
@@ -67,7 +84,7 @@ done
 export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 ```
 
-These are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
+`SKILL_MISSING courier` means the required skill isn't installed: install it as in [Install the Courier skill](#install-the-courier-skill), then rerun the block; this is for you only, so don't tell the owner. The other checks are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
 
 ## Incoming invitation takes priority
 

@@ -55,7 +55,19 @@ Every guide needs `1.6.0-beta.1`: new installs and older agent-owned installs ge
 **2. Run onboarding.** It asks for both approvals, step 1 first, then step 2. It uses the selected default profile, or `TC_PROFILE` if set. Run this in the foreground, as its own shell call. Each run waits at most a minute for the owner and ends within about two minutes:
 
 ```sh
+CLAUDE_DIR=${CLAUDE_CONFIG_DIR-}; CLAUDE_DIR=${CLAUDE_DIR#"${CLAUDE_DIR%%[![:space:]]*}"}; CLAUDE_DIR=${CLAUDE_DIR%"${CLAUDE_DIR##*[![:space:]]}"}
+[ -f "${CLAUDE_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md" ] || [ -f "$HOME/.agents/skills/tinycloud-cli/SKILL.md" ] ||
+  { echo 'SKILL_MISSING tinycloud-cli: run the "Install the core skill" step at https://agents.tinycloud.xyz/cli (it is required), then rerun this block' >&2; exit 1; }
 TC='<TC_BIN>'
+V=$("$TC" --version)
+if printf '%s\n' "$V" | awk -F. -v p=1.6.0-beta.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/||q[3]~/-/&&$0>=p)}'; then
+  O=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
+  if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; fi
+  case $O in "$HOME/.local/share/tinycloud/cli/"*) O= ;; esac
+  if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.6.0-beta.1; keeping this operator-selected CLI"
+  else M="CLI_OLDER $V $TC: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
+  echo "$M" >&2; exit 1
+fi
 "$TC" onboard --timeout 60s
 ```
 
@@ -74,6 +86,9 @@ Never run `onboard --code`: these links don't produce a code, and the approval i
 
 **If something goes wrong:**
 
+- **`SKILL_MISSING`:** install the `tinycloud-cli` skill as in [the CLI setup's "Install the core skill" step](tinycloud.md#install-the-core-skill), then rerun the block; this is for you only, so don't tell the owner.
+- **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.6.0-beta.1` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block; this is for you only, so don't tell the owner.
+- **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.6.0-beta.1`, and stop; don't replace it.
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **Exit 8 without a `pending` object:** OpenKey couldn't be reached. Wait a minute and run the same command again, at most three times in a row. If it still fails, stop and report it to the owner; don't retry. Never edit or delete the CLI's files yourself.
 - **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run the same command again; it can end this way once more before it makes a new link. Send the new link.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
@@ -18,7 +18,10 @@ after(() => rmSync(base, { recursive: true, force: true }));
 
 test("onboarding runs one bounded foreground command, with no background run, file reads or sleep loop", () => {
   assert.ok(run, "the onboarding guide must have its run step");
-  assert.deepEqual(blocks(run), [`TC='<TC_BIN>'\n"$TC" onboard --timeout 60s`]);
+  // One block: the skill and CLI-version gates, then the one bounded onboard run.
+  assert.equal(blocks(run).length, 1);
+  assert.equal(blocks(run)[0].split("\n").at(-1), '"$TC" onboard --timeout 60s');
+  assert.doesNotMatch(blocks(run)[0], /&\s*$|\bnohup\b|\bwhile\b|\buntil\b/m);
   assert.match(run, /Run this in the foreground, as its own shell call\./);
   assert.doesNotMatch(guide, /\bsleep\b|seq 1|onboard\.(err|out)|background process|read the files/);
 });
@@ -83,6 +86,9 @@ const OPENKEY = "https://openkey.example.invalid";
 const LINKS_API = "https://links.example.invalid";
 const sandbox = (answer) => {
   const dir = mkdtempSync(join(base, `onboard-${answer}-`));
+  // The run block requires the tinycloud-cli skill before it runs the CLI.
+  mkdirSync(join(dir, ".agents/skills/tinycloud-cli"), { recursive: true });
+  writeFileSync(join(dir, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
   const forbidden = join(dir, "forbidden");
   const polls = join(dir, "polls");
   const fence = join(dir, "network-fence.cjs");

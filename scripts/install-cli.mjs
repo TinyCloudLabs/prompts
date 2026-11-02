@@ -151,10 +151,11 @@ export function resolveCli(input = {}) {
       const result = spawnSync(process.execPath, [helper, "get", "TC_BIN"], { env: opts.env, encoding: "utf8" });
       if (result.status !== 0 && result.status !== 1) throw new Error(result.stderr.trim() || "Unsafe saved CLI selection");
       if (result.status === 0) { selected = result.stdout.trim(); source = "agent-env"; }
-      // A saved path into the private install is the agent's own copy, not an operator boundary.
-      if (source === "agent-env" && path.isAbsolute(selected) && within(selected, privatePrefix(opts), opts.platform)) selected = undefined;
     }
   }
+  // A path into the private install is the agent's own copy, not an operator boundary, whether it was
+  // saved in agent.env or exported (as /cli's PowerShell flow does): it is selected and upgraded like the private install.
+  if (selected !== undefined && path.isAbsolute(selected) && within(selected, privatePrefix(opts), opts.platform)) selected = undefined;
   if (selected !== undefined) {
     if (!path.isAbsolute(selected) || /[\x00-\x1f]/.test(selected)) throw new Error("TC_BIN must be an absolute executable path");
     const version = versionOf(selected, opts);
@@ -299,9 +300,10 @@ export function installCli(input = {}) {
   }
   opts.log(`TC_SELECTED ${JSON.stringify(selected)}`);
   // One saved location: where /agent installed its data-only helper, agent.env names the agent's own
-  // selection for later sessions. An operator selection (process or saved TC_BIN) is never rewritten.
+  // selection for later sessions. An operator selection (process or saved TC_BIN) is never rewritten, and a
+  // process TC_BIN, even one demoted to the private install, leaves agent.env alone: it may hold an operator's path.
   const helper = path.join(opts.home, ".config/tinycloud/agent-env.mjs");
-  if (selected.source !== "TC_BIN" && selected.source !== "agent-env" && existsSync(helper)) {
+  if (opts.env.TC_BIN === undefined && selected.source !== "agent-env" && existsSync(helper)) {
     const saved = spawnSync(process.execPath, [helper, "get", "TC_BIN"], { env: opts.env, encoding: "utf8" });
     if (saved.status !== 0 && saved.status !== 1) throw new Error(saved.stderr.trim() || "Unsafe saved CLI selection");
     if (saved.status === 1 || saved.stdout.trim() !== selected.bin) {

@@ -48,7 +48,7 @@ Before every publish, ask the owner exactly: "Anyone with the link can open it. 
 
 Always pass `--to anyone`. Never pass `email:`, `domain:` or `did:`, and never rely on the CLI's default target.
 
-## 1. Check the CLI — feature probes, not version strings
+## 1. Check the CLI — the pinned version, then feature probes
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
@@ -57,18 +57,27 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
+OPERATOR_BIN=${TC_BIN:-}; case $OPERATOR_BIN in "$HOME/.local/share/tinycloud/cli/"*) OPERATOR_BIN= ;; esac
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
+TC_VERSION=
+if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
+  TC_VERSION=$("$TC_BIN" --version)
+  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.0-beta.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/||q[3]~/-/&&$0>=p)}'; then
+    if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.6.0-beta.1; keeping this operator-selected CLI"
+    else echo "CLI_OLDER $TC_VERSION $TC_BIN: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; exit 1; fi
+  fi
+fi
 if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/publish or set TC_BIN"
 elif "$TC_BIN" enable share --help | grep -q -- '--replace-session' \
   && "$TC_BIN" auth login --help | grep -q -- '--expiry'; then echo CLI_OK
 else echo STALE; fi
-[ -z "$TC_BIN" ] || "$TC_BIN" --version
+[ -z "$TC_VERSION" ] || printf '%s\n' "$TC_VERSION"
 ```
 
-If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If the version it prints is older than `1.6.0-beta.1`, follow https://agents.tinycloud.xyz/cli once (it upgrades a CLI the agent installed) and run this block again. If that setup prints `TC_OLDER`, the operator selected the older CLI: keep it, tell the operator once that `1.6.0-beta.1` is required, and continue with what this block reports.
+If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI the agent installed is older than `1.6.0-beta.1`, so follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again; this is for you only, so don't tell the owner. If it prints `TC_OLDER <version> <path>`, the operator selected the older CLI: keep it, tell the operator once that `1.6.0-beta.1` is required, and continue with what this block reports.
 
 ## 2. Sign in — only when there is no live session
 
