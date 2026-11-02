@@ -2,19 +2,20 @@
 # Agent-run, owner-requested step: copy one generic tiny app's records from the old `default` space into the app's own root in
 # `applications`. Show the dry-run plan in chat, then run the move after the owner agrees there.
 #   sh migrate.sh --dry-run [<app>]                       print what would be copied; nothing is written
-#   sh migrate.sh [--source-profile <name>] <app>         copy, read back, compare, re-check the old place, then record the move
+#   sh migrate.sh [--source-profile <name>] [--destination-profile <name>] <app>
 # The old place is only read: this script has no delete and no write to it. Every write to the new place creates a key
 # that does not exist yet. Any mismatch, collision, refusal or error prints NOT SWITCHED and stops; the old records stay
 # as they are. Running it again after fixing the cause is safe: keys that already hold the same content are recognised.
 # `--source-profile default` reads the old place with your own sign-in, not the agent's `agent-data` profile.
 set -u
 umask 077
-usage() { echo 'usage: sh migrate.sh --dry-run [<app>] | sh migrate.sh [--source-profile <name>] <app>' >&2; exit 2; }
-DRY=0; SRC=agent-data; SLUG=
+usage() { echo 'usage: sh migrate.sh --dry-run [<app>] | sh migrate.sh [--source-profile <name>] [--destination-profile <name>] <app>' >&2; exit 2; }
+DRY=0; SRC=agent-data; DEST=; SLUG=
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1 ;;
     --source-profile) [ $# -ge 2 ] || usage; SRC=$2; shift ;;
+    --destination-profile) [ $# -ge 2 ] || usage; DEST=$2; shift ;;
     -*) usage ;;
     *) [ -z "$SLUG" ] || usage; SLUG=$1 ;;
   esac
@@ -22,6 +23,7 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$SLUG" ] || [ "$DRY" -eq 1 ] || usage
 case "$SRC" in ''|*[!A-Za-z0-9._-]*) usage ;; esac
+case "$DEST" in *[!A-Za-z0-9._-]*) usage ;; esac
 if [ -n "$SLUG" ]; then
   case "$SLUG" in [a-z]*) ;; *) usage ;; esac
   case "$SLUG" in *[!a-z0-9-]*) usage ;; esac
@@ -29,8 +31,8 @@ if [ -n "$SLUG" ]; then
 fi
 command -v jq > /dev/null 2>&1 || { echo 'jq is needed. Install it, then run this again.' >&2; exit 3; }
 if command -v sha256sum > /dev/null 2>&1; then sha() { sha256sum | cut -d' ' -f1; }; else sha() { shasum -a 256 | cut -d' ' -f1; }; fi
-# The copy needs the create-only write of CLI 1.5.0, which the setup installs in its own folder.
-TC_BIN=${TC_BETA_BIN:-$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud}
+# Use the same selected CLI as onboarding and every record layout.
+if [ -z "${TC_BIN+x}" ]; then TC_BIN=$(cat "$HOME/.local/share/tc-apps/cli-path") || exit 3; fi
 STATE=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 R=xyz.tinycloud.agent-data
 TAB=$(printf '\t')
@@ -55,7 +57,7 @@ if [ -z "$SLUG" ]; then
 fi
 
 ID=xyz.tinycloud.tinyapps.$SLUG
-DEST=tinyapp-$SLUG
+DEST=${DEST:-tinyapp-$SLUG}
 # The old keys of this app: its catalog records, then its data. Fails if a listing is incomplete.
 inventory() {
   _c=$(list "$SRC" default "$R/catalog/") || return 1

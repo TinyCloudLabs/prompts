@@ -12,14 +12,14 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-- **You approve:** for Health Log, three OpenKey approvals the first time: opening it once in Share, then a sign-in link and an access link your agent sends. When OpenKey shows a code, paste it back to your agent in the chat. Each other app asks once, the first time you use it.
+- **You approve:** nothing more when onboarding already covers the requested app access. Health Log installation may additionally need permission to create its tables; the agent requests only missing access. The older scoped fallback explains its separate sign-in and app approvals.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Home feed: [/feed](https://agents.tinycloud.xyz/feed)
 
 - **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
 - **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
-- **You approve:** one TinyCloud sign-in approval for `put` on that bot's `applications` feed folder only, following the agent client's documented flow. Create-only writes need `@tinycloud/cli@1.5.0` or later.
+- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. Reuse the CLI selected by [/cli](tinycloud.md), stable `1.5.0` or newer; fresh installs pin `1.5.1`, which includes create-only writes.
 - **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)

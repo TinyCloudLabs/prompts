@@ -1,78 +1,63 @@
 # The SQL index (tc-apps)
 
-Part of the `tc-apps` skill: read `SKILL.md` first. For one generic app, `<APP>`, the index copies every record into a SQLite database, `xyz.tinycloud.tinyapps.<APP>/index`, in the owner's `applications` space, so one query can answer a question over many records. The KV records stay the truth: when the index and KV disagree, KV wins, and §6 rebuilds the index from it. Each app has its own optional index and its own approval; an index never holds records of another app.
+Part of the `tc-apps` skill: read `SKILL.md` first. For one generic app, `<APP>`, the index copies records into `xyz.tinycloud.tinyapps.<APP>/index` in the same owner's `applications` space. KV remains the source of truth. Reuse existing SQL access; do not request another sign-in merely because this is an index.
 
-- **Profile:** `tinyapp-<APP>-sql`, separate from the app's records profile, `tinyapp-<APP>`.
-- **Sign-in:** the agent runs the sign-in commands. The owner approves on OpenKey, then pastes the code back to the agent in chat; 1b finishes the sign-in.
-- **Lifetime:** 30 days.
-- **Scope:** the approval names one database. Don't rely on that name as a boundary: TinyCloud's node can also open other SQL databases in the same space, and the `applications` space holds the owner's other apps. Always pass exactly `--db xyz.tinycloud.tinyapps.<APP>/index`, never a longer or different name, and run only the statements in this file.
+- **Profile:** `<INDEX_PROFILE>` is selected below; it can be the already-onboarded profile or an existing `tinyapp-<APP>-sql` profile for the same owner and host.
+- **Approval:** only missing SQL actions, through a short OpenKey link. No pasted code is needed.
+- **Scope:** use only this app's database. Do not rely on a database name as a boundary on older nodes.
 
-Run the blocks as `SKILL.md` says: literal `<TC_BETA>` from its §1a and `<STATE>` from its §1, values filled into `'<…>'`. Keep the SQL in double quotes, exactly as written. Only `$` needs a backslash: write it `\$`, and leave `%` and every other character as it is. Put every option before `--`, and the SQL after it.
+Use the same literal `<TC_BIN>` and `<STATE>` as `SKILL.md`. Copy `<INDEX_PROFILE>` from the helper below; its `ownerDid`, `host` and `spaceId` must match the app's `<APP_HOST>` and `<APP_SPACE>` context. Keep SQL parameters separate from statements. Put options before `--` and SQL after it.
 
 **Never run two SQL writes at the same time.** That includes another block of yours, and `xargs`. Parallel writes to one database can fail, or half-apply. Writes in this file run one after another; only reads run side by side.
 
 **Keys in the index are relative:** `<kind>/<folder>/<id>`, the KV key without its `xyz.tinycloud.tinyapps.<APP>/` root.
 
-## 1. Ask for the fast copy
+## 1. Reuse access or ask for the fast copy
 
-`SKILL.md` §7 sends you here when an answer needed many records and the app's index is missing or expired, or when the owner asks about it. It takes two steps: you ask in 1a, and finish in 1b once the owner sends the code.
-
-When talking to the owner, it's "a fast, searchable copy of your records". Don't say "index", "SQL" or "database"; OpenKey's "Advanced details" name it, and the message below tells them what they'll see there.
-
-**1a. Get the approval link.** `<Title>` is the app's title: letters, digits and spaces only.
+Run the installed `app-context.mjs` with `--sql --write`:
 
 ```sh
-TC_BIN='<TC_BETA>'; STATE='<STATE>'; umask 077
-mkdir -p "$STATE"
-printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.tinyapps.<APP>","name":"<Title> fast copy (tiny app)","space":"applications","defaults":false,"permissions":[{"service":"tinycloud.sql","path":"xyz.tinycloud.tinyapps.<APP>/index","skipPrefix":true,"actions":["read","write","schema"]}]}' > "$STATE/tinyapp-<APP>-sql.json"
-"$TC_BIN" context --json --profile tinyapp-<APP>-sql 2>&1 | grep -q PROFILE_NOT_FOUND && "$TC_BIN" init --name tinyapp-<APP>-sql --key-only > /dev/null
-"$TC_BIN" --profile tinyapp-<APP>-sql auth login --method openkey --paste --manifest "$STATE/tinyapp-<APP>-sql.json" --expiry 30d < /dev/null 2> "$STATE/tinyapp-<APP>-sql-login.err"
-grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/tinyapp-<APP>-sql-login.err" | head -n 1; grep -q '"PASTE_CODE_MISSING"' "$STATE/tinyapp-<APP>-sql-login.err" && echo 'waiting for the code' || grep -o '"code": "[A-Z_]*"' "$STATE/tinyapp-<APP>-sql-login.err"
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --sql --write; break; fi; done
 ```
 
-- **The link, then `waiting for the code`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
+- `ready`: copy its profile as `<INDEX_PROFILE>`. No approval is needed for the read/write access already granted. If `indexPresent` is true, continue with the existing index. If false, repeat the helper with `--sql --write --schema` before §2.
+- `grant-required`: on the returned profile, request only the missing actions in one command. For example, when only schema authority is missing:
 
-  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; open "Advanced details" to see it listed as SQL access to `xyz.tinycloud.tinyapps.<APP>/index` in your `applications` space for 30 days. Approve, then paste the code back to me here in chat. I'll finish the sign-in.
+  ```sh
+  TC_BIN='<TC_BIN>'; umask 077
+  "$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' auth request --cap 'tinycloud.sql:applications:xyz.tinycloud.tinyapps.<APP>/index:schema' --grant --no-popup --expiry 30d
+  ```
 
-  If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
+- `sign-in-required`: sign in the returned index profile with an applications-space manifest for `tinycloud.sql` on `xyz.tinycloud.tinyapps.<APP>/index`, containing only the required `read`, `write` and, for a new table, `schema` actions. Use `auth login --method openkey --no-popup --manifest FILE --expiry 30d`, creating a key-only profile only if it is absent.
 
-- **Any other code** → `SKILL.md` §8; `SESSION_IN_USE` means the index is already signed in.
+  ```json
+  {
+    "app_id": "xyz.tinycloud.tinyapps.<APP>",
+    "name": "<APP> searchable copy",
+    "space": "applications",
+    "defaults": false,
+    "permissions": [
+      {"service": "tinycloud.sql", "path": "xyz.tinycloud.tinyapps.<APP>/index", "actions": ["read", "write", "schema"], "skipPrefix": true}
+    ]
+  }
+  ```
 
-Don't open the link yourself, and run 1a only once per approval.
+  Keep only the actions the helper reports missing; schema access is for creation, not ordinary reads or updates.
+- An owner/host mismatch or actual read failure stops the index operation. Answer from the original KV records; do not switch accounts or widen the grant.
 
-If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: get the approval link for the searchable copy of your records." Then wait. Don't edit their settings files or suggest changing them, and don't run it another way.
+When additional approval is necessary, first answer from the KV records you already read. Explain that the missing permission enables a fast, searchable copy, show the actual short URL on its own line, and keep the command running. The owner approves; the CLI retrieves the result automatically. After interruption, rerun the same command/profile. Never add `--paste`, reconstruct a URL or ask the owner to run a command.
 
-**1b. Finish with the owner's code.** The code belongs to your own profile, `tinyapp-<APP>-sql`, so the owner can send it to you in the chat. Run the same sign-in with the code on stdin. The CLI reads only the first non-blank line, so the code must go on one line: remove any code fence, quotes or spaces around it, and join line breaks, before the heredoc. A quoted heredoc keeps every character of the code as it is; `<MARK>` is a new random hex value for each block, from `node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))'`, used on both marker lines. Fill `<TC_BETA>` and `<STATE>` as in 1a:
+After successful approval, repeat the helper. For a new index, run §2, then rebuild every kind with §6, skipping its clearing step because the table is empty. If the owner declines, leave the records unchanged and continue with KV reads.
 
-```sh
-TC_BIN='<TC_BETA>'; STATE='<STATE>'; umask 077
-"$TC_BIN" --profile tinyapp-<APP>-sql auth login --method openkey --paste --manifest "$STATE/tinyapp-<APP>-sql.json" --expiry 30d <<'CODE_<MARK>'
-<the code, on one line>
-CODE_<MARK>
-```
-
-After running 1b with the code returned in chat, check the sign-in yourself:
-
-```sh
-TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" --profile tinyapp-<APP>-sql auth status --json
-```
-
-- **`"authenticated": true`** → §2, then §6 for every kind the app's catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
-- **`"authenticated": false`** → ask the owner to paste the code again in chat. Run 1b yourself with that code, then check once more. Don't start a new 1a.
-- **The owner reports `tinycloud.sql/schema` declined** → they unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
-- **The owner reports `OPENKEY_PROOF_INVALID`, or the code was cut short** → ask them to paste the whole code again in chat, then run 1b yourself. Don't start a new 1a.
-- **The owner reports "Delegation code not found or expired"** → the short code has expired, was already used, or was mistyped. Ask them to send the full code OpenKey shows below it.
-- Never reuse a code for another profile.
 
 ## 2. Create the table and the view
 
 Run once, after the first sign-in. It's harmless to run again.
 
 ```sh
-TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql -- "CREATE TABLE IF NOT EXISTS records (key TEXT PRIMARY KEY, rec TEXT NOT NULL)"
-"$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql -- "CREATE VIEW IF NOT EXISTS entries AS SELECT key, kind, substr(r2, 1, instr(r2, '/') - 1) AS folder, substr(r2, instr(r2, '/') + 1) AS id, substr(r2, instr(r2, '/') + 1, 10) AS day, json_extract(rec, '\$.v') AS v, json_extract(rec, '\$.at') AS at, json_extract(rec, '\$.by') AS by, json_extract(rec, '\$.data') AS data, rec FROM (SELECT key, rec, substr(key, 1, instr(key, '/') - 1) AS kind, substr(key, instr(key, '/') + 1) AS r2 FROM records)"
+TC_BIN='<TC_BIN>'; umask 077
+"$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space '<APP_SPACE>' --json -- "CREATE TABLE IF NOT EXISTS records (key TEXT PRIMARY KEY, rec TEXT NOT NULL)"
+"$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space '<APP_SPACE>' --json -- "CREATE VIEW IF NOT EXISTS entries AS SELECT key, kind, substr(r2, 1, instr(r2, '/') - 1) AS folder, substr(r2, instr(r2, '/') + 1) AS id, substr(r2, instr(r2, '/') + 1, 10) AS day, json_extract(rec, '\$.v') AS v, json_extract(rec, '\$.at') AS at, json_extract(rec, '\$.by') AS by, json_extract(rec, '\$.data') AS data, rec FROM (SELECT key, rec, substr(key, 1, instr(key, '/') - 1) AS kind, substr(key, instr(key, '/') + 1) AS r2 FROM records)"
 ```
 
 - **`records`** holds one row per KV record: its relative key, and the record as stored.
@@ -83,13 +68,13 @@ Then fill the index: rebuild every kind the app's catalog lists (§6).
 
 ## 3. Keep the index in step
 
-Do this after every write, status change and delete in `SKILL.md` §6, whenever `SKILL.md` §3 showed the `tinyapp-<APP>-sql` profile. List every key you touched, relative to `xyz.tinycloud.tinyapps.<APP>/`: written, moved to and moved from, deleted. The block reads each key from KV and copies it into the index; a key that's gone from KV is removed from the index.
+Do this after every record write, status change or deletion when an index already exists. Use `<APP_PROFILE>` for KV and `<INDEX_PROFILE>` for SQL, both for the same owner, host and space. List each affected key relative to `xyz.tinycloud.tinyapps.<APP>/`.
 
 ```sh
-TC_BIN='<TC_BETA>'; STATE='<STATE>'; umask 077
-printf '%s\n' '<kind>/<folder>/<id>' '<kind>/<folder>/<id>' | xargs -P 8 -I{} sh -c 'R=$("$0" kv get "xyz.tinycloud.tinyapps.<APP>/$1" --raw --space applications --profile tinyapp-<APP> 2>/dev/null); c=$?; if [ $c -eq 0 ]; then printf "{\"k\":\"%s\",\"r\":%s}\n" "$1" "$R"; elif [ $c -eq 4 ]; then printf "{\"k\":\"%s\"}\n" "$1"; else printf "{\"k\":\"%s\",\"r\":}\n" "$1"; fi' "$TC_BIN" {} > "$STATE/rows"
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+printf '%s\n' '<kind>/<folder>/<id>' '<kind>/<folder>/<id>' | xargs -P 8 -I{} sh -c 'R=$("$0" --profile "<APP_PROFILE>" --host "<APP_HOST>" kv get "xyz.tinycloud.tinyapps.<APP>/$1" --raw --space "<APP_SPACE>" 2>/dev/null); c=$?; if [ $c -eq 0 ]; then printf "{\"k\":\"%s\",\"r\":%s}\n" "$1" "$R"; elif [ $c -eq 4 ]; then printf "{\"k\":\"%s\"}\n" "$1"; else printf "{\"k\":\"%s\",\"r\":}\n" "$1"; fi' "$TC_BIN" {} > "$STATE/rows"
 ROWS=$(sed 's/\\/\\\\/g; s/"/\\"/g' "$STATE/rows" | paste -s -d, -)
-"$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params "[\"[$ROWS]\"]" -- "INSERT OR REPLACE INTO records (key, rec) SELECT json_extract(value, '\$.k'), json_extract(value, '\$.r') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NOT NULL" && "$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params "[\"[$ROWS]\"]" -- "DELETE FROM records WHERE key IN (SELECT json_extract(value, '\$.k') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NULL)"
+"$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space '<APP_SPACE>' --json --params "[\"[$ROWS]\"]" -- "INSERT OR REPLACE INTO records (key, rec) SELECT json_extract(value, '\$.k'), json_extract(value, '\$.r') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NOT NULL" && "$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space '<APP_SPACE>' --json --params "[\"[$ROWS]\"]" -- "DELETE FROM records WHERE key IN (SELECT json_extract(value, '\$.k') FROM json_each(?) WHERE json_extract(value, '\$.r') IS NULL)"
 ```
 
 - **Two `{"changes": …}` lines** → done.
@@ -100,8 +85,8 @@ ROWS=$(sed 's/\\/\\\\/g; s/"/\\"/g' "$STATE/rows" | paste -s -d, -)
 If the block still fails, or `SKILL.md` §3 showed the index's session `"expired"`, mark the kind as behind, once per kind you touched, so the next agent with a working index rebuilds it:
 
 ```sh
-TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" kv put 'xyz.tinycloud.tinyapps.<APP>/index-stale/<kind>' --stdin --space applications --json --profile tinyapp-<APP> <<'EOF'
+TC_BIN='<TC_BIN>'; umask 077
+"$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv put 'xyz.tinycloud.tinyapps.<APP>/index-stale/<kind>' --stdin --space '<APP_SPACE>' --json <<'EOF'
 {"since":"<today's date>","by":"<your client>"}
 EOF
 ```
@@ -111,10 +96,10 @@ EOF
 Before you answer from the index, check every kind the question covers. Repeat the `sql query` line and the second `kv list` line for each kind, keeping them in this order.
 
 ```sh
-TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/index-stale/' --space applications --all --json --profile tinyapp-<APP>
-"$TC_BIN" sql query --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params '["<kind>/"]' -- "SELECT count(*) AS n FROM records WHERE instr(key, ?) = 1"
-"$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/<kind>/' --space applications --all --json --profile tinyapp-<APP> | grep '"count"'
+TC_BIN='<TC_BIN>'; umask 077
+"$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/index-stale/' --space '<APP_SPACE>' --all --json
+"$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' sql query --db xyz.tinycloud.tinyapps.<APP>/index --space '<APP_SPACE>' --json --params '["<kind>/"]' -- "SELECT count(*) AS n FROM records WHERE instr(key, ?) = 1"
+"$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv list --prefix 'xyz.tinycloud.tinyapps.<APP>/<kind>/' --space '<APP_SPACE>' --all --json | grep '"count"'
 ```
 
 - **The kind isn't under `index-stale/`, and `n` equals `"count"`** → the index is in step for that kind: §5.
@@ -124,8 +109,8 @@ TC_BIN='<TC_BETA>'; umask 077
 ## 5. Query
 
 ```sh
-TC_BIN='<TC_BETA>'; umask 077
-"$TC_BIN" sql query --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params '[<values>]' -- "<SELECT …>"
+TC_BIN='<TC_BIN>'; umask 077
+"$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' sql query --db xyz.tinycloud.tinyapps.<APP>/index --space '<APP_SPACE>' --json --params '[<values>]' -- "<SELECT …>"
 ```
 
 It prints `{"columns": […], "rows": [[…]], "rowCount": …}`. Query the `entries` view. Pass values as `?` parameters in `--params`, a JSON array, and never paste values into the SQL. Inside the SQL, write each `$` as `\$`. Leave `%` as it is, for example `strftime('%Y-%W', day)`.
@@ -147,19 +132,19 @@ Rules:
 Rebuild when §4 finds a kind behind, and for every kind after the first sign-in.
 
 1. List the kind's keys with `SKILL.md` §5, using the prefix `xyz.tinycloud.tinyapps.<APP>/<kind>/`, and drop the `xyz.tinycloud.tinyapps.<APP>/` root from each key.
-2. Clear the kind's rows, unless the copy was created moments ago in §1b and is still empty:
+2. Clear the kind's rows, unless the copy was just created in §1 and is still empty:
 
    ```sh
-   TC_BIN='<TC_BETA>'; umask 077
-   "$TC_BIN" sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space applications --json --profile tinyapp-<APP>-sql --params '["<kind>/"]' -- "DELETE FROM records WHERE instr(key, ?) = 1"
+   TC_BIN='<TC_BIN>'; umask 077
+   "$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' sql execute --db xyz.tinycloud.tinyapps.<APP>/index --space '<APP_SPACE>' --json --params '["<kind>/"]' -- "DELETE FROM records WHERE instr(key, ?) = 1"
    ```
 
 3. Copy exactly the keys step 1 listed, all of them, with §3's block: at most 200 keys per block, one block after another. Never build key names yourself, for example from dates.
 4. Remove the kind's mark, if §4 listed one:
 
    ```sh
-   TC_BIN='<TC_BETA>'; umask 077
-   "$TC_BIN" kv delete 'xyz.tinycloud.tinyapps.<APP>/index-stale/<kind>' --space applications --json --profile tinyapp-<APP>
+   TC_BIN='<TC_BIN>'; umask 077
+   "$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv delete 'xyz.tinycloud.tinyapps.<APP>/index-stale/<kind>' --space '<APP_SPACE>' --json
    ```
 
 5. Run §4's block once, with its lines for every kind you rebuilt. Report `n` and `"count"` for each: they must be equal.

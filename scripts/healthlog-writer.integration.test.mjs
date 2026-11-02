@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -27,11 +27,6 @@ test("agent meals use the intended owner and owner day, and agree with the page 
   await writeFile(join(root, "temp-paths.txt"), root + "\n");
   const env = { PATH: process.env.PATH, HOME: root, TC_HOME: root, COURIER_HOME: root, BUN_INSTALL_CACHE_DIR: root, TC_APPS_STATE: join(root, "state"), TZ: "UTC", NO_COLOR: "1" };
   await mkdir(env.TC_APPS_STATE);
-  await mkdir(join(root, "wrapper"));
-  const wrapper = join(root, "wrapper/tinycloud");
-  await copyFile(join(repo, "skills/tc-apps/tc-wrapper.sh"), wrapper);
-  await chmod(wrapper, 0o755);
-  await writeFile(join(root, "wrapper/cli-path"), cliBin + "\n");
   const fromSample = (path) => import(pathToFileURL(join(sample, path)).href);
   const { startNode } = await fromSample("tests/lib/node.mjs");
   const { connect } = await fromSample("dev/shim.mjs");
@@ -63,7 +58,8 @@ test("agent meals use the intended owner and owner day, and agree with the page 
   const writeMeal = async (name, kcal) => {
     const op = randomUUID();
     const values = {
-      "<TC_BIN>": wrapper, "<STATE>": env.TC_APPS_STATE,
+      "<TC_BIN>": cliBin, "<STATE>": env.TC_APPS_STATE,
+      "<CATALOG_PROFILE>": "agent-meal", "<CATALOG_HOST>": node.host,
       "<HEALTHLOG_CONTEXT>": join(repo, "skills/tc-apps/healthlog-context.mjs"),
       "<MARK>": op.replaceAll("-", ""), "<OP_ID>": op,
       "<DAY>": new Date().toISOString().slice(0, 10), "<UTC>": new Date().toISOString(),

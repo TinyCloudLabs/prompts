@@ -3,9 +3,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, test } from "node:test";
 
-const script = new URL("./agent-env.mjs", import.meta.url).pathname;
+const script = fileURLToPath(new URL("./agent-env.mjs", import.meta.url));
+const windows = process.platform === "win32";
 const homes = [];
 const owner = "did:pkh:eip155:1:0xd559CCd9EB87c530A9a349262669386dE93cf412";
 const fresh = () => {
@@ -15,7 +17,7 @@ const fresh = () => {
 };
 const run = (home, args, extra = {}) => spawnSync(process.execPath, [script, ...args], {
   encoding: "utf8",
-  env: { HOME: home, PATH: process.env.PATH, ...extra },
+  env: { ...(windows ? { SystemRoot: process.env.SystemRoot, USERPROFILE: home } : {}), HOME: home, PATH: process.env.PATH, ...extra },
 });
 afterEach(() => { for (const home of homes.splice(0)) rmSync(home, { recursive: true, force: true }); });
 
@@ -26,8 +28,10 @@ test("operator defaults are data, and process values take precedence", () => {
   assert.equal(run(home, ["set", "TC_OWNER_EMAIL", "owner@example.com"]).status, 0);
   assert.equal(run(home, ["get", "TC_OWNER_DID"]).stdout.trim(), owner);
   assert.equal(run(home, ["get", "TC_OWNER_EMAIL"], { TC_OWNER_EMAIL: "other@example.com" }).stdout.trim(), "other@example.com");
-  assert.equal(statSync(join(home, ".config/tinycloud")).mode & 0o777, 0o700);
-  assert.equal(statSync(path).mode & 0o777, 0o600);
+  if (!windows) {
+    assert.equal(statSync(join(home, ".config/tinycloud")).mode & 0o777, 0o700);
+    assert.equal(statSync(path).mode & 0o777, 0o600);
+  }
   assert.equal(readFileSync(path, "utf8"), `TC_OWNER_DID=${owner}\nTC_OWNER_EMAIL=owner@example.com\n`);
 });
 
@@ -64,13 +68,14 @@ test("writes reject secret-looking keys and never retain them", () => {
   assert.notEqual(run(home, ["set", "ELEVENLABS_API_KEY", "private-canary"]).status, 0);
   assert.notEqual(run(home, ["set", "TC_PRIVATE_KEY", "private-canary"]).status, 0);
   assert.equal(existsSync(path), false);
-  assert.equal(run(home, ["set", "TC_BIN", "/opt/tinycloud/bin/tinycloud"]).status, 0);
-  assert.equal(readFileSync(path, "utf8"), "TC_BIN=/opt/tinycloud/bin/tinycloud\n");
+  const bin = join(home, "cli/tinycloud");
+  assert.equal(run(home, ["set", "TC_BIN", bin]).status, 0);
+  assert.equal(readFileSync(path, "utf8"), `TC_BIN=${bin}\n`);
 });
 
 test("an absolute CLI path containing spaces remains a literal data value", () => {
   const home = fresh();
-  const bin = "/home/test user/tinycloud/bin/tinycloud";
+  const bin = join(home, "test user/tinycloud/bin/tinycloud");
   assert.equal(run(home, ["set", "TC_BIN", bin]).status, 0);
   assert.equal(run(home, ["get", "TC_BIN"]).stdout.trim(), bin);
 });
@@ -81,23 +86,25 @@ test("TC_AGENT_ENV selects an independent owner's defaults", () => {
   assert.equal(run(home, ["set", "TC_OWNER_EMAIL", "second@example.com"], { TC_AGENT_ENV: selected }).status, 0);
   assert.equal(run(home, ["get", "TC_OWNER_EMAIL"], { TC_AGENT_ENV: selected }).stdout.trim(), "second@example.com");
   assert.equal(run(home, ["get", "TC_OWNER_EMAIL"]).status, 1);
-  assert.equal(statSync(join(home, "owners")).mode & 0o777, 0o700);
-  assert.equal(statSync(selected).mode & 0o777, 0o600);
+  if (!windows) {
+    assert.equal(statSync(join(home, "owners")).mode & 0o777, 0o700);
+    assert.equal(statSync(selected).mode & 0o777, 0o600);
+  }
 });
 
 test("selected directory links are rejected without changing their target", () => {
   const home = fresh();
   const target = join(home, "other");
   mkdirSync(target, { mode: 0o755 });
-  symlinkSync(target, join(home, "selected"));
+  symlinkSync(target, join(home, "selected"), windows ? "junction" : "dir");
   const selected = join(home, "selected/agent.env");
   const result = run(home, ["set", "TC_OWNER_EMAIL", "owner@example.com"], { TC_AGENT_ENV: selected });
   assert.equal(result.status, 2);
-  assert.equal(statSync(target).mode & 0o777, 0o755);
+  if (!windows) assert.equal(statSync(target).mode & 0o777, 0o755);
   assert.equal(existsSync(join(target, "agent.env")), false);
 });
 
-test("selected file links are not read or replaced", () => {
+test("selected file links are not read or replaced", { skip: windows }, () => {
   const home = fresh();
   const dir = join(home, "selected");
   mkdirSync(dir, { mode: 0o700 });
@@ -110,7 +117,7 @@ test("selected file links are not read or replaced", () => {
   assert.equal(readFileSync(target, "utf8"), "TC_OWNER_EMAIL=canary@example.com\n");
 });
 
-test("directory replacement during activation stays anchored to the opened directory", () => {
+test("directory replacement during activation stays anchored to the opened directory", { skip: windows }, () => {
   const home = fresh();
   const selected = join(home, "selected");
   const moved = join(home, "moved");
