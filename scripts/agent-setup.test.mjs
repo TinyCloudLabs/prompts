@@ -386,15 +386,16 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
     const allowed = mode === "same-owner" || mode === "anyone";
     assert.equal(result.status === 0, allowed, result.stderr);
     if (allowed) assert.deepEqual(readFileSync(calls, "utf8").trimEnd().split("\n"),
-      ["courier", "invite", "--session", "01M62GPP936EPBR37DK93RWS1H", "--mode", mode, "--consent", "--wait", "60"]);
+      ["courier", "invite", "--session", "01M62GPP936EPBR37DK93RWS1H", "--mode", mode, "--consent", "--wait", "1"]);
     else assert.equal(existsSync(calls), false);
   }
 });
 
 // Clarissa's #125 cell: `invite` ran with the default `--wait 300`, a 2-minute tool limit killed it, and the agent
-// stopped serving to ask the owner. Every invite, invite serve and join call waits at most a minute, and an
-// unclaimed wait (exit 1, `[invite-pending]`) is rerun in the same turn without asking, up to 10 times.
-test("Courier invite, invite serve and join wait at most 60 s and rerun on [invite-pending] in the same turn", () => {
+// stopped serving to ask the owner. `invite --wait 1` returns the link within seconds (its [invite-pending] is
+// expected and not counted); invite serve and join wait at most a minute, and an unclaimed wait (exit 1,
+// `[invite-pending]`) is rerun in the same turn without asking, up to 10 times.
+test("Courier invite returns the link at once; invite serve and join wait at most 60 s and rerun on [invite-pending] in the same turn", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const section = (heading) => guide.split(`\n## ${heading}\n`)[1]?.split("\n## ")[0] ?? "";
   const shellBlocks = (text) => [...text.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
@@ -404,19 +405,23 @@ test("Courier invite, invite serve and join wait at most 60 s and rerun on [invi
   assert.ok(incoming.includes(`${NO_FILTER} It waits at most a minute for the issuer`));
   assert.ok(incoming.includes("If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same command again, at most 10 times in a row"));
   const invite = section("Choose how to invite");
-  assert.match(shellBlocks(invite).at(-1), /\n"\$TC" courier invite --session "\$SESSION_ID" --mode "\$MODE" --consent --wait 60$/);
-  assert.ok(invite.includes(NO_FILTER));
+  assert.match(shellBlocks(invite).at(-1), /\n"\$TC" courier invite --session "\$SESSION_ID" --mode "\$MODE" --consent --wait 1$/);
+  assert.ok(invite.includes(`${NO_FILTER} With \`--wait 1\` it returns within seconds: its first JSON line has \`status: invitation\`, and it then exits 1 with \`[invite-pending]\` on stderr. That first \`[invite-pending]\` is expected: the invitation is kept. Give the owner its \`link\` at once`));
+  assert.ok(invite.includes("Then, in the same turn, keep the issuer serving as below."));
   const serving = section("Keep the issuer serving");
   assert.deepEqual(shellBlocks(serving), ['"$TC" courier invite serve "$INVITATION_ID" --wait 60']);
   assert.ok(serving.includes(NO_FILTER));
-  assert.ok(serving.includes("- **Exit 1, `[invite-pending]` on stderr** (\"No claim received\"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` command again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 runs in a row"));
+  assert.ok(serving.includes("- **Exit 1, `[invite-pending]` on stderr** (\"No claim received\"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` command again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count."));
   assert.ok(serving.includes("- **Exit 1, `[invite-expired]`:**"));
   assert.doesNotMatch(guide, /Keep that process running/);
-  for (const line of shellBlocks(guide).join("\n").split("\n").filter((text) => /courier (?:invite|join)\b/.test(text))) assert.ok(line.endsWith(" --wait 60"), line);
+  for (const line of shellBlocks(guide).join("\n").split("\n").filter((text) => /courier (?:invite|join)\b/.test(text))) {
+    assert.ok(line.endsWith(/courier invite --session/.test(line) ? " --wait 1" : " --wait 60"), line);
+  }
   const start = readFileSync(join(root, "_site/skills/courier/start.md"), "utf8");
   assert.ok(start.includes(`"$TC" courier join '<exact link>' --consent --wait 60 `));
-  assert.ok(start.includes(`"$TC" courier invite --session <id> --mode same-owner|anyone --consent --wait 60.`));
-  assert.ok(start.includes(`in the same turn and without asking me, resume "$TC" courier invite serve <invitationId> --wait 60 for that same invitation, at most 10 runs in a row.`));
+  assert.ok(start.includes(`"$TC" courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected`));
+  assert.ok(start.includes(`Give me its exact handoff link at once. Then, in the same turn and without asking me, keep the issuer serving that same invitation with "$TC" courier invite serve <invitationId> --wait 60`));
+  assert.ok(start.includes("at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count."));
   assert.doesNotMatch(start, /--wait 300/);
 });
 
