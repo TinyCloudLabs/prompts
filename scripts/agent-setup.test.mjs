@@ -401,21 +401,23 @@ test("Courier invite returns the link at once; invite serve and join wait at mos
   const shellBlocks = (text) => [...text.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
   const NO_FILTER = "Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output.";
   const incoming = section("Incoming invitation takes priority");
-  assert.deepEqual(shellBlocks(incoming), ['"$TC" courier join "$INVITATION_URL" --consent --wait 60']);
-  assert.ok(incoming.includes(`${NO_FILTER} It waits at most a minute for the issuer`));
-  assert.ok(incoming.includes("If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same command again, at most 10 times in a row"));
+  assert.equal(shellBlocks(incoming).length, 1);
+  assert.ok(shellBlocks(incoming)[0].includes('{ { "$TC" courier join "$INVITATION_URL" --consent --wait 60; echo "$?" > "$ERR.rc"; }'));
+  assert.ok(incoming.includes(`${NO_FILTER} The CLI's own output shows in full; then the block prints one last line. Do what a \`NEXT:\` line says. It waits at most a minute for the issuer`));
+  assert.ok(incoming.includes("If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same block again, at most 10 times in a row"));
   const invite = section("Choose how to invite");
   assert.match(shellBlocks(invite).at(-1), /\n"\$TC" courier invite --session "\$SESSION_ID" --mode "\$MODE" --consent --wait 1$/);
   assert.ok(invite.includes(`${NO_FILTER} With \`--wait 1\` it returns within seconds: its first JSON line has \`status: invitation\`, and it then exits 1 with \`[invite-pending]\` on stderr. That first \`[invite-pending]\` is expected: the invitation is kept. Give the owner its \`link\` at once`));
   assert.ok(invite.includes("Then, in the same turn, keep the issuer serving as below."));
   const serving = section("Keep the issuer serving");
-  assert.deepEqual(shellBlocks(serving), ['"$TC" courier invite serve "$INVITATION_ID" --wait 60']);
+  assert.equal(shellBlocks(serving).length, 1);
+  assert.ok(shellBlocks(serving)[0].includes('{ { "$TC" courier invite serve "$INVITATION_ID" --wait 60; echo "$?" > "$ERR.rc"; }'));
   assert.ok(serving.includes(NO_FILTER));
-  assert.ok(serving.includes("- **Exit 1, `[invite-pending]` on stderr** (\"No claim received\"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` command again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count."));
+  assert.ok(serving.includes("- **Exit 1, `[invite-pending]` on stderr** (\"No claim received\"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` block again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count."));
   assert.ok(serving.includes("- **Exit 1, `[invite-expired]`:**"));
   assert.doesNotMatch(guide, /Keep that process running/);
   for (const line of shellBlocks(guide).join("\n").split("\n").filter((text) => /courier (?:invite|join)\b/.test(text))) {
-    assert.ok(line.endsWith(/courier invite --session/.test(line) ? " --wait 1" : " --wait 60"), line);
+    assert.match(line, /courier invite --session/.test(line) ? / --wait 1$/ : / --wait 60; echo "\$\?" > "\$ERR\.rc"; \} 2>&1 1>&3 \| tee "\$ERR" >&2; \} 3>&1$/, line);
   }
   const start = readFileSync(join(root, "_site/skills/courier/start.md"), "utf8");
   assert.ok(start.includes(`"$TC" courier join '<exact link>' --consent --wait 60 `));
@@ -423,6 +425,31 @@ test("Courier invite returns the link at once; invite serve and join wait at mos
   assert.ok(start.includes(`Give me its exact handoff link at once. Then, in the same turn and without asking me, keep the issuer serving that same invitation with "$TC" courier invite serve <invitationId> --wait 60`));
   assert.ok(start.includes("at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count."));
   assert.doesNotMatch(start, /--wait 300/);
+});
+
+// invite serve and join print what to do next after the CLI's full output: stderr is copied for the
+// [invite-pending] check and still shown; stdout passes through; the block exits with the CLI's code.
+test("Courier invite serve and join blocks print a NEXT line on paired/joined and on [invite-pending], else *_EXIT", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  for (const [heading, done, waiting, other] of [
+    ["## Keep the issuer serving", "NEXT: paired; continue.", "NEXT: no one has joined yet; run this block again now, in the same turn.", "INVITE_EXIT"],
+    ["## Incoming invitation takes priority", "NEXT: joined; continue.", "NEXT: the issuer has not finished pairing yet; run this block again now, in the same turn.", "JOIN_EXIT"],
+  ]) {
+    const script = block(guide, heading);
+    for (const [exit, stdout, stderr, last] of [
+      [0, '{"status":"paired"}\n', "", done],
+      [1, "", "tinycloud courier: [invite-pending] No claim received.\n", waiting],
+      [1, "", "tinycloud courier: [invite-expired] Invitation expired.\n", `${other} 1`],
+      [2, "", "courier invite serve <invitationId>\n", `${other} 2`],
+    ]) {
+      const dir = home();
+      executable(join(dir, "tc"), `printf '%s' "$FAKE_STDOUT"\nprintf '%s' "$FAKE_STDERR" >&2\nexit "$FAKE_EXIT"`);
+      const result = shell(script, { HOME: dir, TC: join(dir, "tc"), INVITATION_ID: "01M62GPP936EPBR37DK93RWS1H", INVITATION_URL: "https://courier.tinycloud.xyz/c/x#k", FAKE_EXIT: String(exit), FAKE_STDOUT: stdout, FAKE_STDERR: stderr });
+      assert.equal(result.status, exit, `${heading} ${exit}: ${result.stderr}`);
+      assert.equal(result.stderr, stderr, heading);
+      assert.equal(result.stdout, `${stdout}${last}\n`, heading);
+    }
+  }
 });
 
 // The codes and exit the guide relies on, in the pinned CLI's Courier bundle: an unclaimed wait throws
@@ -448,7 +475,7 @@ const courierSetup = (surface) => {
   assert.equal(blocks.length, 4, `${surface}: expected request, wait, code import and read blocks`);
   const [request, wait, redeem] = blocks;
   assert.match(request, /^"\$TC" courier init --request > "\$COURIER_HOME\/request\.json" &&$/m);
-  assert.match(wait, /^"\$TC" courier init --wait --timeout 60s$/m);
+  assert.match(wait, /^\{ "\$TC" courier init --wait --timeout 60s; echo "\$\?" > "\$OUT\.rc"; \} \| tee "\$OUT"$/m);
   assert.match(redeem, /"\$TC" courier init --grant-file -/);
   // A refused grant names the labelled row on the delegations page; the agent never relays the CID to the owner.
   assert.ok(section.includes(REFUSED_GRANT_LINE), `${surface}: refused-grant owner line`);
@@ -549,18 +576,35 @@ for (const surface of COURIER_SURFACES) {
     // A foreground call: no background job, sleep or loop, and a wait well under a 2-minute tool limit.
     assert.doesNotMatch(wait, /&\s*$|\bsleep\b|\bwhile\b|\buntil\b|\bnohup\b/m);
     assert.ok(Number(wait.match(/--timeout (\d+)s\b/)[1]) <= 90);
-    for (const [exit, stdout] of [[8, '{"pending":{"step":1,"of":1,"approvalUrl":"https://openkey.so/a/x","expiresAt":"2026-11-02T00:00:00.000Z"}}'], [0, '{"ok":true}'], [1, ""]]) {
-      for (const selected of [undefined, "chosen-home"]) {
-        const dir = home();
-        const log = join(dir, "tc-calls");
-        executable(join(dir, "tc"), `printf '%s|%s\\n' "$*" "$COURIER_HOME" > "$TC_LOG"\nprintf '%s' "$FAKE_STDOUT"\nexit "$FAKE_EXIT"`);
+    // The block shows the CLI's stdout in full, exits with its code, then prints what to do next.
+    const pendingOut = (url) => `{"pending":{"step":1,"of":1,"approvalUrl":"${url}","expiresAt":"2026-11-02T00:00:00.000Z"}}\n`;
+    const newLink = (url) => `NEXT: this is a new link; send it to the owner now, on its own line, with the step 1 line: ${url} Then run this block again now, in the same turn.`;
+    const sameLink = "NEXT: the owner already has this link; do not send it again. Just run this block again now, in the same turn.";
+    for (const selected of [undefined, "chosen-home"]) {
+      const dir = home();
+      const log = join(dir, "tc-calls");
+      const courierHome = join(dir, selected ?? ".courier");
+      mkdirSync(courierHome, { recursive: true, mode: 0o700 });
+      writeFileSync(join(courierHome, "request.json"), JSON.stringify({ openkeyUrl: "https://openkey.so/a/sent" }));
+      executable(join(dir, "tc"), `printf '%s|%s\\n' "$*" "$COURIER_HOME" >> "$TC_LOG"\nprintf '%s' "$FAKE_STDOUT"\nexit "$FAKE_EXIT"`);
+      for (const [exit, stdout, last] of [
+        [8, pendingOut("https://openkey.so/a/sent"), sameLink],
+        [8, pendingOut("https://openkey.so/a/other"), newLink("https://openkey.so/a/other")],
+        [8, pendingOut("https://openkey.so/a/other"), sameLink],
+        [8, "", "COURIER_EXIT 8"],
+        [0, '{"ok":true}\n', "NEXT: Courier is set up; continue."],
+        [0, '{"ok":false}\n', "COURIER_EXIT 0"],
+        [1, "", "COURIER_EXIT 1"],
+        [2, "", "COURIER_EXIT 2"],
+      ]) {
         const env = { HOME: dir, TC: join(dir, "tc"), TC_LOG: log, FAKE_EXIT: String(exit), FAKE_STDOUT: stdout };
-        if (selected) env.COURIER_HOME = join(dir, selected);
+        if (selected) env.COURIER_HOME = courierHome;
         const result = shell(wait, env);
         assert.equal(result.status, exit, result.stderr);
-        assert.equal(result.stdout, stdout);
-        assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${join(dir, selected ?? ".courier")}\n`);
+        assert.equal(result.stdout, `${stdout}${last}\n`);
       }
+      assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${courierHome}\n`.repeat(8));
+      assert.equal(statSync(join(courierHome, "shown-link")).mode & 0o777, 0o600);
     }
   });
 
@@ -630,7 +674,10 @@ for (const surface of COURIER_SURFACES) {
     assert.ifError(waited.error);
     assert.equal(waited.status, 8, waited.stderr);
     assert.ok(Date.now() - started < 10000);
-    const { pending } = JSON.parse(waited.stdout);
+    const lines = waited.stdout.trimEnd().split("\n");
+    // The link the owner was sent in step 1: the block says to rerun now, not to send it again.
+    assert.equal(lines.at(-1), "NEXT: the owner already has this link; do not send it again. Just run this block again now, in the same turn.");
+    const { pending } = JSON.parse(lines.slice(0, -1).join("\n"));
     assert.deepEqual({ ...pending, expiresAt: typeof pending.expiresAt }, { step: 1, of: 1, approvalUrl: openkeyUrl, expiresAt: "string" });
     const id = new URL(openkeyUrl).pathname.split("/").pop();
     const polled = readFileSync(polls, "utf8").trim().split("\n").map((line) => JSON.parse(line).url);
