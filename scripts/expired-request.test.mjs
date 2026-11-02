@@ -22,6 +22,7 @@ test("onboarding caps exit 8 at three tries, then logs out only for a dead reque
   assert.match(exit8, /`APPROVAL_REQUEST_UNAVAILABLE` with `\(HTTP 400\)`/);
   assert.match(exit8, /Run `"\$TC" auth logout` \(with the same `--profile <name>` if you used one\), then run `"\$TC" onboard` again/);
   assert.match(exit8, /Never edit or delete the CLI's files yourself\./);
+  assert.match(exit8, /Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running/);
   assert.match(exit8, /\*\*Otherwise:\*\* stop and report it to the owner; don't retry\./);
   assert.doesNotMatch(exit8, /```|approval-pending/, "no block touches the CLI's state");
 });
@@ -45,7 +46,7 @@ test("owner-grant.sh caps exit 8 and names the owner-profile logout for a dead r
   });
   assert.equal(out.status, 1);
   assert.match(out.stderr, /Run this step again in a minute, at most three times in a row\./);
-  assert.match(out.stderr, /APPROVAL_REQUEST_UNAVAILABLE with \(HTTP 400\).*--profile owner auth logout, then run this step again; the owner signs in again first\. That logout signs the owner profile out for every app until they sign in again\. Otherwise stop and tell the owner\./);
+  assert.match(out.stderr, /APPROVAL_REQUEST_UNAVAILABLE with \(HTTP 400\).*Before auth logout, make sure none of your own tinycloud commands for that profile is still running.*--profile owner auth logout, then run this step again; the owner signs in again first\. That logout signs the owner profile out for every app until they sign in again\. Otherwise stop and tell the owner\./);
   assert.doesNotMatch(out.stderr, /owner sign-in has expired/);
   assert.equal(readFileSync(pending, "utf8"), before, "the helper never edits the CLI's request file");
   assert.ok(!readFileSync(join(dir, "calls"), "utf8").includes("logout"), "the helper itself never logs the owner out");
