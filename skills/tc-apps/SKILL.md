@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.0"
+  version: "0.3.1"
 ---
 
 # Personal apps in TinyCloud
