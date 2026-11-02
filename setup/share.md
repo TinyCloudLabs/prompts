@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/share` and follow that text. Summaries drop the shell blocks you must run.
+
 # Share an artifact with TinyCloud
 
 Your agent publishes a document or web page from your computer to your own TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first. Sharing with an email address or a domain is not available yet. Your agent can revoke the link any time.

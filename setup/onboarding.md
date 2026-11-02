@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/onboarding.md` and follow that text. Summaries drop the shell blocks you must run.
+
 # Set up TinyCloud for the person you're working for
 
 Give any AI agent this page, and it sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do. Then it carries on with what you asked for.
@@ -50,7 +52,7 @@ TC='<TC_BIN>'
 "$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY
 ```
 
-**CLI rule (stable `1.6.0`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.0`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: step 2 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun step 2. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
+**CLI rule (stable `1.6.0`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.0`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: step 2 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun step 2. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
 
 **2. Run onboarding.** It asks for both approvals, step 1 first, then step 2. It uses the selected default profile, or `TC_PROFILE` if set. Run this in the foreground, as its own shell call. Each run waits at most a minute for the owner and ends within about two minutes:
 
@@ -86,8 +88,8 @@ Never run `onboard --code`: these links don't produce a code, and the approval i
 
 **If something goes wrong:**
 
-- **`SKILL_MISSING`:** install the `tinycloud-cli` skill as in [the CLI setup's "Install the core skill" step](tinycloud.md#install-the-core-skill), then rerun the block; this is for you only, so don't tell the owner.
-- **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.6.0` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block; this is for you only, so don't tell the owner.
+- **`SKILL_MISSING`:** install the `tinycloud-cli` skill as in [the CLI setup's "Install the core skill" step](tinycloud.md#install-the-core-skill), then rerun the block. Installing the skill is part of the owner's request: don't ask first; at most one short line ("Installing the TinyCloud skill.").
+- **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.6.0` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
 - **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.6.0`, and stop; don't replace it.
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **Exit 8 without a `pending` object:** OpenKey couldn't be reached. Wait a minute and run the same command again, at most three times in a row. If it still fails, stop and report it to the owner; don't retry. Never edit or delete the CLI's files yourself.
