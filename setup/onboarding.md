@@ -74,39 +74,9 @@ The owner can open the link on any device, their phone included.
 **If something goes wrong:**
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
-- **Exit 8:** OpenKey couldn't be reached. Wait a minute and run `"$TC" onboard` again the same way. After the third exit 8 in a row, stop retrying and run this block once; if you ran onboard with `--profile <name>`, set `PROFILE` to that name first. It is a last resort for CLI 1.5.0 and 1.5.1, which keep a request that expired before it was approved. It uses the installed CLI's own state code and profile lock, removes only such a request, and changes nothing for another CLI version or an unfamiliar file:
-
-  ```sh
-  node -e '
-  const fs = require("node:fs"), path = require("node:path"), { createRequire } = require("node:module");
-  const say = (word) => { console.log(word); process.exit(0); };
-  const [named, version, tc] = process.argv.slice(1);
-  if (!["1.5.0", "1.5.1"].includes(version)) say("UNKNOWN");
-  let state;
-  try { state = createRequire(fs.realpathSync(tc))("@tinycloud/operations/state"); } catch { say("UNKNOWN"); }
-  if (![state.withProfileLock, state.profilePath, state.readJson, state.writeJsonAtomic, state.tinycloudConfigPath].every((f) => typeof f === "function")) say("UNKNOWN");
-  let profile = named || process.env.TC_PROFILE;
-  if (!profile) { try { profile = JSON.parse(fs.readFileSync(state.tinycloudConfigPath(), "utf8")).defaultProfile; } catch {} }
-  profile = profile || "default";
-  const known = (i) => i && typeof i === "object" && i.version === 1 && typeof i.requestId === "string" && !Number.isNaN(Date.parse(i.requestExpiresAt));
-  const dead = (i) => !i.resultRef && !i.resultEnvelope && !i.command && !i.commandIntent && !i.committed && !i.acknowledged && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
-  state.withProfileLock(profile, async () => {
-    const file = path.join(state.profilePath(profile), "approval-pending.json");
-    const items = await state.readJson(file);
-    if (items === null) return "NONE_EXPIRED";
-    if (!Array.isArray(items) || !items.every(known)) return "UNKNOWN";
-    const keep = items.filter((i) => !dead(i));
-    if (keep.length === items.length) return "NONE_EXPIRED";
-    await state.writeJsonAtomic(file, keep);
-    return "DROPPED";
-  }, { requireProfile: true, timeoutMs: 10000 }).then(say, (e) => say(e instanceof state.ProfileLockTimeoutError ? "BUSY" : "UNKNOWN"));
-  ' "${PROFILE:-}" "$("$TC" --version)" "$TC"
-  ```
-
-  - **`DROPPED`:** the link expired before it was approved. Run `"$TC" onboard` again and send the new link, as for `APPROVAL_REQUEST_EXPIRED` below.
-  - **`NONE_EXPIRED`:** OpenKey is still unavailable. Stop and report it to the owner; don't retry.
-  - **`BUSY`:** another TinyCloud command is using this profile. Wait a minute and run this block again.
-  - **`UNKNOWN`:** stop and report it to the owner; don't retry or change the file yourself.
+- **Exit 8:** OpenKey couldn't be reached. Wait a minute and run `"$TC" onboard` again the same way, at most three times in a row.
+  - **If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`:** the link expired before it was approved, and this CLI keeps asking OpenKey for it. Run `"$TC" auth logout` (with the same `--profile <name>` if you used one), then run `"$TC" onboard` again the same way and send the new link, as for `APPROVAL_REQUEST_EXPIRED` below. Never edit or delete the CLI's files yourself.
+  - **Otherwise:** stop and report it to the owner; don't retry.
 - **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run `"$TC" onboard` again and send the new link.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
