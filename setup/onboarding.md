@@ -74,7 +74,27 @@ The owner can open the link on any device, their phone included.
 **If something goes wrong:**
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
-- **Exit 8:** OpenKey is unavailable for now. Wait a minute and run `"$TC" onboard` again.
+- **Exit 8:** OpenKey couldn't be reached. Wait a minute and run `"$TC" onboard` again the same way. After the third exit 8 in a row, stop retrying and run this block once, with `PROFILE` set to `owner` if you added `--profile owner`:
+
+  ```sh
+  PROFILE="${TC_PROFILE:-default}"
+  node -e '
+  const fs = require("node:fs"), path = require("node:path");
+  const file = path.join(process.env.TC_HOME || process.env.HOME, ".tinycloud", "profiles", process.argv[1], "approval-pending.json");
+  let items;
+  try { items = JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { if (e.code === "ENOENT") { console.log("NONE_EXPIRED"); process.exit(0); } throw e; }
+  const dead = (i) => !i.resultRef && !i.resultEnvelope && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
+  const keep = items.filter((i) => !dead(i));
+  if (keep.length === items.length) { console.log("NONE_EXPIRED"); process.exit(0); }
+  const tmp = file + "." + process.pid + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(keep, null, 2) + "\n", { mode: 0o600, flag: "wx" });
+  fs.renameSync(tmp, file);
+  console.log("DROPPED");
+  ' "$PROFILE"
+  ```
+
+  - **`DROPPED`:** the link expired before it was approved. Run `"$TC" onboard` again and send the new link, as for `APPROVAL_REQUEST_EXPIRED` below.
+  - **`NONE_EXPIRED`:** OpenKey is still unavailable. Stop and report it to the owner; don't retry.
 - **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run `"$TC" onboard` again and send the new link.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.

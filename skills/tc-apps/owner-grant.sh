@@ -73,6 +73,20 @@ if [ ! -s "$DIR/owner-did.txt" ]; then
   }
   printf '%s\n' "$OWNER_DID" > "$DIR/owner-did.txt"
 fi
+# CLI 1.5.x keeps an access request that expired unapproved and then exits 8 on every run.
+# Drop only such dead requests from the owner profile, so a rerun prints a fresh link.
+node -e '
+const fs = require("node:fs"), path = require("node:path");
+const file = path.join(process.env.TC_HOME || process.env.HOME, ".tinycloud", "profiles", process.argv[1], "approval-pending.json");
+let items;
+try { items = JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { if (e.code === "ENOENT") process.exit(0); throw e; }
+const dead = (i) => !i.resultRef && !i.resultEnvelope && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
+const keep = items.filter((i) => !dead(i));
+if (keep.length === items.length) process.exit(0);
+const tmp = file + "." + process.pid + ".tmp";
+fs.writeFileSync(tmp, JSON.stringify(keep, null, 2) + "\n", { mode: 0o600, flag: "wx" });
+fs.renameSync(tmp, file);
+' "$OWNER_PROFILE"
 RC=0
 echo 'Access link: the owner approves it in OpenKey and no code comes back. This step finishes on its own after the approval.' >&2
 "$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
@@ -83,6 +97,10 @@ if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
   echo 'APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link.' >&2
   echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  exit 1
+fi
+if [ "$RC" -eq 8 ]; then
+  echo "OpenKey couldn't be reached, so nothing was granted. Run this step again in a minute; after the third time in a row, stop and tell the owner." >&2
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then
