@@ -38,15 +38,18 @@ test("owner-grant.sh caps exit 8 and names the owner-profile logout for a dead r
   writeFileSync(join(state, "meal-request.json"), "{}");
   writeFileSync(join(state, "owner-did.txt"), "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
   const cli = join(dir, "tinycloud");
-  writeFileSync(cli, `#!/bin/sh\necho "$*" >> "$HOME/calls"\ncase " $* " in *" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; *" auth grant "*) echo 'OpenKey could not discover this request (HTTP 400). Retry the command to resume.' >&2; exit 8 ;; esac\n`, { mode: 0o755 });
+  // The grant records what it finds on stdin: the no-code helper gives every CLI child /dev/null.
+  writeFileSync(cli, `#!/bin/sh\necho "$*" >> "$HOME/calls"\ncase " $* " in *" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; *" auth grant "*) cat > "$HOME/grant-stdin"; echo 'OpenKey could not discover this request (HTTP 400). Retry the command to resume.' >&2; exit 8 ;; esac\n`, { mode: 0o755 });
   const before = readFileSync(pending, "utf8");
   const out = spawnSync("sh", [join(root, "skills/tc-apps/owner-grant.sh"), "healthlog"], {
-    encoding: "utf8", input: "", timeout: 20000,
+    encoding: "utf8", input: "not-a-code\n", timeout: 20000,
     env: { PATH: process.env.PATH, HOME: dir, TC_HOME: dir, TC_APPS_STATE: state, TC_BIN: cli },
   });
   assert.equal(out.status, 1);
   assert.match(out.stderr, /Run this step again in a minute, at most three times in a row\./);
-  assert.match(out.stderr, /APPROVAL_REQUEST_UNAVAILABLE with \(HTTP 400\).*Before auth logout, make sure none of your own tinycloud commands for that profile is still running.*--profile owner auth logout, then run this step again; the owner signs in again first\. That logout signs the owner profile out for every app until they sign in again\. Otherwise stop and tell the owner\./);
+  assert.match(out.stderr, /APPROVAL_REQUEST_UNAVAILABLE with \(HTTP 400\).*Before auth logout, make sure none of your own tinycloud commands for that profile is still running.*--profile owner auth logout, then run this step again in the background; the owner signs in again first, from a new sign-in link with no code\. That logout signs the owner profile out for every app until they sign in again\. Otherwise stop and tell the owner\./);
+  assert.doesNotMatch(out.stderr, /paste|interactive session/);
+  assert.equal(readFileSync(join(dir, "grant-stdin"), "utf8"), "", "auth grant reads no code: its stdin is /dev/null");
   assert.doesNotMatch(out.stderr, /owner sign-in has expired/);
   assert.equal(readFileSync(pending, "utf8"), before, "the helper never edits the CLI's request file");
   assert.ok(!readFileSync(join(dir, "calls"), "utf8").includes("logout"), "the helper itself never logs the owner out");
