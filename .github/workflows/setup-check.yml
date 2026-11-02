@@ -123,7 +123,11 @@ jobs:
             if ($second.source -cne 'private' -or $second.bin -cne $first.bin -or $second.version -cne $first.version) {
               throw 'Second invocation did not reuse the same private executable'
             }
-            if ((Read-InstallTree $prefix) -cne $tree) { throw 'Reuse changed the private installation' }
+            $after = Read-InstallTree $prefix
+            if ($after -cne $tree) {
+              Compare-Object ($tree -split "`n") ($after -split "`n") | ForEach-Object { Write-Host "$($_.SideIndicator) $($_.InputObject)" }
+              throw 'Reuse changed the private installation'
+            }
             $resolved = @(& $node $installer --resolve)
             if ($LASTEXITCODE -ne 0 -or ($resolved -join "`n").Trim() -ine $expectedBin) { throw 'Resolver changed the selected executable' }
             Assert-PathState (Read-RawPath $userKey) $expectedPath 'Reused user'

@@ -125,6 +125,20 @@ test("read-only resolver fails rather than replacing a broken explicit selection
   assert.equal(existsSync(join(dir, ".local")), false);
 });
 
+test("the installer executes through a linked download directory", () => {
+  const dir = home();
+  const selected = join(dir, windows ? "selected.cmd" : "selected");
+  executable(selected, "1.6.0");
+  const download = join(dir, "download");
+  symlinkSync(dirname(installer), download, windows ? "junction" : "dir");
+  const result = spawnSync(process.execPath, [join(download, "install-cli.mjs"), "--resolve"], {
+    env: { ...envFor(dir), TC_BIN: selected }, encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), selected);
+  assert.equal(existsSync(join(dir, ".local")), false);
+});
+
 test("Windows launcher creation respects occupied names even before bin is on PATH", () => {
   const dir = home();
   const bin = join(dir, ".local/bin");

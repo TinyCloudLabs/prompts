@@ -276,7 +276,7 @@ export function installCli(input = {}) {
   return selected;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && real(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [action, ...rest] = process.argv.slice(2);
     if (rest.length || (action && !["--resolve", "--repair-path"].includes(action))) throw new Error("Usage: node install-cli.mjs [--resolve|--repair-path]");
