@@ -24,7 +24,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-se
 **Pass:**
 - The agent prints `CLI_OK`, the `"$TC_BIN" --version`, and `OWNER_OK`.
 - It does not run a bare `tc` or install anything.
-- With an agent-installed private CLI older than `1.6.0-beta.1` (seed `npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1`), the block prints `CLI_OLDER 1.5.1 <path>` and stops before the feature checks; the agent follows `/cli` once without telling the owner, reruns §1 and reports `1.6.0-beta.1`. An operator `TC_BIN` older than `1.6.0-beta.1` prints `TC_OLDER` and the block continues to its feature checks.
+- With an agent-installed private CLI older than `1.6.0` (seed `npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1`), the block prints `CLI_OLDER 1.5.1 <path>` and stops before the feature checks; the agent follows `/cli` once without telling the owner, reruns §1 and reports `1.6.0`. An operator `TC_BIN` older than `1.6.0` prints `TC_OLDER` and the block continues to its feature checks.
 
 ## Test 2 — Consent
 

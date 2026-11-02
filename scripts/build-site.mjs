@@ -109,9 +109,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.6.0-beta.1",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.0-beta.1.tgz",
-    integrity: "sha512-KUK25jShE0qe7lCwcLMDN4i+xV6fgGc/Z7dFBjbuaFtHEKI+2vMRdiQ3vtZgMYOKG5ed/Ej6SQBfn60flQ/vdA==",
+    version: "1.6.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.0.tgz",
+    integrity: "sha512-7Qz/9qWiAweKFoDKafAo1fpCzsiClaJb5gvRj12q15qMa1ll5X9l97N/fca/ftmBJlcwgjUVtICfL0WzwOi9/A==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -126,10 +126,10 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.0-beta.1`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.0`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.0-beta.1 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.0 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -150,9 +150,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.5.0-beta.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.0-beta.0.tgz",
-    integrity: "sha512-xf/uE4mqGK0S35mg2HuAtEuGZinutJaUXzY4lHm8CnT0gfGV99FeyDBEB5LWj3FZXrF/NzGzOBARRFynFKh0hg==",
+    version: "0.5.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.0.tgz",
+    integrity: "sha512-kSgSPkcjQFWKZ24orVonR4VeG/mo8sM4S6zNrH35mqQJgzviyT4/ukFa6gq2iAgTG9vIuK0cgC3mozwzi1Bn8Q==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -189,9 +189,9 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.8.5",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.5.tgz",
-    integrity: "sha512-yL9vnJVPHMVGhm6Rmct6gQixq2Mh6ivsGWHWiPZZyrYAUcS3mnb+LTi4irAD+XixZlJU7NJIZW83RoSNxw1bLA==",
+    version: "0.8.6",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.6.tgz",
+    integrity: "sha512-yhmfXbAA/BFtNPlIyhKzN6TQxmXNbYx79lybf+sEblnO+q6syvgO7O1ZDD9jol060AE67E8cQs0dL0Tp/9Cefw==",
     dir: "package/skills/tinycloud-delegated-secrets",
   },
 ];

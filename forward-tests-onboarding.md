@@ -144,7 +144,7 @@ Three things get called `tc` or `tinycloud`. Don't mix them up.
 
 | What | How to find it | Expected |
 |---|---|---|
-| **CLI under test** (the selected TinyCloud CLI; npm package `@tinycloud/cli`) | `TC="$H/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; "$TC" --version` (or the `TC_BIN` in `$H/.config/tinycloud/agent.env`, if set) | A clean install, or an older private copy, ends at `1.6.0-beta.1`; a newer CLI is kept. App setup must not install a second CLI or a separate beta. |
+| **CLI under test** (the selected TinyCloud CLI; npm package `@tinycloud/cli`) | `TC="$H/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; "$TC" --version` (or the `TC_BIN` in `$H/.config/tinycloud/agent.env`, if set) | A clean install, or an older private copy, ends at `1.6.0`; a newer CLI is kept. App setup must not install a second CLI or a separate beta. |
 | **System `tc`** (Linux traffic control, in the clean-shell `PATH`) | `/usr/sbin/tc -V` | A line starting `tc utility, iproute2`. This is not TinyCloud. |
 | **Global TinyCloud CLI**, if the machine has one (npm global, `command -v tinycloud` or `command -v tc` outside the clean shell) | From a plain shell, not the test shell: `command -v tc; tc --version` | Any version; it must be **identical before and after** the run. The test must not touch it. |
 
@@ -195,7 +195,7 @@ A row passes only if every line for its client holds.
 
 **Coding agents**
 - The checksum-verifying installer reports `SKILL_INSTALLED <skill> <version> <folder>`, or an already-compatible install is reused. The version and files match the site's `/skills/index.json`; app setup uses the CLI selected during onboarding.
-- Never runs `onboard`, `kv` or `sql` with a CLI older than `1.6.0-beta.1` that it installed itself. In a home seeded with an older private copy (`npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1`), the skill's or onboarding's check prints `CLI_OLDER 1.5.1 <path>` and stops; the agent follows `/cli` once without telling the owner and reruns the check.
+- Never runs `onboard`, `kv` or `sql` with a CLI older than `1.6.0` that it installed itself. In a home seeded with an older private copy (`npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1`), the skill's or onboarding's check prints `CLI_OLDER 1.5.1 <path>` and stops; the agent follows `/cli` once without telling the owner and reruns the check. The same holds when `~/.local/bin/tinycloud` links to that copy. Only a `TC_OLDER` line makes a CLI operator-selected; the agent never asks the owner about the CLI version.
 - Shows the complete short OpenKey approval URL on its own line, not a request to copy a code. Existing sufficient grants produce no new approval.
 - **O, S, T1:** record saved per Checking a record (S: explains the route, and with no record named saves the default todo, rather than silently installing).
 - **T2:** an owner-only link, not a public one.

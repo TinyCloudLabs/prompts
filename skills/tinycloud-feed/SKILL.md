@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Post owner-requested cards into TinyCloud Home's feed from a bot's scoped folder, using its profile and five built-in card formats.
 metadata:
-  version: "0.1.5"
+  version: "0.1.6"
 ---
 
 This is how an agent adds cards to your TinyCloud Home feed. It writes only to its own folder, and only what you asked it to post.
@@ -17,17 +17,19 @@ Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `we
 
 ### Install and sign in (weight bot example)
 
-Use the CLI selected by https://agents.tinycloud.xyz/cli, `1.6.0-beta.1`: new installs and older agent-owned installs get it. Do not install a separate beta or a global CLI. The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
+**CLI rule (stable `1.6.0`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.0`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+
+The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
 
 ```sh
 B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
 if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
-O=$B; case $O in "$P"/*) O= ;; esac
+O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$P" || O=
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || { echo 'TC_NOT_FOUND: set up the CLI at https://agents.tinycloud.xyz/cli, then rerun this block'; exit 1; }
 V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
-if printf '%s\n' "$V" | awk -F. -v p=1.6.0-beta.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/||q[3]~/-/&&$0>=p)}'; then
-  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.0-beta.1; keeping this operator-selected CLI"
+if printf '%s\n' "$V" | awk -F. -v p=1.6.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.0; keeping this operator-selected CLI"
   else echo "CLI_OLDER $V $B: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
   exit 1
 fi
@@ -35,7 +37,7 @@ fi
 
 - `TC_NOT_FOUND` → follow that shared guide and return here.
 - `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. This is for you only; don't tell the owner.
-- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.0-beta.1`, and stop.
+- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.0`, and stop.
 
 Save this as `feed-weight.manifest.json` in the current directory. For another bot, change `weight` in the folder, app id, display name and profile name:
 
@@ -83,7 +85,7 @@ tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/profi
 
 Use a new key `xyz.tinycloud.tinychat/feed/<bot>/<YYYY-MM>/<id>`. The month must equal the UTC month in `at`. Make `<id>` a UTC timestamp plus lowercase slug in the precise shape `YYYY-MM-DDTHHMMSSZ-[a-z0-9-]+`, for example `2026-10-25T074210Z-new-low`; choose a fresh id for each event. The full key contains only ASCII letters, digits and `/-._~:+@=,` (no spaces, `?`, `#` or non-ASCII characters). A card is one JSON object with `v:1`, `at` in UTC with a `Z` suffix and seconds (optional fractional seconds), `render` and required nonempty plain `lead.text`. Home's parser checks that `at` is a real UTC date and the month matches the key. `source` is optional: `{ "label": "...", "url": "https://..." }` for a web page, or `{ "label": "...", "ref": "<TinyCloud key>" }` for a TinyCloud record. A source needs a nonempty label; a ref uses the allowed key characters. Home displays `source.ref` as text, not a web link. The author comes from the bot profile and the card id comes from its key. Home's provisional order is newest first by `at`, then key.
 
-Use `tinycloud kv put` with `--if-none-match '*'` for a new card; the required CLI `1.6.0-beta.1` has it. After the weight bot has its own scoped posting authority, write its card with the bot's CLI profile:
+Use `tinycloud kv put` with `--if-none-match '*'` for a new card; the required CLI `1.6.0` has it. After the weight bot has its own scoped posting authority, write its card with the bot's CLI profile:
 
 ```sh
 tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/2026-10/2026-10-25T074210Z-new-low' --space applications --if-none-match '*' --stdin <<'JSON'

@@ -53,10 +53,10 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tinycloud-feed` | `feed` | [`skills/tinycloud-feed`](skills/tinycloud-feed), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
-| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.6.0-beta.1`](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.0-beta.1) (js-sdk), with the overlays below |
-| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.5.0-beta.0`](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.0-beta.0) (js-sdk), with changes (below) |
+| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.6.0`](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.0) (js-sdk), with the overlays below |
+| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.5.0`](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.0) (js-sdk), with changes (below) |
 | `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.25`](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz), unchanged |
-| `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.8.5`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.5) (js-sdk), with the onboarding-profile overlay below |
+| `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.8.6`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.6) (js-sdk), with the onboarding-profile overlay below |
 
 Skills written for these guides live in `skills/`. Skills owned by another repository stay authored there: the build downloads the exact release tarball named in `SKILLS` in `scripts/build-site.mjs` and refuses it unless its sha512 matches the pinned `integrity`, so every build, locally or on Cloudflare Pages, serves the same files. Nothing floats on a branch.
 
@@ -66,7 +66,7 @@ The installer resolves its entry point through filesystem links, including macOS
 
 Skills use the selected `TC_BIN`, then `agent.env`, then the shared private install, not an app-specific npm install or a second saved path. `tc-apps` uses official `status` and `context` metadata plus an actual storage read to reuse existing permissions. Expired grants, other owners/hosts and incomplete reads cannot satisfy access. A known app's two-hour read-only delegation needs no catalog-wide grant and cannot become write access. `npm test` covers grant selection, first-record handling, migration, safe launchers and PATH preservation. Native Windows CI additionally installs the pinned released CLI in a path containing spaces, executes both launchers in PowerShell and cmd, checks offline reuse and user-PATH preservation, and verifies that machine PATH is unchanged. This does not replace physical-device WhatsApp approval QA.
 
-Each block that selects the CLI and prints its version (`tc-apps`, `tc-secrets` and `tc-publish` §1, the feed check, and `/onboarding`'s step 2) compares it with the pin in POSIX `awk` before any other CLI call. A CLI the agent installed that is older than the pin prints `CLI_OLDER <version> <path>` and stops, so the agent follows `/cli` once and reruns the block; an operator `TC_BIN` (a process or saved path outside the private install) prints `TC_OLDER`, and `tc-apps`, the feed and onboarding stop while secrets and publishing continue to their feature probes. Markdown is served unchanged, so each block spells out the pin; the build fails unless it matches `CLI_VERSION` in `scripts/install-cli.mjs`. `node --test scripts/cli-pin.test.mjs` runs each block against stand-in CLIs.
+Each block that selects the CLI and prints its version (`tc-apps`, `tc-secrets` and `tc-publish` §1, the feed check, and `/onboarding`'s step 2) compares it with the pin in POSIX `awk` before any other CLI call. A CLI the agent installed that is older than the pin prints `CLI_OLDER <version> <path>` and stops, so the agent follows `/cli` once and reruns the block; an operator `TC_BIN` (a process or saved path that doesn't resolve, through links, into the private install) prints `TC_OLDER`, and `tc-apps`, the feed and onboarding stop while secrets and publishing continue to their feature probes. Markdown is served unchanged, so each block spells out the pin; the build fails unless it matches `CLI_VERSION` in `scripts/install-cli.mjs`. `node --test scripts/cli-pin.test.mjs` runs each block against stand-in CLIs, including A2's home (a private 1.5.1 linked from `~/.local/bin`). Each surface's bold **CLI rule** tells the agent to run that block first, that only a `TC_OLDER` line means an operator chose the CLI, and never to ask the owner about the CLI version.
 
 The app resolver sends a computer with no profile that has an owner or a session to `/onboarding` first (`onboard-first`, still carrying the app-scoped sign-in details for an agent that cannot onboard), normalizes EVM address casing, and derives an imported delegate's owner from official full-space metadata when no owner key is present. It verifies access with the selected profile; a two-hour app-only reader does not need global discovery or owner credentials.
 
@@ -91,9 +91,9 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.6.0-beta.1` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.0-beta.1) |
-| `courier` skill | `@tinycloud/courier@0.5.0-beta.0` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.0-beta.0) |
-| `mcp` skill | `@tinycloud/mcp@0.8.5` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.5) |
+| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.6.0` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.0) |
+| `courier` skill | `@tinycloud/courier@0.5.0` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.0) |
+| `mcp` skill | `@tinycloud/mcp@0.8.6` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.6) |
 | TinyChat retrieval pack | `0.1.1-onboarding.25` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
 

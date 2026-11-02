@@ -58,7 +58,7 @@ The coordinator runs each sequence with a **fresh agent that has only the `tc-pu
 
 **Expected:** the agent runs the feature probe (`enable share --help` → `--replace-session`, `auth login --help` → `--expiry`) and prints `CLI_OK`, reports `"$TC_BIN" --version`, and echoes `TC_HOME`. It does not run bare `command -v tc` or trust PATH.
 
-**Pass:** probe prints `CLI_OK`; the reported version is `1.0.0-beta.18` or later; `TC_HOME` echoed. A stale or missing `TC_BIN` → the agent must stop and report, not install anything. An agent-installed private CLI older than `1.6.0-beta.1` → §1 prints `CLI_OLDER <version> <path>` and stops before the feature probe; the agent follows `/cli` once without telling the owner and reruns §1. An operator `TC_BIN` older than `1.6.0-beta.1` → `TC_OLDER`, and the probe still decides.
+**Pass:** probe prints `CLI_OK`; the reported version is `1.0.0-beta.18` or later; `TC_HOME` echoed. A stale or missing `TC_BIN` → the agent must stop and report, not install anything. An agent-installed private CLI older than `1.6.0` → §1 prints `CLI_OLDER <version> <path>` and stops before the feature probe; the agent follows `/cli` once without telling the owner and reruns §1. An operator `TC_BIN` older than `1.6.0` → `TC_OLDER`, and the probe still decides.
 
 ## Test 2 — Device consent (`enable share`)
 
