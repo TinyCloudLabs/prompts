@@ -2,14 +2,16 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.5"
+  version: "0.6.6"
 ---
 
 # Publish documents and HTML with `tinycloud share`
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-Requires `@tinycloud/cli` **1.5.2**: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept; then the §1 feature probe is authoritative (it needs 1.0.0-beta.18 or newer: TC-540 device login with `--manifest` and `enable share`; TC-577 file names with spaces and storage-quota errors). It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
+**CLI rule (stable `1.5.2`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.5.2` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+
+With an operator's older CLI (`TC_OLDER`), §1's feature probe is authoritative: it needs 1.0.0-beta.18 or newer (TC-540 device login with `--manifest` and `enable share`; TC-577 file names with spaces and storage-quota errors). It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
 
 Operator defaults `TC_BIN` and `TC_OWNER_EMAIL` come from process variables first, then `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host), read as data through the pinned parser installed by [setup/agent.md](https://agents.tinycloud.xyz/agent). Never source the data file. `TC_HOME` (CLI home root) and `TC_PUBLISH_STATE` (this skill's state, default `$HOME/.local/state/tc-publish`) stay role-specific. Without `TC_BIN`, use the shared private CLI or `tinycloud` on `PATH`, never bare `tc`.
 
@@ -57,7 +59,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-OPERATOR_BIN=${TC_BIN:-}; case $OPERATOR_BIN in "$HOME/.local/share/tinycloud/cli/"*) OPERATOR_BIN= ;; esac
+OPERATOR_BIN=${TC_BIN:-}; [ -z "$OPERATOR_BIN" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$OPERATOR_BIN" "$HOME/.local/share/tinycloud/cli" || OPERATOR_BIN=
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile

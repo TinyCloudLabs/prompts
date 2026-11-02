@@ -2,12 +2,14 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.15"
+  version: "0.5.16"
 ---
 
 # Read secrets from TinyCloud with `tinycloud secrets`
 
 The owner stores secrets in TinyCloud Secrets (secrets.tinycloud.xyz). You read only the names they approved, through a CLI profile the owner authorizes with OpenKey. When a secret is missing, you send the owner a link where they add it themselves. You never see, ask for, or store a secret value in the conversation.
+
+**CLI rule (stable `1.5.2`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.5.2` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
 Owner defaults may come from `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host). The preamble reads it as data through the pinned `agent-env.mjs` installed by [setup/agent.md](https://agents.tinycloud.xyz/agent); process variables win. The file may contain only `TC_BIN`, `TC_OWNER_DID` and `TC_OWNER_EMAIL`. Never source it as shell code.
 - `TC_BIN`: absolute path to the TinyCloud CLI; otherwise use the shared private installation or `tinycloud` on `PATH`, never bare `tc`.
@@ -70,7 +72,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
 fi
-OPERATOR_BIN=${TC_BIN:-}; case $OPERATOR_BIN in "$HOME/.local/share/tinycloud/cli/"*) OPERATOR_BIN= ;; esac
+OPERATOR_BIN=${TC_BIN:-}; [ -z "$OPERATOR_BIN" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$OPERATOR_BIN" "$HOME/.local/share/tinycloud/cli" || OPERATOR_BIN=
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
