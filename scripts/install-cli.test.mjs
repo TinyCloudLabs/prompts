@@ -81,17 +81,14 @@ test("user PATH append preserves long raw values and is idempotent across Window
 });
 
 test("automatic reuse needs the pinned release and never downgrades a newer one", () => {
-  assert.equal(CLI_VERSION, "1.6.0-beta.1");
+  assert.equal(CLI_VERSION, "1.6.0");
   assert.equal(compatible("1.5.0-beta.23"), false);
   assert.equal(compatible("1.5.2"), false);
-  assert.equal(compatible("1.5.3-beta.0"), false);
-  assert.equal(compatible("1.6.0-alpha.9"), false);
-  assert.equal(compatible("1.6.0-beta.0"), false);
+  assert.equal(compatible("1.6.0-beta.1"), false);
+  assert.equal(compatible("1.6.0-rc.0"), false);
   assert.equal(compatible(CLI_VERSION), true);
-  assert.equal(compatible("1.6.0-beta.2"), true);
-  assert.equal(compatible("1.6.0-beta.10"), true);
-  assert.equal(compatible("1.6.0-rc.0"), true);
-  assert.equal(compatible("1.6.0"), true);
+  assert.equal(compatible("1.6.1-beta.0"), true);
+  assert.equal(compatible("1.6.1"), true);
   assert.equal(compatible("1.7.0"), true);
   assert.equal(compatible("2.0.0"), true);
   assert.equal(compatible("not-a-cli-version"), false);
