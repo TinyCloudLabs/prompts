@@ -22,8 +22,6 @@ After an interruption, rerun the same command with the same profile to resume th
 
 **Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
 
-**If `onboard` keeps exiting 8 with `APPROVAL_REQUEST_UNAVAILABLE` and `(HTTP 400)`,** follow the bounded recovery below. Stop only the commands you started for that profile before `auth logout`; never edit the CLI's files.
-
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
 
 Pick the route for where you run:
@@ -75,9 +73,7 @@ Never run `onboard --code` or wait for pending JSON on stdout: normal short-link
 **If something goes wrong:**
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
-- **Exit 8:** OpenKey couldn't be reached. Wait a minute and run `"$TC" onboard` again the same way, at most three times in a row.
-  - **If each of those says `APPROVAL_REQUEST_UNAVAILABLE` with `(HTTP 400)`:** the link expired before it was approved, and this CLI keeps asking OpenKey for it. Before `auth logout`, make sure none of your own `tinycloud` commands for that profile is still running (stop any background `onboard`/`auth grant` you started): a command still waiting on a link would be orphaned. Run `"$TC" auth logout` (with the same `--profile <name>` if you used one), then run `"$TC" onboard` again the same way and send the new link, as for `APPROVAL_REQUEST_EXPIRED` below. Never edit or delete the CLI's files yourself.
-  - **Otherwise:** stop and report it to the owner; don't retry.
+- **Exit 8:** OpenKey couldn't be reached. Wait a minute and run `"$TC" onboard` again the same way, at most three times in a row. If it still exits 8, stop and report it to the owner; don't retry. Never edit or delete the CLI's files yourself.
 - **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run `"$TC" onboard` again and send the new link.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** preserve the existing profile. Inspect `"$TC" status --json` and use the owner's existing account and permissions where possible; do not overwrite them or silently switch accounts. If a separate onboarding profile is necessary, explain why and choose an unused profile name explicitly. Keep using that returned profile for the goal.
