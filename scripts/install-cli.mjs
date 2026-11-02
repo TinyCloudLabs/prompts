@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const CLI_VERSION = "1.5.2";
+export const CLI_VERSION = "1.5.3-beta.0";
 const names = ["tinycloud", "tc"];
 const marker = ":: TinyCloud CLI launcher ";
 const real = (file) => { try { return realpathSync(file); } catch { return ""; } };
@@ -18,14 +18,25 @@ const options = (input = {}) => {
 
 const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?(?:\+.*)?$/;
 
-// The pinned release or newer; a prerelease of the next version counts, a prerelease of the pin does not.
-export function compatible(version) {
+// SemVer precedence: a release outranks its own prereleases; prerelease fields compare
+// numerically when both are numbers, else as text, and a longer list of equal fields is higher.
+function precedence(a, b) {
+  for (let i = 1; i <= 3; i++) if (Number(a[i]) !== Number(b[i])) return Number(a[i]) - Number(b[i]);
+  if (!a[4] || !b[4]) return !a[4] - !b[4];
+  const x = a[4].split("."), y = b[4].split(".");
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    if (x[i] === y[i]) continue;
+    const [m, n] = [/^\d+$/.test(x[i]), /^\d+$/.test(y[i])];
+    if (m && n) return Number(x[i]) - Number(y[i]);
+    return m !== n ? (m ? -1 : 1) : x[i] < y[i] ? -1 : 1;
+  }
+  return x.length - y.length;
+}
+
+// The pinned version or newer: a prerelease of a later version counts, an earlier prerelease of the pin does not.
+export function compatible(version, minimum = CLI_VERSION) {
   const match = VERSION.exec(version);
-  if (!match) return false;
-  const current = match.slice(1, 4).map(Number);
-  const minimum = CLI_VERSION.split(".").map(Number);
-  for (let i = 0; i < 3; i++) if (current[i] !== minimum[i]) return current[i] > minimum[i];
-  return !match[4];
+  return !!match && precedence(match, VERSION.exec(minimum)) >= 0;
 }
 
 const privatePrefix = (opts) => path.join(opts.home, ".local/share/tinycloud/cli");

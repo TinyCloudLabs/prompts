@@ -105,9 +105,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.2",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.2.tgz",
-    integrity: "sha512-M7bCmhZPNcKALcIzhrLMpLoxsl/f9iqyo1PpOGscSyb3Re+O/CLhqhCWuNzcNehjcTpVo5ZPFUikSC7RZco4qQ==",
+    version: "1.5.3-beta.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.3-beta.0.tgz",
+    integrity: "sha512-VHkXxMfz9kOn6o6tf6xiOPWtDefyH2bjB4bUPkEUGmDqXd4rA/09ngSByjMoOOen28eJR5vAZF2kcIzekmdULQ==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -122,10 +122,10 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.5.2`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.5.3-beta.0`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.5.2 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.5.3-beta.0 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -146,9 +146,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.4.2",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.2.tgz",
-    integrity: "sha512-fTDhPUZ5iRLt2ZtazwIyvty8CefyBnImEnU2PXDAlmtdp0IBeeLaex51Ghg7qySWP1eGQ5suvMCw5fQ0r6dOjw==",
+    version: "0.5.0-beta.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.0-beta.0.tgz",
+    integrity: "sha512-xf/uE4mqGK0S35mg2HuAtEuGZinutJaUXzY4lHm8CnT0gfGV99FeyDBEB5LWj3FZXrF/NzGzOBARRFynFKh0hg==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -158,7 +158,7 @@ const SKILLS = [
           "Offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the two-choice flow in the Courier guide, https://agents.tinycloud.xyz/courier.",
         ],
         [
-          "`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey (`tinycloud courier init --paste` also accepts the OpenKey `XXXX-XXXX`\ncode) and decides who to pair with.\nIf OpenKey reports the space is still being set up, `init` waits up to about 2.5 minutes; otherwise use `init --resume`.",
+          /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
           "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
         ],
       ],
