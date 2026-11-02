@@ -87,8 +87,8 @@ const RESOLVER = [
   'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
   '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
   'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"',
+  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
+  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
@@ -101,53 +101,23 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.0-beta.23",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0-beta.23.tgz",
-    integrity: "sha512-7dvXVJlgiYRuqcK2Thsv0b/AP1Dge0IE5ftXa2CGPC71qdKFvKTH1zDnzWd1HKueCx3VAxwv/YUvKVnhGbs/Eg==",
-    dir: "package/skills/tc-cli",
+    version: "1.5.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0.tgz",
+    integrity: "sha512-fkdOsJ9HUK/cNqiLi438er1bShs7X1FxeW5Lb1me/lNDWMXEKve1YMwcd5zQ0uOG8kaWCyXPPmQgst+BwQbTbg==",
+    dir: "package/skills/tinycloud-cli",
     checkCli: true,
-    // The released skill says Node.js 20, and has agents sign in to separate
-    // profiles and the owner run `auth grant`. Here it reuses the profile
-    // /onboarding sets up and asks for more with one OpenKey link; publishing
-    // keeps its own `publisher` profile, because shares live in `default`.
     changes: {
       "SKILL.md": [
-        ["Node.js 20 or later runs the CLI.", "Node.js 22.20 or later runs the CLI."],
         [
-          /^Agents usually run where no browser can reach them\.[\s\S]*?--manifest builtin:share-publishing\n```\n\n`builtin:share-publishing` covers[^\n]*do not create another account\.\n/m,
-          [
-            "After `onboard`, keep using that profile. For access it doesn't have, ask once with one OpenKey link:",
-            "",
-            "```bash",
-            "\"$TC\" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d < /dev/null",
-            "```",
-            "",
-            "It exits 3 and prints the OpenKey link on stderr. Send the owner the link with one line saying what it's for. When they send back the code, run the same command with the code on stdin: `printf '%s\\n' '<the code>' | \"$TC\" auth request --cap '...' --grant --paste --expiry 30d`. ",
-            "",
-            "Publishing is the exception: shares live in the owner's `default` space, so publish from a `publisher` profile with its own single approval. The code is pasted the same way. Full steps: https://agents.tinycloud.xyz/publish.",
-            "",
-            "```bash",
-            "\"$TC\" init --name publisher --key-only",
-            "\"$TC\" --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing",
-            "```",
-            "",
-          ].join("\n"),
+          /^Need more than onboarding grants\? Ask once[^\n]*$/m,
+          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. Send the complete short URL on its own line and keep the command running; it retrieves approval automatically. Re-run the identical command after interruption. Do not add `--paste`: that explicitly selects the older manual-code flow and long link. See [AUTH.md](AUTH.md).",
         ],
+      ],
+      "AUTH.md": [
         [
-          /^Ask for the narrowest grant that does the job\.[\s\S]*?\n(?=\nThen:)/m,
-          "The onboarded profile already reads and writes the `applications` space, so reading and changing the owner's apps needs no new approval. For anything else, ask once as in \"Sign in\" above. Change an app's data only when the owner asks.\n",
+          /^Keep the user's existing profiles:[^\n]*$/m,
+          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). Send the actual short URL on its own line and keep the command running; no return code is needed. Re-run the identical command/profile after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
         ],
-        ["1. `\"$TC\" --profile agent knowledge list`", "1. `\"$TC\" --profile PROFILE knowledge list`"],
-        ["2. `\"$TC\" --profile agent knowledge read APP_ID`", "2. `\"$TC\" --profile PROFILE knowledge read APP_ID`"],
-        [
-          /^An agent installs a catalog app into its own profile\.[\s\S]*?Then read the notes with `knowledge read`\./m,
-          "Install a catalog app from the onboarded profile; it needs no new approval:\n\n```bash\n\"$TC\" --profile PROFILE apps install xyz.tinycloud.sample.healthlog\n```\n\nThis installs the pinned version into the owner's applications space. Then read the notes with `knowledge read`.",
-        ],
-        [
-          " The owner can run the same command on the owner profile (`\"$TC\" --profile owner apps install xyz.tinycloud.sample.healthlog`); that needs no grant.",
-          "",
-        ],
-        ["for OpenCode, Codex and Claude Code", "for your agent"],
       ],
     },
   },
@@ -332,10 +302,17 @@ async function loadSkill(skill) {
   if (skill.short === "cli" || skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
-      const text = body.toString("utf8");
-      if (!UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) return [path, body];
-      changed.add(path);
-      return [path, Buffer.from(UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text))];
+      let text = body.toString("utf8");
+      text = UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text);
+      if (skill.short === "cli") {
+        text = text.replace(SHELL_BLOCK, (block) => {
+          const commands = /(^[ \t]*|\|[ \t]*|\$\(|&&[ \t]*|;[ \t]*|=\()tinycloud(?=[ \t]|$)/gm;
+          if (!commands.test(block)) return block;
+          return block.replace(/\n/, `\n${RESOLVER}\n`).replace(commands, '$1"$TC"');
+        });
+      }
+      if (text !== body.toString("utf8")) changed.add(path);
+      return [path, Buffer.from(text)];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -391,6 +368,7 @@ for (const f of copied) {
   cpSync(join(ROOT, f), join(OUT, f));
 }
 write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
+write("install-cli.mjs", readFileSync(join(ROOT, "scripts/install-cli.mjs")));
 
 const pages = PAGES.map((p) => {
   const text = render(p.src);
@@ -429,20 +407,6 @@ write(
   ) + "\n",
 );
 
-// The /apps setup downloads the skill's files by name, checks them against SHA256SUMS and copies them
-// by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
-const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
-const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
-const curlLine = appsGuide.match(/curl -fsSL((?: -O "[^"\n]*\/skills\/apps\/[^"\n]+")+)/);
-if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
-const fetched = [...curlLine[1].matchAll(/\/skills\/apps\/([^"\n]+)"/g)].map((m) => m[1]);
-if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
-  throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
-}
-const copies = [...appsGuide.matchAll(/ cp ((?:[\w.-]+ )+)"[^"\n]*\/tc-apps\/"/g)];
-if (copies.length !== 2 || copies.some(([, names]) => JSON.stringify(names.trim().split(" ").sort()) !== JSON.stringify(appsFiles))) {
-  throw new Error(`setup/tc-apps.md step 5 must copy exactly ${appsFiles}, in both the Claude Code and the Codex/OpenCode block`);
-}
 const servedIndex = JSON.parse(readFileSync(join(OUT, "skills/index.json"), "utf8"));
 for (const s of servedIndex.skills) {
   const sums = readFileSync(join(OUT, `skills/${s.short}/SHA256SUMS`), "utf8").trimEnd().split("\n");

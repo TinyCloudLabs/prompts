@@ -18,7 +18,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### 1. CLI
 
-Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It installs `@tinycloud/cli@1.5.0-beta.23` in `~/.local/share/tinycloud/cli` or uses the operator's existing `TC_BIN`, without changing a conflicting `tc` or using sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
+Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. It reuses the selected compatible CLI or installs `@tinycloud/cli@1.5.0` in `~/.local/share/tinycloud/cli`, without changing a conflicting `tc` or using a global install. Preserve an operator's `TC_BIN`. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
 
 ### 2. Non-secret owner defaults
 
@@ -35,7 +35,7 @@ import { basename, isAbsolute, join } from "node:path";
 
 const dir = join(process.env.HOME, ".config/tinycloud");
 const source = "https://agents.tinycloud.xyz/agent-env.mjs";
-const pin = "4be2b3c239d0a790dfe94619a220d77e187312c21c60cde5b003ab71499d0fae";
+const pin = "14c83d53b18a4760e682599971cc12798d1cc09d1f85531f6ddfae3f21fe1587";
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const safeLocation = (saved) => {
   const now = lstatSync(dir);

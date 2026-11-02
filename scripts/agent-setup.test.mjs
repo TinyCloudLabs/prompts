@@ -160,11 +160,12 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   mkdirSync(bin);
   const selected = join(bin, "custom-cli");
   const conflicting = join(bin, "tc");
-  executable(selected, 'echo 1.2.3');
+  executable(selected, 'echo 1.5.0');
   executable(conflicting, 'echo unrelated');
   const original = readFileSync(conflicting);
-  const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  const result = shell(block(guide, "## Install the CLI"), { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` });
+  const result = spawnSync(process.execPath, [join(root, "scripts/install-cli.mjs")], {
+    encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` },
+  });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
   assert.deepEqual(readFileSync(conflicting), original);

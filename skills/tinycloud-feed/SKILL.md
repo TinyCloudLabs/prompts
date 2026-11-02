@@ -17,12 +17,7 @@ Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `we
 
 ### Install and sign in (weight bot example)
 
-Use CLI `1.5.0-beta.2` or newer; its command is `tinycloud`. Install the pinned beta:
-
-```sh
-npm i -g @tinycloud/cli@1.5.0-beta.2
-tinycloud --version
-```
+Reuse the CLI selected by https://agents.tinycloud.xyz/cli, stable `1.5.0` or newer. Do not install a separate beta or a global CLI. If it is not set up, follow that shared guide and return here.
 
 Save this as `feed-weight.manifest.json` in the current directory. For another bot, change `weight` in the folder, app id, display name and profile name:
 
@@ -70,7 +65,7 @@ tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/profi
 
 Use a new key `xyz.tinycloud.tinychat/feed/<bot>/<YYYY-MM>/<id>`. The month must equal the UTC month in `at`. Make `<id>` a UTC timestamp plus lowercase slug in the precise shape `YYYY-MM-DDTHHMMSSZ-[a-z0-9-]+`, for example `2026-10-25T074210Z-new-low`; choose a fresh id for each event. The full key contains only ASCII letters, digits and `/-._~:+@=,` (no spaces, `?`, `#` or non-ASCII characters). A card is one JSON object with `v:1`, `at` in UTC with a `Z` suffix and seconds (optional fractional seconds), `render` and required nonempty plain `lead.text`. Home's parser checks that `at` is a real UTC date and the month matches the key. `source` is optional: `{ "label": "...", "url": "https://..." }` for a web page, or `{ "label": "...", "ref": "<TinyCloud key>" }` for a TinyCloud record. A source needs a nonempty label; a ref uses the allowed key characters. Home displays `source.ref` as text, not a web link. The author comes from the bot profile and the card id comes from its key. Home's provisional order is newest first by `at`, then key.
 
-Use `tinycloud kv put` with `--if-none-match '*'` for a new card. This needs `@tinycloud/cli@1.5.0-beta.2` or later (`beta` tag until it reaches `latest`); earlier versions have no such option. For example, after the weight bot has its own scoped posting authority, write its card with the bot's CLI profile:
+Use `tinycloud kv put` with `--if-none-match '*'` for a new card. The shared stable CLI includes this option. After the weight bot has its scoped posting authority, write its card with that CLI profile:
 
 ```sh
 tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/2026-10/2026-10-25T074210Z-new-low' --space applications --if-none-match '*' --stdin <<'JSON'

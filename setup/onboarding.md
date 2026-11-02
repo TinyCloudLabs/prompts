@@ -12,9 +12,9 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 ## How this works
 
-The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each one issues a grant that only that key can use, then shows a short code like `ABCD-EFGH`. The owner sends the code back in this chat, and the CLI uses it to collect the grant. With the hosted MCP, approval is by link only; no code is involved.
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each short link names a signed request; only the requesting CLI can collect and verify the encrypted result. Keep the command running while the owner approves. No pasted code or localhost callback is needed, including from a phone or a remote agent.
 
-The code is safe to send in chat: it works only for this computer's CLI, once, within 5 minutes. The owner can revoke any grant at https://account.tinycloud.xyz/delegations.
+After an interruption, rerun the same command with the same profile to resume the pending approval. The owner can revoke a grant at https://account.tinycloud.xyz/delegations.
 
 ## For the agent
 
@@ -46,37 +46,28 @@ TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-No `ONBOARD_READY` means the installed CLI is older: run the CLI setup again. These steps need CLI 1.5.0-beta.20 or later.
+No `ONBOARD_READY` means the selected CLI is incompatible: report the selected path and follow the shared CLI setup without silently replacing an operator override. These instructions use stable `1.5.0` or a compatible newer release.
 
-**2. Run onboarding.** Each run does the next approval. It uses the owner's default profile on this computer, or `TC_PROFILE` if that is set.
+**2. Run onboarding.** One command waits for both approvals in sequence. It uses the selected default profile, or `TC_PROFILE` if set.
 
 ```sh
 "$TC" onboard
 ```
 
-It prints JSON on stdout:
+Keep it running in the client's background/interactive job so stderr remains observable. Before the first approval, tell the owner:
 
-- **Exit 8, `"onboarded": false`:** the owner needs to approve. Send them one message with `approvalUrl` and this line, filling in `asks` with its first letter in lower case: "Open this link and sign in or create your account. It lets me <asks> Approve, then send me the short code OpenKey shows (like ABCD-EFGH)." For step 1, start that message with this text, word for word:
+> I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
-  > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
+Each approval prints a short URL on stderr. Send the **complete URL on its own line**, with one sentence describing that step. Do not shorten, re-encode, split or strip its fragment. The owner opens it and approves; the CLI retrieves and verifies the result automatically. Do not ask for a code or wait for pending JSON on stdout.
 
-  When they reply with the code, run this with the code exactly as they sent it:
-
-  ```sh
-  "$TC" onboard --code '<the code>'
-  ```
-
-  It finishes that approval and either prints the next link (exit 8 again: send it the same way, without the step-1 text) or finishes.
-- **Exit 0, `"onboarded": true`:** done. Tell the owner in one line that TinyCloud is set up, then go to [the owner's goal](#the-owners-goal). If they asked only for setup, end with a short list of what they can ask you next: keep records, share or publish a page, use a stored API key, ask about their meetings.
-
-The owner can open the link on any device, their phone included; OpenKey shows the code there for them to send back to you.
+Exit 0 with `"onboarded": true` is success. Retain the returned `profile`, `ownerDid` and `host` when continuing to [the owner's goal](#the-owners-goal). Do not create another app profile or ask for a permission already covered by these grants. A stored session alone is not proof of a later storage operation; the app guide checks actual access.
 
 **If something goes wrong:**
 
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run `"$TC" onboard` again. Don't ask for another approval.
-- **`PROFILE_NOT_ONBOARDABLE`:** the default profile is set up another way. Run `"$TC" --profile owner onboard` and use `--profile owner` from then on.
-- **The code is refused:** each code works once and expires after 5 minutes. Send the latest `approvalUrl` again and ask for the new code.
+- **`PROFILE_NOT_ONBOARDABLE`:** preserve the existing profile. Inspect `"$TC" status --json` and use the owner's existing account and permissions where possible; do not overwrite them or silently switch accounts. If a separate onboarding profile is necessary, explain why and choose an unused profile name explicitly. Keep using that returned profile for the goal.
+- **The link is incomplete or expired:** rerun the identical command and use the current link it returns. Do not reconstruct a fragment or reuse a link from another request.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 
 ## MCP
@@ -106,17 +97,13 @@ With MCP, use the connected TinyCloud tools for the goal. The hosted MCP has no 
 
 ### Asking for more later
 
-When a task needs a permission you don't have, ask for exactly that, once. With the CLI, first get the link:
+When the task needs a permission not already granted, keep the same profile, host and owner and request only that missing access:
 
 ```sh
-"$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d < /dev/null
+"$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --no-popup --expiry 30d
 ```
 
-It exits 3 and prints the OpenKey link on stderr, on the line after `Open this URL in a browser to authenticate:`. Send it with one line, as above. When the owner replies with the code, run the same command with the code on stdin instead of `/dev/null`:
-
-```sh
-printf '%s\n' '<the code>' | "$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --paste --expiry 30d
-```
+Keep the command running, send the full short URL it prints on its own line, and let the owner approve. It retrieves the result automatically; no return code is needed. After an interruption, rerun the same command/profile. Do not add `--paste`, which deliberately selects the older long-URL manual flow.
 
 ## Undo
 

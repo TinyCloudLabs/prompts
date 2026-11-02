@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
@@ -24,108 +24,10 @@ const fresh = () => {
   mkdirSync(state, { recursive: true });
   return { dir, work, state };
 };
-// A stand-in CLI: records which file name was run and its arguments, and prints a grant for `auth grant`.
-const stub = (path) => {
-  writeFileSync(path, `#!/bin/sh\necho "${path} $*" >> "$HOME/calls"\ncase " $* " in *" auth grant "*) echo '{"ok":1}' ;; *" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; esac\n`, { mode: 0o755 });
-  chmodSync(path, 0o755);
-};
 const run = (args, env) => spawnSync(args[0], args.slice(1), {
   encoding: "utf8", input: "", timeout: 20000,
   env: { PATH: process.env.PATH, ...env },
 });
-const calls = (dir) => (existsSync(join(dir, "calls")) ? readFileSync(join(dir, "calls"), "utf8").trim().split("\n") : []);
-
-const section = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 1. Read the paths and the time")[1];
-const firstBlock = section.match(/```sh\n([\s\S]*?)\n```/)[1];
-
-test("SKILL §1 names the tinycloud script, then an earlier tc script, then reports unset; TC_BIN wins", () => {
-  const first = (setup, extra = {}) => {
-    const h = fresh();
-    setup(h);
-    const out = run(["sh", "-c", firstBlock], { HOME: h.dir, ...extra });
-    assert.equal(out.status, 0, out.stderr);
-    return { line: out.stdout.split("\n")[0], h };
-  };
-  const both = first(({ work }) => { writeFileSync(join(work, "tinycloud"), ""); writeFileSync(join(work, "tc"), ""); });
-  assert.equal(both.line, join(both.h.work, "tinycloud"));
-  const old = first(({ work }) => writeFileSync(join(work, "tc"), ""));
-  assert.equal(old.line, join(old.h.work, "tc"));
-  assert.equal(first(() => {}).line, "TC_BIN is unset");
-  assert.equal(first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "/opt/own/cli" }).line, "/opt/own/cli");
-  const empty = first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "" });
-  assert.equal(empty.line, join(empty.h.work, "tinycloud"));
-});
-
-test("SKILL §1 prints TC_APPS_STATE if set, else the default state folder", () => {
-  const second = (extra = {}) => {
-    const h = fresh();
-    const out = run(["sh", "-c", firstBlock], { HOME: h.dir, ...extra });
-    assert.equal(out.status, 0, out.stderr);
-    return { line: out.stdout.split("\n")[1], h };
-  };
-  const unset = second();
-  assert.equal(unset.line, join(unset.h.dir, ".local/state/tc-apps"));
-  const empty = second({ TC_APPS_STATE: "" });
-  assert.equal(empty.line, join(empty.h.dir, ".local/state/tc-apps"));
-  assert.equal(second({ TC_APPS_STATE: "/opt/own/state" }).line, "/opt/own/state");
-});
-
-test("SKILL §1a's second line is TC_BETA_BIN if set, else the setup's beta CLI, else unset", () => {
-  const layoutSection = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 1a. Which layout does this app use?")[1];
-  const betaLine = layoutSection.match(/```sh\n([\s\S]*?)\n```/)[1].split("\n")[1];
-  const beta = (setup, extra = {}) => {
-    const h = fresh();
-    setup(h);
-    const out = run(["sh", "-c", betaLine], { HOME: h.dir, ...extra });
-    assert.equal(out.status, 0, out.stderr);
-    return { line: out.stdout.trim(), h };
-  };
-  const installed = ({ work }) => {
-    mkdirSync(join(work, "cli-beta/node_modules/.bin"), { recursive: true });
-    writeFileSync(join(work, "cli-beta/node_modules/.bin/tinycloud"), "");
-  };
-  const found = beta(installed);
-  assert.equal(found.line, join(found.h.work, "cli-beta/node_modules/.bin/tinycloud"));
-  assert.equal(beta(() => {}).line, "TC_BETA is unset");
-  assert.equal(beta(() => {}, { TC_BETA_BIN: "" }).line, "TC_BETA is unset");
-  assert.equal(beta(installed, { TC_BETA_BIN: "/opt/own/beta" }).line, "/opt/own/beta");
-});
-
-// Hermes installs a skill from its SKILL.md URL only if its skills guard passes the file. The guard
-// blocks `printenv` (dump_all_env) and a curl command piped into a shell (curl_pipe_shell), even in prose.
-test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no curl piped into a shell", () => {
-  const dumpEnv = /printenv|(?<![A-Za-z0-9_])env\s*\|(?!\|)(?!\s*[{(])/;
-  const curlShell = /curl\s+[^|\s][^\n]*\|\s*(?:sudo\s+(?:-\S+\s+)*)?(?:ba|z|da|k|c|tc|fi)?sh\b/;
-  const lines = readFileSync(join(skill, "SKILL.md"), "utf8").split("\n");
-  const flagged = lines.flatMap((line, i) => (dumpEnv.test(line) || curlShell.test(line) ? [`${i + 1}: ${line}`] : []));
-  assert.deepEqual(flagged, []);
-});
-
-for (const [name, argv, expected] of [
-  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner context --json", "--profile owner auth grant"]],
-  ["owner-undo.sh", [], ["--profile agent-data auth logout", "--profile agent-data-sql auth logout", "profile delete agent-meal"]],
-]) {
-  const scenarios = [
-    ["tinycloud script when both exist", ["tinycloud", "tc"], {}, "tinycloud"],
-    ["an earlier tc script when it is the only one", ["tc"], {}, "tc"],
-    ["TC_BIN over both", ["tinycloud", "tc"], { TC_BIN: "custom" }, "custom"],
-  ];
-  for (const [label, present, extra, used] of scenarios) {
-    test(`${name} runs the ${label}`, () => {
-      const h = fresh();
-      for (const file of [...present, "custom"]) stub(join(h.work, file));
-      writeFileSync(join(h.state, "meal-request.json"), "{}");
-      const env = { HOME: h.dir, TC_APPS_STATE: h.state };
-      if (extra.TC_BIN) env.TC_BIN = join(h.work, extra.TC_BIN);
-      const out = run(["sh", join(skill, name), ...argv], env);
-      assert.equal(out.status, 0, out.stderr + out.stdout);
-      const seen = calls(h.dir);
-      assert.deepEqual(seen.map((line) => line.split(" ")[0]), expected.map(() => join(h.work, used)));
-      expected.forEach((tail, i) => assert.ok(seen[i].endsWith(` ${tail}`) || seen[i].includes(` ${tail} `), seen[i]));
-    });
-  }
-}
-
 test("owner-grant uses an explicit owner profile when the CLI default is an unsigned agent profile", () => {
   const h = fresh();
   const cliHome = join(h.dir, ".tinycloud");
@@ -198,19 +100,6 @@ if (args[0] === "profile" && args[1] === "show") {
   assert.ok(!renewal.stderr.includes(`${cli} auth login --paste`), renewal.stderr);
 });
 
-test("the wrapper runs the CLI named in cli-path whatever its own file name is", () => {
-  const h = fresh();
-  const cli = join(h.work, "cli-target");
-  writeFileSync(cli, '#!/bin/sh\necho "CLI $*"\n', { mode: 0o755 });
-  writeFileSync(join(h.work, "cli-path"), `${cli}\n`);
-  for (const name of ["tinycloud", "tc"]) {
-    copyFileSync(join(skill, "tc-wrapper.sh"), join(h.work, name));
-    chmodSync(join(h.work, name), 0o755);
-    const out = run([join(h.work, name), "--version"], { HOME: h.dir });
-    assert.equal(out.status, 0, out.stderr);
-    assert.equal(out.stdout, "CLI --version\n");
-  }
-});
 
 import { readdirSync } from "node:fs";
 // ---- migrate.sh: owner-device copy of one generic tiny app from `default` to its own `applications` root ----
@@ -300,7 +189,7 @@ const world = (applications = {}) => {
 const store = (h) => JSON.parse(readFileSync(join(h.dir, "kv-state.json"), "utf8"));
 const control = (h, c) => writeFileSync(join(h.dir, "control.json"), JSON.stringify(c));
 const cliCalls = (h) => (existsSync(join(h.dir, "calls.log")) ? readFileSync(join(h.dir, "calls.log"), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []);
-const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
+const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
 const receiptPath = (h, slug) => join(h.state, "migration", `${slug}.receipt.json`);
 const newKeys = (h, slug) => Object.keys(store(h).applications).filter((k) => k.startsWith(`${NEW(slug)}/`)).sort();
 const notSwitched = (h, out) => {
@@ -566,7 +455,7 @@ test("layout.sh and migrate.sh without jq say so and exit 3 before any CLI call 
   const empty = join(h.dir, "empty-bin");
   mkdirSync(empty);
   for (const args of [[layout, "fitness"], [migrate, "--dry-run", "fitness"], [migrate, "fitness"]]) {
-    const out = spawnSync("/bin/sh", args, { encoding: "utf8", timeout: 20000, env: { PATH: empty, HOME: h.dir, TC_BIN: h.bin, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state } });
+    const out = spawnSync("/bin/sh", args, { encoding: "utf8", timeout: 20000, env: { PATH: empty, HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state } });
     assert.equal(out.status, 3, args.join(" "));
     assert.match(out.stderr, /jq is needed/);
     assert.equal(out.stdout, "");

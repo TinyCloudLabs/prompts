@@ -111,8 +111,8 @@ Repeating the same install is idempotent; install a newly identified pack explic
 1. **Remove the skill:** delete its folder, `$HOME/.agents/skills/tinychat-retrieval` for Codex and OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Codex and OpenCode share `~/.agents/skills`, so removal there affects both.
 2. **End access sooner, if you want:** every approval ends on its own after 30 days. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations.
 
-Neither step touches other skills or the shared `tc-cli` skill.
+Neither step touches other skills or the shared `tinycloud-cli` skill.
 
 > **OpenCode only:** also remove the generated `tinychat-signin.js` loader from `$XDG_CONFIG_HOME/opencode/plugins` (or `$HOME/.config/opencode/plugins`) and restart OpenCode.
 
-Agents: don't remove the shared `tc-cli` prerequisite unless explicitly requested and no other app depends on it; preserve unrelated skills and configuration.
+Agents: don't remove the shared `tinycloud-cli` prerequisite unless explicitly requested and no other app depends on it; preserve unrelated skills and configuration.
