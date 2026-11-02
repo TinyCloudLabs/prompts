@@ -195,7 +195,7 @@ A row passes only if every line for its client holds.
 
 **Coding agents**
 - The checksum-verifying installer reports `SKILL_INSTALLED <skill> <version> <folder>`, or an already-compatible install is reused. The version and files match the site's `/skills/index.json`; app setup uses the CLI selected during onboarding.
-- Never runs `onboard`, `kv` or `sql` with a CLI older than `1.5.2` that it installed itself. In a home seeded with an older private copy (`npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1`), the skill's or onboarding's check prints `CLI_OLDER 1.5.1 <path>` and stops; the agent follows `/cli` once without telling the owner and reruns the check.
+- Never runs `onboard`, `kv` or `sql` with a CLI older than `1.5.2` that it installed itself. In a home seeded with an older private copy (`npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1`), the skill's or onboarding's check prints `CLI_OLDER 1.5.1 <path>` and stops; the agent follows `/cli` once without telling the owner and reruns the check. The same holds when `~/.local/bin/tinycloud` links to that copy. Only a `TC_OLDER` line makes a CLI operator-selected; the agent never asks the owner about the CLI version.
 - Shows the complete short OpenKey approval URL on its own line, not a request to copy a code. Existing sufficient grants produce no new approval.
 - **O, S, T1:** record saved per Checking a record (S: explains the route, and with no record named saves the default todo, rather than silently installing).
 - **T2:** an owner-only link, not a public one.
