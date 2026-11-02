@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/openkey` and follow that text. Summaries drop the shell blocks you must run.
+
 # Set up the standalone OpenKey CLI
 
 ## For the owner

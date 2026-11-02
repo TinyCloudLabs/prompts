@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -209,7 +209,11 @@ for (const block of blocks) {
   });
 }
 
-// The rule an agent reads first: run the block; only TC_OLDER means operator-selected; never ask the owner.
+// The rule an agent reads first: run the block; only TC_OLDER means operator-selected;
+// upgrading is part of the owner's request; never `tinycloud upgrade` or a global install.
+const UPGRADE = "Upgrading the CLI is part of the owner's request: don't ask first; at most one short line (\"Updating the TinyCloud CLI.\").";
+const NEVER_UPGRADE = "Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.";
+const SKILL_STEP = "Installing the skill is part of the owner's request: don't ask first; at most one short line";
 const surfaces = [
   { files: ["skills/tc-apps/SKILL.md", "_site/skills/apps/SKILL.md", "_site/skills/apps.md"], blk: "§1", stops: true },
   { files: ["setup/tc-apps.md", "_site/apps"], blk: "skill §1", stops: true },
@@ -220,7 +224,7 @@ const surfaces = [
   { files: ["setup/onboarding.md", "_site/onboarding.md"], blk: "step 2", stops: true },
 ];
 const RULE = `**CLI rule (stable \`${CLI_VERSION}\`): `;
-test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, and never to ask the owner", () => {
+test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, that upgrading needs no asking, and never to run `tinycloud upgrade`", () => {
   for (const { files, blk, stops } of surfaces) {
     for (const file of files) {
       const text = readFileSync(join(root, file), "utf8");
@@ -231,9 +235,69 @@ test("every CLI rule says to run the block first, that only TC_OLDER means opera
       assert.ok(rule.includes(`Only a \`TC_OLDER\` line from ${blk}`), file);
       assert.ok(rule.includes(stops ? `tell the owner in one line that it is older than the required \`${CLI_VERSION}\`, and stop.` : `keep it, tell the operator once that \`${CLI_VERSION}\` is required, and continue with what ${blk} reports.`), file);
       assert.ok(rule.includes(`Any other older CLI is yours, including one on \`PATH\` or linked from \`~/.local/bin\`: ${blk} prints \`CLI_OLDER\``), file);
-      assert.ok(rule.includes("Never ask the owner about the CLI version."), file);
+      assert.ok(rule.includes(`${UPGRADE} ${NEVER_UPGRADE}`), file);
       assert.match(rule, /[Dd]on't judge who installed the CLI yourself/, file);
       assert.doesNotMatch(text, /operator-selected CLI is kept|older CLI the operator selected is kept/, file);
     }
+  }
+});
+
+// A fetch summary turned "No global installation, second beta CLI, …" into "don't
+// install a second CLI", and the agent didn't upgrade. /onboarding keeps that
+// sentence so its owner-facing HTML stays byte-identical; its step 2 stops on CLI_OLDER itself.
+const NO_GLOBAL = "Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.";
+const OLD_NO_GLOBAL = "second beta CLI";
+test("every CLI rule but /onboarding's forbids a global, sudo or piped install, not a second CLI, as written and as served", () => {
+  for (const { files } of surfaces) {
+    for (const file of files) {
+      const [rule] = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith(RULE));
+      const onboarding = file.endsWith("onboarding.md");
+      assert.equal(rule.includes(`${NO_GLOBAL}**`), !onboarding, file);
+      assert.equal(rule.includes(OLD_NO_GLOBAL), onboarding, file);
+    }
+  }
+  const keep = ["setup/onboarding.md", "_site/onboarding.md", "_site/llms-full.txt"];
+  assert.deepEqual(served().filter((file) => readFileSync(join(root, file), "utf8").includes(OLD_NO_GLOBAL)).sort(), keep.sort());
+});
+
+test("/cli and every CLI_OLDER note say upgrading needs no asking and never `tinycloud upgrade`, as written and as served", () => {
+  for (const file of ["setup/tinycloud.md", "_site/cli"]) {
+    assert.ok(readFileSync(join(root, file), "utf8").includes(`**Upgrades go through this guide.** ${UPGRADE} ${NEVER_UPGRADE}`), file);
+  }
+  for (const { files } of surfaces) {
+    for (const file of files) {
+      // The prose that tells the agent what to do with a CLI_OLDER line (not the rule, not the block).
+      const notes = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.includes("CLI_OLDER <version> <path>") && !line.startsWith("**CLI rule"));
+      if (file === "setup/tc-apps.md" || file === "_site/apps") { assert.equal(notes.length, 0, file); continue; }
+      assert.equal(notes.length, 1, file);
+      assert.ok(notes[0].includes(`${UPGRADE} ${NEVER_UPGRADE}`), file);
+    }
+  }
+});
+
+test("every SKILL_MISSING note says installing the skill needs no asking, as written and as served", () => {
+  for (const [file, line] of [
+    ["setup/onboarding.md", "Installing the TinyCloud skill."], ["_site/onboarding.md", "Installing the TinyCloud skill."],
+    ["setup/courier.md", "Installing the Courier skill."], ["_site/courier", "Installing the Courier skill."],
+  ]) {
+    const notes = readFileSync(join(root, file), "utf8").split("\n").filter((l) => /^(- \*\*)?`SKILL_MISSING/.test(l));
+    assert.equal(notes.length, 1, file);
+    assert.ok(notes[0].includes(`${SKILL_STEP} ("${line}").`), file);
+  }
+});
+
+// Every Markdown guide and skill, as written and as served (including llms-full.txt).
+const served = () => ["setup", "skills", "_site"].flatMap((dir) =>
+  readdirSync(join(root, dir), { recursive: true }).map((f) => join(dir, f))
+    .filter((f) => /\.(md|txt)$|^_site\/[^/.]+$/.test(f) && statSync(join(root, f)).isFile()));
+
+test("no guide or skill keeps the CLI or skill steps from the owner, or suggests `tinycloud upgrade` or a global TinyCloud CLI install", () => {
+  const files = served();
+  assert.ok(files.includes("_site/cli") && files.includes("_site/llms-full.txt") && files.includes("skills/tc-apps/SKILL.md"));
+  for (const file of files) {
+    const text = readFileSync(join(root, file), "utf8");
+    assert.doesNotMatch(text, /never ask the owner about the CLI|for you only|don't tell the owner(?! to send it)/i, file);
+    for (const before of text.split("tinycloud upgrade").slice(0, -1)) assert.match(before, /Never run `$/, file);
+    assert.doesNotMatch(text, /npm (install|i)\b[^\n]*(--global|\s-g\b)[^\n]*@tinycloud\/cli|npm (install|i)\b[^\n]*@tinycloud\/cli[^\n]*(--global|\s-g\b)/, file);
   }
 });

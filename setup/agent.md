@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/agent` and follow that text. Summaries drop the shell blocks you must run.
+
 # Set up a TinyCloud action for your agent
 
 Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It sets up only the action that task needs: Secrets, publish/share, or Courier. Setup installs the pinned CLI (or uses an operator-provided `TC_BIN`), its core skill and one action skill. Follow [/onboarding](onboarding.md) first if TinyCloud isn't set up yet. Each of these actions then asks for its own approval: the owner approves one OpenKey link and sends back the code.

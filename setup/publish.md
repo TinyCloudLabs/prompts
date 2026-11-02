@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/publish` and follow that text. Summaries drop the shell blocks you must run.
+
 # Publish and share with TinyCloud
 
 Your agent publishes a document or web page from your computer to your TinyCloud and sends you a link. Anyone with the link can open it, so the agent asks you first and makes the link only after you say yes. The first time, you approve one sign-in in OpenKey and paste its code back.
