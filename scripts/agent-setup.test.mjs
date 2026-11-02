@@ -386,9 +386,49 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
     const allowed = mode === "same-owner" || mode === "anyone";
     assert.equal(result.status === 0, allowed, result.stderr);
     if (allowed) assert.deepEqual(readFileSync(calls, "utf8").trimEnd().split("\n"),
-      ["courier", "invite", "--session", "01M62GPP936EPBR37DK93RWS1H", "--mode", mode, "--consent"]);
+      ["courier", "invite", "--session", "01M62GPP936EPBR37DK93RWS1H", "--mode", mode, "--consent", "--wait", "60"]);
     else assert.equal(existsSync(calls), false);
   }
+});
+
+// Clarissa's #125 cell: `invite` ran with the default `--wait 300`, a 2-minute tool limit killed it, and the agent
+// stopped serving to ask the owner. Every invite, invite serve and join call waits at most a minute, and an
+// unclaimed wait (exit 1, `[invite-pending]`) is rerun in the same turn without asking, up to 10 times.
+test("Courier invite, invite serve and join wait at most 60 s and rerun on [invite-pending] in the same turn", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const section = (heading) => guide.split(`\n## ${heading}\n`)[1]?.split("\n## ")[0] ?? "";
+  const shellBlocks = (text) => [...text.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+  const NO_FILTER = "Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output.";
+  const incoming = section("Incoming invitation takes priority");
+  assert.deepEqual(shellBlocks(incoming), ['"$TC" courier join "$INVITATION_URL" --consent --wait 60']);
+  assert.ok(incoming.includes(`${NO_FILTER} It waits at most a minute for the issuer`));
+  assert.ok(incoming.includes("If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same command again, at most 10 times in a row"));
+  const invite = section("Choose how to invite");
+  assert.match(shellBlocks(invite).at(-1), /\n"\$TC" courier invite --session "\$SESSION_ID" --mode "\$MODE" --consent --wait 60$/);
+  assert.ok(invite.includes(NO_FILTER));
+  const serving = section("Keep the issuer serving");
+  assert.deepEqual(shellBlocks(serving), ['"$TC" courier invite serve "$INVITATION_ID" --wait 60']);
+  assert.ok(serving.includes(NO_FILTER));
+  assert.ok(serving.includes("- **Exit 1, `[invite-pending]` on stderr** (\"No claim received\"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` command again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 runs in a row"));
+  assert.ok(serving.includes("- **Exit 1, `[invite-expired]`:**"));
+  assert.doesNotMatch(guide, /Keep that process running/);
+  for (const line of shellBlocks(guide).join("\n").split("\n").filter((text) => /courier (?:invite|join)\b/.test(text))) assert.ok(line.endsWith(" --wait 60"), line);
+  const start = readFileSync(join(root, "_site/skills/courier/start.md"), "utf8");
+  assert.ok(start.includes(`"$TC" courier join '<exact link>' --consent --wait 60 `));
+  assert.ok(start.includes(`"$TC" courier invite --session <id> --mode same-owner|anyone --consent --wait 60.`));
+  assert.ok(start.includes(`in the same turn and without asking me, resume "$TC" courier invite serve <invitationId> --wait 60 for that same invitation, at most 10 runs in a row.`));
+  assert.doesNotMatch(start, /--wait 300/);
+});
+
+// The codes and exit the guide relies on, in the pinned CLI's Courier bundle: an unclaimed wait throws
+// [invite-pending] (the invitation is kept), a past expiresAt throws [invite-expired], and both exit 1.
+test("the pinned CLI's Courier ends an unclaimed invite wait with exit 1 [invite-pending], and --wait is 1–604800 s", () => {
+  const bundle = readFileSync(join(root, "node_modules/@tinycloud/cli/dist/courier-entry.js"), "utf8");
+  assert.ok(bundle.includes('throw new CourierError("invite-pending", `No claim received. Resume with courier invite serve ${body.id}; the same invitation and winner reservation are preserved.`);'));
+  assert.ok(bundle.includes('throw new CourierError("invite-expired", "Invitation expired; no session was created or substituted.");'));
+  assert.ok(bundle.includes('throw new CourierError("invite-pending", "Issuer has not completed pairing yet. Ask them to resume invite serve, then join the same link; no different session was created.");'));
+  assert.ok(bundle.includes('if (!Number.isInteger(value2) || value2 < 1 || value2 > 604800)'));
+  assert.match(bundle, /console\.error\(`\$\{programName\(\)\}: \$\{info\.code \? `\[\$\{info\.code\}\] ` : ""\}\$\{info\.message\}`\);\n\s*return 1;/);
 });
 
 
