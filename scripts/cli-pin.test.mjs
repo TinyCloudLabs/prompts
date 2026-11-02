@@ -41,6 +41,7 @@ const blocks = [
 
 // A home with a stand-in CLI that records each call. `where`:
 // private: the agent's own install, found by the resolver; saved-private: agent.env names that private install;
+// process-private: a process TC_BIN names that private install (as /cli's PowerShell flow exports it);
 // process: an operator TC_BIN in the environment; saved: an operator TC_BIN in agent.env.
 function fresh(block, where, version) {
   const dir = join(work, `run-${++runs}`);
@@ -67,7 +68,7 @@ esac
   mkdirSync(join(home, ".agents/skills/tinycloud-cli"), { recursive: true });
   writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
   const env = { PATH: process.env.PATH, HOME: home };
-  if (where === "process") env.TC_BIN = bin;
+  if (where === "process" || where === "process-private") env.TC_BIN = bin;
   if (where === "saved" || where === "saved-private") {
     const config = join(home, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -84,7 +85,7 @@ esac
 
 for (const block of blocks) {
   test(`${block.name}: an agent-installed CLI older than the pin prints CLI_OLDER and makes no further CLI call`, () => {
-    for (const where of ["private", "saved-private"]) {
+    for (const where of ["private", "saved-private", "process-private"]) {
       const { bin, cwd, result, calls } = fresh(block, where, OLDER);
       assert.notEqual(result.status, 0, `${where}: ${result.stdout}`);
       assert.equal(calls, "--version\n", where);

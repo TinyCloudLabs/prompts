@@ -20,8 +20,9 @@ Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `we
 Use the CLI selected by https://agents.tinycloud.xyz/cli, stable `1.5.2`: new installs and older agent-owned installs get it. Do not install a separate beta or a global CLI. The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
 
 ```sh
-B=${TC_BIN:-}; O=$B; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
-if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; case $B in "$P"/*) ;; *) O=$B ;; esac; fi
+B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
+if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
+O=$B; case $O in "$P"/*) O= ;; esac
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || { echo 'TC_NOT_FOUND: set up the CLI at https://agents.tinycloud.xyz/cli, then rerun this block'; exit 1; }
 V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"

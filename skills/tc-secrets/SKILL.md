@@ -65,11 +65,12 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"; OPERATOR_BIN=${TC_BIN:-}
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
-  [ -n "${TC_BIN:-}" ] || { TC_BIN=$(node "$ENV_HELPER" get TC_BIN); case $TC_BIN in "$HOME/.local/share/tinycloud/cli/"*) ;; *) OPERATOR_BIN=$TC_BIN ;; esac; }
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
 fi
+OPERATOR_BIN=${TC_BIN:-}; case $OPERATOR_BIN in "$HOME/.local/share/tinycloud/cli/"*) OPERATOR_BIN= ;; esac
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"

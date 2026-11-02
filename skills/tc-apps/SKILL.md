@@ -53,8 +53,9 @@ The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domain
 ## 1. Read the paths and the time
 
 ```sh
-B=${TC_BIN:-}; O=$B; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
-if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; case $B in "$P"/*) ;; *) O=$B ;; esac; fi
+B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
+if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
+O=$B; case $O in "$P"/*) O= ;; esac
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || B=
 if [ -n "$B" ]; then printf '%s\n' "$B"; else echo 'TC_BIN is unset'; fi

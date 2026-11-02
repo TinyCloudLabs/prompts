@@ -140,6 +140,17 @@ test("a process TC_BIN is an operator override and is not written to agent.env",
   assert.equal(existsSync(join(config, "agent.env")), false);
 });
 
+for (const name of ["tinycloud", "tc"]) test(`a process TC_BIN naming the older private ${name} is the agent's own: upgraded in place and selected as tinycloud`, { skip: windows }, () => {
+  const dir = home();
+  const bin = privateCli(dir, "1.5.1");
+  const log = [];
+  const selected = installCli({ env: { ...envFor(dir), TC_BIN: join(dirname(bin), name), PATH: fakeNpm(dir) }, log: (line) => log.push(line) });
+  assert.deepEqual(selected, { bin, version: CLI_VERSION, source: "installed" });
+  assert.match(selected.bin, /node_modules\/\.bin\/tinycloud$/);
+  assertPrivateOnly(dir);
+  assert.ok(!log.some((line) => line.startsWith("TC_OLDER")));
+});
+
 for (const [where, version] of [["TC_BIN", "1.5.1"], ["agent-env", "1.5.1"], ["TC_BIN", "1.3.5"]]) test(`an older operator CLI (${version}) from ${where} is kept with a notice and left untouched`, { skip: windows }, () => {
   const dir = home();
   const operator = join(dir, "operator", "tinycloud");

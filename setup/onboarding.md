@@ -62,7 +62,8 @@ TC='<TC_BIN>'
 V=$("$TC" --version)
 if printf '%s\n' "$V" | awk -F. -v p=1.5.2 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   O=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
-  if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; case $O in "$HOME/.local/share/tinycloud/cli/"*) O= ;; esac; fi
+  if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; fi
+  case $O in "$HOME/.local/share/tinycloud/cli/"*) O= ;; esac
   if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.5.2; keeping this operator-selected CLI"
   else M="CLI_OLDER $V $TC: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
   echo "$M" | tee onboard.err >&2; exit 1
