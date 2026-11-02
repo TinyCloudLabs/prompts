@@ -13,7 +13,7 @@ The generic-store scenarios below use an explicitly chosen custom fitness app, n
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.0 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install is `1.5.0`, while a compatible existing/newer version is reused. There is no app-local beta or retry wrapper.
+  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.3 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.5.2` (`node_modules/.bin/tinycloud`), while a newer or operator-selected CLI is kept. There is no app-local beta or retry wrapper.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -78,7 +78,7 @@ Each step is a **new conversation**. The first conversation in each client carri
   - They never run the system `tc`, use `--replace-session`, switch owners/hosts or ask for a broader grant to work around a failed read.
   - `<TC_BIN>` is the selected compatible CLI, saved in `~/.local/share/tc-apps/cli-path`; network failures remain visible rather than being hidden by a retry wrapper.
 - **Installation:**
-  - A missing CLI is installed once in `~/.local/share/tinycloud/cli`; existing compatible installs are reused. Only the missing skill is added for app setup.
+  - A missing CLI is installed once in `~/.local/share/tinycloud/cli`, and an older copy there is upgraded to `1.5.2`; a newer or operator-selected CLI is kept. Only the missing skill is added for app setup.
   - The global `tc` keeps its version.
 - **Speed:**
   - Conversation 1 takes under about 3 minutes, including the install and the approval.

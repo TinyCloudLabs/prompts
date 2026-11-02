@@ -2,12 +2,14 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.2"
+  version: "0.3.3"
 ---
 
 # Personal apps in TinyCloud
 
-**Install rule: reuse the single compatible CLI selected by https://agents.tinycloud.xyz/cli. New installs use stable `1.5.2`; a compatible `1.5.0` or newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**Install rule: reuse the single CLI selected by https://agents.tinycloud.xyz/cli. New installs and older agent-owned installs use stable `1.5.2`; an operator-selected CLI is kept, and a newer one is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+
+**Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
@@ -156,6 +158,7 @@ For `SPACE_NOT_HOSTED`, a new account may still be provisioning. Tell the owner,
 
 - `status: ready`: copy `profile`, `host` and `spaceId` as `<APP_PROFILE>`, `<APP_HOST>` and `<APP_SPACE>`. **Do not sign in again.** Read the returned catalog keys and the app's `<ID>/catalog` with §5. An empty catalog is not a missing grant: create the app/kind metadata and discovery entry before the first record (§2).
 - `status: grant-required`: keep the returned profile, host and owner; §4 requests only the returned `missing` permissions.
+- `status: onboard-first`: no profile on this computer has an owner or a session. Onboard first (see the top of this file), then rerun this check. Only if you cannot run onboarding, use the returned `profile` and `missing` as for `sign-in-required`.
 - `status: sign-in-required`: §4 creates/signs in the named app-scoped profile. Never replace an existing session.
 - An account/host mismatch, incomplete listing, network error or permission denial from the actual read is a failure, not a reason to switch profiles or request broader access. Report it and write nothing.
 

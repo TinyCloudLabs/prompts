@@ -42,16 +42,53 @@ test("onboarding access is reused without a new profile or approval, after a rea
   assert.equal(w.reads[0].name, "owner");
 });
 
-test("a fresh key-only profile reaches sign-in without requiring an unknown owner address", () => {
+test("a fresh key-only profile is sent to onboarding first, keeping the scoped sign-in details", () => {
   const p = profile("fresh", []);
   p.ownerDid = null;
   p.authenticated = false;
   p.session.present = false;
   const w = world([p], { selected: "fresh" });
   assert.deepEqual(appContext("/cli", "todos", { env: { TC_PROFILE: "fresh" }, run: w.run }), {
-    status: "sign-in-required", profile: "fresh", missing: appPermissions("todos"),
+    status: "onboard-first", profile: "fresh", missing: appPermissions("todos"),
   });
   assert.deepEqual(w.writes, []);
+  assert.deepEqual(w.reads, []);
+});
+
+test("no profile at all sends generic and catalog apps to onboarding first", () => {
+  const w = world([], { selected: "default" });
+  assert.deepEqual(appContext("/cli", "todos", { env: {}, run: w.run, write: true }), {
+    status: "onboard-first", profile: "tinyapp-todos", missing: appPermissions("todos", { write: true }),
+  });
+  for (const app of ["healthlog", "recipes"]) {
+    assert.deepEqual(appContext("/cli", app, { env: {}, run: w.run, catalog: true, write: true }), { status: "onboard-first" });
+    assert.deepEqual(appContext("/cli", app, { env: {}, run: w.run, catalog: true }), { status: "onboard-first" });
+  }
+  assert.deepEqual(w.writes, []);
+  assert.deepEqual(w.reads, []);
+});
+
+test("a key-only default profile without an owner is not onboarded for a catalog app", () => {
+  const p = profile("default", []);
+  p.ownerDid = null;
+  p.authenticated = false;
+  p.session.present = false;
+  const w = world([p], { selected: "default" });
+  assert.deepEqual(appContext("/cli", "healthlog", { env: {}, run: w.run, catalog: true, write: true }), { status: "onboard-first" });
+});
+
+test("a signed-out onboarded profile signs in again instead of onboarding", () => {
+  const p = profile("owner", []);
+  p.authenticated = false;
+  const w = world([p]);
+  const result = appContext("/cli", "todos", { env: {}, run: w.run, write: true });
+  assert.equal(result.status, "sign-in-required");
+  assert.equal(result.ownerDid, owner);
+});
+
+test("the informational SQL index check never sends the agent to onboarding", () => {
+  const w = world([], { selected: "default" });
+  assert.equal(appContext("/cli", "todos", { env: {}, run: w.run, sql: true, write: true }).status, "sign-in-required");
 });
 
 test("checksummed owner metadata reuses the same owner's lowercase applications grant", () => {

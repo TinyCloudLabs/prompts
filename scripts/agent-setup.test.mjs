@@ -167,6 +167,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
+  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.5\.2; keeping this operator-selected CLI$/m);
   assert.deepEqual(readFileSync(conflicting), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
 });
@@ -253,6 +254,21 @@ test("/connect sends an agent that can run the CLI to /onboarding and gives each
     assert.match(section, /\(#approve-access-and-continue\)/);
     assert.match(html, new RegExp(`<h2 id="${id}">`));
   }
+});
+
+test("tc-apps sends an agent with no onboarded profile through /onboarding before any scoped sign-in", () => {
+  const site = join(root, "_site");
+  const onboarding = "https://agents.tinycloud.xyz/onboarding";
+  const catalog = readFileSync(join(site, "skills/apps/TINY-APPS.md"), "utf8");
+  for (const file of ["apps", "skills/apps/SKILL.md", "skills/apps/TINY-APPS.md"]) {
+    const rules = readFileSync(join(site, file), "utf8").split("\n").filter((line) => line.includes("`onboard-first`") && line.includes(onboarding));
+    assert.equal(rules.length, 1, file);
+    assert.match(rules[0], /original request/, file);
+    assert.match(rules[0], /rerun/, file);
+    assert.match(rules[0], /cannot run onboarding/, file);
+  }
+  const scoped = catalog.split("\n### Scoped setup without onboarding\n")[1].trim().split("\n")[0];
+  assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
 });
 
 test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {

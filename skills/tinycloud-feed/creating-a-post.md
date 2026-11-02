@@ -10,7 +10,7 @@ Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `we
 
 ### Install and sign in (weight bot example)
 
-Reuse the CLI selected by https://agents.tinycloud.xyz/cli, stable `1.5.0` or newer; fresh installations pin `1.5.2`. Do not install a separate beta or a global CLI. If it is not set up, follow that shared guide and return here. The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path instead. Check that selected CLI with `--version` before continuing.
+Reuse the CLI selected by https://agents.tinycloud.xyz/cli: new installs and older agent-owned installs use `1.5.2`; an operator-selected CLI (`1.5.0` or newer) is kept. Do not install a separate beta or a global CLI. If it is not set up, follow that shared guide and return here. The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path instead. Check that selected CLI with `--version` before continuing.
 
 Save this as `feed-weight.manifest.json` in the current directory. For another bot, change `weight` in the folder, app id, display name and profile name:
 

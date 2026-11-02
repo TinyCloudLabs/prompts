@@ -29,6 +29,8 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 
 Use `recipes` instead of `healthlog` for Recipes; omit `--write` for a read-only request. A `ready` result means the existing profile already has onboarding's access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` as `<CATALOG_PROFILE>`, `<CATALOG_HOST>`, `<CATALOG_SPACE>` and `<OWNER_DID>`. Do **not** run another sign-in or owner-grant helper.
 
+`onboard-first` means no profile on this computer has an owner or a session yet. Fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. When it reports `"onboarded": true`, rerun the check above and continue from its result. Do not start the scoped setup below instead, unless you cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
+
 For Health Log, bind the selected owner and applications space without replacing an earlier binding:
 
 ```sh
@@ -56,7 +58,7 @@ Onboarding grants ordinary SQL reads/writes, not table creation. If the pinned i
 
 ### Scoped setup without onboarding
 
-The remaining flow supports an existing narrow `agent-meal` setup. Its sign-in explicitly uses the legacy manual-code fallback and its longer links; the access grant uses a short link and automatic retrieval. Prefer the onboarding reuse path above in chat. The agent runs the commands and relays approvals. Never ask the owner to open a terminal or restart. Every data command passes the full validated applications space ID.
+The remaining flow supports an existing narrow `agent-meal` setup. Use it only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding. Its sign-in explicitly uses the legacy manual-code fallback and its longer links; the access grant uses a short link and automatic retrieval. The agent runs the commands and relays approvals. Never ask the owner to open a terminal or restart. Every data command passes the full validated applications space ID.
 
 **Say the two steps first.** The owner signs in to, or creates, their OpenKey, then gives you permission for what they asked; signing in is not what gives you access. The `FIRST` message from `announce.sh` says this: copy that message into your reply exactly, character for character, once, and do not reword any line of it. If the action skill's own message already opens with this, don't repeat it. Call it "permission", not "delegation", "DID" or "capability".
 

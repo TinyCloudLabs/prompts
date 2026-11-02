@@ -1,10 +1,10 @@
 # Set up the TinyCloud CLI
 
-This module installs and verifies only the TinyCloud CLI and its core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. New installations use **@tinycloud/cli 1.5.2**. Compatible existing versions are reused without downgrading. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
+This module installs and verifies only the TinyCloud CLI and its core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. New installs and older agent-owned installs use **@tinycloud/cli 1.5.2**; an operator-selected CLI is kept, and a newer one is never downgraded. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
 
 ## For the owner
 
-- **What it does:** reuses your selected compatible CLI or installs `1.5.2` into `~/.local/share/tinycloud/cli`, then installs the `tinycloud-cli` skill. Windows gets non-overwriting launchers in `%USERPROFILE%\.local\bin` when names are free, and a safe append to your user PATH. Unix links free names only when `~/.local/bin` is already on PATH. Unrelated commands are left alone.
+- **What it does:** installs `1.5.2` into `~/.local/share/tinycloud/cli`, or upgrades an older copy there, unless you selected a CLI with `TC_BIN` (kept as is) or a newer one is present; then it installs the `tinycloud-cli` skill. Windows gets non-overwriting launchers in `%USERPROFILE%\.local\bin` when names are free, and a safe append to your user PATH. Unix links free names only when `~/.local/bin` is already on PATH. Unrelated commands are left alone.
 - **Paste into an agent that can run shell commands:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat`, `/apps`, `/publish`, `/secrets` and `/courier` use this shared selection instead of installing an app-specific CLI.
 - **You approve:** nothing. It doesn't sign in or request any access.
 - **Then:** in a new terminal, `tinycloud --help` lists the commands.
@@ -32,7 +32,7 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 ## Install the CLI
 
-Use the reusable platform-aware installer below. It respects process `TC_BIN` first, then a saved `TC_BIN` read by the data-only helper installed by [/agent](agent.md), then a compatible private or PATH installation. An explicit selection is never silently replaced; app guides check whether it supports their required capabilities. Automatic selection accepts CLI 1.5.0 or newer and never downgrades a compatible installation. It never installs into npm's global prefix.
+Use the reusable platform-aware installer below. It respects process `TC_BIN` first, then a saved `TC_BIN` read by the data-only helper installed by [/agent](agent.md), then a private or PATH installation of CLI 1.5.0 or newer. An operator selection is kept, never silently replaced (one older than `1.5.2` prints `TC_OLDER`); app guides check whether it supports their required capabilities. Otherwise a CLI older than `1.5.2` is not reused: the installer upgrades its own copy in `~/.local/share/tinycloud/cli` and leaves a PATH CLI untouched. A newer CLI is never downgraded. It never installs into npm's global prefix.
 
 Download the installer, then run it as a **separate shell call**. Do not retype or shorten its implementation, pipe a download into a shell, or use PowerShell's `Invoke-Expression`.
 
@@ -69,7 +69,7 @@ sh "$HOME/.local/share/tinycloud/install-cli.sh"
 
 This POSIX entry point downloads and runs the same `/install-cli.mjs` implementation; it has no separate CLI version or installation policy.
 
-`TC_SELECTED {"bin":"…","version":"…","source":"…"}` identifies the selected executable; retain that absolute path as `TC_BIN` when returning to the caller. The downloaded Node installer accepts `--resolve` to print only an existing selected path (exit 1 means absent; exit 2 means invalid/unsafe), without installing or changing PATH.
+`TC_SELECTED {"bin":"…","version":"…","source":"…"}` identifies the selected executable (for the private install, `node_modules/.bin/tinycloud`); retain that absolute path as `TC_BIN` when returning to the caller. The downloaded Node installer accepts `--resolve` to print only an existing selected path (exit 1 means absent; exit 2 means invalid/unsafe), without installing, upgrading or changing PATH.
 
 For each command name:
 
@@ -153,7 +153,7 @@ These commands target the named CLI package and named skill. Preserve unrelated 
 
 ## Verify and return
 
-Verify the selected absolute path from `TC_SELECTED`: `"<TC_BIN>" --version` in POSIX or `& "<TC_BIN>" --version` in PowerShell. New installs report `1.5.2`; compatible existing selections retain their version. An incompatible explicit selection is reported, never replaced. If `tinycloud` was `TC_READY` or `TC_LINKED`, verify `tinycloud --version` after refreshing PATH or restarting the terminal. Check the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile or host, or request permissions here.
+Verify the selected absolute path from `TC_SELECTED`: `"<TC_BIN>" --version` in POSIX or `& "<TC_BIN>" --version` in PowerShell. New and upgraded installs report `1.5.2`; a newer or operator-selected CLI keeps its version. An incompatible explicit selection is reported, never replaced. If `tinycloud` was `TC_READY` or `TC_LINKED`, verify `tinycloud --version` after refreshing PATH or restarting the terminal. Check the selected client's `tinycloud-cli/SKILL.md` is readable and matches the pinned skill. Do not sign in, choose a profile or host, or request permissions here.
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 

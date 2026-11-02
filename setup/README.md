@@ -19,7 +19,7 @@ The CLI route needs Node.js 22.20 or later and npm. The hosted MCP has no meetin
 
 - **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
 - **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
-- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. Reuse the CLI selected by [/cli](tinycloud.md), stable `1.5.0` or newer; fresh installs pin `1.5.2`, which includes create-only writes.
+- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. Reuse the CLI selected by [/cli](tinycloud.md): new installs and older agent-owned installs use `1.5.2`, which includes create-only writes; an operator-selected CLI (`1.5.0` or newer) is kept.
 - **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)

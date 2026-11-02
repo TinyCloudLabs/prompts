@@ -26,6 +26,8 @@ In Claude, to avoid approving each record-writing tool call, go to **Settings �
 
 Keep the owner's original request in this conversation and carry it out with the skill; don't ask the owner to send it again. **Already onboarded? Do not install another CLI or start another sign-in.** Keep the same selected CLI, profile, host and owner. The skill checks existing grants and actual read access before asking for anything more. A first record in an existing catalog needs only the write and read-back commands in skill §6; creating a new app also creates its catalog entries, not another CLI installation.
 
+**Not onboarded yet? Onboard first.** When the skill's access check returns `onboard-first` (no profile on this computer has an owner or a session), fetch https://agents.tinycloud.xyz/onboarding raw, as above, and follow it now, keeping the owner's original request. It sends you back here; rerun the check and it reuses that access. The skill's scoped sign-ins are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
+
 What is and isn't secret: [the list on the shared setup page](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
 If the owner only asked for setup or named no record, save one default record without asking, after sign-in is approved (skill §1a, §3 and §4) and not before: app `todos`, kind `todo`, value `{"v":1,"at":"<UTC>","data":{"title":"Try my personal apps"},"by":<client>}`, where `<UTC>` is the clock's time from `date -u +%FT%TZ` (skill §1; run it again if it is more than 5 minutes old), never an estimate. Run skill §1a for `todos` first. If it prints `legacy`, an earlier version already keeps `todos` records for this owner: use the old layout (skill `LEGACY.md`, no new approval) with key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps` and done twin `xyz.tinycloud.agent-data/todos/todo/done/try-my-personal-apps`, and, if they don't exist yet, the catalog records `xyz.tinycloud.agent-data/catalog/todos` and `xyz.tinycloud.agent-data/catalog/todos/todo`. Otherwise use the new layout in the `applications` space with key `xyz.tinycloud.tinyapps.todos/todo/open/try-my-personal-apps`, done twin `xyz.tinycloud.tinyapps.todos/todo/done/try-my-personal-apps`, and catalog records `xyz.tinycloud.tinyapps.todos/catalog` and `xyz.tinycloud.tinyapps.todos/catalog/todo`, followed by the discovery entry `xyz.tinycloud.tinyapps.catalog/todos/entry` = `{"v":1,"app":"todos","id":"xyz.tinycloud.tinyapps.todos","title":"Todos"}`. If the `todos` app or its `todo` kind doesn't exist yet, write the catalog records first (skill §2 rule 2): the app record is `{"app":"todos","title":"Todos","about":"Things to do.","created":"<TODAY>","by":<client>}` and the kind record is `{"app":"todos","kind":"todo","about":"One record per thing to do.","shape":"item","states":["open","done"],"v":1,"fields":{"title":"text: what to do"}}`. Write commands are in skill §6 (`LEGACY.md` §6 in the old layout). Get that key and its done twin first (skill §5), and skip saving if either exists, so a todo the owner already ticked off isn't saved again. Afterwards tell the owner the key, that “What’s on my todo list?” shows it, and that you'll delete it on request (the skill's `kv delete`, §6).
@@ -36,13 +38,13 @@ Run each block as one shell tool call. Use the same `TC_BIN`, `TC_HOME` and sele
 
 ## 1. Reuse the CLI
 
-Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 22.20 or later with npm, reuses a compatible existing CLI and otherwise installs the single pinned release, `1.5.2`. It never downgrades a compatible newer version; stable `1.5.0` remains compatible. Preserve an operator-provided `TC_BIN`; a missing, broken or incompatible override is an explicit error, not permission to replace it. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
+Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 22.20 or later with npm. New installs and older agent-owned installs use the pinned release, `1.5.2`; an operator-selected CLI is kept, and a newer one is never downgraded. Preserve an operator-provided `TC_BIN`; a missing, broken or incompatible override is an explicit error, not permission to replace it. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 
 ## 2. Install only the skill
 
-If the installed `tc-apps` skill is version `0.3.0` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+If the installed `tc-apps` skill is version `0.3.3` or newer and its helpers are present, skip the installer, save the selected path below, and read the skill in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 
@@ -60,9 +62,9 @@ Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-
 node (Join-Path $D 'install.cjs') apps --agent '<CLIENT>'
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.3.0 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.3.3 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
-Save the selected executable as data for later conversations; this does not install another CLI or change its profile store:
+Save the selected executable as data for later conversations, also when the skill was already installed, so an older saved path (such as `node_modules/.bin/tc`) becomes the selected `tinycloud` one; this does not install another CLI or change its profile store:
 
 ```sh
 node -e 'const fs=require("node:fs"),p=require("node:path"),os=require("node:os");const d=p.join(os.homedir(),".local/share/tc-apps");fs.mkdirSync(d,{recursive:true,mode:0o700});fs.writeFileSync(p.join(d,"cli-path"),process.argv[1]+"\n",{mode:0o600});' '<TC_BIN>'

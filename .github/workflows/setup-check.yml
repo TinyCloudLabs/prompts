@@ -92,7 +92,7 @@ jobs:
             $userKey.SetValue('Path', $fixture, [Microsoft.Win32.RegistryValueKind]::ExpandString)
             $binDir = Join-Path $root '.local\bin'
             $prefix = Join-Path $root '.local\share\tinycloud\cli'
-            $expectedBin = Join-Path $prefix 'node_modules\.bin\tc.cmd'
+            $expectedBin = Join-Path $prefix 'node_modules\.bin\tinycloud.cmd'
             $expectedPath = [pscustomobject]@{
               Exists = $true
               Value = $fixture + $binDir
