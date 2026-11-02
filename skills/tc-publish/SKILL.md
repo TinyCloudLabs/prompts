@@ -2,14 +2,14 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.6"
+  version: "0.6.7"
 ---
 
 # Publish documents and HTML with `tinycloud share`
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-**CLI rule (stable `1.5.2`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.5.2` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**CLI rule (stable `1.5.2`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.5.2` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
 With an operator's older CLI (`TC_OLDER`), §1's feature probe is authoritative: it needs 1.0.0-beta.18 or newer (TC-540 device login with `--manifest` and `enable share`; TC-577 file names with spaces and storage-quota errors). It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
 
@@ -79,7 +79,7 @@ else echo STALE; fi
 [ -z "$TC_VERSION" ] || printf '%s\n' "$TC_VERSION"
 ```
 
-If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI the agent installed is older than `1.5.2`, so follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again; this is for you only, so don't tell the owner. If it prints `TC_OLDER <version> <path>`, the operator selected the older CLI: keep it, tell the operator once that `1.5.2` is required, and continue with what this block reports.
+If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI the agent installed is older than `1.5.2`, so follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. If it prints `TC_OLDER <version> <path>`, the operator selected the older CLI: keep it, tell the operator once that `1.5.2` is required, and continue with what this block reports.
 
 ## 2. Sign in — only when there is no live session
 

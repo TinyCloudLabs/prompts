@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Post owner-requested cards into TinyCloud Home's feed from a bot's scoped folder, using its profile and five built-in card formats.
 metadata:
-  version: "0.1.5"
+  version: "0.1.6"
 ---
 
 This is how an agent adds cards to your TinyCloud Home feed. It writes only to its own folder, and only what you asked it to post.
@@ -17,7 +17,7 @@ Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `we
 
 ### Install and sign in (weight bot example)
 
-**CLI rule (stable `1.5.2`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**CLI rule (stable `1.5.2`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
 The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
 
@@ -36,7 +36,7 @@ fi
 ```
 
 - `TC_NOT_FOUND` → follow that shared guide and return here.
-- `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. This is for you only; don't tell the owner.
+- `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
 - `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop.
 
 Save this as `feed-weight.manifest.json` in the current directory. For another bot, change `weight` in the folder, app id, display name and profile name:
