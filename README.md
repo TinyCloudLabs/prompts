@@ -97,7 +97,7 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 ## Release checklist
 
-- Update the matrix: re-run each flow, then record the new counts, the date and the versions in [`matrix/interactions.json`](matrix/interactions.json). It is served at `/matrix`; a value is `null` until a real QA run measured it, and every number needs `measured_on` and `run_ref`.
+- Update the matrix: re-run each flow, then record the new counts, the date and the versions in [`matrix/interactions.json`](matrix/interactions.json). It is not published on the site; `scripts/matrix.mjs` renders it for private use. A value is `null` until a real QA run measured it, and every number needs `measured_on` and `run_ref`.
 
 ## Other files
 
