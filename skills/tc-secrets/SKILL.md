@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.13"
+  version: "0.5.14"
 ---
 
 # Read secrets from TinyCloud with `tinycloud secrets`
@@ -419,7 +419,39 @@ PY
 - `LOGIN_STOPPED` → the sign-in stopped without a result (a restart, or its process was ended). Run §3c again. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again.
 - `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired (after about an hour) before the owner approved. Run §3c again, then this block, and send the owner only the new link: "Open this link and approve; tell me when you're done."
 - `LOGIN_FAILED APPROVAL_RESULT_EXPIRED` → the owner approved, but the sign-in wasn't running to collect it within 10 minutes. Same as above: run §3c again and send only the new link.
-- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then run §3c again; it resumes the same link.
+- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then run §3c again; it resumes the same link. If the third start of §3c in a row ends this way, stop retrying and run this block once. It removes only a request that expired before it was approved, and only for the CLI versions and file shape it knows; otherwise it changes nothing:
+
+  ```sh
+  { set +x; } 2>/dev/null; set +e; umask 077
+  ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+  if [ -r "$ENV_HELPER" ]; then
+    [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  fi
+  [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+  PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
+
+  node -e '
+  const fs = require("node:fs"), path = require("node:path");
+  const [profile, version] = process.argv.slice(1);
+  if (!["1.5.0", "1.5.1"].includes(version)) { console.log("UNKNOWN"); process.exit(0); }
+  const file = path.join(process.env.TC_HOME || process.env.HOME, ".tinycloud", "profiles", profile, "approval-pending.json");
+  let items;
+  try { items = JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { console.log(e.code === "ENOENT" ? "NONE_EXPIRED" : "UNKNOWN"); process.exit(0); }
+  const known = (i) => i && typeof i === "object" && i.version === 1 && typeof i.requestId === "string" && !Number.isNaN(Date.parse(i.requestExpiresAt));
+  if (!Array.isArray(items) || !items.every(known)) { console.log("UNKNOWN"); process.exit(0); }
+  const dead = (i) => !i.resultRef && !i.resultEnvelope && Date.parse(i.requestExpiresAt) + 60000 < Date.now();
+  const keep = items.filter((i) => !dead(i));
+  if (keep.length === items.length) { console.log("NONE_EXPIRED"); process.exit(0); }
+  const tmp = file + "." + process.pid + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(keep, null, 2) + "\n", { mode: 0o600, flag: "wx" });
+  fs.renameSync(tmp, file);
+  console.log("DROPPED");
+  ' "$PROFILE" "$("$TC_BIN" --version 2>/dev/null)"
+  ```
+
+  - `DROPPED` → the link expired before the owner approved. Same as `APPROVAL_REQUEST_EXPIRED` above: run §3c again, then §3d, and send the owner only the new link.
+  - `NONE_EXPIRED` → OpenKey is still unavailable. Stop and report it; don't retry.
+  - `UNKNOWN` → stop and report it; don't retry or change the file yourself.
 - `LOGIN_FAILED <other code>` → the CLI refused or failed. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` → the block stopped the sign-in. Don't send a link; tell the owner what the check reported.
 
@@ -522,7 +554,7 @@ Branch on `code`, never on the exit status alone: exit 8 means "still pending" o
 | `SESSION_IN_USE` | A new request would narrow or shorten the live session | Ask the owner. Never add `--replace-session` on your own |
 | `INVALID_LOGIN_SCOPE` | The request has no secrets, or mixes spaces | Rebuild the manifest with §3b |
 | `APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED` (exit 3) | The approval link expired unapproved, or an approval wasn't collected in time | §3c again; send only the new link |
-| `APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` (exit 8) | OpenKey is unavailable for now | Wait a minute, then §3c again; it resumes the same link |
+| `APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` (exit 8) | OpenKey is unavailable for now | Wait a minute, then §3c again; it resumes the same link. After the third in a row, stop retrying and run the §3d exit 8 block once |
 | `DEVICE_AUTH_UNSUPPORTED_SCOPE` | Device login can't grant secrets | Use §3, never `--device` |
 
 ## 6. Lifecycle
