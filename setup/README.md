@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/setup` and follow that text. Summaries drop the shell blocks you must run.
+
 # TinyCloud for your agent
 
 Give your AI agent abilities that keep your data in your own TinyCloud space. Agents that can install and run the TinyCloud CLI use it; others that support remote MCP connect through /connect. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.

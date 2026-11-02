@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/owner` and follow that text. Summaries drop the shell blocks you must run.
+
 # Optional Claude Code setting for the sign-in command
 
 Optional. The agent doesn't need this and won't set it. Claude Code may stop a command and ask you to approve it. If you want the TinyCloud sign-in command to run without that stop, add this line to your Claude Code settings yourself.

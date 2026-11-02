@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/connect.md` and follow that text. Summaries drop the shell blocks you must run.
+
 # Set up TinyCloud
 
 Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in a runtime that can install and run the TinyCloud CLI, such as Claude Code, Codex or OpenCode, or a client with remote MCP and OAuth support. A product or bot name alone does not establish those capabilities; see the client-specific routes below.

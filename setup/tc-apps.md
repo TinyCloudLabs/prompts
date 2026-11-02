@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/apps` and follow that text. Summaries drop the shell blocks you must run.
+
 # Personal records in TinyCloud (`tc-apps`)
 
 Your agent keeps your records, like meals, weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Each app has its own folder. Existing onboarding access is reused; an approval is requested only when the task needs access you have not already granted.
@@ -42,11 +44,11 @@ Follow [the shared CLI setup](tinycloud.md) only if it has not already completed
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. Later conversations find the same CLI the way every TinyCloud skill does: process `TC_BIN`, then the selection in `~/.config/tinycloud/agent.env`, then the shared private install. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 
-**CLI rule (stable `1.5.2`): after this step, run skill §1's block (see §3 below) before any other TinyCloud command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from skill §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: skill §1 prints `CLI_OLDER`; follow the shared CLI setup once, even if it already ran in this conversation, and rerun skill §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**CLI rule (stable `1.5.2`): after this step, run skill §1's block (see §3 below) before any other TinyCloud command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from skill §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: skill §1 prints `CLI_OLDER`; follow the shared CLI setup once, even if it already ran in this conversation, and rerun skill §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
 ## 2. Install only the skill
 
-If the installed `tc-apps` skill is version `0.3.8` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+If the installed `tc-apps` skill is version `0.3.9` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 
@@ -64,7 +66,7 @@ Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-
 node (Join-Path $D 'install.cjs') apps --agent '<CLIENT>'
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.3.8 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.3.9 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
