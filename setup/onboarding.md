@@ -50,7 +50,7 @@ TC='<TC_BIN>'
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-Every guide needs `1.6.0-beta.1`: new installs and older agent-owned installs get it. If the CLI setup printed `TC_OLDER`, the operator selected an older CLI: tell the owner in one line that it is older than the required `1.6.0-beta.1`, and stop; don't replace it. No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop the same way.
+**CLI rule (`1.6.0-beta.1`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.0-beta.1`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: step 2 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun step 2. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
 
 **2. Run onboarding.** One run waits for both approvals in sequence. It uses the selected default profile, or `TC_PROFILE` if set. Start it in the client's background process or interactive session so it keeps running while you talk to the owner, with stderr going to a file you read:
 
@@ -63,7 +63,7 @@ V=$("$TC" --version)
 if printf '%s\n' "$V" | awk -F. -v p=1.6.0-beta.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/||q[3]~/-/&&$0>=p)}'; then
   O=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
   if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; fi
-  case $O in "$HOME/.local/share/tinycloud/cli/"*) O= ;; esac
+  [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$HOME/.local/share/tinycloud/cli" || O=
   if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.6.0-beta.1; keeping this operator-selected CLI"
   else M="CLI_OLDER $V $TC: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
   echo "$M" | tee onboard.err >&2; exit 1

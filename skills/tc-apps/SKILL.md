@@ -7,7 +7,7 @@ metadata:
 
 # Personal apps in TinyCloud
 
-**Install rule: use the single CLI selected by https://agents.tinycloud.xyz/cli, `1.6.0-beta.1`. New installs and older agent-owned installs get `1.6.0-beta.1`; an operator-selected CLI is kept, and a newer one is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell. When §1 prints `CLI_OLDER`, follow https://agents.tinycloud.xyz/cli once and rerun §1 before any other step.**
+**CLI rule (`1.6.0-beta.1`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.0-beta.1`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Never ask the owner about the CLI version. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
 **Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 
@@ -55,7 +55,7 @@ The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domain
 ```sh
 B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
 if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
-O=$B; case $O in "$P"/*) O= ;; esac
+O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$P" || O=
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || B=
 if [ -n "$B" ]; then printf '%s\n' "$B"; else echo 'TC_BIN is unset'; fi

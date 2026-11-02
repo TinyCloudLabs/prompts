@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -148,6 +148,94 @@ test("every gate's comparison: older below the pin, equal or newer passes, an ea
     for (const [version, older] of Object.entries(cases)) {
       const result = spawnSync("sh", ["-c", `printf '%s\\n' "$1" | ${compare}`, "sh", version], { encoding: "utf8" });
       assert.equal(result.status === 0, older, `${block.name}: ${JSON.stringify(version)}`);
+    }
+  }
+});
+
+// A2 (production QA): a private 1.5.1 from the old installer (`.bin/tc` and `.bin/tinycloud`), with
+// `~/.local/bin/tinycloud` linked to `.bin/tc` and on PATH, and no agent.env. `linked-process` and
+// `linked-saved` select that link as TC_BIN; `path-outside` has only an older CLI on PATH, outside the
+// private install, which install-cli.mjs never reuses (it installs the private pin instead).
+function shaped(block, shape) {
+  const dir = join(work, `run-${++runs}`);
+  const home = join(dir, "home");
+  const cwd = join(dir, "cwd");
+  mkdirSync(cwd, { recursive: true });
+  const calls = join(dir, "calls");
+  const stub = `#!/bin/sh\necho "$*" >> ${JSON.stringify(calls)}\ncase "$*" in --version) echo ${OLDER} ;; esac\n`;
+  const pkg = shape === "path-outside" ? join(home, "global/lib/node_modules/@tinycloud/cli") : join(home, ".local/share/tinycloud/cli/node_modules/@tinycloud/cli");
+  mkdirSync(pkg, { recursive: true });
+  writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@tinycloud/cli", version: OLDER }));
+  writeFileSync(join(pkg, "cli.js"), stub, { mode: 0o700 });
+  const bins = shape === "path-outside" ? join(home, "global/bin") : join(home, ".local/share/tinycloud/cli/node_modules/.bin");
+  mkdirSync(bins, { recursive: true });
+  for (const name of ["tc", "tinycloud"]) symlinkSync(join(pkg, "cli.js"), join(bins, name));
+  const local = join(home, ".local/bin");
+  mkdirSync(local, { recursive: true });
+  const link = join(local, "tinycloud");
+  if (shape !== "path-outside") symlinkSync(join(bins, "tc"), link);
+  mkdirSync(join(home, ".agents/skills/tinycloud-cli"), { recursive: true });
+  writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
+  const onPath = shape === "path-outside" ? join(bins, "tinycloud") : link;
+  const env = { PATH: `${shape === "path-outside" ? bins : local}:${process.env.PATH}`, HOME: home };
+  if (shape === "linked-process") env.TC_BIN = link;
+  if (shape === "linked-saved") {
+    const config = join(home, ".config/tinycloud");
+    mkdirSync(config, { recursive: true, mode: 0o700 });
+    writeFileSync(join(config, "agent-env.mjs"), readFileSync(helper), { mode: 0o600 });
+    const saved = spawnSync(process.execPath, [join(config, "agent-env.mjs"), "set", "TC_BIN", link], { env, encoding: "utf8" });
+    assert.equal(saved.status, 0, saved.stderr);
+  }
+  // The skills prefer the private `.bin/tinycloud` over PATH; /onboarding runs the path /cli or the agent found.
+  const selected = block.onboarding ? onPath
+    : shape === "clarissa" ? join(bins, "tinycloud")
+    : shape === "path-outside" ? onPath : link;
+  const script = section(block.file, block.heading).replaceAll("<TC_BIN>", onPath);
+  const result = spawnSync("sh", ["-c", script], { cwd, env, encoding: "utf8" });
+  let ran = "";
+  try { ran = readFileSync(calls, "utf8"); } catch {}
+  return { selected, result, calls: ran };
+}
+
+for (const block of blocks) {
+  test(`${block.name}: in A2's home, a CLI linked from ~/.local/bin or found on PATH is the agent's own: CLI_OLDER`, () => {
+    for (const shape of ["clarissa", "linked-process", "linked-saved", "path-outside"]) {
+      const { selected, result, calls } = shaped(block, shape);
+      assert.notEqual(result.status, 0, `${shape}: ${result.stdout}`);
+      assert.equal(calls, "--version\n", shape);
+      assert.doesNotMatch(result.stdout + result.stderr, /TC_OLDER/, shape);
+      const said = block.onboarding ? result.stderr : result.stdout;
+      assert.equal(said.trimEnd().split("\n").at(-1), cliOlder(selected), shape);
+    }
+  });
+}
+
+// The rule an agent reads first: run the block; only TC_OLDER means operator-selected; never ask the owner.
+const surfaces = [
+  { files: ["skills/tc-apps/SKILL.md", "_site/skills/apps/SKILL.md", "_site/skills/apps.md"], blk: "§1", stops: true },
+  { files: ["setup/tc-apps.md", "_site/apps"], blk: "skill §1", stops: true },
+  { files: ["skills/tc-secrets/SKILL.md", "_site/skills/secrets/SKILL.md", "_site/skills/secrets.md"], blk: "§1", stops: false },
+  { files: ["skills/tc-publish/SKILL.md", "_site/skills/publish/SKILL.md", "_site/skills/publish.md"], blk: "§1", stops: false },
+  { files: ["skills/tinycloud-feed/SKILL.md", "_site/skills/feed/SKILL.md", "_site/skills/feed.md"], blk: "the check", stops: true },
+  { files: ["skills/tinycloud-feed/creating-a-post.md", "_site/skills/feed/creating-a-post.md", "_site/feed"], blk: "the check", stops: true },
+  { files: ["setup/onboarding.md", "_site/onboarding.md"], blk: "step 2", stops: true },
+];
+// A release pin reads "stable `X`"; a prerelease pin is named as is.
+const RULE = `**CLI rule (${CLI_VERSION.includes("-") ? "" : "stable "}\`${CLI_VERSION}\`): `;
+test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, and never to ask the owner", () => {
+  for (const { files, blk, stops } of surfaces) {
+    for (const file of files) {
+      const text = readFileSync(join(root, file), "utf8");
+      const rules = text.split("\n").filter((line) => line.startsWith(RULE));
+      assert.equal(rules.length, 1, file);
+      const [rule] = rules;
+      assert.match(rule, /before any other (TinyCloud )?command|run step 2's block as written/, file);
+      assert.ok(rule.includes(`Only a \`TC_OLDER\` line from ${blk}`), file);
+      assert.ok(rule.includes(stops ? `tell the owner in one line that it is older than the required \`${CLI_VERSION}\`, and stop.` : `keep it, tell the operator once that \`${CLI_VERSION}\` is required, and continue with what ${blk} reports.`), file);
+      assert.ok(rule.includes(`Any other older CLI is yours, including one on \`PATH\` or linked from \`~/.local/bin\`: ${blk} prints \`CLI_OLDER\``), file);
+      assert.ok(rule.includes("Never ask the owner about the CLI version."), file);
+      assert.match(rule, /[Dd]on't judge who installed the CLI yourself/, file);
+      assert.doesNotMatch(text, /operator-selected CLI is kept|older CLI the operator selected is kept/, file);
     }
   }
 });

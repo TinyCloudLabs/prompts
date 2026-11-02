@@ -79,7 +79,7 @@ Each step is a **new conversation**. The first conversation in each client carri
   - `<TC_BIN>` is the selected CLI: process `TC_BIN`, else `agent.env`, else the shared private install, the same as every skill; network failures remain visible rather than being hidden by a retry wrapper.
 - **Installation:**
   - A missing CLI is installed once in `~/.local/share/tinycloud/cli`, and an older copy there is upgraded to `1.6.0-beta.1`; a newer or operator-selected CLI is kept. Only the missing skill is added for app setup.
-  - An older private copy (for example `1.5.1` from the earlier installer) makes skill §1 print `CLI_OLDER 1.5.1 <path>` and stop. The agent then follows `/cli` without telling the owner, reruns §1, and sees `1.6.0-beta.1` before any `onboard`, `kv` or `sql` command. Seed it with `npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1`.
+  - An older private copy (for example `1.5.1` from the earlier installer) makes skill §1 print `CLI_OLDER 1.5.1 <path>` and stop. The agent then follows `/cli` without telling the owner, reruns §1, and sees `1.6.0-beta.1` before any `onboard`, `kv` or `sql` command. Seed it with `npm install --prefix "$H/.local/share/tinycloud/cli" @tinycloud/cli@1.5.1` and, as the old installer did, `ln -s "$H/.local/share/tinycloud/cli/node_modules/.bin/tc" "$H/.local/bin/tinycloud"` with `~/.local/bin` on PATH (A2's home). Fail if the agent runs its own `command -v tinycloud` or `--version` before §1, calls that CLI operator-selected without a `TC_OLDER` line, or asks the owner anything about the CLI.
   - The global `tc` keeps its version.
 - **Speed:**
   - Conversation 1 takes under about 3 minutes, including the install and the approval.
