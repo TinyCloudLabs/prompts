@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/secrets` and follow that text. Summaries drop the shell blocks you must run.
+
 # Use your TinyCloud Secrets from your agent
 
 Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secrets.tinycloud.xyz) without the value ever appearing in the conversation. When a secret is missing, it sends you a link where you add it yourself. It never asks you for a value.

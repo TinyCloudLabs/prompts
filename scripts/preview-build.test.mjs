@@ -79,3 +79,36 @@ test("a production build serves the repository's skills byte for byte, pointing 
     for (const file of skill.files) assert.ok(readFileSync(join(production, file.url)).equals(readFileSync(join(root, "skills", dir, file.path))), file.url);
   }
 });
+
+// Fetch tools that summarize a page keep its first lines and drop its shell
+// blocks, so each served guide and skill opens with this line and its own URL.
+const rawLine = (url) => `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${url}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
+// /owner is the owner's own page and has no agent line.
+const GUIDES = ["onboarding.md", "connect.md", "setup", "agent", "apps", "chat", "feed", "publish", "share", "secrets", "courier", "cli", "openkey"];
+const afterFrontMatter = (text) => text.replace(/^---\n[\s\S]*?\n---\n\n/, "");
+
+test("every served Markdown guide but /owner, and every skill, opens with the read-raw line for its own URL, in production and on a preview", () => {
+  for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
+    const guides = readdirSync(site, { withFileTypes: true }).filter((e) => e.isFile() && /^[a-z]+(\.md)?$/.test(e.name)).map((e) => e.name).sort();
+    assert.deepEqual(guides, [...GUIDES, "owner"].sort(), site);
+    for (const guide of GUIDES) assert.ok(readFileSync(join(site, guide), "utf8").startsWith(rawLine(`${base}/${guide}`)), `${base}/${guide}`);
+    assert.doesNotMatch(readFileSync(join(site, "owner"), "utf8"), /read this file raw/, `${base}/owner`);
+    const { skills } = JSON.parse(readFileSync(join(site, "skills/index.json"), "utf8"));
+    assert.deepEqual(skills.map((s) => s.short).sort(), ["apps", "chat", "cli", "courier", "feed", "mcp", "publish", "secrets"]);
+    for (const { short } of skills) {
+      for (const path of [`skills/${short}.md`, `skills/${short}/SKILL.md`]) {
+        assert.ok(afterFrontMatter(readFileSync(join(site, path), "utf8")).startsWith(rawLine(`${base}/skills/${short}.md`)), `${base}/${path}`);
+      }
+    }
+  }
+});
+
+test("the owner-facing HTML pages leave the read-raw line out", () => {
+  for (const site of [production, preview]) {
+    for (const page of readdirSync(site).filter((name) => name.endsWith(".html"))) {
+      assert.doesNotMatch(readFileSync(join(site, page), "utf8"), /read this file raw/, `${site}/${page}`);
+    }
+    // Each html page's rendered body still starts with its title.
+    for (const page of ["onboarding", "connect"]) assert.match(readFileSync(join(site, `${page}.html`), "utf8"), /<main>\n<h1 id="[^"]+">/, page);
+  }
+});

@@ -1,3 +1,5 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/cli` and follow that text. Summaries drop the shell blocks you must run.
+
 # Set up the TinyCloud CLI
 
 This module installs and verifies only the TinyCloud CLI and its core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. Every guide needs **@tinycloud/cli 1.5.2**: new installs and older agent-owned installs get it; an operator-selected CLI is kept, and a newer one is never downgraded. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.

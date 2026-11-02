@@ -2,12 +2,14 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.8"
+  version: "0.3.9"
 ---
+
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/apps.md` and follow that text. Summaries drop the shell blocks you must run.
 
 # Personal apps in TinyCloud
 
-**CLI rule (stable `1.5.2`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**CLI rule (stable `1.5.2`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.5.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
 **Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 

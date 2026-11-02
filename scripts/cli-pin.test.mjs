@@ -241,6 +241,24 @@ test("every CLI rule says to run the block first, that only TC_OLDER means opera
   }
 });
 
+// A fetch summary turned "No global installation, second beta CLI, …" into "don't
+// install a second CLI", and the agent didn't upgrade. /onboarding keeps that
+// sentence so its owner-facing HTML stays byte-identical; its step 2 stops on CLI_OLDER itself.
+const NO_GLOBAL = "Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.";
+const OLD_NO_GLOBAL = "second beta CLI";
+test("every CLI rule but /onboarding's forbids a global, sudo or piped install, not a second CLI, as written and as served", () => {
+  for (const { files } of surfaces) {
+    for (const file of files) {
+      const [rule] = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith("**CLI rule (stable `1.5.2`): "));
+      const onboarding = file.endsWith("onboarding.md");
+      assert.equal(rule.includes(`${NO_GLOBAL}**`), !onboarding, file);
+      assert.equal(rule.includes(OLD_NO_GLOBAL), onboarding, file);
+    }
+  }
+  const keep = ["setup/onboarding.md", "_site/onboarding.md", "_site/llms-full.txt"];
+  assert.deepEqual(served().filter((file) => readFileSync(join(root, file), "utf8").includes(OLD_NO_GLOBAL)).sort(), keep.sort());
+});
+
 test("/cli and every CLI_OLDER note say upgrading needs no asking and never `tinycloud upgrade`, as written and as served", () => {
   for (const file of ["setup/tinycloud.md", "_site/cli"]) {
     assert.ok(readFileSync(join(root, file), "utf8").includes(`**Upgrades go through this guide.** ${UPGRADE} ${NEVER_UPGRADE}`), file);

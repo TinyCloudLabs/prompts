@@ -40,6 +40,20 @@ const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
 const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
+// Fetch tools such as Claude Code's WebFetch can hand the agent a summary that
+// keeps a page's first lines and drops its shell blocks. So every served
+// Markdown guide and skill opens with this line, above its title (a skill:
+// right after its front matter), naming its own Markdown URL: /<page>, /<page>.md
+// for the html pages, /skills/<short>.md for a skill's SKILL.md. The guides and
+// this repository's skills spell it out with the production URL, rewritten on a
+// preview like every other; released skills get it at build time. The build
+// fails without it. The html pages' rendered HTML, which owners see, leaves it out.
+// /owner is the owner's own page, so an agent line there would be owner-visible text.
+const NO_BANNER = new Set(["owner"]);
+const banner = (path, base = SITE) =>
+  `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${base}/${path}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
+const frontMatter = (text) => text.match(/^---\n[\s\S]*?\n---\n\n*/)?.[0] ?? "";
+const opensWithBanner = (text, path) => text.slice(frontMatter(text).length).startsWith(banner(path, BASE));
 
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
@@ -331,6 +345,15 @@ async function loadSkill(skill) {
     }
     changed.add(path);
   }
+  if (skill.tarball) {
+    files = files.map(([path, body]) => {
+      if (path !== "SKILL.md") return [path, body];
+      changed.add(path);
+      const text = body.toString("utf8");
+      const front = frontMatter(text);
+      return [path, Buffer.from(front + banner(`skills/${skill.short}.md`) + text.slice(front.length))];
+    });
+  }
   if (skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (path !== "start.md") return [path, body];
@@ -429,6 +452,14 @@ for (const s of skills) {
   write(`skills/${s.short}/SHA256SUMS`, s.files.map((f) => `${sha256(f.body)}  ${f.path}\n`).join(""));
   write(`skills/${s.short}.md`, s.text);
 }
+const unbannered = [
+  ...pages.filter((p) => !NO_BANNER.has(p.url)).map((p) => [p.html ? `${p.url}.md` : p.url, p.text]),
+  ...skills.flatMap((s) => [
+    [`skills/${s.short}.md`, s.text],
+    [`skills/${s.short}.md`, s.files.find((f) => f.path === "SKILL.md").body.toString("utf8")],
+  ]),
+].filter(([path, text]) => !opensWithBanner(text, path));
+if (unbannered.length) throw new Error(`guides and skills that don't open with the read-raw line for their own URL:\n  ${unbannered.map(([path]) => path).join("\n  ")}`);
 const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
 const siteLine = `const SITE = "${SITE}";`;
 if (!installer.includes(siteLine)) throw new Error(`scripts/install-skill.js: no line ${siteLine}`);
@@ -750,7 +781,7 @@ ${style}
 </head>
 <body>
   <main>
-${markdownRenderer.parse(p.text)}
+${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE).length))}
   </main>
 </body>
 </html>
