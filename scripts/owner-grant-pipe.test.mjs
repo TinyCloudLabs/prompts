@@ -22,7 +22,6 @@ import { join } from 'node:path';
 // Like CLI 1.5.0: init makes the profile before it asks for the code, so a cancelled sign-in leaves a
 // profile with no signed-in owner; context --json then reports ownerDid null.
 const a = process.argv.slice(2), home = process.env.HOME, signed = join(home, 'signed'), profile = join(home, 'profile');
-if (a[0] === '--version') { console.log('1.5.1'); process.exit(0); }
 if (a.includes('show')) { if (!existsSync(profile)) { console.error('PROFILE_NOT_FOUND'); process.exit(4); } process.exit(0); }
 if (a.includes('context')) { console.log(JSON.stringify({ ownerDid: existsSync(signed) ? '${owner}' : null })); process.exit(0); }
 // The sign-in (init --paste, or auth login --paste on an existing profile) reads a code from stdin; the
