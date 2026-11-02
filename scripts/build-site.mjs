@@ -48,6 +48,8 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 // this repository's skills spell it out with the production URL, rewritten on a
 // preview like every other; released skills get it at build time. The build
 // fails without it. The html pages' rendered HTML, which owners see, leaves it out.
+// /owner is the owner's own page, so an agent line there would be owner-visible text.
+const NO_BANNER = new Set(["owner"]);
 const banner = (path, base = SITE) =>
   `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${base}/${path}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
 const frontMatter = (text) => text.match(/^---\n[\s\S]*?\n---\n\n*/)?.[0] ?? "";
@@ -451,7 +453,7 @@ for (const s of skills) {
   write(`skills/${s.short}.md`, s.text);
 }
 const unbannered = [
-  ...pages.map((p) => [p.html ? `${p.url}.md` : p.url, p.text]),
+  ...pages.filter((p) => !NO_BANNER.has(p.url)).map((p) => [p.html ? `${p.url}.md` : p.url, p.text]),
   ...skills.flatMap((s) => [
     [`skills/${s.short}.md`, s.text],
     [`skills/${s.short}.md`, s.files.find((f) => f.path === "SKILL.md").body.toString("utf8")],

@@ -83,14 +83,16 @@ test("a production build serves the repository's skills byte for byte, pointing 
 // Fetch tools that summarize a page keep its first lines and drop its shell
 // blocks, so each served guide and skill opens with this line and its own URL.
 const rawLine = (url) => `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${url}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
-const GUIDES = ["onboarding.md", "connect.md", "setup", "agent", "apps", "owner", "chat", "feed", "publish", "share", "secrets", "courier", "cli", "openkey"];
+// /owner is the owner's own page and has no agent line.
+const GUIDES = ["onboarding.md", "connect.md", "setup", "agent", "apps", "chat", "feed", "publish", "share", "secrets", "courier", "cli", "openkey"];
 const afterFrontMatter = (text) => text.replace(/^---\n[\s\S]*?\n---\n\n/, "");
 
-test("every served Markdown guide and skill opens with the read-raw line for its own URL, in production and on a preview", () => {
+test("every served Markdown guide but /owner, and every skill, opens with the read-raw line for its own URL, in production and on a preview", () => {
   for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
     const guides = readdirSync(site, { withFileTypes: true }).filter((e) => e.isFile() && /^[a-z]+(\.md)?$/.test(e.name)).map((e) => e.name).sort();
-    assert.deepEqual(guides, [...GUIDES].sort(), site);
-    for (const guide of guides) assert.ok(readFileSync(join(site, guide), "utf8").startsWith(rawLine(`${base}/${guide}`)), `${base}/${guide}`);
+    assert.deepEqual(guides, [...GUIDES, "owner"].sort(), site);
+    for (const guide of GUIDES) assert.ok(readFileSync(join(site, guide), "utf8").startsWith(rawLine(`${base}/${guide}`)), `${base}/${guide}`);
+    assert.doesNotMatch(readFileSync(join(site, "owner"), "utf8"), /read this file raw/, `${base}/owner`);
     const { skills } = JSON.parse(readFileSync(join(site, "skills/index.json"), "utf8"));
     assert.deepEqual(skills.map((s) => s.short).sort(), ["apps", "chat", "cli", "courier", "feed", "mcp", "publish", "secrets"]);
     for (const { short } of skills) {
