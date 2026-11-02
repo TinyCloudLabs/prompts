@@ -55,7 +55,8 @@ Every guide needs stable `1.5.2`: new installs and older agent-owned installs ge
 **2. Run onboarding.** One run waits for both approvals in sequence. It uses the selected default profile, or `TC_PROFILE` if set. Start it in the client's background process or interactive session so it keeps running while you talk to the owner, with stderr going to a file you read:
 
 ```sh
-[ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md" ] || [ -f "$HOME/.agents/skills/tinycloud-cli/SKILL.md" ] ||
+CLAUDE_DIR=${CLAUDE_CONFIG_DIR-}; CLAUDE_DIR=${CLAUDE_DIR#"${CLAUDE_DIR%%[![:space:]]*}"}; CLAUDE_DIR=${CLAUDE_DIR%"${CLAUDE_DIR##*[![:space:]]}"}
+[ -f "${CLAUDE_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md" ] || [ -f "$HOME/.agents/skills/tinycloud-cli/SKILL.md" ] ||
   { echo 'SKILL_MISSING tinycloud-cli: run the "Install the core skill" step at https://agents.tinycloud.xyz/cli (it is required), then rerun this block' | tee onboard.err >&2; exit 1; }
 TC='<TC_BIN>'
 "$TC" onboard > onboard.out 2> onboard.err
