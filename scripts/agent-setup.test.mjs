@@ -406,7 +406,7 @@ test("Courier invite returns the link at once; invite serve and join wait at mos
   assert.ok(incoming.includes(`${NO_FILTER} The CLI's own output shows in full; then the block prints one last line. Do what a \`NEXT:\` line says. It waits at most a minute for the issuer`));
   assert.ok(incoming.includes("If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same block again, at most 10 times in a row"));
   const invite = section("Choose how to invite");
-  assert.match(shellBlocks(invite).at(-1), /\n"\$TC" courier invite --session "\$SESSION_ID" --mode "\$MODE" --consent --wait 1$/);
+  assert.ok(shellBlocks(invite).at(-1).includes('\n{ { "$TC" courier invite --session "$SESSION_ID" --mode "$MODE" --consent --wait 1; echo "$?" > "$OUT.rc"; }'));
   assert.ok(invite.includes(`${NO_FILTER} With \`--wait 1\` it returns within seconds: its first JSON line has \`status: invitation\`, and it then exits 1 with \`[invite-pending]\` on stderr. That first \`[invite-pending]\` is expected: the invitation is kept. Give the owner its \`link\` at once`));
   assert.ok(invite.includes("Then, in the same turn, keep the issuer serving as below."));
   const serving = section("Keep the issuer serving");
@@ -417,7 +417,7 @@ test("Courier invite returns the link at once; invite serve and join wait at mos
   assert.ok(serving.includes("- **Exit 1, `[invite-expired]`:**"));
   assert.doesNotMatch(guide, /Keep that process running/);
   for (const line of shellBlocks(guide).join("\n").split("\n").filter((text) => /courier (?:invite|join)\b/.test(text))) {
-    assert.match(line, /courier invite --session/.test(line) ? / --wait 1$/ : / --wait 60; echo "\$\?" > "\$ERR\.rc"; \} 2>&1 1>&3 \| tee "\$ERR" >&2; \} 3>&1$/, line);
+    assert.match(line, /courier invite --session/.test(line) ? / --wait 1; echo "\$\?" > "\$OUT\.rc"; \} 2>&1 1>&3 \| tee "\$OUT\.err" >&2; \} 3>&1 \| tee "\$OUT"$/ : / --wait 60; echo "\$\?" > "\$ERR\.rc"; \} 2>&1 1>&3 \| tee "\$ERR" >&2; \} 3>&1$/, line);
   }
   const start = readFileSync(join(root, "_site/skills/courier/start.md"), "utf8");
   assert.ok(start.includes(`"$TC" courier join '<exact link>' --consent --wait 60 `));
@@ -449,6 +449,29 @@ test("Courier invite serve and join blocks print a NEXT line on paired/joined an
       assert.equal(result.stderr, stderr, heading);
       assert.equal(result.stdout, `${stdout}${last}\n`, heading);
     }
+  }
+});
+
+// The first `invite --wait 1` call: its expected [invite-pending] comes with the link on stdout, so the block
+// prints the invitation ID and a NEXT line to send that link and start serving; stdout and stderr show unchanged.
+test("Courier invite block prints INVITATION_ID and a send-the-link NEXT line on its expected [invite-pending]", () => {
+  const script = block(readFileSync(join(root, "setup/courier.md"), "utf8"), "## Choose how to invite");
+  const link = "https://courier.tinycloud.xyz/c/01M62GPP936EPBR37DK93RWS1J#k=abc&v=1";
+  const invitation = `{"status":"invitation","invitationId":"01M62GPP936EPBR37DK93RWS1J","sessionId":"01M62GPP936EPBR37DK93RWS1H","mode":"anyone","link":"${link}","expiresAt":"2026-11-03T00:00:00.000Z"}\n`;
+  const pending = "tinycloud courier: [invite-pending] No claim received. Resume with courier invite serve 01M62GPP936EPBR37DK93RWS1J; the same invitation and winner reservation are preserved.\n";
+  for (const [exit, stdout, stderr, last] of [
+    [1, invitation, pending, `INVITATION_ID=01M62GPP936EPBR37DK93RWS1J\nNEXT: send the owner this invitation link now, on its own line: ${link} Then run the serve block below now, in the same turn.`],
+    [0, `${invitation}{"status":"paired","invitationId":"01M62GPP936EPBR37DK93RWS1J"}\n`, "", "NEXT: paired; continue."],
+    [1, "", "tinycloud courier: [invite-pending] No claim received.\n", "INVITE_EXIT 1"],
+    [1, invitation, "tinycloud courier: [conflict] Something else.\n", "INVITE_EXIT 1"],
+    [2, "", "Choose exactly one invitation mode: same-owner, anyone, named.\n", "INVITE_EXIT 2"],
+  ]) {
+    const dir = home();
+    executable(join(dir, "tc"), `printf '%s' "$FAKE_STDOUT"\nprintf '%s' "$FAKE_STDERR" >&2\nexit "$FAKE_EXIT"`);
+    const result = shell(script, { HOME: dir, TC: join(dir, "tc"), MODE: "anyone", SESSION_ID: "01M62GPP936EPBR37DK93RWS1H", FAKE_EXIT: String(exit), FAKE_STDOUT: stdout, FAKE_STDERR: stderr });
+    assert.equal(result.status, exit, result.stderr);
+    assert.equal(result.stderr, stderr);
+    assert.equal(result.stdout, `${stdout}${last}\n`);
   }
 });
 
