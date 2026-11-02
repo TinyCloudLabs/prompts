@@ -408,11 +408,12 @@ test("Courier invite returns the link at once; invite serve and join wait at mos
   const invite = section("Choose how to invite");
   assert.ok(shellBlocks(invite).at(-1).includes('\n{ { "$TC" courier invite --session "$SESSION_ID" --mode "$MODE" --consent --wait 1; echo "$?" > "$OUT.rc"; }'));
   assert.ok(invite.includes(`${NO_FILTER} With \`--wait 1\` it returns within seconds: its first JSON line has \`status: invitation\`, and it then exits 1 with \`[invite-pending]\` on stderr. That first \`[invite-pending]\` is expected: the invitation is kept. Give the owner its \`link\` at once`));
-  assert.ok(invite.includes("Then, in the same turn, keep the issuer serving as below."));
+  assert.ok(invite.includes("Only after that message is sent, in the same turn, keep the issuer serving as below."));
   const serving = section("Keep the issuer serving");
   assert.equal(shellBlocks(serving).length, 1);
   assert.ok(shellBlocks(serving)[0].includes('{ { "$TC" courier invite serve "$INVITATION_ID" --wait 60; echo "$?" > "$ERR.rc"; }'));
   assert.ok(serving.includes(NO_FILTER));
+  assert.ok(serving.includes("First send the owner the invitation link: serving before the link has been sent is useless, because nobody can join a link they don't have. Only then serve the **same** invitation"));
   assert.ok(serving.includes("- **Exit 1, `[invite-pending]` on stderr** (\"No claim received\"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` block again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count."));
   assert.ok(serving.includes("- **Exit 1, `[invite-expired]`:**"));
   assert.doesNotMatch(guide, /Keep that process running/);
@@ -460,7 +461,7 @@ test("Courier invite block prints INVITATION_ID and a send-the-link NEXT line on
   const invitation = `{"status":"invitation","invitationId":"01M62GPP936EPBR37DK93RWS1J","sessionId":"01M62GPP936EPBR37DK93RWS1H","mode":"anyone","link":"${link}","expiresAt":"2026-11-03T00:00:00.000Z"}\n`;
   const pending = "tinycloud courier: [invite-pending] No claim received. Resume with courier invite serve 01M62GPP936EPBR37DK93RWS1J; the same invitation and winner reservation are preserved.\n";
   for (const [exit, stdout, stderr, last] of [
-    [1, invitation, pending, `INVITATION_ID=01M62GPP936EPBR37DK93RWS1J\nNEXT: send the owner this invitation link now, on its own line: ${link} Then run the serve block below now, in the same turn.`],
+    [1, invitation, pending, `INVITATION_ID=01M62GPP936EPBR37DK93RWS1J\nNEXT: before anything else, send the owner this invitation link, on its own line: ${link} Only after that message is sent, run the serve block below, in the same turn.`],
     [0, `${invitation}{"status":"paired","invitationId":"01M62GPP936EPBR37DK93RWS1J"}\n`, "", "NEXT: paired; continue."],
     [1, "", "tinycloud courier: [invite-pending] No claim received.\n", "INVITE_EXIT 1"],
     [1, invitation, "tinycloud courier: [conflict] Something else.\n", "INVITE_EXIT 1"],
