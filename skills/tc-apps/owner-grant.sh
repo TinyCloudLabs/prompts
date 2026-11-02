@@ -1,5 +1,5 @@
 #!/bin/sh
-# Agent-run owner approval: keep stdin attached to the agent's interactive session for chat codes.
+# Agent-run owner approval: keep stdin attached to the agent's interactive session for the sign-in's chat code.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
 if [ -z "${TC_BIN:-}" ]; then TC_BIN=$(cat "$HOME/.local/share/tc-apps/cli-path") || exit 1; fi
@@ -35,55 +35,67 @@ trap cleanup EXIT
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
 trap 'cancel 129' HUP
-# Sign in as the owner first only when the dedicated owner profile does not exist.
+# Sign the owner in when the dedicated owner profile doesn't exist yet, or exists without a
+# signed-in owner (a sign-in that was cancelled leaves the profile behind with no owner).
+signin() {
+  echo 'OpenKey sign-in: approve the link and paste the code back to your agent in chat.' >&2
+  INIT_RC=0
+  "$@" <&3 3<&- &
+  ACTIVE_PID=$!
+  wait "$ACTIVE_PID" || INIT_RC=$?
+  ACTIVE_PID=
+  if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
+  if [ "$INIT_RC" -ne 0 ]; then
+    echo "Sign-in didn't finish, so nothing was granted. Tell your agent." >&2
+    exit 1
+  fi
+}
+DID_RE='^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$'
 PROBE_RC=0
 PROBE=$("$TC_BIN" --profile "$OWNER_PROFILE" profile show 2>&1) || PROBE_RC=$?
 if [ "$PROBE_RC" -ne 0 ]; then
   case "$PROBE" in
-    *PROFILE_NOT_FOUND*)
-      echo 'OpenKey sign-in: approve the link and paste the code back to your agent in chat.' >&2
-      INIT_RC=0
-      "$TC_BIN" init --name "$OWNER_PROFILE" --paste <&3 3<&- &
-      ACTIVE_PID=$!
-      wait "$ACTIVE_PID" || INIT_RC=$?
-      ACTIVE_PID=
-      if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
-      if [ "$INIT_RC" -ne 0 ]; then
-        echo "Sign-in didn't finish, so nothing was granted. Tell your agent." >&2
-        exit 1
-      fi
-      ;;
+    *PROFILE_NOT_FOUND*) signin "$TC_BIN" init --name "$OWNER_PROFILE" --paste ;;
     *)
       echo "Couldn't check your TinyCloud sign-in, so nothing was granted. Tell your agent." >&2
       echo "$PROBE" >&2
       exit 1
       ;;
   esac
+elif CONTEXT=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json 2>/dev/null) && printf '%s' "$CONTEXT" | jq -e '.ownerDid == null' > /dev/null; then
+  signin "$TC_BIN" --profile "$OWNER_PROFILE" auth login --method openkey --paste
 fi
 # Bind only to the explicit signed-in owner, never to the imported grant. Keep an existing binding.
 if [ ! -s "$DIR/owner-did.txt" ]; then
-  OWNER_DID=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json | jq -er '.ownerDid | select(test("^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$"))') || {
+  OWNER_DID=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json | jq -er --arg re "$DID_RE" '.ownerDid | select(test($re))') || {
     echo 'Could not read the signed-in owner account; nothing was granted.' >&2
     exit 1
   }
   printf '%s\n' "$OWNER_DID" > "$DIR/owner-did.txt"
 fi
 RC=0
+echo 'Access link: the owner approves it in OpenKey and no code comes back. This step finishes on its own after the approval.' >&2
 "$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
 ACTIVE_PID=$!
 wait "$ACTIVE_PID" || RC=$?
 ACTIVE_PID=
 if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
-  echo 'The owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  echo 'APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link.' >&2
+  echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  exit 1
+fi
+if [ "$RC" -eq 8 ]; then
+  echo "OpenKey couldn't be reached, so nothing was granted. Run this step again in a minute, at most three times in a row." >&2
+  echo "If each time the error above says APPROVAL_REQUEST_UNAVAILABLE with (HTTP 400), the access link expired before it was approved. Before auth logout, make sure none of your own tinycloud commands for that profile is still running (stop any other run of this step, sign-in or auth grant you started): a command still waiting on a link would be orphaned. Then run the CLI with --profile $OWNER_PROFILE auth logout, then run this step again; the owner signs in again first. That logout signs the owner profile out for every app until they sign in again. Otherwise stop and tell the owner." >&2
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then
-  echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
+  echo 'The grant failed, so nothing was saved. Tell your agent.' >&2
   exit 1
 fi
 if [ ! -s "$TMP" ]; then
-  echo 'The grant printed nothing. Tell your agent; do not retry the browser screen.' >&2
+  echo 'The grant printed nothing, so nothing was saved. Tell your agent.' >&2
   exit 1
 fi
 DONE=1

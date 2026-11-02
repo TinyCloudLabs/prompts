@@ -71,9 +71,9 @@ const PAGES = [
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released CLI and Courier skills contain one of these exact resolvers (courier 0.1.3 and
-// CLI 1.2.3 end in `tc`; CLI 1.2.4 and later end in `tinycloud`). Replace it
-// in every published Markdown file, including the core skill's reference pages.
+// The released Courier skill preamble uses one of these exact resolvers. Keep the
+// site's data-only operator selection behavior in every served Markdown file.
+// The CLI skill has none since 1.5.0: its examples run `tinycloud` from the PATH.
 const upstreamResolver = (bin) => [
   `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
   `[ -n "\${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/${bin}"   # else a global npm install`,
@@ -84,13 +84,18 @@ const RESOLVER = [
   '{ set +x; } 2>/dev/null; umask 077',
   'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
   '[ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }',
-  'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
-  '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
+  'if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then',
+  '  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :',
+  '  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi',
   'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
+  'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
+  '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
+  .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+if (!courierSetup) throw new Error("Courier guide is missing executable remote setup.");
+const COURIER_SETUP = `## Set up Courier once\n${courierSetup.trim()}`;
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
 const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
@@ -101,9 +106,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.0.tgz",
-    integrity: "sha512-fkdOsJ9HUK/cNqiLi438er1bShs7X1FxeW5Lb1me/lNDWMXEKve1YMwcd5zQ0uOG8kaWCyXPPmQgst+BwQbTbg==",
+    version: "1.5.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.1.tgz",
+    integrity: "sha512-lwf95fZaZJTn04JqMkn+RkrIsjuJ/IKOuc5rmESLrc/8ZkjTE8tfAVBfSCb0aMFNVzBkrODqzjXJ6Bj8BuVCpw==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -112,6 +117,10 @@ const SKILLS = [
           /^Need more than onboarding grants\? Ask once[^\n]*$/m,
           "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. Send the complete short URL on its own line and keep the command running; it retrieves approval automatically. Re-run the identical command after interruption. Do not add `--paste`: that explicitly selects the older manual-code flow and long link. See [AUTH.md](AUTH.md).",
         ],
+        [
+          "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+          "Catalog installation requires `tinycloud.sql/schema` as well as the app's data permissions. The onboarding grant does not include that installation permission; obtain the app's required installation access before running this command:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+        ],
       ],
       "AUTH.md": [
         [
@@ -119,15 +128,43 @@ const SKILLS = [
           "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). Send the actual short URL on its own line and keep the command running; no return code is needed. Re-run the identical command/profile after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
         ],
       ],
+      "INSTALL.md": [
+        [
+          "curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent claude-code\ncurl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code",
+          "mkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code",
+        ],
+      ],
     },
   },
   {
     short: "courier",
-    version: "0.1.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.1.3.tgz",
-    integrity: "sha512-7QVW0zeu+5A+cb8axFVO2iZPOGbGC0DC4JDPqq68aaOj8DzRt+8J0gwC9tPV3U2bGGES2mOTquWKiOJTHeiVuA==",
+    version: "0.4.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.1.tgz",
+    integrity: "sha512-bzJvCaHH6Sj4VmOrEU1NIe6/QHtW4c44w2dzueApbsPPVTYyXE2TvxlhVHnaHKAJxRI4EXAtUDsj+AekH6vuXg==",
     dir: "package/skills/courier",
     checkCli: true,
+    changes: {
+      "SKILL.md": [
+        [
+          "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
+          "Offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the two-choice flow in the Courier guide, https://agents.tinycloud.xyz/courier.",
+        ],
+        [
+          "`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey (`tinycloud courier init --paste` also accepts the OpenKey `XXXX-XXXX`\ncode) and decides who to pair with.\nIf OpenKey reports the space is still being set up, `init` waits up to about 2.5 minutes; otherwise use `init --resume`.",
+          "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
+        ],
+      ],
+      "start.md": [
+        [
+          "Start Courier for me using the installed courier command. Reuse my existing Courier profile and restricted grant. If setup is required, use the normal courier init approval flow; do not request my owner key or broader permissions.",
+          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote two-command setup below: request one Courier approval, give me its exact openkeyUrl with one plain permission sentence, and import the code I send back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
+        ],
+        [
+          "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent. Keep the issuer serving while the recipient joins. Give me its exact handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+        ],
+      ],
+    },
   },
   {
     short: "chat",
@@ -140,38 +177,10 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.5.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.3.tgz",
-    integrity: "sha512-DRCQ7qDZUTIH2fK+6WJUQYY2krNQI+i3LE5AN/JNnGY8W70JHLfB2aH0R5xV96RCFUtgFqUDiY8ryRyFO0dMEQ==",
+    version: "0.8.4",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.4.tgz",
+    integrity: "sha512-c8TnYrl10iDwzrhkvIUqmwn7a5gKdhSyO3J10Kr/8O6BngRuxpPGH3OuUsz6KHWrRjN28PBqZPYOY6PQQOcJ8Q==",
     dir: "package/skills/tinycloud-delegated-secrets",
-    changes: {
-      "SKILL.md": [
-        [
-          "Never ask the\nuser to paste a secret value, private key, token, or delegation credential into\nchat.",
-          "Never ask the user for a secret value, private key or token. OpenKey codes and delegations are fine to paste.",
-        ],
-        [
-          "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
-          "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts, elicitation, a generic permission grant, or a secret mutation tool.",
-        ],
-        [
-          "## Account and KV exploration",
-          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for them to say continue, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route.\n\nWith local stdio, use the profile `tinycloud onboard` set up (https://agents.tinycloud.xyz/onboarding). When a tool returns `authority_required`, run `tinycloud auth request --cap '<cap>' --grant --paste --expiry 30d < /dev/null` on that profile and send the owner the OpenKey link it prints. When they send back the code, run the same command with the code on stdin, restart the MCP server and retry the call. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
-        ],
-        [
-          /^1\. A fresh `delegate-session` profile[\s\S]*?restart, and retry sequence when authority is required\./m,
-          [
-            "1. With local stdio, start from the onboarded profile (see above).",
-            "2. Inspect posture with `tinycloud_status` or `tinycloud_auth_status`.",
-            "3. Call `tinycloud_account_spaces_list` and",
-            "   `tinycloud_account_applications_list`. If either returns",
-            "   `authority_required`, ask the owner as described above, then retry.",
-            "4. Choose a non-secrets space from those results. Use `tinycloud_kv_list` with",
-            "   an exact space and prefix. Ask the same way when authority is required.",
-          ].join("\n"),
-        ],
-      ],
-    },
   },
 ];
 
@@ -193,8 +202,8 @@ const ABILITIES = [
   {
     title: "Publish",
     url: "publish",
-    text: "Publish a document or web page and get back a link, either private to you or public.",
-    prompt: "Publish this report and send me a private link. Use TinyCloud:",
+    text: "Publish a document or web page and get back a link that anyone who has it can open. Your agent asks you first.",
+    prompt: "Publish this report and send me a link. Use TinyCloud:",
   },
   {
     title: "Secrets",
@@ -299,7 +308,15 @@ async function loadSkill(skill) {
     }
     changed.add(path);
   }
-  if (skill.short === "cli" || skill.short === "courier") {
+  if (skill.short === "courier") {
+    files = files.map(([path, body]) => {
+      if (path !== "start.md") return [path, body];
+      changed.add(path);
+      const prompt = body.toString("utf8").replace(/\bcourier (?=start|init|join|invite|read|send)/g, '"$TC" courier ');
+      return [path, Buffer.from(`${prompt.trimEnd()}\n\n${COURIER_SETUP}\n`)];
+    });
+  }
+  if (skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
       let text = body.toString("utf8");
@@ -386,6 +403,15 @@ const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
 const siteLine = `const SITE = "${SITE}";`;
 if (!installer.includes(siteLine)) throw new Error(`scripts/install-skill.js: no line ${siteLine}`);
 write("skills/install.js", installer.replace(siteLine, `const SITE = "${BASE}";`));
+// Preserve the published POSIX entry point while sharing one installer policy
+// with Windows. Download and execution remain separate agent tool calls.
+write("skills/install-cli.sh", `#!/bin/sh
+set -eu
+INSTALL_DIR=$(mktemp -d)
+trap 'rm -rf "$INSTALL_DIR"' EXIT
+curl -fsSL "${BASE}/install-cli.mjs" -o "$INSTALL_DIR/install.mjs"
+node "$INSTALL_DIR/install.mjs"
+`);
 
 write(
   "skills/index.json",
@@ -475,8 +501,8 @@ const skillQueries = {
     "How do I add an update to my TinyCloud Home feed?",
   ],
   publish: [
-    "How can my agent publish a report and return a private link?",
-    "How can I make a published document public when I ask?",
+    "How can my agent publish a report and return a link?",
+    "How does my agent ask before it makes a link anyone can open?",
   ],
   secrets: [
     "How can my agent use a stored API key without showing its value?",
@@ -571,6 +597,10 @@ const llms = [
   "",
   `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 22.20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
   "",
+  "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
+  "",
+  "Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.",
+  "",
   "## Abilities",
   "",
   ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${examplePrompt(a)}"`),
@@ -587,7 +617,7 @@ const llms = [
   "## Optional",
   "",
   `- [Full text](${url("llms-full.txt")}): every guide and skill above in one file.`,
-  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one with \`curl -fsSL ${url("skills/install.js")} | node - <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
+  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one by downloading the installer, then running it in a separate shell call: \`mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" ${url("skills/install.js")}\`, then \`node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
   `- [Source repository](https://github.com/TinyCloudLabs/prompts): where the guides and TinyCloud's own skills are written.`,
   "",
 ].join("\n");

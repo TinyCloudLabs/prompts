@@ -6,9 +6,9 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 - **What it does:** reuses the TinyCloud CLI from onboarding and installs the `tc-apps` skill only if needed, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-  - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it).
+  - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
   - **Codex:** before you paste, type `/permissions` and choose "Ask for approval", then approve each step it asks for.
-- **You approve:** nothing more when onboarding already granted the requested app access. Otherwise the agent asks only for missing access and sends the actual OpenKey link; it runs the commands and finishes the request. The narrow catalog fallback still uses manual codes and longer links, as its guide explains. You never need a separate terminal.
+- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat your ordinary read/write grants. Otherwise it asks only for missing access and sends the actual OpenKey link. The older narrow catalog fallback uses a manual sign-in code in chat, but its access link completes automatically. The agent runs the commands and finishes the request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
@@ -20,7 +20,11 @@ In Claude, to avoid approving each record-writing tool call, go to **Settings �
 
 ## For the agent
 
-Keep the owner's original request in this conversation. **Already onboarded? Do not install another CLI or start another sign-in.** Keep the same selected CLI, profile, host and owner. The skill checks existing grants and actual read access before asking for anything more. A first record in an existing catalog needs only the write and read-back commands in skill §6; creating a new app also creates its catalog entries, not another CLI installation.
+**Read this page raw first.** If you can run a shell, fetch the exact text of this page, and of any guide it sends you to, with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
+
+**Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
+
+Keep the owner's original request in this conversation and carry it out with the skill; don't ask the owner to send it again. **Already onboarded? Do not install another CLI or start another sign-in.** Keep the same selected CLI, profile, host and owner. The skill checks existing grants and actual read access before asking for anything more. A first record in an existing catalog needs only the write and read-back commands in skill §6; creating a new app also creates its catalog entries, not another CLI installation.
 
 What is and isn't secret: [the list on the shared setup page](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
@@ -32,7 +36,7 @@ Run each block as one shell tool call. Use the same `TC_BIN`, `TC_HOME` and sele
 
 ## 1. Reuse the CLI
 
-Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It reuses a compatible existing CLI and otherwise installs the single pinned release, `1.5.0`. It never downgrades a compatible newer version. Preserve an operator-provided `TC_BIN`; an incompatible override is an explicit error, not permission to replace it.
+Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 22.20 or later with npm, reuses a compatible existing CLI and otherwise installs the single pinned release, `1.5.1`. It never downgrades a compatible newer version; stable `1.5.0` remains compatible. Preserve an operator-provided `TC_BIN`; a missing, broken or incompatible override is an explicit error, not permission to replace it. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 
@@ -65,6 +69,13 @@ node -e 'const fs=require("node:fs"),p=require("node:path"),os=require("node:os"
 ```
 
 This Node command is the same in Bash and PowerShell. Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
+
+If something goes wrong:
+- **Codex:** its default sandbox can block network access and writes outside the workspace. Use the client's documented approval flow for the installation. If escalation is unavailable or network access is blocked, tell the owner in one line to type `/permissions`, choose "Ask for approval", and send the request again. Don't send terminal commands or ask the owner to restart.
+- **Claude Code (or your client) denies a step or asks to confirm it:** show the owner the step and what it does, then ask them to reply naming that step, as in [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). Run it again only once they agree. Don't edit settings or run it another way.
+- **A command, download or checksum check fails:** stop and report the error. Don't retry with other options, in another folder or from another source.
+
+If installation was needed, continue only after the installer has printed `SKILL_INSTALLED` successfully.
 
 ## 3. Carry on with the skill
 
@@ -102,10 +113,20 @@ To go back, the owner asks in chat. Follow `SKILL.md` §9's going-back procedure
 
 Access expires on the date shown at approval: onboarding and new app grants normally use 30 days; the older narrow Health Log grant uses 7 days. Revoke access at https://account.tinycloud.xyz/delegations to end it sooner. Local logout is not revocation.
 
-For the agent: identify the selected profile before undoing anything. A shared onboarding profile serves multiple apps: explain that scope before logging it out. The helper below applies only to an older `agent-data`/`agent-meal` installation. Run it in a live interactive session and relay its confirmations; never apply it to a shared onboarding profile or ask the owner to run a command.
+For the agent: identify the selected profile before undoing anything. A shared onboarding profile serves multiple apps: explain that scope before logging it out. Stop only still-running commands for that profile that you started in this conversation, using their recorded live sessions or PIDs, and observe their exit before logout; never kill by process name or pattern.
+
+The helper below applies only to an older `agent-data`/`agent-meal` installation; never apply it to a shared onboarding profile. The owner's request in chat is the confirmation, so it asks nothing and needs no terminal. Keep the same CLI and state paths used at setup; do not edit `meal-grant.json`. Run it in the background, record its PID, and read its output until it shows `Done`, the no-recorded-grant result, or an error. If it prints an OpenKey link, send it to the owner; they approve there, and no code comes back. Never ask the owner to run a command.
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/owner-undo.sh" ]; then sh "$d/owner-undo.sh"; break; fi; done
+TC_BIN='<TC_BIN>'; export TC_BIN; STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"; umask 077
+mkdir -p "$STATE"
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do
+  if [ -f "$d/owner-undo.sh" ]; then
+    sh "$d/owner-undo.sh" > "$STATE/undo.out" 2>&1 &
+    printf 'OWNER_UNDO_PID=%s\n' "$!"
+    break
+  fi
+done
 ```
 
 The helper ends the earlier `agent-data` sign-ins and revokes the recorded Health Log grant. To end every per-app local sign-in as requested, the agent runs:

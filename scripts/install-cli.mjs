@@ -5,7 +5,8 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const CLI_VERSION = "1.5.0";
+export const CLI_VERSION = "1.5.1";
+const MIN_CLI_VERSION = "1.5.0";
 const names = ["tinycloud", "tc"];
 const marker = ":: TinyCloud CLI launcher ";
 const real = (file) => { try { return realpathSync(file); } catch { return ""; } };
@@ -21,7 +22,7 @@ export function compatible(version) {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?(?:\+.*)?$/.exec(version);
   if (!match) return false;
   const current = match.slice(1, 4).map(Number);
-  const minimum = CLI_VERSION.split(".").map(Number);
+  const minimum = MIN_CLI_VERSION.split(".").map(Number);
   for (let i = 0; i < 3; i++) if (current[i] !== minimum[i]) return current[i] > minimum[i];
   return !match[4];
 }
@@ -121,7 +122,7 @@ export function resolveCli(input = {}) {
   const opts = options(input);
   let selected = opts.env.TC_BIN;
   let source = "TC_BIN";
-  if (!selected) {
+  if (selected === undefined) {
     const helper = path.join(opts.home, ".config/tinycloud/agent-env.mjs");
     const saved = opts.env.TC_AGENT_ENV || path.join(opts.home, ".config/tinycloud/agent.env");
     if (present(saved) && !existsSync(helper)) throw new Error("Saved CLI selection exists but the /agent data-only helper is missing; repair /agent first");
@@ -131,10 +132,10 @@ export function resolveCli(input = {}) {
       if (result.status === 0) { selected = result.stdout.trim(); source = "agent-env"; }
     }
   }
-  if (selected) {
+  if (selected !== undefined) {
     if (!path.isAbsolute(selected) || /[\x00-\x1f]/.test(selected)) throw new Error("TC_BIN must be an absolute executable path");
     const version = versionOf(selected, opts);
-    if (!compatible(version)) throw new Error(`Selected CLI ${version} at ${selected} is incompatible; requires ${CLI_VERSION} or newer. Preserve TC_BIN and upgrade that installation explicitly.`);
+    if (!compatible(version)) throw new Error(`Selected CLI ${version} at ${selected} is incompatible; requires ${MIN_CLI_VERSION} or newer. Preserve TC_BIN and upgrade that installation explicitly.`);
     return { bin: selected, version, source };
   }
   if (opts.platform === "win32" && opts.searchPath === undefined) {
@@ -270,7 +271,7 @@ export function installCli(input = {}) {
   linkCommands(selected, opts);
   if (opts.platform === "win32") {
     try { repairWindowsPath(opts); }
-    catch (error) { opts.log(`TC_PATH_FAILED ${error.message}`); opts.log('After fixing registry permissions, rerun: node install.mjs --repair-path'); throw error; }
+    catch (error) { opts.log(`TC_PATH_FAILED ${error.message}`); opts.log('After fixing registry permissions, rerun the downloaded Node installer with --repair-path'); throw error; }
   }
   return selected;
 }
@@ -278,7 +279,7 @@ export function installCli(input = {}) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [action, ...rest] = process.argv.slice(2);
-    if (rest.length || (action && !["--resolve", "--repair-path"].includes(action))) throw new Error("Usage: node install.mjs [--resolve|--repair-path]");
+    if (rest.length || (action && !["--resolve", "--repair-path"].includes(action))) throw new Error("Usage: node install-cli.mjs [--resolve|--repair-path]");
     if (action === "--resolve") {
       const selected = resolveCli();
       if (selected) console.log(selected.bin);

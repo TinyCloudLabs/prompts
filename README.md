@@ -14,7 +14,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/connect` | One link for any agent: CLI-capable agents go to `/onboarding`, remote MCP clients (for example ChatGPT, Claude, Grok, Perplexity, Gemini, Meta Muse) get connector steps. HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); after [`/onboarding`](setup/onboarding.md), agents follow the guide for their request: [`/apps`](setup/tc-apps.md), [`/secrets`](setup/secrets.md), [`/publish`](setup/publish.md), [`/chat`](apps/tinychat/setup.md) or [`/courier`](setup/courier.md) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
-| `/share` | Share an artifact (`tc-publish`): choose who can open it, set an expiry, revoke | [`setup/share.md`](setup/share.md) |
+| `/share` | Share an artifact (`tc-publish`): a link anyone with it can open, made only after the owner says yes; set an expiry, revoke | [`setup/share.md`](setup/share.md) |
 | `/secrets` | TinyCloud Secrets (`tc-secrets`): owner setup | [`setup/secrets.md`](setup/secrets.md) |
 | `/courier` | Agent-to-agent threads (`courier`): owner setup | [`setup/courier.md`](setup/courier.md) |
 | `/cli` | Building block: the TinyCloud CLI, its `tinycloud` command and its `tinycloud-cli` skill | [`setup/tinycloud.md`](setup/tinycloud.md) |
@@ -53,27 +53,30 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tinycloud-feed` | `feed` | [`skills/tinycloud-feed`](skills/tinycloud-feed), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
-| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.5.0`](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.0) (js-sdk), with the overlays below |
-| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.1.3`](https://www.npmjs.com/package/@tinycloud/courier/v/0.1.3) (js-sdk), unchanged |
+| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.5.1`](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.1) (js-sdk), with the overlays below |
+| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.4.1`](https://www.npmjs.com/package/@tinycloud/courier/v/0.4.1) (js-sdk), with changes (below) |
 | `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.25`](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz), unchanged |
-| `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.5.3`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.5.3) (js-sdk), unchanged |
+| `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.8.4`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.4) (js-sdk), with the onboarding-profile overlay below |
 
 Skills written for these guides live in `skills/`. Skills owned by another repository stay authored there: the build downloads the exact release tarball named in `SKILLS` in `scripts/build-site.mjs` and refuses it unless its sha512 matches the pinned `integrity`, so every build, locally or on Cloudflare Pages, serves the same files. Nothing floats on a branch.
 
-The owner-facing pages call the CLI `tinycloud`: on Linux, `/usr/sbin/tc` is the system's traffic-control tool. [`/cli`](setup/tinycloud.md) uses the shared [`/install-cli.mjs`](scripts/install-cli.mjs) installer. It reuses a compatible CLI or installs the stable pin once, creates launchers without replacing another command, and can repair the Windows **user** PATH without copying the machine PATH into it. An explicit incompatible `TC_BIN` is reported, not replaced.
+The owner-facing pages call the CLI `tinycloud`: on Linux, `/usr/sbin/tc` is the system's traffic-control tool. [`/cli`](setup/tinycloud.md) uses the shared [`/install-cli.mjs`](scripts/install-cli.mjs) installer. It reuses a compatible CLI or installs the stable pin once, creates launchers without replacing another command, and can repair the Windows **user** PATH without copying the machine PATH into it. An explicit missing, broken or incompatible `TC_BIN` stops setup instead of being replaced.
 
-Skills use the selected `TC_BIN` or the shared private install, not an app-specific npm install. `tc-apps` saves the selected path and uses official `status` and `context` metadata plus an actual storage read to reuse existing permissions. Expired grants, other owners/hosts and incomplete reads cannot satisfy access. A known app's two-hour read-only delegation needs no catalog-wide grant and cannot become write access. `npm test` covers grant selection, first-record handling, migration, safe launchers and PATH preservation; native Windows behavior still needs Windows QA.
+Skills use the selected `TC_BIN` or the shared private install, not an app-specific npm install. `tc-apps` saves the selected path and uses official `status` and `context` metadata plus an actual storage read to reuse existing permissions. Expired grants, other owners/hosts and incomplete reads cannot satisfy access. A known app's two-hour read-only delegation needs no catalog-wide grant and cannot become write access. `npm test` covers grant selection, first-record handling, migration, safe launchers and PATH preservation. Native Windows CI additionally installs the pinned released CLI in a path containing spaces, executes both launchers in PowerShell and cmd, checks offline reuse and user-PATH preservation, and verifies that machine PATH is unchanged. This does not replace physical-device WhatsApp approval QA.
 
 The app resolver keeps fresh key-only profiles on their selected sign-in path, normalizes EVM address casing, and derives an imported delegate's owner from official full-space metadata when no owner key is present. It verifies access with the selected profile; a two-hour app-only reader does not need global discovery or owner credentials.
 
-Released-skill overlays are listed as `changes` in `SKILLS` and `changed` in `/skills/index.json`. The `tinycloud-cli` overlay resolves the selected executable in shell examples and uses short, automatically retrieved approvals for missing grants; explicit `--paste` remains manual. The MCP skill reuses onboarding's profile; publishing keeps its own `publisher` profile because shares live in `default`. `tinychat-retrieval` remains unchanged: its released scripts resolve `TC_BIN`, the shared private install, then `tinycloud` on PATH, never the system `tc`.
+Every skill whose `SKILLS` entry has `checkCli` must use its approved CLI resolver. The build rejects unsafe CLI lookups and bare system `tc` invocations in checked skills. The skills written here (`tc-publish`, `tc-secrets`) resolve `TC_BIN` in each block's preamble, preferring the `tinycloud` executable.
+
+Released-skill overlays are listed as `changes` in `SKILLS` and `changed` in `/skills/index.json`. The `tinycloud-cli` overlay resolves the selected executable in shell examples and uses short, automatically retrieved approvals for missing grants; explicit `--paste` remains manual. Catalog installation additionally needs `tinycloud.sql/schema`, which onboarding's ordinary SQL read/write grant does not include: request only that missing installation access, not duplicate basic grants. Courier's `SKILL.md` and `start.md` carry the Courier guide's two-choice invitation flow, its invitation viewer and its setup section, and its Markdown files use the shared CLI resolver. The MCP skill reuses onboarding's profile; publishing keeps its own `publisher` profile because shares live in `default`. `tinychat-retrieval` remains unchanged: its released scripts resolve `TC_BIN`, the shared private install, then `tinycloud` on PATH, never the system `tc`; with none of them they fail with `CLI_UNAVAILABLE`.
 
 A skill's version is its `SKILL.md`'s `metadata.version`, or, for a package skill without one, the package version. Only the current version of each skill is published.
 
 To install a skill without a guide:
 
 ```sh
-curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - <short name> --agent <claude-code|codex|opencode>
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
+node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>
 ```
 
 The installer checks every file against `/skills/index.json` before writing anything, then swaps in the skill's folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/<name>` for Claude Code, `~/.agents/skills/<name>` for Codex and OpenCode. It refuses a skill name that isn't one plain folder name, any file path that could leave the folder, and any redirect, so every byte comes from the site it was served from. Installs of one skill take turns through a lock folder, `.<name>.lock`, broken only when its process has exited or it is older than any install takes. The old folder stays until the new one is in place and goes back if that fails; a later install restores it if the earlier one exited in between. Its tests: `node --test scripts/install-skill.test.mjs`.
@@ -84,7 +87,9 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.5.0` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.0) |
+| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.5.1` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.5.1) |
+| `courier` skill | `@tinycloud/courier@0.4.1` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.4.1) |
+| `mcp` skill | `@tinycloud/mcp@0.8.4` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.8.4) |
 | TinyChat retrieval pack | `0.1.1-onboarding.25` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.4` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.4), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/495b9d39c3484333fcf9e98af0eb7b67286b0323/packages/cli) |
 

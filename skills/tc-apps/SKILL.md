@@ -7,7 +7,7 @@ metadata:
 
 # Personal apps in TinyCloud
 
-**Install rule: reuse the single compatible CLI selected by https://agents.tinycloud.xyz/cli. New installs use stable `1.5.0`; a compatible newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**Install rule: reuse the single compatible CLI selected by https://agents.tinycloud.xyz/cli. New installs use stable `1.5.1`; a compatible `1.5.0` or newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
@@ -151,6 +151,8 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 ```
 
 The helper reads official CLI context and status, checks live primary and additional grants, and verifies access with an actual catalog listing. It creates no profile, approval or record.
+
+For `SPACE_NOT_HOSTED`, a new account may still be provisioning. Tell the owner, then repeat only the failed read after 5, 10, 20, 40 and 60 seconds, stopping on success. If still unavailable, report that storage is not ready and stop. Never invent an approval URL, request a broader grant, use `--replace-session`, or host a space to bypass that error.
 
 - `status: ready`: copy `profile`, `host` and `spaceId` as `<APP_PROFILE>`, `<APP_HOST>` and `<APP_SPACE>`. **Do not sign in again.** Read the returned catalog keys and the app's `<ID>/catalog` with §5. An empty catalog is not a missing grant: create the app/kind metadata and discovery entry before the first record (§2).
 - `status: grant-required`: keep the returned profile, host and owner; §4 requests only the returned `missing` permissions.

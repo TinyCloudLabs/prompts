@@ -12,7 +12,10 @@ const homes = [];
 const home = () => { const dir = mkdtempSync(join(realpathSync(tmpdir()), "tc-install-")); homes.push(dir); return dir; };
 const installer = fileURLToPath(new URL("./install-cli.mjs", import.meta.url));
 const helper = fileURLToPath(new URL("./agent-env.mjs", import.meta.url));
-const envFor = (dir) => ({ ...process.env, HOME: dir, USERPROFILE: dir, TC_BIN: "", TC_AGENT_ENV: "", PATH: process.env.PATH });
+const envFor = (dir) => {
+  const { TC_BIN, TC_AGENT_ENV, ...env } = process.env;
+  return { ...env, HOME: dir, USERPROFILE: dir };
+};
 const executable = (file, version) => {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, windows ? `@echo off\r\necho ${version}\r\n` : `#!/bin/sh\nprintf '%s\\n' '${version}'\n`, { mode: 0o700 });
@@ -104,6 +107,14 @@ test("an incompatible explicit CLI is rejected without changing its files or ins
   assert.equal(existsSync(join(dir, ".local")), false);
 });
 
+test("an explicitly empty selection fails rather than falling through to another CLI", () => {
+  const dir = home();
+  privateCli(dir, "1.6.0");
+  assert.throws(() => resolveCli({ env: { ...envFor(dir), TC_BIN: "" } }), /absolute executable path/);
+  assert.throws(() => installCli({ env: { ...envFor(dir), TC_BIN: "" } }), /absolute executable path/);
+  assert.equal(existsSync(join(dir, ".local/bin")), false);
+});
+
 test("read-only resolver fails rather than replacing a broken explicit selection", () => {
   const dir = home();
   const result = spawnSync(process.execPath, [installer, "--resolve"], {
@@ -156,7 +167,7 @@ test("Windows launchers actually execute paths with spaces and preserve argument
   writeFileSync(selected, '@echo off\r\necho [%~1] [%~2]\r\n');
   linkCommands({ bin: selected, version: "1.5.0" }, { home: dir, env: { ...envFor(dir), PATH: "" }, log: () => {} });
   const command = '"' + join(dir, ".local/bin/tinycloud.cmd") + '" "two words" --json';
-  const result = spawnSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", `"${command}"`], { encoding: "utf8" });
+  const result = spawnSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", `"${command}"`], { encoding: "utf8", windowsVerbatimArguments: true });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), "[two words] [--json]");
 });

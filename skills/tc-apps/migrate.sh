@@ -32,7 +32,7 @@ fi
 command -v jq > /dev/null 2>&1 || { echo 'jq is needed. Install it, then run this again.' >&2; exit 3; }
 if command -v sha256sum > /dev/null 2>&1; then sha() { sha256sum | cut -d' ' -f1; }; else sha() { shasum -a 256 | cut -d' ' -f1; }; fi
 # Use the same selected CLI as onboarding and every record layout.
-if [ -z "${TC_BIN:-}" ]; then TC_BIN=$(cat "$HOME/.local/share/tc-apps/cli-path") || exit 3; fi
+if [ -z "${TC_BIN+x}" ]; then TC_BIN=$(cat "$HOME/.local/share/tc-apps/cli-path") || exit 3; fi
 STATE=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 R=xyz.tinycloud.agent-data
 TAB=$(printf '\t')
