@@ -230,10 +230,20 @@ case "$MODE" in
   *) echo 'COURIER_MODE_REQUIRED: choose same-owner or anyone' >&2; exit 1 ;;
 esac
 : "${TC:?Run the CLI preamble}" "${SESSION_ID:?Use the active session ID}"
-"$TC" courier invite --session "$SESSION_ID" --mode "$MODE" --consent --wait 1
+OUT=$(mktemp) || exit 1
+{ { "$TC" courier invite --session "$SESSION_ID" --mode "$MODE" --consent --wait 1; echo "$?" > "$OUT.rc"; } 2>&1 1>&3 | tee "$OUT.err" >&2; } 3>&1 | tee "$OUT"
+RC=$(cat "$OUT.rc")
+INVITE=$(node -e 'for (const line of require("fs").readFileSync(process.argv[1], "utf8").split("\n")) { try { const r = JSON.parse(line); if (r.status === "invitation" && typeof r.invitationId === "string" && typeof r.link === "string") { console.log(r.invitationId + " " + r.link); break; } } catch {} }' "$OUT")
+if [ "$RC" = 0 ]; then echo "NEXT: paired; continue."
+elif [ "$RC" = 1 ] && [ -n "$INVITE" ] && grep -q '\[invite-pending\]' "$OUT.err"; then
+  echo "INVITATION_ID=${INVITE%% *}"
+  echo "NEXT: send the owner this invitation link now, on its own line: ${INVITE#* } Then run the serve block below now, in the same turn."
+else echo "INVITE_EXIT $RC"; fi
+rm -f "$OUT" "$OUT.rc" "$OUT.err"
+exit "$RC"
 ```
 
-Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. With `--wait 1` it returns within seconds: its first JSON line has `status: invitation`, and it then exits 1 with `[invite-pending]` on stderr. That first `[invite-pending]` is expected: the invitation is kept. Give the owner its `link` at once, exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL. Then, in the same turn, keep the issuer serving as below.
+Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. With `--wait 1` it returns within seconds: its first JSON line has `status: invitation`, and it then exits 1 with `[invite-pending]` on stderr. That first `[invite-pending]` is expected: the invitation is kept. Give the owner its `link` at once, exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL. Then, in the same turn, keep the issuer serving as below. The block's last lines say the same: `INVITATION_ID=<id>`, then a `NEXT:` line with the link; do what it says. `INVITE_EXIT <code>` means: go by the list under "Keep the issuer serving".
 
 ## Keep the issuer serving
 
