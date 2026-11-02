@@ -2,12 +2,12 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.5.3-beta.0`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: it needs `1.0.0-beta.18` or newer (TC-540 device login and `enable share`, TC-577 file names with spaces); betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.0-beta.1`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: it needs `1.0.0-beta.18` or newer (TC-540 device login and `enable share`, TC-577 file names with spaces); betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.5.3-beta.0).
+# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.6.0-beta.1).
 export TC_BIN='<selected absolute executable path>'
 export TC_HOME=<profile store for this agent>
 export TC_PUBLISH_STATE=<state dir for this agent>       # optional; default $HOME/.local/state/tc-publish

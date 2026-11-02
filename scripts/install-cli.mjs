@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const CLI_VERSION = "1.5.3-beta.0";
+export const CLI_VERSION = "1.6.0-beta.1";
 const names = ["tinycloud", "tc"];
 const marker = ":: TinyCloud CLI launcher ";
 const real = (file) => { try { return realpathSync(file); } catch { return ""; } };

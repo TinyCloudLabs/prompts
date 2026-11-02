@@ -50,7 +50,7 @@ TC='<TC_BIN>'
 "$TC" onboard --help >/dev/null && echo ONBOARD_READY
 ```
 
-Every guide needs `1.5.3-beta.0`: new installs and older agent-owned installs get it. If the CLI setup printed `TC_OLDER`, the operator selected an older CLI: tell the owner in one line that it is older than the required `1.5.3-beta.0`, and stop; don't replace it. No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop the same way.
+Every guide needs `1.6.0-beta.1`: new installs and older agent-owned installs get it. If the CLI setup printed `TC_OLDER`, the operator selected an older CLI: tell the owner in one line that it is older than the required `1.6.0-beta.1`, and stop; don't replace it. No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop the same way.
 
 **2. Run onboarding.** One run waits for both approvals in sequence. It uses the selected default profile, or `TC_PROFILE` if set. Start it in the client's background process or interactive session so it keeps running while you talk to the owner, with stderr going to a file you read:
 

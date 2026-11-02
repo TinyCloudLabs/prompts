@@ -2,12 +2,12 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.5"
+  version: "0.3.6"
 ---
 
 # Personal apps in TinyCloud
 
-**Install rule: use the single CLI selected by https://agents.tinycloud.xyz/cli, `1.5.3-beta.0`. New installs and older agent-owned installs get `1.5.3-beta.0`; an operator-selected CLI is kept, and a newer one is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
+**Install rule: use the single CLI selected by https://agents.tinycloud.xyz/cli, `1.6.0-beta.1`. New installs and older agent-owned installs get `1.6.0-beta.1`; an operator-selected CLI is kept, and a newer one is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.**
 
 **Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
 
@@ -68,7 +68,7 @@ It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per l
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id, for generic apps. Health Log instead uses its validated owner timezone and fresh clock from `healthlog-context.mjs` (`TINY-APPS.md` §4).
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
 - `TC_BIN is unset` → follow the shared CLI setup, then continue this request with the path from its `TC_SELECTED`. Do not install a second CLI.
-- A CLI version older than `1.5.3-beta.0` → follow the shared CLI setup once and run §1 again: it upgrades a CLI the agent installed. If the setup prints `TC_OLDER`, the operator selected that older CLI: tell the owner in one line that it is older than the required `1.5.3-beta.0`, and stop. Don't replace it.
+- A CLI version older than `1.6.0-beta.1` → follow the shared CLI setup once and run §1 again: it upgrades a CLI the agent installed. If the setup prints `TC_OLDER`, the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.0-beta.1`, and stop. Don't replace it.
 
 ## 1a. Which layout does this app use?
 

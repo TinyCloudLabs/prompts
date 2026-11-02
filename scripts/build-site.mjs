@@ -105,9 +105,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.3-beta.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.3-beta.0.tgz",
-    integrity: "sha512-VHkXxMfz9kOn6o6tf6xiOPWtDefyH2bjB4bUPkEUGmDqXd4rA/09ngSByjMoOOen28eJR5vAZF2kcIzekmdULQ==",
+    version: "1.6.0-beta.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.0-beta.1.tgz",
+    integrity: "sha512-KUK25jShE0qe7lCwcLMDN4i+xV6fgGc/Z7dFBjbuaFtHEKI+2vMRdiQ3vtZgMYOKG5ed/Ej6SQBfn60flQ/vdA==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -122,10 +122,10 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.5.3-beta.0`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.0-beta.1`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.5.3-beta.0 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.0-beta.1 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,

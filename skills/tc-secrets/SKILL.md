@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.15"
+  version: "0.5.16"
 ---
 
 # Read secrets from TinyCloud with `tinycloud secrets`
@@ -89,7 +89,7 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 - `CLI_OK` and `OWNER_OK` → continue with §2.
 - `CLI_LEGACY` → the CLI predates `secrets request` and `secrets wait`. Everything still works with the older steps marked **(old CLI)** below. Tell the operator once that the CLI should be upgraded to the pinned version.
 - `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/agent for the pinned private install or the owner's non-secret DID, then return to this same task. Do not ask for a secret value or start a broad grant.
-- The last line is the CLI version. The skill needs `1.5.3-beta.0`. If it is older, follow https://agents.tinycloud.xyz/cli once (it upgrades a CLI the agent installed) and run this block again. If that setup prints `TC_OLDER`, the operator selected the older CLI: keep it, tell the operator once that `1.5.3-beta.0` is required, and continue with what this block reports.
+- The last line is the CLI version. The skill needs `1.6.0-beta.1`. If it is older, follow https://agents.tinycloud.xyz/cli once (it upgrades a CLI the agent installed) and run this block again. If that setup prints `TC_OLDER`, the operator selected the older CLI: keep it, tell the operator once that `1.6.0-beta.1` is required, and continue with what this block reports.
 
 If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tinycloud` command.
 
