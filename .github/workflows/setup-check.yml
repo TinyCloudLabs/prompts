@@ -58,9 +58,15 @@ jobs:
             $selections[0].Substring('TC_SELECTED '.Length) | ConvertFrom-Json
           }
           function Read-InstallTree($prefix) {
-            # Observe installed files, not installer source or launcher text.
+            # NTFS directory mtimes can settle after npm exits. Preserve directory
+            # identity, and compare every installed file's identity, metadata and bytes.
             @(Get-ChildItem -LiteralPath $prefix -Recurse -Force | Sort-Object FullName | ForEach-Object {
-              '{0}|{1}|{2}|{3}' -f $_.FullName, $_.Length, $_.CreationTimeUtc.Ticks, $_.LastWriteTimeUtc.Ticks
+              if ($_.PSIsContainer) {
+                '{0}|directory|{1}' -f $_.FullName, $_.CreationTimeUtc.Ticks
+              } else {
+                $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+                '{0}|file|{1}|{2}|{3}|{4}' -f $_.FullName, $_.Length, $_.CreationTimeUtc.Ticks, $_.LastWriteTimeUtc.Ticks, $hash
+              }
             }) -join "`n"
           }
           $originalUser = Read-RawPath $userKey
