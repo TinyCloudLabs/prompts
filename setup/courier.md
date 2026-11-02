@@ -207,23 +207,23 @@ case "$MODE" in
   *) echo 'COURIER_MODE_REQUIRED: choose same-owner or anyone' >&2; exit 1 ;;
 esac
 : "${TC:?Run the CLI preamble}" "${SESSION_ID:?Use the active session ID}"
-"$TC" courier invite --session "$SESSION_ID" --mode "$MODE" --consent --wait 60
+"$TC" courier invite --session "$SESSION_ID" --mode "$MODE" --consent --wait 1
 ```
 
-Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. Read the first JSON line with `status: invitation`; give the owner its `link` exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL.
+Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. With `--wait 1` it returns within seconds: its first JSON line has `status: invitation`, and it then exits 1 with `[invite-pending]` on stderr. That first `[invite-pending]` is expected: the invitation is kept. Give the owner its `link` at once, exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL. Then, in the same turn, keep the issuer serving as below.
 
 ## Keep the issuer serving
 
-The invitation command prints the handoff link, then serves the existing signed pairing for at most a minute (`--wait 60`), so the call fits a tool time limit (Claude Code stops foreground calls after 2 minutes). Resume the **same** invitation with its `invitationId`, again for at most a minute per call:
+Serve the **same** invitation with its `invitationId`, for at most a minute per call (`--wait 60`), so each call fits a tool time limit (Claude Code stops foreground calls after 2 minutes):
 
 ```sh
 "$TC" courier invite serve "$INVITATION_ID" --wait 60
 ```
 
-Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. Go by the result of the `invite` call and of each `invite serve` call:
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. Go by the result of each call:
 
 - **Exit 0, `"status": "paired"` on stdout:** pairing is complete.
-- **Exit 1, `[invite-pending]` on stderr** ("No claim received"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` command again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 runs in a row (about 10 minutes). Then stop running it: don't issue a new invitation or send another link. The same invitation stays open until its `expiresAt`, so run `invite serve` again when the owner asks.
+- **Exit 1, `[invite-pending]` on stderr** ("No claim received"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` command again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count. Then stop running it: don't issue a new invitation or send another link. The same invitation stays open until its `expiresAt`, so run `invite serve` again when the owner asks.
 - **Exit 1, `[invite-expired]`:** the invitation passed its `expiresAt`; no session was created. Don't issue a new invitation unless the owner asks for one.
 - **The call stopped first** (a tool timeout, a restart): run the `invite serve` command again; it resumes the same invitation.
 - **Any other error:** stop and report the result.
