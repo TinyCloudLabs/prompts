@@ -391,6 +391,7 @@ test("Courier preview offers exactly same-owner and anyone and never executes an
 
 // The served Courier setup: request, wait, then the fallback code import and its separate read.
 const COURIER_SURFACES = ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"];
+const REFUSED_GRANT_LINE = `"I couldn't use that approval. You can remove it at https://account.tinycloud.xyz/delegations: it's the newest "Courier agent" row. Then please open this new link and approve; tell me when you're done." Do not send the owner the CID.`;
 const courierSetup = (surface) => {
   const text = readFileSync(join(root, surface), "utf8");
   const section = text.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
@@ -401,6 +402,9 @@ const courierSetup = (surface) => {
   assert.match(request, /^"\$TC" courier init --request > "\$COURIER_HOME\/request\.json" &&$/m);
   assert.match(wait, /^"\$TC" courier init --wait --timeout 60s$/m);
   assert.match(redeem, /"\$TC" courier init --grant-file -/);
+  // A refused grant names the labelled row on the delegations page; the agent never relays the CID to the owner.
+  assert.ok(section.includes(REFUSED_GRANT_LINE), `${surface}: refused-grant owner line`);
+  assert.doesNotMatch(section, /search box|in place of `<CID>`/, `${surface}: the owner is not asked to paste a CID`);
   return { section, request, wait, redeem };
 };
 // Step 1 prints only the link, on one line, so the agent can copy it without retyping; the full request stays in a private file.
