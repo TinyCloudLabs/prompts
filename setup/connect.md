@@ -22,7 +22,7 @@ Those guides are the authority for prerequisites, installation, permissions, sig
 
 Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Grok Bot](#grok-bot), [WhatsApp / Instinct](#whatsapp-and-instinct), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other MCP clients](#other-mcp-clients).
 
-**What we have tested, as of 3 November 2026.** Every app below supports custom remote MCP connectors according to its own documentation. Our own checks so far:
+**What we have tested, as of 3 November 2026.** ChatGPT, Claude, Grok, Perplexity, Gemini and Meta Muse each document custom remote MCP connectors, and Grok Bot can add an MCP server by URL. Our own checks so far:
 
 | App | What we have seen with TinyCloud |
 | --- | --- |
@@ -75,7 +75,7 @@ On Grok Business or Enterprise, a team admin must add the connector first. See [
 xAI's **Grok Bot** runs agents on their own cloud computer, with a terminal. Choose by what it can do in this conversation:
 
 - If it can install and run commands, use [CLI onboarding](onboarding.md) and the agent skills, like any coding agent. Grok Bot shares command-line credentials across all of the owner's Bots, so every Bot of theirs can use this TinyCloud sign-in; tell the owner that in one line before onboarding.
-- Otherwise, add **`https://mcp.tinycloud.xyz/mcp`** as an MCP server by URL with **OAuth**, sign in with OpenKey, and follow [Approve access and continue](#approve-access-and-continue).
+- Otherwise, add **`https://mcp.tinycloud.xyz/mcp`** as an MCP server by URL. If it offers **OAuth**, sign in with OpenKey, then follow [Approve access and continue](#approve-access-and-continue).
 - If neither is available, explain that specific limitation. Do not invent a connector screen or ask for credentials in chat.
 
 See [xAI's Grok Bot apps instructions](https://docs.x.ai/grok-bot/computer-and-apps).
