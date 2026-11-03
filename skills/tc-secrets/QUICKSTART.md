@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.0`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature checks decide: 1.0.0-beta.23 still works through the skill's old-CLI steps (no `secrets request`/`wait`; the owner sends OpenKey's long code). Older CLIs can't request a usable decrypt grant: their links fail §3b's check, or decryption is refused (`SECRET_DECRYPT_FAILED`).
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.0`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature checks decide: 1.0.0-beta.23 still reads names the profile can already read, through the skill's old-CLI steps (no `secrets request`/`wait`). A new sign-in needs `1.6.0`'s short OpenKey link: with an older CLI, §3b stops with `SIGNIN_TC_OLDER` and starts nothing, and the agent tells the owner in one line that the CLI is older than the required `1.6.0`.
 
 ## 0. Operator setup (once, not run by the agent)
 
@@ -22,7 +22,7 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
 
 ## Walkthrough
 
-1. **Check the CLI** (§1). Feature probes plus `TC_OWNER_DID`: `CLI_OK`, `CLI_LEGACY` (an older CLI; the skill falls back) or `STALE` (stop and tell the owner; never install anything). Old CLIs answer `secrets wait --help` with the general `secrets` help, so the probe looks for the `--timeout` and `--requester` options.
+1. **Check the CLI** (§1). Feature probes plus `TC_OWNER_DID`: `CLI_OK`, `CLI_LEGACY` (an older operator CLI: reads fall back; a new sign-in stops at §3b) or `STALE` (stop and tell the owner; never install anything). Old CLIs answer `secrets wait --help` with the general `secrets` help, so the probe looks for the `--timeout` and `--requester` options.
 2. **Check access** (§2). First confirm the profile belongs to `TC_OWNER_DID`; a profile signed in to another account stops with `OWNER_MISMATCH`, and the agent never switches or resets it. Then one `secrets wait NAMES --timeout 0` asks TinyCloud which names exist and which the profile can read, without decrypting:
    - `READY` → use it.
    - `MISSING` → the secret doesn't exist yet. `NO_ACCESS` → the profile can't read it (it may or may not exist).
@@ -30,17 +30,14 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
    - It then waits with `secrets wait NAMES --timeout 9m`. The owner never has to say "saved".
    - `MIGRATE` (once, after a CLI upgrade) → `auth caps` finishes the profile's one-time upgrade.
    - The agent only asks to **add** missing secrets. It never asks to replace one; a key that exists but fails is reported with the Secret Manager link.
-3. **Consent** (§3), in three steps:
+3. **Consent** (§3), in four steps:
    1. Create the key-only profile if it's missing.
-   2. **Build and check the link.**
-      - Write a manifest naming exactly the listed secrets.
-      - Run `auth login --paste` once with stdin from `/dev/null`. The CLI prints the OpenKey link and stops with `PASTE_CODE_MISSING`.
-      - The checker takes the line that holds only the URL. It accepts the link only if it requests exactly: `kv/get` on each named secret in the owner's `secrets` space, decrypt on the owner's default network, and the capability read.
-      - It also requires this profile's key and node, no callback, and at most 30 days.
-      - Only then send the approval message.
-   3. When the owner sends back the 8-character code (works once, for 5 minutes), write it to a fresh 0600 file at once and run the same login with the code on stdin. The result is parsed from the CLI's JSON (`SIGNED_IN`, `CODE_EXPIRED`, `LOGIN_FAILED <code>` or `LOGIN_TIMEOUT`), and the code is deleted.
-
-   No background waiter is needed: the second run accepts the code the first run's link produced.
+   2. **Build the request.** Write a manifest naming exactly the listed secrets, record the profile's key and node, and write the sign-in script.
+   3. **Start the sign-in** in a background process that keeps running (or detached): `auth login --method openkey --no-popup --manifest … --owner … --expiry 30d`. The CLI prints a short `https://openkey.so/a/…` link and then fetches the approval itself. There's no code. Rerunning the same command resumes the same link.
+   4. **Check the link, send it, wait.**
+      - The checker takes the link only from that sign-in's own output, and only in the exact short form `https://openkey.so/a/<id>#v=4&k=…&c=…`.
+      - The link only names a request sealed with TinyCloud's links service, so the checker opens it as OpenKey's page will (the CLI's own `@tinycloud/share-envelope` reader: signature, content hash, decryption with the link's key). It accepts it only if the request is signed by and grants to this profile's key, is for this profile's node, lasts at most 30 days, and asks for exactly `kv/get` on each named secret in the owner's `secrets` space, decrypt on the owner's default network, and the capability read.
+      - Only then send the approval message. Then a wait block runs, a minute at a time, in the same turn, until the sign-in reports `SIGNED_IN`, `LINK_EXPIRED`, `NOT_APPROVED <code>` or `LOGIN_FAILED <code>`.
 4. **Use** (§4).
    - Capture the value with `secrets get NAME --raw` inside the one command that needs it, with stdin closed and stderr sent to a private file, so the CLI never stops to wait for a browser approval. Pass the value through the environment or stdin.
    - Read it again in each command instead of caching it on disk, unless the owner asks for a key file or a tool can only read the secret from one (§4 "Key files": 0600, piped straight from `secrets get --raw`, never inside a git work tree unless git-ignored, and the owner is told the path and name).
@@ -48,20 +45,19 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
 
 ## Why not the phone code?
 
-OpenKey's device flow (the code you approve on your phone, used by `tc-publish`) deliberately rejects the `secrets` space and decryption. Anyone can start a device request and send its code to someone else, and a secret is the worst thing to phish. Secret access therefore goes through the OpenKey approval page. That page signs a delegation for this profile's key only, and returns it as a code the owner hands back to the agent.
+OpenKey's device flow (the code you approve on your phone) deliberately rejects the `secrets` space and decryption. Anyone can start a device request and send its code to someone else, and a secret is the worst thing to phish. Secret access therefore goes through the OpenKey approval page, opened from a short link. That page signs a delegation for this profile's key only, and returns it encrypted to the CLI that made the request.
 
 ## What the owner sees
 
-At `openkey.so/delegate`, the owner signs in with their passkey and picks their key. The page then shows:
+The short link opens OpenKey's approval page (`openkey.so/a/<id>`), which loads the request sealed behind the link. The owner signs in with their passkey and picks their key. The page then shows:
 
 - the node (`https://tee.node.tinycloud.xyz`);
-- "Returned to: This page, as a code to paste";
 - the expiry;
 - each capability: "Read secret values" and "Decrypt protected data" (both marked Sensitive), plus the required "Check your TinyCloud permissions".
 
 Reads are limited to the named secrets. The decrypt permission covers the owner's default encryption network, which is not limited to those names. So the approval message says so: the profile can only fetch the named secrets, but it could decrypt anything encrypted to that network that it gets from elsewhere.
 
-After **Approve**, the page shows an 8-character code (for example `K7M2-Q9XA`) that works once, for 5 minutes. The CLI uses it to fetch the signed approval from OpenKey, and accepts it only if that approval names this machine's profile key. Anyone else who uses the code gets an approval they can't use. "Use full delegation code instead" shows the long code (7–10 KB of base64) that CLIs older than 1.1.0-beta.14 need. Send the code to the agent in your 1:1 channel with it, not in a group. (Paseo's Secret Bridge is retired and is no longer a way to hand over codes.)
+After **Approve**, there's nothing to copy. OpenKey encrypts the signed approval to the CLI that made the request, and that CLI fetches it, checks that it names this machine's profile key and exactly the requested permissions, and saves it. The approval is all or nothing: if the owner unticks an item, nothing is saved (`OPENKEY_APPROVAL_NARROWER`), and the agent stops and says so.
 
 ## Never let a value leak
 

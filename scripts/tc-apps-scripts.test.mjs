@@ -56,7 +56,7 @@ if (args[0] === "profile" && args[1] === "show") {
   console.log(JSON.stringify({ profile }));
 } else if (args[0] === "init") {
   const name = args[args.indexOf("--name") + 1];
-  if (name !== "owner" || !args.includes("--paste")) fail("UNEXPECTED_INIT", 2);
+  if (name !== "owner" || !args.includes("--no-popup") || args.includes("--paste")) fail("UNEXPECTED_INIT", 2);
   state.profiles.push(name);
   state.sessions.push(name);
   fs.writeFileSync(statePath, JSON.stringify(state));
@@ -80,7 +80,7 @@ if (args[0] === "profile" && args[1] === "show") {
   const calls = readFileSync(join(h.dir, "owner-grant-calls.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
   assert.deepEqual(calls, [
     { argv: ["--profile", "owner", "profile", "show"], profile: "owner" },
-    { argv: ["init", "--name", "owner", "--paste"], profile: "linear-agent" },
+    { argv: ["init", "--name", "owner", "--no-popup"], profile: "linear-agent" },
     { argv: ["--profile", "owner", "context", "--json"], profile: "owner" },
     { argv: ["--profile", "owner", "auth", "grant", join(h.state, "meal-request.json")], profile: "owner" },
   ]);
@@ -97,9 +97,9 @@ if (args[0] === "profile" && args[1] === "show") {
     TC_BIN: cli,
   });
   assert.equal(renewal.status, 1);
-  assert.ok(renewal.stderr.includes("The agent must run owner auth login --method openkey --paste in an interactive session"), renewal.stderr);
+  assert.ok(renewal.stderr.includes(`The agent must run ${cli} --profile owner auth login --method openkey --no-popup in the background, send the link it prints with the ask line`), renewal.stderr);
   assert.doesNotMatch(renewal.stderr, /linear-agent/);
-  assert.ok(!renewal.stderr.includes(`${cli} auth login --paste`), renewal.stderr);
+  assert.doesNotMatch(renewal.stderr, /--paste|chat code/);
 });
 
 

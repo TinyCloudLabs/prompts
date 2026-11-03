@@ -10,7 +10,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
   - **Codex:** before you paste, type `/permissions` and choose "Ask for approval", then approve each step it asks for.
-- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat your ordinary read/write grants. Otherwise it asks only for missing access and sends the actual OpenKey link. The older narrow catalog fallback uses a manual sign-in code in chat, but its access link completes automatically. The agent runs the commands and finishes the request; you never need a separate terminal.
+- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat your ordinary read/write grants. Otherwise it asks only for missing access and sends the actual OpenKey link. The older narrow catalog fallback sends short links too: you approve its sign-in link and its access link, and each completes automatically. The agent runs the commands and finishes the request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
@@ -48,7 +48,7 @@ Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use
 
 ## 2. Install only the skill
 
-If the installed `tc-apps` skill is version `0.3.11` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+If the installed `tc-apps` skill is version `0.3.12` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 
@@ -66,7 +66,7 @@ Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-
 node (Join-Path $D 'install.cjs') apps --agent '<CLIENT>'
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.3.11 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.3.12 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 

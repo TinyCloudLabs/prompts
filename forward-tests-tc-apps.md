@@ -13,7 +13,7 @@ The generic-store scenarios below use an explicitly chosen custom fitness app, n
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.11 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.6.0` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected one stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
+  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.12 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.6.0` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected one stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -152,7 +152,6 @@ This test proves that the agent offers a fast copy when useful, reuses existing 
 
 ## Known rough edges
 
-- The explicitly selected legacy manual-code fallback still uses longer links. It is not the default onboarding or generic-app flow.
 - A new account's space is hosted in the background after sign-in, so §3 can fail with `SPACE_NOT_HOSTED` for a while. The agent tells the owner it's still being set up, retries with backoff for about 2 minutes, and never asks for a second sign-in (TC-1608).
 - The SQL approval names one database, and the node can also open other SQL databases in the same space. Don't treat the database name as a boundary. The skill always passes the exact `--db`.
 - Parallel SQL writes to one database can fail or half-apply, so the skill writes SQL one block at a time.

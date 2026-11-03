@@ -111,8 +111,8 @@ test("the four owner lines are word for word, and every guide's quoted line uses
 const EXIT_EXCEPTIONS = {
   "setup/courier.md": "Courier exits 0, 8 (still waiting), 2 (usage) and 1 with [code] for every error; an expired link is exit 1 [approval-expired]",
   "skills/tc-apps/SKILL.md": "data commands: kv put --if-none-match exits 5 KV_ALREADY_EXISTS; layout.sh exits 3 when jq is missing",
-  "skills/tc-publish/SKILL.md": "publish sign-in (device: 3 DEVICE_AUTH_EXPIRED, 5 DEVICE_AUTH_DENIED/SCOPE_REJECTED/BINDING_MISMATCH) and share commands (3 AUTH_REQUIRED session, 5 PERMISSION_DENIED scope)",
-  "skills/tc-secrets/SKILL.md": "secrets sign-in (3 PASTE_CODE_MISSING expected), reads (3 AUTH_REQUIRED, 5 PERMISSION_DENIED) and secrets wait (8 still missing)",
+  "skills/tc-publish/SKILL.md": "share commands (3 AUTH_REQUIRED session, 5 PERMISSION_DENIED scope or SCOPE_REJECTED); the sign-in's own rows name its shared-table codes",
+  "skills/tc-secrets/SKILL.md": "reads (3 AUTH_REQUIRED, 5 PERMISSION_DENIED) and secrets wait (8 still missing); the sign-in's own rows name its shared-table codes",
 };
 const EXIT_MENTION = /\b[Ee]xit(?:s|ed| code| status)?:?\s*`?[358]\b|\(exit [358]\)|TC_EXIT: [358]|\| *`?[358]`? *\||\bexits? [358]\b|exit-[358]\b|\brc `?[358]\b/;
 const prose = (text) => text.replace(/^```[\s\S]*?^```$/gm, "");
@@ -135,16 +135,9 @@ test("no exit-code rule for 3, 5 or 8 is left outside the shared table, except t
 // Owner wording that asks for a code, or asks the owner to say they're done. Kept only where a flow still needs it.
 const DONE_WORDING = /tell me when you(?:'|’)re done|tell me you(?:'|’)re done|says they(?:'|’)re done|tell your agent when you(?:'|’)ve approved|when you(?:'|’)ve approved, reply here/i;
 const CODE_WORDING = /sends? back the code|sends? (?:me )?(?:back )?the short code|paste (?:it|the code|its code) back|send it back to me here|paste the code here/i;
+// Standard D moved Secrets, publish/share and the apps fallbacks to short links; only TinyChat's pack still asks for a code.
 const WORDING_EXCEPTIONS = {
-  "setup/publish.md": "publish sign-in (auth login --paste)",
-  "setup/share.md": "publish sign-in (auth login --paste)",
-  "skills/tc-publish/SKILL.md": "publish sign-in (auth login --paste), and its device fallback's background waiter, which may not wake the agent",
-  "skills/tc-publish/QUICKSTART.md": "publish sign-in (auth login --paste)",
-  "skills/tc-secrets/SKILL.md": "secrets sign-in (auth login --paste)",
   "apps/tinychat/setup.md": "TinyChat's pack (authorize, then login --code)",
-  "skills/tc-apps/LEGACY-SQL.md": "the older apps index sign-in (auth login --paste)",
-  "skills/tc-apps/announce.sh": "the older Health Log fallback's owner sign-in (init --name owner --paste)",
-  "skills/tc-apps/owner-grant.sh": "the older Health Log fallback's owner sign-in (init --name owner --paste)",
 };
 test("no stray \"tell me when you're done\" or \"send back the code\" outside the listed flows", () => {
   const found = new Set();
@@ -156,14 +149,14 @@ test("no stray \"tell me when you're done\" or \"send back the code\" outside th
     }
   }
   assert.deepEqual([...found].sort(), Object.keys(WORDING_EXCEPTIONS).sort(), "every exception is still needed");
-  for (const path of ["setup/onboarding.md", "setup/README.md", "setup/owner.md", "setup/courier.md", "skills/tinycloud-feed/SKILL.md", "skills/tc-apps/SKILL.md", "skills/tc-apps/SQL.md"]) {
+  for (const path of ["setup/onboarding.md", "setup/README.md", "setup/owner.md", "setup/courier.md", "skills/tinycloud-feed/SKILL.md", "skills/tc-apps/SKILL.md", "skills/tc-apps/SQL.md", "setup/secrets.md", "setup/publish.md", "setup/share.md", "setup/agent.md", "skills/tc-secrets/SKILL.md", "skills/tc-publish/SKILL.md"]) {
     assert.doesNotMatch(read(path), DONE_WORDING, path);
     assert.doesNotMatch(read(path), CODE_WORDING, path);
   }
   assert.doesNotMatch(read("skills/tc-apps/announce.sh"), DONE_WORDING);
   // The built llms.txt and llms-full.txt carry each guide's description and text: a match is allowed only in the
   // entry or section of a listed flow's served page.
-  const SERVED_EXCEPTIONS = ["publish", "share", "secrets", "chat", "skills/publish.md", "skills/secrets.md", "skills/chat.md"].map((path) => `https://agents.tinycloud.xyz/${path}`);
+  const SERVED_EXCEPTIONS = ["chat", "skills/chat.md"].map((path) => `https://agents.tinycloud.xyz/${path}`);
   for (const line of served("llms.txt").split("\n")) {
     if (CODE_WORDING.test(line) || DONE_WORDING.test(line)) assert.ok(SERVED_EXCEPTIONS.includes(line.match(/\]\((\S+?)\)/)?.[1]), `llms.txt: ${line.slice(0, 160)}`);
   }
@@ -187,7 +180,8 @@ test("every claim about how long the OpenKey code lasts says 5 minutes, as the p
       for (const match of sentence.matchAll(/\b(\d+) minutes\b/g)) claims.push([path, match[1], sentence.slice(0, 120)]);
     }
   }
-  assert.ok(claims.length >= 6, JSON.stringify(claims));
+  // Standard D left the code only in TinyChat's flow (/agent and /chat say how long it lasts).
+  assert.ok(claims.length >= 2, JSON.stringify(claims));
   for (const [path, minutes, sentence] of claims) assert.equal(minutes, "5", `${path}: ${sentence}`);
   assert.doesNotMatch(read("skills/tc-secrets/SKILL.md"), /valid for 10 minutes/);
 });

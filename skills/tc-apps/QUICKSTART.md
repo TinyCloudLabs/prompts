@@ -42,7 +42,7 @@ If you already completed onboarding, its application grants are reused. A new ap
 3. You open it on your computer or phone and review the scope and expiry before approving.
 4. The waiting CLI retrieves the approval automatically and the agent saves and reads back your record. No code or terminal command is needed.
 
-After an interruption, the agent resumes the same command/profile. The older narrow Health Log/Recipes fallback still uses manual codes and longer links; the normal onboarding path avoids it. Agents sharing the same profile store also share its existing grants.
+After an interruption, the agent resumes the same command/profile. The older narrow Health Log/Recipes fallback uses the same short links; the normal onboarding path avoids it. Agents sharing the same profile store also share its existing grants.
 
 ## What you can ask
 

@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.11"
+  version: "0.3.12"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/apps.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -213,7 +213,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile '<APP_PROFILE>' auth login --method openkey --no-popup --manifest "$STATE/tinyapp-<APP>.json" --expiry 30d
 ```
 
-Keep the command running in the client's background/interactive job. Say in one line what the permission is for, then send the complete short approval URL returned by that command as its own message line, followed by: "Open this link and approve. I'll carry on as soon as you do." The owner opens it and approves; the CLI retrieves and verifies the result automatically. **No code is needed.** Do not add `--paste`, which explicitly selects the older manual-code flow and long URL. If interrupted, rerun the identical command with the same profile and request to resume it.
+Keep the command running in the client's background/interactive job. Say in one line what the permission is for, then send the complete short approval URL returned by that command as its own message line, followed by: "Open this link and approve. I'll carry on as soon as you do." The owner opens it and approves; the CLI retrieves and verifies the result automatically. **No code is needed.** Do not switch to the older manual-code (paste) flow and its long URL. If interrupted, rerun the identical command with the same profile and request to resume it.
 
 After success, rerun §3 and continue the original request. Its exit codes go by the shared table in §10. A declined scope or an error stops the write. Do not approve for the owner, invent a URL, ask for a new account, replace a session, or broaden the request. If the agent client denies a command, explain it and wait for that client's approval instead of changing settings or running it another way.
 

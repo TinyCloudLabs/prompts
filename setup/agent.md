@@ -18,7 +18,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### What is and isn't secret
 
-- **Fine to share:** the code OpenKey shows after you approve (a short code works once and expires after 5 minutes), and a permission slip (a delegation or a grant file): it names who may use it, and only that authenticated holder can use it.
+- **Fine to share:** a permission slip (a delegation or a grant file): it names who may use it, and only that authenticated holder can use it. So is the code OpenKey shows after you approve, which only TinyChat still asks for (it works once and expires after 5 minutes).
 - **Keep private:** private keys, session keys and the profile folder (`~/.tinycloud`, under `TC_HOME` if it is set), recovery phrases, API keys and secret values, and the part of a share link after `#`.
 - **Approve only a request you started or recognise.** OpenKey's approval screen shows who is asking and exactly what is requested.
 

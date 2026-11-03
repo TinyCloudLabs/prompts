@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { after, test } from "node:test";
 
-// TINY-APPS.md §3's blocks for agents without a live interactive session: the helper gets a pipe of its own,
-// the sign-in code reaches it through that pipe, the grant waits for OpenKey with no code, and cancelling stops
+// TINY-APPS.md §3's blocks for agents without a live interactive session: the helper runs in the background with
+// its output in a file, the sign-in and the grant each wait for OpenKey approval with no code, and cancelling stops
 // only its recorded PID. Every step runs as its own shell call, the way such an agent runs it, so nothing carries
 // over between them.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -16,25 +16,21 @@ after(() => rmSync(base, { recursive: true, force: true }));
 const owner = "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const cli = join(base, "cli.mjs");
 writeFileSync(cli, `#!${process.execPath}
-import { createInterface } from 'node:readline';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-// Like CLI 1.5.0: init makes the profile before it asks for the code, so a cancelled sign-in leaves a
+// Like CLI 1.6.0: init makes the profile before it prints the sign-in link, so a cancelled sign-in leaves a
 // profile with no signed-in owner; context --json then reports ownerDid null.
 const a = process.argv.slice(2), home = process.env.HOME, signed = join(home, 'signed'), profile = join(home, 'profile');
 if (a.includes('show')) { if (!existsSync(profile)) { console.error('PROFILE_NOT_FOUND'); process.exit(4); } process.exit(0); }
 if (a.includes('context')) { console.log(JSON.stringify({ ownerDid: existsSync(signed) ? '${owner}' : null })); process.exit(0); }
-// The sign-in (init --paste, or auth login --paste on an existing profile) reads a code from stdin; the
-// grant prints a link and waits until the owner approves (here: until the test writes the approved file).
+// The sign-in (init, or auth login on an existing profile) and the grant each print a short link and wait until the
+// owner approves it (here: until the test writes the matching approved file). Nothing reads stdin.
 const login = a.includes('login');
 if (a.includes('init') || login) {
+  if (!a.includes('--no-popup') || a.includes('--paste')) { console.error('UNEXPECTED_SIGNIN ' + a.join(' ')); process.exit(2); }
   writeFileSync(profile, 'profile');
   console.error(login ? 'READY login' : 'READY init');
-  createInterface({ input: process.stdin }).once('line', code => {
-    if (code !== 'init-code') process.exit(3);
-    writeFileSync(signed, 'signed');
-    process.exit(0);
-  });
+  setInterval(() => { if (existsSync(join(home, 'signin-approved'))) { writeFileSync(signed, 'signed'); process.exit(0); } }, 100);
 } else {
   console.error('READY grant');
   setInterval(() => { if (existsSync(join(home, 'approved'))) { console.log('{"approved":true}'); process.exit(0); } }, 100);
@@ -72,18 +68,18 @@ function session(name) {
   const dir = join(state, "owner-grant-session");
   return {
     home, state, dir, start: () => sh(block), out: () => sh(step("cat ")), pid: () => Number(readFileSync(join(dir, "pid"), "utf8")),
-    send: (code) => sh(step("printf ").replace("<the code>", code)), cancel: () => sh(step("P=")),
+    approveSignIn: () => writeFileSync(join(home, "signin-approved"), ""), cancel: () => sh(step("P=")),
   };
 }
 
-test("the sign-in code sent with the doc's own step reaches the sign-in, the grant finishes on approval, and the helper exits by itself", async () => {
-  const s = session("codes");
+test("the sign-in and the grant each finish on approval with no code, and the helper exits by itself", async () => {
+  const s = session("approvals");
   s.start();
   const pid = s.pid();
-  assert.ok(statSync(join(s.dir, "in")).isFIFO());
+  assert.doesNotMatch(block + steps, /mkfifo|printf|<the code>/, "no code is sent to the helper");
   assert.match(s.out(), new RegExp(`OWNER_GRANT_PID=${pid}\\b`), "the recorded pid is the helper's own");
   await until(() => s.out().includes("READY init"), "sign-in");
-  s.send("init-code");
+  s.approveSignIn();
   await until(() => s.out().includes("READY grant"), "grant");
   writeFileSync(join(s.home, "approved"), "");
   await until(() => s.out().includes("Done: approval saved"), "done");
@@ -120,7 +116,7 @@ test("after a sign-in is cancelled, starting again signs the owner in on the exi
   const pid = s.pid();
   await until(() => s.out().includes("READY login"), "sign-in again on the existing profile");
   assert.doesNotMatch(s.out(), /Could not read the signed-in owner account/);
-  s.send("init-code");
+  s.approveSignIn();
   await until(() => s.out().includes("READY grant"), "grant");
   writeFileSync(join(s.home, "approved"), "");
   await until(() => s.out().includes("Done: approval saved"), "done");
