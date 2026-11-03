@@ -361,7 +361,19 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 5. When the process finishes, check it: run §1a again and see `new`; §3 shows the entry; the receipt says `"verified": true`; listing `<ID>/` (§5, with `--all`) gives `counts.total` keys. Read one record. Only then use the app in `applications` (§2 to §8), and tell the owner the old records are still in `default` and can be deleted only when they ask.
 6. The receipt holds counts and a digest, no keys. Another computer switches by itself once its sign-in can read the discovery entry (§1a). If it can't, §1a prints `ask` or `check-failed` there, and the owner can ask its agent in chat to install that receipt in `<STATE>/migration/` before using the app.
 
-**Going back** is the owner's decision, requested in chat. Stop writing the app, and explain that records written in `applications` since the move exist only there. Copying them to the old place is a separate step the owner approves: create-only, each record read back before the old place is used again. Then the agent removes the receipt file, and `layout.sh` prints `legacy` again. If a key differs between the two places, keep both and ask the owner which is right; never overwrite either.
+**Going back** is the owner's decision, requested in chat. Stop writing the app, and explain that records written in `applications` since the move exist only there. Copying them to the old place is a separate step the owner approves: create-only, each record read back before the old place is used again. Then, in this order:
+1. Run §3's helper with `--remove-entry`. It reports `del` on `xyz.tinycloud.tinyapps.catalog/<APP>/` as missing when the selected profile can't delete the entry, for example an app-scoped `tinyapp-<APP>` profile; §4 then requests exactly that, and nothing broader.
+2. Delete the app's discovery entry, then read it back:
+
+```sh
+TC_BIN='<TC_BIN>'; umask 077
+"$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv delete 'xyz.tinycloud.tinyapps.catalog/<APP>/entry' --space '<APP_SPACE>' --json
+"$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv get 'xyz.tinycloud.tinyapps.catalog/<APP>/entry' --space '<APP_SPACE>' --json
+```
+
+3. Only when that read gives `NOT_FOUND` (exit 4), remove the receipt file, `<STATE>/migration/<APP>.receipt.json`. A `NOT_FOUND` from the delete itself means the entry is already gone (for example on a rerun): continue to the read-back. If the delete or the read fails any other way, keep the receipt, report the error and stop: the app stays in the new layout.
+
+Deleting the entry, together with the receipt, is what flips the layout back: while either is there `layout.sh` prints `new`; with both gone it prints `legacy` again, here and on every other computer without a receipt. If a key differs between the two places, keep both and ask the owner which is right; never overwrite either.
 
 ## 10. Exit codes and owner lines
 

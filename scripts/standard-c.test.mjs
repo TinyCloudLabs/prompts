@@ -80,15 +80,34 @@ test("the CLI table matches the 1.6.2 approval exits, including one-line error r
   assert.match(expired[2], /If you never saw the exit-8 JSON, use the decline question below/);
   assert.match(expired[2], /Never read `approval-pending\.json`/);
   assert.equal(network[1], "`NETWORK_ERROR`.");
-  assert.doesNotMatch(network[1], /OpenKey|TinyCloud/);
   assert.match(network[2], /same command again once; make no new link/);
+  assert.ok(network[2].includes("If it exits 6 again, tell the owner exactly “I can't set up TinyCloud right now. Please ask me again later.”, then put the stderr error code on its own line and stop."));
   assert.match(network[2], /No `Next:` line is printed/);
+  const onboardingExit6 = read("setup/onboarding.md").split("\n").find((line) => line.startsWith("- **Exit 6:**"));
+  assert.ok(onboardingExit6?.includes("I can't set up TinyCloud right now. Please ask me again later."));
+  assert.ok(onboardingExit6?.includes("stderr error code on its own line and stop."));
+  assert.doesNotMatch(network[1], /OpenKey|TinyCloud/);
   assert.match(waiting[1], /^Still waiting: .* Or OpenKey is down: no `pending` object\.$/);
   assert.match(waiting[2], /send the link once and wait for the owner/);
   assert.match(waiting[2], /Follow the shared relay block's `Next:` lines rule/);
   assert.match(declined[2], /^Stop and send the “couldn't” failed line, then the error code on its own line/);
   assert.match(declined[2], /never send a CID/);
   assert.match(other[2], /^Stop, and send the “couldn't” failed line, then the code on its own line/);
+});
+
+test("the announcement tells the owner what to do when an app link has no code", () => {
+  const state = mkdtempSync(join(work, "announce-"));
+  try {
+    const result = spawnSync("sh", [join(root, "skills/tc-apps/announce.sh"), "healthlog"], {
+      encoding: "utf8",
+      env: { ...process.env, TC_APPS_STATE: state },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /If OpenKey shows a code \(only the sign-in link does\), paste it back to me here in chat\. For an app-approval link, approve it, then tell me\./);
+    assert.doesNotMatch(result.stdout, /I'll finish setup after you send the code/);
+  } finally {
+    rmSync(state, { recursive: true, force: true });
+  }
 });
 
 test("the three owner lines and declined line are exact and have no pasted copy", () => {
