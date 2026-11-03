@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Connect an agent to the owner's TinyCloud Home feed once, post cards there with `tinycloud feed publish`, and read the owner's answers.
 metadata:
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -57,7 +57,7 @@ tinycloud profile create 'feed-<TOKEN>' --posture delegate-session --operator ag
 tinycloud --profile '<OWNER_PROFILE>' auth request --cap 'tinycloud.sql:applications:xyz.tinycloud.tinychat/home_feed:read,write,schema' --cap 'tinycloud.sql:applications:xyz.tinycloud.tinychat/feed/:read,write,schema' --cap 'tinycloud.hooks:applications:sql/xyz.tinycloud.tinychat/feed/:subscribe' --grant --no-popup --expiry 30d
 ```
 
-Output `"changed": false` means the owner already approved it: go on to c. Otherwise keep the command running, say in one line what the approval is for, then send the complete short URL it prints on its own line, followed by: "Open this link and approve. I'll carry on as soon as you do." It retrieves the approval automatically; no return code or reply is needed. After an interruption, rerun the identical command. Do not add `--paste`. On an operator's `local-owner-key` profile there is no link; add `--yes` instead.
+Output `"changed": false` means the owner already approved it: go on to c. Otherwise keep the command running, say in one line what the permission is for, then send the complete short URL it prints on its own line, followed by: "Open this link and approve. I'll carry on as soon as you do." It retrieves the approval automatically; no return code or reply is needed. After an interruption, rerun the identical command. Do not add `--paste`. On an operator's `local-owner-key` profile there is no link; add `--yes` instead. Its exit codes go by the shared table in §9.
 
 **c. Connect.** This creates both databases, gives the agent's DID exactly read and write on its own output database, read on its responses database and notifications of new answers, then lists the agent in Home. Keep `--expiry 30d`: without it the agent's access ends after 24 hours. It can't outlast the approval from b.
 
@@ -172,3 +172,9 @@ tinycloud --profile '<OWNER_PROFILE>' sql execute 'DELETE FROM feed_agents WHERE
 The token stays reserved for that agent; connect a different agent under a new token.
 
 The installed reference copy of this section is [creating-a-post.md](creating-a-post.md).
+
+## 9. Exit codes and owner lines
+
+Owner lines here are the shared ones, with `<what>` = "your Home feed".
+
+{{ERRORS}}

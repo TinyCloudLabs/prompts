@@ -45,7 +45,7 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
   Keep only the actions the helper reports missing; schema access is for creation, not ordinary reads or updates.
 - An owner/host mismatch or actual read failure stops the index operation. Answer from the original KV records; do not switch accounts or widen the grant.
 
-When additional approval is necessary, first answer from the KV records you already read. Explain that the missing permission enables a fast, searchable copy, show the actual short URL on its own line, and keep the command running. The owner approves; the CLI retrieves the result automatically. After interruption, rerun the same command/profile. Never add `--paste`, reconstruct a URL or ask the owner to run a command.
+When additional approval is necessary, first answer from the KV records you already read. Say in one line that the missing permission enables a fast, searchable copy, send the actual short URL on its own line followed by: "Open this link and approve. I'll carry on as soon as you do.", and keep the command running. The owner approves; the CLI retrieves the result automatically. After interruption, rerun the same command/profile. Never add `--paste`, reconstruct a URL or ask the owner to run a command. Its exit codes go by the shared table in `SKILL.md` §10.
 
 After successful approval, repeat the helper. For a new index, run §2, then rebuild every kind with §6, skipping its clearing step because the table is empty. If the owner declines, leave the records unchanged and continue with KV reads.
 

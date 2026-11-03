@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.19"
+  version: "0.5.20"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/secrets.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -577,6 +577,12 @@ fi
 
 The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place. For another account, do the same with `sudo install -o <user> -m 600 /dev/stdin "$TMP"` and `sudo mv -f "$TMP" "$DEST"`.
 
+## Exit codes and owner lines
+
+Secrets' sign-in and `secrets wait` are among the exceptions below: branch on the codes in §5. Owner lines are the shared ones, with `<what>` = "access to your secrets".
+
+{{ERRORS}}
+
 ## 5. Errors — `{"error":{"code","message","hint"?}}` on stderr
 
 Branch on `code`, never on the exit status alone: exit 8 means "still pending" only for `secrets wait`.
@@ -616,7 +622,7 @@ Send **one** message. Fill in the placeholders, and keep only the paragraphs tha
 >
 > *(add link)* Add the missing ones here: <add link>. You enter each value on that page; names that are already in your vault show "Already in your vault". Never send a value to me.
 >
-> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 10 minutes: send it back to me here.
+> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 5 minutes: send it back to me here.
 >
 > *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code here.
 >

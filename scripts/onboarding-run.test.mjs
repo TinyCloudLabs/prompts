@@ -46,15 +46,16 @@ test("every onboarding run in the guide is bounded; only --help and the owner's 
 });
 
 test("exit 8 with a pending link: send each new link at once, rerun, never resend, never count it as a retry", () => {
-  const pending = run.split("**Exit 8 with a `pending` object on stdout**")[1]?.split("\n- **Exit 0")[0];
+  const pending = run.split("**Still waiting: a `pending` object on stdout**")[1]?.split("\n- **Exit 0")[0];
   assert.ok(pending, "the guide must handle exit 8 with a pending object");
   assert.match(pending, /`step` \(1 or 2\), `of` \(2\), `approvalUrl` \(the link\) and `expiresAt`/);
   assert.match(pending, /When a rerun shows step 2's link, send it at once, without the step-1 text, and run the block again\./);
   assert.match(pending, /When it shows a link you already sent, don't send it again; just run the block again\./);
   assert.match(pending, /never counts toward a retry limit/);
-  for (const code of ["APPROVAL_REQUEST_EXPIRED", "SPACE_SETUP_PENDING", "PROFILE_NOT_ONBOARDABLE"]) assert.ok(run.includes(`**\`${code}\``), code);
-  assert.match(run, /\*\*Exit 8 without a `pending` object:\*\*/);
-  assert.match(run, /\*\*Any other error:\*\* stop and report it to the owner\./);
+  for (const code of ["SPACE_SETUP_PENDING", "PROFILE_NOT_ONBOARDABLE"]) assert.ok(run.includes(`**\`${code}\``), code);
+  // Standard C: exit 3, exit 8 without `pending` and any other error go by the shared table, pasted in by the build.
+  assert.match(run, /exit codes go by the \[shared table\]\(#exit-codes-and-owner-lines\), with `<what>` = "TinyCloud"/);
+  assert.ok(guide.includes("\n## Exit codes and owner lines\n\n{{ERRORS}}\n"));
 });
 
 test("the owner sees the same words as before the loop", () => {
@@ -62,8 +63,10 @@ test("the owner sees the same words as before the loop", () => {
     "> I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.",
     '"Open this link and approve. I\'ll carry on as soon as you do."',
     'this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud."',
-    "There's no code to send back: tell your agent when you've approved.",
+    // Standard C: the owner isn't asked to say they've approved while the CLI is waiting.
+    "There's no code to send back, and nothing to tell your agent: it carries on as soon as you approve.",
   ]) once(guide, line);
+  assert.doesNotMatch(guide, /tell your agent when you've approved|owner tells the agent when/);
 });
 
 test("the readiness check passes for the pinned CLI and only for a CLI whose onboard takes --timeout", () => {

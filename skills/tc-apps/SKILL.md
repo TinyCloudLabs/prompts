@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records in their TinyCloud storage, organised into apps you create and extend as they go. Reuse existing onboarding access and request only missing permissions. The owner approves OpenKey links; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.3.10"
+  version: "0.3.11"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/apps.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -213,9 +213,9 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile '<APP_PROFILE>' auth login --method openkey --no-popup --manifest "$STATE/tinyapp-<APP>.json" --expiry 30d
 ```
 
-Keep the command running in the client's background/interactive job. Send the complete short approval URL returned by that command as its own message line, with one sentence describing the requested access. The owner opens it and approves; the CLI retrieves and verifies the result automatically. **No code is needed.** Do not add `--paste`, which explicitly selects the older manual-code flow and long URL. If interrupted, rerun the identical command with the same profile and request to resume it.
+Keep the command running in the client's background/interactive job. Say in one line what the permission is for, then send the complete short approval URL returned by that command as its own message line, followed by: "Open this link and approve. I'll carry on as soon as you do." The owner opens it and approves; the CLI retrieves and verifies the result automatically. **No code is needed.** Do not add `--paste`, which explicitly selects the older manual-code flow and long URL. If interrupted, rerun the identical command with the same profile and request to resume it.
 
-After success, rerun §3 and continue the original request. A declined scope or an error stops the write. Do not approve for the owner, invent a URL, ask for a new account, replace a session, or broaden the request. If the agent client denies a command, explain it and wait for that client's approval instead of changing settings or running it another way.
+After success, rerun §3 and continue the original request. Its exit codes go by the shared table in §10. A declined scope or an error stops the write. Do not approve for the owner, invent a URL, ask for a new account, replace a session, or broaden the request. If the agent client denies a command, explain it and wait for that client's approval instead of changing settings or running it another way.
 
 
 ## 5. Read
@@ -314,7 +314,7 @@ For example:
 
 ## 8. Errors
 
-The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
+The CLI prints `{"error":{"code":…}}` on stderr. These are the data commands' codes (an exception in §10's table); an approval command such as §4's goes by §10. Branch on the code:
 - `NOT_FOUND` (exit 4) on `get` → there's no record there.
 - `KV_ALREADY_EXISTS` (exit 5) on a write with `--if-none-match '*'` → §6.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED` or `AUTH_EXPIRED` → repeat §3, then §4 only for confirmed missing sign-in/access.
@@ -354,3 +354,9 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 6. The receipt holds counts and a digest, no keys. On another computer, the owner can ask its agent in chat to install that receipt in `<STATE>/migration/` before using the app. Until it is there, that computer keeps the old layout, and records it writes there are not in the new folder.
 
 **Going back** is the owner's decision, requested in chat. Stop writing the app, and explain that records written in `applications` since the move exist only there. Copying them to the old place is a separate step the owner approves: create-only, each record read back before the old place is used again. Then the agent removes the receipt file, and `layout.sh` prints `legacy` again. If a key differs between the two places, keep both and ask the owner which is right; never overwrite either.
+
+## 10. Exit codes and owner lines
+
+Owner lines here are the shared ones, with `<what>` = "your <app> app" (for example "your Health Log app").
+
+{{ERRORS}}
