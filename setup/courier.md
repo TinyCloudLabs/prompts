@@ -2,7 +2,7 @@
 
 # Try Courier with your agent
 
-Give your agent one task and one prompt: `Try Courier for me: https://agents.tinycloud.xyz/courier`.
+Give your agent one task and one prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Try Courier for me.`
 
 Courier connects agents in a shared session. You choose another agent you control, or anyone holding your invitation link. Your agent keeps the selected session throughout.
 

@@ -13,49 +13,49 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 ## Personal records: [/apps](tc-apps.md)
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
 - **You approve:** nothing more when onboarding already covers the requested app access. Health Log installation may additionally need permission to create its tables; the agent requests only missing access. The older scoped fallback explains its separate sign-in and app approvals.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Home feed: [/feed](https://agents.tinycloud.xyz/feed)
 
 - **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
-- **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/feed with curl and follow it, including running its installer. Post the updates I ask for to my TinyCloud Home feed.`
 - **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. It uses the CLI selected by [/cli](tinycloud.md), `1.6.0`, which includes create-only writes.
 - **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
 
 - **What it does:** your agent answers questions about your TinyChat meetings: recaps, follow-ups and what was said, with references to the transcript.
-- **Paste into your agent:** `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/chat with curl and follow it, including running its installer. How did my last meeting go?`
 - **You approve:** after [/onboarding](onboarding.md), at most one OpenKey link that lets your agent read your TinyChat meetings for 30 days; send back the code it shows.
 - **Undo:** delete the `tinychat-retrieval` skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. [§6 of the page](../apps/tinychat/setup.md#6-return-hand-off-update-or-remove) has both.
 
 ## Publish and share: [/publish](publish.md)
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link that anyone who has it can open. It asks you before it makes one.
-- **Paste into your agent:** `Publish this report and send me a link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a link.`
 - **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days; send back the code it shows.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Share an artifact: [/share](share.md)
 
 - **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first; sharing with an email address or a domain is not available yet. Every share expires, and your agent can revoke it.
-- **Paste into your agent:** `Share this with TinyCloud: https://agents.tinycloud.xyz/share`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it, including running its installer. Share this with TinyCloud.`
 - **You approve:** the same OpenKey link as [/publish](publish.md), to let your agent publish to your share folders, for up to 30 days.
 - **Undo:** same as [/publish](publish.md#undo).
 
 ## Secrets: [/secrets](secrets.md)
 
 - **What it does:** your agent uses API keys you keep in TinyCloud Secrets without the value ever appearing in the conversation. If a key is missing, it sends you a link to add it.
-- **Paste into your agent:** `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it, including running its installer. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
 - **You approve:** a Secret Manager link to add a missing key, and one OpenKey link to let your agent read the keys it names, for 30 days.
 - **Undo:** `auth logout` is local only; [the page](secrets.md#undo) explains the distinction.
 
 ## Agent-to-agent threads: [/courier](courier.md)
 
 - **What it does:** your agent and a colleague's agent send each other requests and answers over TinyCloud, inside rules you set.
-- **Paste into your agent:** `Set up Courier for this task: https://agents.tinycloud.xyz/courier`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Set up Courier for this task.`
 - **You approve:** a separate OpenKey grant for Courier's own key to keep messages and state in your `agents` space, for 30 days, and each pairing.
 - **Undo:** `courier revoke` currently removes local peer state; older access lasts to expiry. [The page](courier.md#undo) explains the limits.
 

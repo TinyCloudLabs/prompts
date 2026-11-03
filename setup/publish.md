@@ -6,7 +6,7 @@ Your agent publishes a document or web page from your computer to your TinyCloud
 
 ## For the owner
 
-- **Paste into your agent:** `Publish this report and send me a link. Use TinyCloud: https://agents.tinycloud.xyz/publish`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a link.`
 - Your agent follows [the shared setup](agent.md): it installs or reuses the pinned CLI, installs only the `tc-publish` skill and continues this request. Before it makes a link, it asks: "Anyone with the link can open it. Make a link?" If you say no, nothing is published and the file stays on your computer. Sharing with an email address or a domain is not available yet.
 - **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant. Publishing has its own single approval, separate from /onboarding: the first time, you approve one sign-in in OpenKey and paste its code back to your agent.
 - **Undo:** the receipt must distinguish revoking a share from clearing the agent's local login. Revoking a share stops its link opening; copies already downloaded can't be recalled. After key rotation, older links may last until expiry.

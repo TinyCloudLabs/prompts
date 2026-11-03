@@ -1,14 +1,15 @@
 // Builds the site twice in copies of the repository, so the shared _site the
 // other tests read is left alone: once for production, once as a Pages preview.
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
+import { CLI_VERSION } from "./install-cli.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SITE = "https://agents.tinycloud.xyz";
@@ -17,10 +18,12 @@ const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 const work = mkdtempSync(join(realpathSync(tmpdir()), "tc-preview-build-"));
 after(() => rmSync(work, { recursive: true, force: true }));
 
-const build = async (name, env) => {
+// `edit(dir)` changes the copy before it builds.
+const build = async (name, env, edit) => {
   const dir = join(work, name);
   cpSync(root, dir, { recursive: true, filter: (src) => src === root || dirname(src) !== root || ![".git", "_site", "node_modules"].includes(basename(src)) });
   symlinkSync(join(root, "node_modules"), join(dir, "node_modules"));
+  edit?.(dir);
   const clean = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(CF_PAGES.*|SITE_URL)$/.test(key)));
   await promisify(execFile)(process.execPath, [join(dir, "scripts/build-site.mjs")], { env: { ...clean, ...env } });
   return join(dir, "_site");
@@ -110,5 +113,142 @@ test("the owner-facing HTML pages leave the read-raw line out", () => {
     }
     // Each html page's rendered body still starts with its title.
     for (const page of ["onboarding", "connect"]) assert.match(readFileSync(join(site, `${page}.html`), "utf8"), /<main>\n<h1 id="[^"]+">/, page);
+  }
+});
+
+// Claude Code's auto mode ran the downloaded installer when the owner's own prompt asked for it.
+// Each owner prompt on the site, by served file: the guide it fetches, in order of appearance.
+const OWNER_PROMPTS = {
+  setup: ["apps", "feed", "chat", "publish", "share", "secrets", "courier"],
+  apps: ["apps"], chat: ["chat"], publish: ["publish"], share: ["share"], secrets: ["secrets"],
+  courier: ["courier"], cli: ["cli"], openkey: ["openkey"],
+  "onboarding.md": ["onboarding.md"], "connect.md": ["connect.md"],
+  "skills/apps/QUICKSTART.md": ["apps"],
+  "onboarding.html": ["onboarding.md"], "connect.html": ["connect.md"],
+  "index.html": ["apps", "feed", "publish", "secrets", "chat"],
+  // The five front-page examples, then /courier's guide description, which is its prompt.
+  "llms.txt": ["apps", "feed", "publish", "secrets", "chat", "courier"],
+  "prompt.txt": ["chat"],
+};
+const ownerPrompts = (text) => [
+  ...text.matchAll(/\*\*Paste[^*]*\*\*[^`\n]*`([^`]+)`|\*\*Paste[^*]*\*\*\n\n> (.+)|one prompt: `([^`]+)`|first request:\n\n> (.+)|<strong>Paste[^<]*<\/strong><\/p>\n<blockquote>\n<p>(.+?)<\/p>|Try: <code>([^<]+)<\/code>|Example prompt: "([^"]+)"/g),
+].map((match) => match.slice(1).find((prompt) => prompt !== undefined).replace(/<[^>]+>/g, ""));
+
+test("every owner prompt on the served site fetches its guide with curl and names its installer, in production and on a preview", () => {
+  for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
+    // Every served guide is listed, so a new "Paste into…" line can't skip the check.
+    for (const guide of [...GUIDES, "owner"]) assert.ok(guide in OWNER_PROMPTS || !/\*\*Paste/.test(readFileSync(join(site, guide), "utf8")), `${base}/${guide} has an unlisted prompt`);
+    for (const [file, guides] of Object.entries(OWNER_PROMPTS)) {
+      const prompts = file === "prompt.txt" ? [readFileSync(join(site, file), "utf8").trim()] : ownerPrompts(readFileSync(join(site, file), "utf8"));
+      // prompt.txt is copied as written, so it names production on a preview too.
+      const from = file === "prompt.txt" ? SITE : base;
+      assert.deepEqual(prompts.map((prompt) => prompt.split(" ")[1]), guides.map((guide) => `${from}/${guide}`), `${base}/${file}`);
+      for (const prompt of prompts) assert.match(prompt, /^Fetch \S+ with curl and follow it, including running its installer\. \S/, `${base}/${file}: ${prompt}`);
+    }
+  }
+});
+
+const BLOCKED = `Claude Code blocked installing the TinyCloud CLI (npm package @tinycloud/cli ${CLI_VERSION}, into ~/.local/share/tinycloud/cli). Reply "Go ahead: install the TinyCloud CLI" and I'll run it once more.`;
+const blockedSection = (site) => readFileSync(join(site, "cli"), "utf8").split("\n### If the client blocks the installer\n")[1].split("\n### ")[0];
+
+test("/cli's blocked-install line and fallback commands carry install-cli.mjs's pin, filled in by the build", () => {
+  const source = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  assert.ok(source.includes(BLOCKED.replace(CLI_VERSION, "{{CLI_VERSION}}")), "setup/tinycloud.md writes the pin as {{CLI_VERSION}}");
+  for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
+    const section = blockedSection(site);
+    assert.ok(section.includes(`\n> ${BLOCKED}\n`), `${base}/cli: blocked line`);
+    assert.ok(section.includes('"Your agent app blocked installing the TinyCloud CLI"'), `${base}/cli: other clients' line`);
+    assert.ok(section.includes(`npm install --prefix "$HOME/.local/share/tinycloud/cli" --save-exact @tinycloud/cli@${CLI_VERSION} && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.mjs" ${base}/install-cli.mjs\n`), `${base}/cli: POSIX fallback`);
+    assert.ok(section.includes(`npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@${CLI_VERSION}"\n`), `${base}/cli: PowerShell fallback`);
+    const unfilled = readdirSync(site, { recursive: true, withFileTypes: true })
+      .filter((e) => e.isFile() && readFileSync(join(e.parentPath, e.name), "utf8").includes("{{CLI_VERSION}}"))
+      .map((e) => join(e.parentPath, e.name).slice(site.length));
+    assert.deepEqual(unfilled, [], base);
+  }
+});
+
+test("a literal CLI pin that isn't install-cli.mjs's fails the build", async () => {
+  const stale = "1.5.2";
+  await assert.rejects(build("stale-pin", {}, (dir) => {
+    const file = join(dir, "setup/tinycloud.md");
+    const text = readFileSync(file, "utf8");
+    const edited = text.replace("npm package @tinycloud/cli {{CLI_VERSION}}", `npm package @tinycloud/cli ${stale}`).replace("@tinycloud/cli@{{CLI_VERSION}}", `@tinycloud/cli@${stale}`);
+    assert.equal(edited.split(stale).length, 3);
+    writeFileSync(file, edited);
+  }), (error) => {
+    assert.match(error.stderr, new RegExp(`CLI version pins that differ from install-cli\\.mjs's ${CLI_VERSION.replaceAll(".", "\\.")}:`));
+    assert.equal(error.stderr.split(`setup/tinycloud.md: ${stale}`).length, 3, error.stderr);
+    return true;
+  });
+});
+
+// Stand-ins, run as CommonJS scripts. npm records its arguments in $HOME/npm-calls and lays out the release
+// like `npm install --prefix`; curl records the URL and saves this repository's installer to -o.
+function npmStandIn() {
+  const fs = require("node:fs"), path = require("node:path");
+  const args = process.argv.slice(2);
+  fs.appendFileSync(path.join(process.env.HOME, "npm-calls"), JSON.stringify(args) + "\n");
+  const prefix = args[args.indexOf("--prefix") + 1], version = args[args.length - 1].split("@").pop();
+  const modules = path.join(prefix, "node_modules"), cli = path.join(modules, "@tinycloud/cli/cli.js");
+  fs.mkdirSync(path.dirname(cli), { recursive: true });
+  fs.mkdirSync(path.join(modules, ".bin"), { recursive: true });
+  fs.writeFileSync(path.join(prefix, "package.json"), JSON.stringify({ dependencies: { "@tinycloud/cli": (args.includes("--save-exact") ? "" : "^") + version } }));
+  fs.writeFileSync(path.join(modules, "@tinycloud/cli/package.json"), JSON.stringify({ name: "@tinycloud/cli", version }));
+  fs.writeFileSync(cli, "#!/bin/sh\nprintf '%s\\n' '" + version + "'\n", { mode: 0o700 });
+  for (const name of ["tc", "tinycloud"]) { const link = path.join(modules, ".bin", name); fs.rmSync(link, { force: true }); fs.symlinkSync(cli, link); }
+}
+function curlStandIn() {
+  const fs = require("node:fs"), path = require("node:path");
+  const args = process.argv.slice(2);
+  fs.appendFileSync(path.join(process.env.HOME, "curl-calls"), args[args.length - 1] + "\n");
+  fs.copyFileSync(process.env.TC_TEST_INSTALLER, args[args.indexOf("-o") + 1]);
+}
+
+test("/cli's fallback, run in a fresh home with a stand-in npm, makes the installer's private install, which the installer then selects and saves", { skip: process.platform === "win32" }, () => {
+  const blocks = [...blockedSection(production).matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+  assert.equal(blocks.length, 2);
+  const tools = join(work, "fallback-tools");
+  mkdirSync(tools);
+  writeFileSync(join(tools, "npm"), `#!${process.execPath}\n(${npmStandIn})();\n`, { mode: 0o700 });
+  writeFileSync(join(tools, "curl"), `#!${process.execPath}\n(${curlStandIn})();\n`, { mode: 0o700 });
+  symlinkSync(process.execPath, join(tools, "node"));
+  const freshHome = (name) => {
+    const home = join(work, name);
+    const config = join(home, ".config/tinycloud");
+    mkdirSync(config, { recursive: true, mode: 0o700 });
+    writeFileSync(join(config, "agent-env.mjs"), readFileSync(join(root, "scripts/agent-env.mjs")), { mode: 0o600 });
+    // Only the stand-ins and node, ahead of the system: `npm test` puts this repository's own CLI (a devDependency)
+    // on PATH, and node's own directory can hold a global one; the installer would reuse either.
+    return { home, env: { HOME: home, PATH: `${tools}:/usr/bin:/bin`, TC_TEST_INSTALLER: join(root, "scripts/install-cli.mjs") } };
+  };
+  const prefix = (home) => join(home, ".local/share/tinycloud/cli");
+  const selected = (stdout) => JSON.parse(stdout.match(/^TC_SELECTED (.+)$/m)[1]);
+  const saved = ({ home, env }) => spawnSync(process.execPath, [join(home, ".config/tinycloud/agent-env.mjs"), "get", "TC_BIN"], { env, encoding: "utf8" }).stdout.trim();
+  const lines = (file) => readFileSync(file, "utf8").trim().split("\n");
+
+  const fallback = freshHome("fallback-home");
+  for (const block of blocks) {
+    const result = spawnSync("sh", ["-c", block], { env: fallback.env, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    fallback.stdout = result.stdout;
+  }
+  const bin = join(prefix(fallback.home), "node_modules/.bin/tinycloud");
+  assert.deepEqual(selected(fallback.stdout), { bin, version: CLI_VERSION, source: "private" });
+  assert.equal(saved(fallback), bin);
+  assert.deepEqual(lines(join(fallback.home, "curl-calls")), [`${SITE}/install-cli.mjs`]);
+  // One npm call, the fallback's own: the rerun installer selects that install rather than installing again.
+  const [call, ...more] = lines(join(fallback.home, "npm-calls")).map((line) => JSON.parse(line));
+  assert.deepEqual(more, []);
+  assert.deepEqual(call, ["install", "--prefix", prefix(fallback.home), "--save-exact", `@tinycloud/cli@${CLI_VERSION}`]);
+
+  // The installer itself, in another fresh home: the same npm install apart from its quieter output, and the same layout.
+  const installer = freshHome("installer-home");
+  const result = spawnSync(process.execPath, [join(root, "scripts/install-cli.mjs")], { env: installer.env, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(selected(result.stdout), { bin: join(prefix(installer.home), "node_modules/.bin/tinycloud"), version: CLI_VERSION, source: "installed" });
+  const installs = lines(join(installer.home, "npm-calls")).map((line) => JSON.parse(line));
+  assert.deepEqual(installs.map((args) => args.filter((arg) => !["--no-audit", "--no-fund"].includes(arg)).map((arg) => arg === prefix(installer.home) ? prefix(fallback.home) : arg)), [call]);
+  for (const file of ["package.json", "node_modules/@tinycloud/cli/package.json"]) {
+    assert.equal(readFileSync(join(prefix(fallback.home), file), "utf8"), readFileSync(join(prefix(installer.home), file), "utf8"), file);
   }
 });

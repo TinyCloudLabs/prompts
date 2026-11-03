@@ -65,7 +65,7 @@ const privatePrefix = (dir) => join(dir, ".local/share/tinycloud/cli");
 const assertPrivateOnly = (dir) => {
   const calls = npmCalls(dir);
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0], ["install", "--prefix", privatePrefix(dir), "--no-audit", "--no-fund", `@tinycloud/cli@${CLI_VERSION}`]);
+  assert.deepEqual(calls[0], ["install", "--prefix", privatePrefix(dir), "--save-exact", "--no-audit", "--no-fund", `@tinycloud/cli@${CLI_VERSION}`]);
 };
 afterEach(() => { for (const dir of homes.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 

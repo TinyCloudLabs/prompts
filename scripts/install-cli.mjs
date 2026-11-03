@@ -287,10 +287,11 @@ export function installCli(input = {}) {
     const manifest = path.join(prefix, "node_modules/@tinycloud/cli/package.json");
     if (existsSync(manifest) && JSON.parse(readFileSync(manifest, "utf8")).name !== "@tinycloud/cli") throw new Error("Unrelated package occupies the private CLI directory");
     mkdirSync(prefix, { recursive: true });
+    // --save-exact: the private package.json records the pin itself, as /cli's blocked-install fallback writes it.
     if (opts.platform === "win32") {
-      powershell("& $env:TC_INSTALL_NPM install --prefix $env:TC_INSTALL_PREFIX --no-audit --no-fund $env:TC_INSTALL_PACKAGE\nif ($LASTEXITCODE -ne 0) { throw 'npm install failed' }", { ...opts.env, TC_INSTALL_NPM: path.join(path.dirname(process.execPath), "npm.cmd"), TC_INSTALL_PREFIX: prefix, TC_INSTALL_PACKAGE: `@tinycloud/cli@${CLI_VERSION}` });
+      powershell("& $env:TC_INSTALL_NPM install --prefix $env:TC_INSTALL_PREFIX --save-exact --no-audit --no-fund $env:TC_INSTALL_PACKAGE\nif ($LASTEXITCODE -ne 0) { throw 'npm install failed' }", { ...opts.env, TC_INSTALL_NPM: path.join(path.dirname(process.execPath), "npm.cmd"), TC_INSTALL_PREFIX: prefix, TC_INSTALL_PACKAGE: `@tinycloud/cli@${CLI_VERSION}` });
     } else {
-      const result = spawnSync("npm", ["install", "--prefix", prefix, "--no-audit", "--no-fund", `@tinycloud/cli@${CLI_VERSION}`], { env: opts.env, stdio: "inherit" });
+      const result = spawnSync("npm", ["install", "--prefix", prefix, "--save-exact", "--no-audit", "--no-fund", `@tinycloud/cli@${CLI_VERSION}`], { env: opts.env, stdio: "inherit" });
       if (result.error || result.status !== 0) throw new Error("npm install failed");
     }
     const bin = privateBin(opts);

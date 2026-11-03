@@ -214,38 +214,37 @@ const SKILLS = [
   },
 ];
 
-// Abilities shown on the front page, in order.
+// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line.
 const ABILITIES = [
   {
     title: "Personal records",
     url: "apps",
     text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go; each app has its own folder in your TinyCloud.",
-    prompt: `Fetch ${BASE}/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`,
-    whole: true,
+    task: "Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.",
   },
   {
     title: "Home feed",
     url: "feed",
     text: "Let your agent post owner-requested cards to TinyCloud Home from its own folder.",
-    prompt: "Post the updates I ask for to my TinyCloud Home feed. Follow:",
+    task: "Post the updates I ask for to my TinyCloud Home feed.",
   },
   {
     title: "Publish",
     url: "publish",
     text: "Publish a document or web page and get back a link that anyone who has it can open. Your agent asks you first.",
-    prompt: "Publish this report and send me a link. Use TinyCloud:",
+    task: "Publish this report and send me a link.",
   },
   {
     title: "Secrets",
     url: "secrets",
     text: "Use API keys you keep in TinyCloud Secrets. The value never appears in the conversation. If a key is missing, your agent sends you a link to add it.",
-    prompt: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud:",
+    task: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.",
   },
   {
     title: "Meetings",
     url: "chat",
     text: "Ask about your TinyChat meetings: recaps, follow-ups and what was said.",
-    prompt: "How did my last meeting go? Check TinyCloud:",
+    task: "How did my last meeting go?",
   },
 ];
 
@@ -259,20 +258,24 @@ if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
   throw new Error("setup/agent.md agent-env.mjs pin differs from served helper");
 }
 
-// Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin.
-// Markdown is served byte for byte, so each block spells the pin out; it must be the installer's.
+// Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
+// package's version (`@tinycloud/cli 1.6.0`, `@tinycloud/cli@1.6.0`) names the pin. Markdown is served as
+// written, so each spells the pin out and must spell the installer's. Text may instead write {{CLI_VERSION}},
+// which render() fills in from install-cli.mjs (as /cli's blocked-install line and fallback commands do).
 const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));
 const stalePins = pinFiles.flatMap((path) =>
-  [...readFileSync(join(ROOT, path), "utf8").matchAll(/awk -F\. -v p=(\S+) |older than the pinned (\S+);/g)]
-    .map((match) => match[1] ?? match[2])
+  [...readFileSync(join(ROOT, path), "utf8").matchAll(/awk -F\. -v p=(\S+) |older than the pinned (\S+);|@tinycloud\/cli[@ ](\d+\.\d+\.\d+(?:-[0-9A-Za-z.]*[0-9A-Za-z])?)/g)]
+    .map((match) => match[1] ?? match[2] ?? match[3])
     .filter((pin) => pin !== CLI_VERSION)
     .map((pin) => `${path}: ${pin}`),
 );
-if (stalePins.length) throw new Error(`CLI version gates that differ from install-cli.mjs's ${CLI_VERSION}:\n  ${stalePins.join("\n  ")}`);
+if (stalePins.length) throw new Error(`CLI version pins that differ from install-cli.mjs's ${CLI_VERSION}:\n  ${stalePins.join("\n  ")}`);
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
-const examplePrompt = (a) => (a.whole ? a.prompt : `${a.prompt} ${url(a.url)}`);
+// Every owner prompt names the guide to fetch raw and the installer it runs: Claude Code's auto mode
+// runs a downloaded installer when the owner's own prompt asked for it, and may refuse it otherwise.
+const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it, including running its installer. ${task}`;
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -418,8 +421,8 @@ const route = new Map(copied.map((f) => [f, `/${f}`]));
 for (const p of PAGES) if (!route.has(p.src)) route.set(p.src, `/${p.url}`);
 for (const s of skills) if (!s.tarball) for (const f of s.files) route.set(`${s.dir}/${f.path}`, f.path === "SKILL.md" ? `/skills/${s.short}.md` : f.url);
 
-// A guide as published: relative links become absolute public URLs, and on a
-// preview every production URL points at the preview.
+// A guide as published: relative links become absolute public URLs, {{CLI_VERSION}} becomes
+// install-cli.mjs's pin, and on a preview every production URL points at the preview.
 function render(src) {
   return readFileSync(join(ROOT, src), "utf8")
     .replace(/\]\((?!https?:|mailto:|#)([^)\s#]+)(#[^)\s]*)?\)/g, (_, target, hash = "") => {
@@ -427,6 +430,7 @@ function render(src) {
       if (!to) throw new Error(`${src}: links to ${target}, which is not published`);
       return `](${SITE}${to}${hash})`;
     })
+    .replaceAll("{{CLI_VERSION}}", CLI_VERSION)
     .replaceAll(SITE, BASE);
 }
 
@@ -668,7 +672,7 @@ const llms = [
   "",
   "## Abilities",
   "",
-  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${examplePrompt(a)}"`),
+  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${ownerPrompt(a.url, a.task)}"`),
   "",
   "## Guides",
   "",
@@ -796,7 +800,7 @@ ${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE).length))}
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
-        <p>Try: <code>${esc(examplePrompt(a))}</code></p>
+        <p>Try: <code>${esc(ownerPrompt(a.url, a.task))}</code></p>
       </li>`;
 const desc = "Paste one line into your AI agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
 write(
@@ -821,7 +825,7 @@ ${style}
 
     <h2>How it works</h2>
     <ol>
-      <li><strong>Paste a prompt.</strong> Say what you want, then add a link to the ability.</li>
+      <li><strong>Paste a prompt.</strong> It links the ability's page, asks your agent to run its installer, and says what you want.</li>
       <li><strong>Your agent reads the setup.</strong> It installs what it needs and shows you an OpenKey link, where you approve exactly what it may access.</li>
       <li><strong>It does the thing.</strong> Your agent finishes your request in the same conversation, with your data in your TinyCloud space.</li>
     </ol>

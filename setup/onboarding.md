@@ -6,7 +6,7 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 **Paste into your agent:**
 
-> Set me up with TinyCloud: https://agents.tinycloud.xyz/onboarding
+> Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.
 
 - **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.

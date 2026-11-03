@@ -5,7 +5,7 @@
 ## For the owner
 
 - **What it does:** installs the standalone OpenKey CLI, `@openkey/cli@0.1.4`, globally with npm. Only workflows that run `openkey` commands themselves need it; none of the other pages on this site do.
-- **Paste into your agent:** `Set up the OpenKey CLI: https://agents.tinycloud.xyz/openkey`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/openkey with curl and follow it, including running its installer. Set up the OpenKey CLI.`
 - **You approve:** nothing. Installing it doesn't sign in.
 - **Undo:** `npm uninstall --global @openkey/cli`
 

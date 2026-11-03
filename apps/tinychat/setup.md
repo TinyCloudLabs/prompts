@@ -5,7 +5,7 @@
 ## For the owner
 
 - **What it does:** your agent answers questions about the meetings TinyChat has already synced, such as recaps, follow-ups and what was said, citing the transcript. It installs the TinyCloud CLI and the `tinychat-retrieval` skill first.
-- **Paste into any agent that can install and run the TinyCloud CLI** (for example Claude Code, Codex or OpenCode): `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat`
+- **Paste into any agent that can install and run the TinyCloud CLI** (for example Claude Code, Codex or OpenCode): `Fetch https://agents.tinycloud.xyz/chat with curl and follow it, including running its installer. How did my last meeting go?`
 - **You approve:** TinyCloud onboarding if this computer isn't set up yet, then at most one OpenKey link that lets your agent read your TinyChat meeting list and transcripts for 30 days. Send your agent the short code OpenKey shows.
 - **Undo:** delete the skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. §6 below has both.
 
