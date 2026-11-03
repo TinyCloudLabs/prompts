@@ -87,12 +87,15 @@ test("the CLI table matches the 1.6.2 approval exits, including one-line error r
   assert.ok(onboardingExit6?.includes("I can't set up TinyCloud right now. Please ask me again later."));
   assert.ok(onboardingExit6?.includes("stderr error code on its own line and stop."));
   assert.doesNotMatch(network[1], /OpenKey|TinyCloud/);
-  assert.match(waiting[1], /^Still waiting: .* Or OpenKey is down: no `pending` object\.$/);
-  assert.match(waiting[2], /send the link once and wait for the owner/);
+  assert.match(waiting[1], /^Still waiting only when stdout contains a non-empty `pending\.approvalUrl` link\./);
+  assert.match(waiting[1], /Exit 8 without it is not pending/);
+  assert.match(waiting[2], /send it once and wait for the owner/);
   assert.match(waiting[2], /Follow the shared relay block's `Next:` lines rule/);
   assert.match(declined[2], /^Stop and send the “couldn't” failed line, then the error code on its own line/);
   assert.match(declined[2], /never send a CID/);
-  assert.match(other[2], /^Stop, and send the “couldn't” failed line, then the code on its own line/);
+  assert.match(other[2], /^Any code not mapped above is an error: stop and send the “couldn't” failed line/);
+  assert.match(other[2], /Any code not mapped above is an error/);
+  assert.match(other[2], /Do not treat it as pending or retry/);
 });
 
 test("the announcement tells the owner what to do when an app link has no code", () => {

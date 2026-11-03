@@ -46,7 +46,7 @@ test("every onboarding run in the guide is bounded; only --help and the owner's 
 });
 
 test("exit 8 with a pending link: send each new link at once, rerun, never resend, never count it as a retry", () => {
-  const pending = run.split("**Exit 8 with a `pending` object on stdout**")[1]?.split("\n- **Exit 0")[0];
+  const pending = run.split("**Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.**")[1]?.split("\n- **Exit 0")[0];
   assert.ok(pending, "the guide must handle exit 8 with a pending object");
   assert.match(pending, /`step` \(1 or 2\), `of` \(2\), `approvalUrl` \(the link\) and `expiresAt`/);
   assert.match(pending, /When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message\./);

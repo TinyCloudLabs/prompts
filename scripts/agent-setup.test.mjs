@@ -524,6 +524,7 @@ test("Courier approval messages use the relay line and the decline rule, on ever
       "> Open this link and approve the one-time Courier permission, then tell me.",
       '"That didn\'t finish on my side. Please open this link and approve, then tell me."',
       REFUSED_GRANT_LINE,
+      "Exit 8 is pending only when stdout contains a JSON object with a non-empty `pending.approvalUrl`:",
       "Send `pending.approvalUrl` once and wait for the owner",
       "ask the decline question from the shared table",
     ]) assert.ok(text.includes(line), `${surface}: ${line}`);
@@ -630,6 +631,7 @@ for (const surface of COURIER_SURFACES) {
         [8, pendingOut("https://openkey.so/a/other"), newLink("https://openkey.so/a/other")],
         [8, pendingOut("https://openkey.so/a/other"), sameLink],
         [8, "", "COURIER_EXIT 8"],
+        [8, pendingOut(""), "COURIER_EXIT 8"],
         [0, '{"ok":true}\n', "NEXT: Courier is set up; continue."],
         [0, '{"ok":false}\n', "COURIER_EXIT 0"],
         [1, "", "COURIER_EXIT 1"],
@@ -641,7 +643,7 @@ for (const surface of COURIER_SURFACES) {
         assert.equal(result.status, exit, result.stderr);
         assert.equal(result.stdout, `${stdout}${last}\n`);
       }
-      assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${courierHome}\n`.repeat(8));
+      assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${courierHome}\n`.repeat(9));
       assert.equal(statSync(join(courierHome, "shown-link")).mode & 0o777, 0o600);
     }
   });

@@ -17,9 +17,10 @@ const row = (exit) => errors.split("\n").find((line) => line.startsWith(`| ${exi
 
 test("onboarding caps exit 8 without a pending link at three tries and never logs out", () => {
   assert.ok(guide.includes("\n{{std:errors}}\n"), "the onboarding guide must carry the shared table");
-  assert.match(row(8), /Or OpenKey is down: no `pending` object\./);
+  assert.match(row(8), /Exit 8 without it is not pending/);
+  assert.match(row(8), /Without a link \(OpenKey is down or did not return a pending object\)/);
   assert.match(row(8), /at most 3 times in a row; then send the “can't” failed line and stop\./);
-  assert.match(row(8), /Waiting never counts as a retry/);
+  assert.match(row(8), /This is a bounded retry, never pending/);
   assert.doesNotMatch(guide, /"\$TC" auth logout|auth logout`? \(|HTTP 400|approval-pending/, "no logout or private-file way out for an expired link");
 });
 
