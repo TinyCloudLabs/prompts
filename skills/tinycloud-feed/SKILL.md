@@ -1,23 +1,19 @@
 ---
 name: tinycloud-feed
-description: Post owner-requested cards into TinyCloud Home's feed from a bot's scoped folder, using its profile and five built-in card formats.
+description: Connect an agent to the owner's TinyCloud Home feed once, post cards there with `tinycloud feed publish`, and read the owner's answers.
 metadata:
-  version: "0.1.8"
+  version: "0.2.0"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
 
-This is how an agent adds cards to your TinyCloud Home feed. It writes only to its own folder, and only what you asked it to post.
+TinyCloud Home has a feed where agents you connect post cards for you, such as updates or questions. You connect an agent once; after that, its cards appear in your Home feed. You can answer a card there, and the agent reads your answer. You can remove an agent's access at any time.
 
 # Creating a post
 
-A TinyCloud Home feed card is one JSON record that an agent writes to its own folder in the owner's `applications` KV space under `xyz.tinycloud.tinychat/feed/`. Home's feed view currently shows bundled sample cards; bot cards will appear in TinyCloud Home when that view starts reading the owner's feed folder. Post only what the owner requested, including any standing rule the owner gave that bot. Reading the owner's feed is not part of this skill.
+For agents. Home reads each connected agent's cards from two SQL databases in the owner's `applications` space: `xyz.tinycloud.tinychat/feed/feed_output_<TOKEN>` holds the agent's cards and its handling records, and `xyz.tinycloud.tinychat/feed/feed_responses_<TOKEN>` holds the owner's answers. Home shows only agents listed in the owner's registry, the `feed_agents` table of `xyz.tinycloud.tinychat/home_feed`, and only the owner's connect step adds them there. Post only what the owner asked for, including any standing rule they gave you.
 
-## Choose a bot and request permission
-
-Pick one stable, lowercase bot slug using only `a-z`, `0-9` and `-`, such as `weight`, `email` or `meetings`. The bot's folder is `xyz.tinycloud.tinychat/feed/<bot>/` in `applications`. Before the approval, tell the owner which folder you will write to (`xyz.tinycloud.tinychat/feed/<bot>/`). Ask the owner to approve write access to only that folder through the OpenKey browser sign-in below, in one approval. Request only `tinycloud.kv/put` in `applications`; do not request `get`, `list`, `del`, SQL, another folder or another space. Before opening the approval, tell the owner: you will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinychat/feed/<bot>/` and the `put` permission. The code OpenKey displays is a permission slip, not a secret; the owner can give it to the agent to finish approval. Do not treat a request artifact, a generated key, or a session file as an approval.
-
-### Install and sign in (weight bot example)
+## 1. Check the CLI
 
 **CLI rule (stable `1.6.0`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.0`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
@@ -41,96 +37,138 @@ fi
 - `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
 - `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.0`, and stop.
 
-Save this as `feed-weight.manifest.json` in the current directory. For another bot, change `weight` in the folder, app id, display name and profile name:
+## 2. Choose a token and a label
 
-```json
-{
-  "app_id": "xyz.tinycloud.tinychat.feed.weight",
-  "name": "Weight feed bot",
-  "space": "applications",
-  "defaults": false,
-  "permissions": [
-    {
-      "service": "tinycloud.kv",
-      "path": "xyz.tinycloud.tinychat/feed/weight/",
-      "actions": ["put"],
-      "skipPrefix": true
-    }
-  ]
-}
-```
+The token names this agent's two databases. Pick one stable token made only of ASCII letters, digits, `_` and `-` (it must match `^[A-Za-z0-9_-]+$`: no dots, slashes or spaces), such as `weight` or `inbox-triage`. A token stays bound to the first agent connected with it, so give each agent its own. The label is the author name Home shows on the agent's cards, such as `Weight tracker`. The steps below write them as `<TOKEN>` and `<LABEL>`, and the agent's own CLI profile as `feed-<TOKEN>`.
 
-`skipPrefix: true` keeps the folder path exact. The manifest requests no KV read, list or delete and no SQL. The CLI adds `tinycloud.capabilities/read` on the `applications` space root because OpenKey needs it to sign the approval; this does not grant KV read. Tell the owner the folder path **before** starting approval. Use a new bot-only profile and the browser/paste sign-in; leave the command running while the owner approves:
+## 3. Connect the agent (owner, once)
+
+Connecting is an owner action: it runs with the owner's own CLI profile, the one `tinycloud onboard` returned in https://agents.tinycloud.xyz/onboarding. If you hold that profile, run these commands for the owner; their approval link below is their consent. If you don't, follow /onboarding first. Read the owner profile's `profile` and `host` with `tinycloud --profile <OWNER_PROFILE> context`; the steps write them as `<OWNER_PROFILE>` and `<HOST>`.
+
+**a. Create the agent's own profile** on the same node. Its printed `did` is `<AGENT_DID>`; if the profile already exists, read it with `tinycloud profile show 'feed-<TOKEN>'`:
 
 ```sh
-tinycloud init --name feed-weight --key-only
-tinycloud --profile feed-weight auth login --method openkey --paste --manifest ./feed-weight.manifest.json --expiry 30d
+tinycloud profile create 'feed-<TOKEN>' --posture delegate-session --operator agent --host '<HOST>'
 ```
 
-The CLI prints an OpenKey URL. Send it to the owner; they open it in a browser, sign in, open "Advanced details" to check that it shows `put` (Key Value) on `xyz.tinycloud.tinychat/feed/weight/`, and approve once. The owner sends back the code OpenKey shows; paste it into the waiting CLI command. Check the returned permissions before posting. The bot's put-only grant cannot read its own cards (a read returns 401 `AUTH_REQUIRED`: expected), so the bot should not try to read back what it wrote. If the owner wants to approve with a nonprimary OpenKey key, ask them to copy its full address from the OpenKey dashboard's key list and add `--owner did:pkh:eip155:1:<address>` to the login command; the CLI checks that this key approved the request.
-
-Create a bot profile at `<bot>/profile` (the full key includes the root):
-
-```json
-{"v":1,"name":"Weight bot","client":"claude-code","about":"Posts new weight records","avatar":"weight/avatar.png"}
-```
-
-`avatar` is an optional key in the bot's own folder; write the media there first. A valid profile has `v:1` and nonempty `name`, `client` and `about`. The profile name is the author Home displays, not a card field. An absent or invalid profile is ignored and the card shows the bot slug; a malformed card is skipped. Home may limit how many cards each bot can add. Write the profile and any media only with the bot's authorized profile; do not use the owner's profile to post.
-
-Save the profile JSON above as `feed-weight.profile.json` (omit `avatar` if its media key is not ready), then create it with the bot profile:
+**b. Ask once for feed access.** The onboarding grant doesn't let the owner profile create the feed tables or pass on answer notifications. Request exactly that access with the owner profile; one approval covers every agent the owner connects while it lasts:
 
 ```sh
-tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/profile' --space applications --if-none-match '*' --file ./feed-weight.profile.json
+tinycloud --profile '<OWNER_PROFILE>' auth request --cap 'tinycloud.sql:applications:xyz.tinycloud.tinychat/home_feed:read,write,schema' --cap 'tinycloud.sql:applications:xyz.tinycloud.tinychat/feed/:read,write,schema' --cap 'tinycloud.hooks:applications:sql/xyz.tinycloud.tinychat/feed/:subscribe' --grant --no-popup --expiry 30d
 ```
 
-## Card format and writing
+Output `"changed": false` means the owner already approved it: go on to c. Otherwise keep the command running, say in one line what the approval is for, then send the complete short URL it prints on its own line, followed by: "Open this link and approve. I'll carry on as soon as you do." It retrieves the approval automatically; no return code or reply is needed. After an interruption, rerun the identical command. Do not add `--paste`. On an operator's `local-owner-key` profile there is no link; add `--yes` instead.
 
-Use a new key `xyz.tinycloud.tinychat/feed/<bot>/<YYYY-MM>/<id>`. The month must equal the UTC month in `at`. Make `<id>` a UTC timestamp plus lowercase slug in the precise shape `YYYY-MM-DDTHHMMSSZ-[a-z0-9-]+`, for example `2026-10-25T074210Z-new-low`; choose a fresh id for each event. The full key contains only ASCII letters, digits and `/-._~:+@=,` (no spaces, `?`, `#` or non-ASCII characters). A card is one JSON object with `v:1`, `at` in UTC with a `Z` suffix and seconds (optional fractional seconds), `render` and required nonempty plain `lead.text`. Home's parser checks that `at` is a real UTC date and the month matches the key. `source` is optional: `{ "label": "...", "url": "https://..." }` for a web page, or `{ "label": "...", "ref": "<TinyCloud key>" }` for a TinyCloud record. A source needs a nonempty label; a ref uses the allowed key characters. Home displays `source.ref` as text, not a web link. The author comes from the bot profile and the card id comes from its key. Home's provisional order is newest first by `at`, then key.
-
-Use `tinycloud kv put` with `--if-none-match '*'` for a new card; the required CLI `1.6.0` has it. After the weight bot has its own scoped posting authority, write its card with the bot's CLI profile:
+**c. Connect.** This creates both databases, gives the agent's DID exactly read and write on its own output database, read on its responses database and notifications of new answers, then lists the agent in Home. Keep `--expiry 30d`: without it the agent's access ends after 24 hours. It can't outlast the approval from b.
 
 ```sh
-tinycloud --profile feed-weight kv put 'xyz.tinycloud.tinychat/feed/weight/2026-10/2026-10-25T074210Z-new-low' --space applications --if-none-match '*' --stdin <<'JSON'
-{"v":1,"at":"2026-10-25T07:42:10Z","render":"post","lead":{"text":"New low: 81.4 kg, 0.6 kg under your best (82.0 kg on 10-11)."},"source":{"label":"Fitness · weigh-ins","ref":"xyz.tinycloud.agent-data/fitness/weight/2026-10/2026-10-25"}}
-JSON
+umask 077
+tinycloud --profile '<OWNER_PROFILE>' feed connect --agent '<TOKEN>' --to '<AGENT_DID>' --label '<LABEL>' --space applications --expiry 30d > 'feed-<TOKEN>-grant.json'
 ```
 
-If the key exists, the CLI refuses the write with exit 5 `KV_ALREADY_EXISTS`: pick a new id; never reuse a key. An SDK-backed writer can use `kv.put(key, value, { ifNoneMatch: "*" })`. The node has no add-only permission: a `put` grant can replace a value in the bot's folder. Never overwrite or delete a card; post a correction as a **new card** with a new id and explain the correction in `lead.text`.
+To renew access later, or to change the label, run b and c again with the same token and DID, then step 4.
 
-## Built-in renderers
+## 4. Import the grant (agent)
 
-All five examples below use `v:1` and a required plain `lead.text`. Put each at a new key in its bot's month folder. Media references are **keys in that bot's own folder**, never HTTP(S) URLs; Home does not load card media from other sites. A media key starts with `<bot>/`, uses the allowed key characters and has no empty, `.` or `..` path segments. Home ignores an invalid `lead.image` or `avatar`. An unknown or failing renderer displays `lead.text`. `video`, custom renderers, actions, reactions and inbox replies are later work.
+```sh
+tinycloud --profile 'feed-<TOKEN>' auth import 'feed-<TOKEN>-grant.json'
+```
 
-**Post**: lead text; optional `lead.image` points to a bot-local media key. Key: `weight/2026-10/2026-10-25T074210Z-new-low`.
+Expect `"imported": true` and permissions on `feed_output_<TOKEN>` and `feed_responses_<TOKEN>` only. From here on, use only the `feed-<TOKEN>` profile; never post with the owner's profile.
+
+## 5. Write a card
+
+A card is one JSON object. `tinycloud feed publish` checks these fields:
+
+| Field | Value |
+| --- | --- |
+| `cardId` | Nonempty id of this card, such as `weight-2026-11-03`. |
+| `revision` | Positive integer, `1` for a new card. |
+| `issuanceId` | Nonempty id, new for each publish. |
+| `kind` | Short free-form word, such as `update`, `decision` or `reminder`. Home shows it after the label and filters by it. |
+| `needsResponse` | `true` when the owner should answer, otherwise `false`. |
+| `title` | Heading. |
+| `body` | Card text. |
+| `choices` | Optional, with `needsResponse: true`: `[{"id": "yes", "label": "Yes"}]`. Each becomes an option in the answer form; the owner can also type a reply. |
+| `urgency` | Number; higher sorts first. Equal urgencies list the oldest `createdAt` first. |
+| `createdAt` | ISO 8601 UTC time, such as `2026-11-03T09:00:00Z`. |
+| `payload` | Optional object for how Home shows the card, below. |
+
+`payload.render` is `post` (the default), `thread` or `link`:
+
+- `post`: the title and body.
+- `thread`: also `payload.replies`, a list of `{"text": "..."}` shown after the body.
+- `link`: also `payload.url`, an `https://` page that Home shows as "Open link".
+
+Any card can add `payload.source`, `{"label": "...", "url": "https://..."}`, shown as its source line.
+
+A question with choices:
 
 ```json
-{"v":1,"at":"2026-10-25T07:42:10Z","render":"post","lead":{"text":"New low: 81.4 kg, 0.6 kg under your best (82.0 kg on 10-11)."},"source":{"label":"Fitness · weigh-ins","ref":"xyz.tinycloud.agent-data/fitness/weight/2026-10/2026-10-25"}}
+{"cardId":"weight-goal-2026-11","revision":1,"issuanceId":"weight-goal-2026-11-a","kind":"decision","needsResponse":true,"title":"New weekly goal?","body":"You were under 82 kg all week. Set next week's goal to 81.5 kg?","choices":[{"id":"yes","label":"Yes, 81.5 kg"},{"id":"keep","label":"Keep 82 kg"}],"urgency":1,"createdAt":"2026-11-03T09:00:00Z","payload":{"render":"post"}}
 ```
 
-This is the **weight bot** example: the owner asked it to post a new record; it posts that result, without adding a field for the author's name. A later correction gets a different key and a new card.
-
-**Image**: `lead.image` is a bot-local media key; `lead.text` is the caption. Key: `garden/2026-10/2026-10-25T080000Z-first-bloom`. Store the image at `garden/media/first-bloom.png` first.
+An update that needs no answer:
 
 ```json
-{"v":1,"at":"2026-10-25T08:00:00Z","render":"image","lead":{"text":"The first bloom opened this morning.","image":"garden/media/first-bloom.png"},"source":{"label":"Garden notes","ref":"xyz.tinycloud.agent-data/garden/notes/2026-10/first-bloom"}}
+{"cardId":"weight-2026-11-03","revision":1,"issuanceId":"weight-2026-11-03-a","kind":"update","needsResponse":false,"title":"New low","body":"81.4 kg this morning, 0.6 kg under your previous best.","urgency":0,"createdAt":"2026-11-03T07:42:10Z","payload":{"render":"post","source":{"label":"Weigh-ins"}}}
 ```
 
-**Thread**: `replies` is a list of `{ "text": "..." }` after the lead. Key: `planning/2026-10/2026-10-25T080500Z-plan`.
+A link:
 
 ```json
-{"v":1,"at":"2026-10-25T08:05:00Z","render":"thread","lead":{"text":"Three points from today's plan."},"replies":[{"text":"Review the draft."},{"text":"Send the owner the summary."}]}
+{"cardId":"reading-list-2026-11","revision":1,"issuanceId":"reading-list-2026-11-a","kind":"link","needsResponse":false,"title":"Reading list","body":"The reading list you asked me to keep.","urgency":0,"createdAt":"2026-11-03T08:15:00Z","payload":{"render":"link","url":"https://example.org/reading-list"}}
 ```
 
-**Article**: `title` and `body`, the key of a `.md` file in the same bot's folder; `lead.text` is its summary. Key: `writing/2026-10/2026-10-25T081000Z-morning-notes`. Write `writing/articles/2026-10-25.md` before the card. Home ignores a body key that is not a bot-local `.md` key. The current Home view renders bundled sample article files as plain-text paragraphs, not formatted Markdown: raw HTML, image syntax and link syntax are text, not active elements. It does not yet fetch an agent-written body file for a real card.
+Home opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **Both** in Home's view menu.
+
+## 6. Publish
+
+Save the card as `card.json` and publish it with the agent profile:
+
+```sh
+tinycloud --profile 'feed-<TOKEN>' feed publish --agent '<TOKEN>' --file card.json
+```
+
+It prints the stored card; Home shows it on its next refresh. `feed list --agent '<TOKEN>'` lists the current cards. A published `cardId` + `revision` + `issuanceId` is permanent: publishing it again with the same content changes nothing, and with different content is refused. To update a card, publish the same `cardId` with the next `revision` and a new `issuanceId`; Home shows the latest.
+
+## 7. Read answers and record handling
+
+```sh
+tinycloud --profile 'feed-<TOKEN>' feed responses --agent '<TOKEN>' --after 0
+```
+
+It returns the owner's answers in `sequence` order, up to 100 per page (`--limit` up to 1000). Each has `responseId`, the card's `cardId`, `revision` and `issuanceId`, `kind`, `createdAt` and `sequence`, plus `choiceId` and/or `text`. `kind` is `answer`; `followup`, a later answer that replaces the one named in `supersedesResponseId`; or `message`, a note that answers nothing. Keep the highest `sequence` you've handled and pass it as `--after` next time.
+
+To be woken for each new answer instead, `feed watch --agent '<TOKEN>' --recipient <stable-id> --runner '["node","handler.js"]'` runs your program with the response JSON on stdin and keeps running. It needs Node.js 22.13+ or Bun. Your program must exit 0 only once it has saved the answer.
+
+Record what you did with each answer in a file such as `handling.json`, with a new `handlingId` each time:
 
 ```json
-{"v":1,"at":"2026-10-25T08:10:00Z","render":"article","lead":{"text":"A short account of the morning's observations."},"title":"Morning notes","body":"writing/articles/2026-10-25.md"}
+{"handlingId":"weight-goal-2026-11-a-ack","responseId":"<responseId>","cardId":"weight-goal-2026-11","revision":1,"issuanceId":"weight-goal-2026-11-a","phase":"acknowledged","createdAt":"2026-11-03T09:05:00Z"}
 ```
 
-**Link**: `url` is an HTTP(S) web page; `lead.text` is a short summary. Key: `reading/2026-10/2026-10-25T081500Z-reading-list`. This URL is a page link, not a media reference.
-
-```json
-{"v":1,"at":"2026-10-25T08:15:00Z","render":"link","lead":{"text":"The published reference for our reading list."},"url":"https://example.org/reading-list","source":{"label":"Reading list","url":"https://example.org/reading-list"}}
+```sh
+tinycloud --profile 'feed-<TOKEN>' feed handling --agent '<TOKEN>' --file handling.json
 ```
+
+`acknowledged` shows "Agent received" on the card in Home. When you finish, record one outcome for that response, `succeeded` or `failed`, which Home shows as "Completed" or "Failed"; add `"detail":{"message":"..."}` to show a short note under it. A response takes one outcome only.
+
+## 8. Disconnect
+
+When the owner asks to disconnect the agent, revoke its grant with the owner profile, using the `delegation.cid` in the grant file:
+
+```sh
+CID=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).delegation.cid)' 'feed-<TOKEN>-grant.json')
+tinycloud --profile '<OWNER_PROFILE>' delegation revoke "$CID" --yes
+```
+
+After that the agent can't post or read answers (`GRANT_REVOKED`); its cards stay in Home. To remove them from Home too, delete the agent from the owner's registry:
+
+```sh
+tinycloud --profile '<OWNER_PROFILE>' sql execute 'DELETE FROM feed_agents WHERE agent_id = ?' --params '["<TOKEN>"]' --space applications --db xyz.tinycloud.tinychat/home_feed
+```
+
+The token stays reserved for that agent; connect a different agent under a new token.
 
 The installed reference copy of this section is [creating-a-post.md](creating-a-post.md).

@@ -226,7 +226,7 @@ const ABILITIES = [
   {
     title: "Home feed",
     url: "feed",
-    text: "Let your agent post owner-requested cards to TinyCloud Home from its own folder.",
+    text: "Connect your agent to TinyCloud Home once; it posts the cards you ask for and reads your answers.",
     prompt: "Post the updates I ask for to my TinyCloud Home feed. Follow:",
   },
   {
