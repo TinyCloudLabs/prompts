@@ -127,7 +127,7 @@ const sandbox = (answer) => {
     PATH: process.env.PATH, HOME: dir, TC_HOME: join(dir, "tc"), FORCE_COLOR: "0", NODE_OPTIONS: `--require=${fence}`,
     TC_OPENKEY_HOST: OPENKEY, TC_OPENKEY_API_HOST: OPENKEY, TC_LINKS_API_ORIGIN: LINKS_API,
   };
-  // The guide's run block for the selected CLI, as written: the 1 s wait returns at once while the owner never approves.
+  // The guide's run block for the selected CLI, as written: the owner never approves.
   const script = blocks(run)[0].replace("<TC_BIN>", CLI);
   const onboard = () => spawnSync("sh", ["-c", script], { env, encoding: "utf8", timeout: 20000 });
   const untouched = () => assert.equal(existsSync(forbidden), false, existsSync(forbidden) ? readFileSync(forbidden, "utf8") : "");

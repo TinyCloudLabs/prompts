@@ -96,13 +96,16 @@ test("the built onboarding block, when a resumed approval exits 6, says run it a
   const result = runBlock(`echo '{"error":{"code":"NETWORK_ERROR"}}' >&2; exit 6`);
   assert.equal(result.status, 6);
   const next = result.stdout.trimEnd().split("\n").at(-1);
-  assert.equal(next, "NEXT: OpenKey did not answer; the approval request is saved and the link you already sent still works. Run this block again once, with no new link; do not tell the owner it failed. If it exits 6 again, tell the owner in one plain line that you cannot reach OpenKey right now, and stop.");
+  assert.equal(next, "NEXT: exit 6 is a network error; the approval request is saved and the link you already sent still works. Run this block again once, with no new link; do not tell the owner it failed. If it exits 6 again, tell the owner \"I can't reach TinyCloud right now.\" and stop.");
   assert.doesNotMatch(result.stdout, /ONBOARD_EXIT/);
   assert.doesNotMatch(next, /send the owner this link|this is a new link/);
 });
 
-test("the exit 6 sentence is in the relay block once, and each guide with an approval block handles exit 6", () => {
-  assert.equal(count(text("onboarding.md"), "If a command that resumes an approval exits 6"), 1);
-  assert.equal(count(text("courier"), "If a command that resumes an approval exits 6"), 1);
-  for (const guide of ["onboarding.md", "courier"]) assert.ok(text(guide).includes("- **Exit 6 (the block's `NEXT:` line says so):**"), guide);
+test("the Next: rule carries both halves once per guide, and each guide with an approval block handles exit 6", () => {
+  for (const guide of ["onboarding.md", "courier"]) {
+    const body = text(guide);
+    assert.equal(count(body, NEXT_RULE + " Exit 6 prints no `Next:` line: it is a network error, so run the same command again once"), 1, guide);
+    assert.ok(body.includes("- **Exit 6 (the block's `NEXT:` line says so):**"), guide);
+  }
+  assert.doesNotMatch(text("onboarding.md"), /exits within a few seconds/);
 });
