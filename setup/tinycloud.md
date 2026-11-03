@@ -137,6 +137,7 @@ $installer = Join-Path $env:USERPROFILE ".local\share\tinycloud\install-cli.mjs"
 $prefix = Join-Path $env:USERPROFILE ".local\share\tinycloud\cli"
 New-Item -ItemType Directory -Force $prefix | Out-Null
 Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile $installer -ErrorAction Stop
+Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-Path $env:USERPROFILE ".local\share\tinycloud\install.cjs") -ErrorAction Stop
 node $installer --needs-install
 if ($LASTEXITCODE -eq 0) {
   npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@{{CLI_VERSION}}"
@@ -144,7 +145,7 @@ if ($LASTEXITCODE -eq 0) {
 } elseif ($LASTEXITCODE -ne 1) { throw "TinyCloud CLI install check failed; inspect the error above." }
 ```
 
-In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects the install.
+In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects the install, then installs the skills as there.
 
 Then read its output as above. If the owner replies anything else, or either call is blocked or fails, stop and report it to the owner in one line. Don't ask again or retry, and don't use `sudo`, administrator privileges, a global install or another version.
 

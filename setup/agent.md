@@ -122,7 +122,7 @@ Replace the example with the owner's answer. The parser writes a 0600 file in a 
 
 ### 3. The one action skill
 
-If the CLI setup's run call printed `SKILL_INSTALLED` for this action's skill in this conversation, skip to reading it below. Otherwise install **only** the skill for the selected action using the site's checksum-checking installer (which reads `/skills/index.json`): `secrets`, `publish` or `courier`. Inspect a same-named existing skill before replacement; stop if it is unrelated or locally modified. Replace `<action>` and `<client>` with the selected values:
+If the CLI setup's run call printed `SKILL_INSTALLED` for this action's skill in this conversation (`tc-secrets`, `tc-publish` or `courier`), skip to reading it below. Otherwise install **only** the skill for the selected action using the site's checksum-checking installer (which reads `/skills/index.json`): `secrets`, `publish` or `courier`. Inspect a same-named existing skill before replacement; stop if it is unrelated or locally modified. Replace `<action>` and `<client>` with the selected values:
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
