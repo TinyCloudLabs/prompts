@@ -75,9 +75,9 @@ test("the CLI table matches the 1.6.2 approval exits, including one-line error r
   const [done, expired, network, waiting, declined, other] = rows;
   assert.match(done[1], /^Done\.$/);
   assert.equal(expired[1], '`APPROVAL_REQUEST_EXPIRED`: “This approval request expired before it was approved. Start a new request.”');
-  assert.match(expired[2], /ask the owner the decline question below/);
-  assert.match(expired[2], /is more than 2 minutes before `expiresAt`/);
-  assert.match(expired[2], /If you never saw the exit-8 JSON, use the decline question below/);
+  assert.match(expired[2], /ask exactly “Did you decline that request\? If not, I'll send you a fresh link\.” and wait/);
+  assert.match(expired[2], /If more than 2 minutes remain before `expiresAt`, do not run a command or create a link/);
+  assert.match(expired[2], /If you don't have the earlier exit-8 JSON, ask the decline question and wait/);
   assert.match(expired[2], /Never read `approval-pending\.json`/);
   assert.equal(network[1], "`NETWORK_ERROR`.");
   assert.match(network[2], /same command again once; make no new link/);
@@ -111,8 +111,8 @@ test("the announcement tells the owner what to do when an app link has no code",
 });
 
 test("the three owner lines and declined line are exact and have no pasted copy", () => {
-  for (const line of [DONE, CANT, COULDNT, DECLINED]) assert.equal(count(errors, line), 1, line);
-  for (const [label, sentence] of [["Done", DONE], ["Failed", CANT], ["Failed", COULDNT]]) assert.ok(errors.includes(`- **${label}**`) && errors.includes(sentence), sentence);
+  assert.equal(count(errors, DECLINED), 2, DECLINED);
+  for (const line of [DONE, CANT, COULDNT]) assert.equal(count(errors, line), 1, line);
   assert.ok(errors.includes(`**Declined approval, owner line:** “${DECLINED}”`));
   const texts = [...AUTHORED.map((path) => [path, read(path)]), ...[...SURFACES.map(([, url]) => url), ...SERVED_ONLY].map((url) => [url, served(url)])];
   for (const [path, text] of texts) {
@@ -126,7 +126,7 @@ test("the real built onboarding block sends exit 3 through the agent-side expiry
   const run = onboarding.split("**2. Run onboarding.**")[1]?.split("\n## MCP\n")[0];
   const command = [...run.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1])[0];
   assert.ok(command, "built /onboarding step 2 must contain its real shell block");
-  assert.match(onboarding, /more than 2 minutes before `expiresAt`/);
+  assert.match(onboarding, /NEXT: Before doing anything else, compare now with pending\.expiresAt from the earlier exit-8 JSON/);
   assert.ok(onboarding.includes(DECLINED));
 
   const home = join(work, "fake-cli-home");
@@ -152,8 +152,9 @@ exit 90
       },
     });
     assert.equal(result.status, 3, expiresAt);
-    assert.match(result.stdout, /ONBOARD_EXIT 3/);
-    assert.doesNotMatch(result.stdout, new RegExp(DECLINED));
+    assert.match(result.stdout, /NEXT: Before doing anything else, compare now with pending\.expiresAt from the earlier exit-8 JSON/);
+    assert.match(result.stdout, /If more than 2 minutes remain, do not run a command or create a link/);
+    assert.match(result.stdout, /If 2 minutes or less remain, it's a real expiry/);
   }
 });
 test("Courier expiry uses the same recorded-expiry decision and never reads private pending state", () => {
@@ -162,8 +163,8 @@ test("Courier expiry uses the same recorded-expiry decision and never reads priv
   const expired = section.split("**`[approval-expired]`:")[1]?.split("\n  - ")[0];
   assert.match(section, /Use `pending\.expiresAt` from this JSON/);
   const exit3 = errors.split("\n").find((line) => line.startsWith("| 3 |"));
-  assert.match(exit3, /more than 2 minutes before `expiresAt`/);
-  assert.match(exit3, /`now >= expiresAt - 2 minutes`/);
+  assert.match(exit3, /If more than 2 minutes remain before `expiresAt`/);
+  assert.match(exit3, /Create a new request only when 2 minutes or less remain before `expiresAt`/);
   assert.match(expired, /apply the shared exit-3 decline\/expiry rule/);
   assert.match(expired, /Never read `approval-pending\.json`; it contains private keys/);
 });

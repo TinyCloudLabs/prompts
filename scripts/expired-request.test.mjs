@@ -25,9 +25,10 @@ test("onboarding caps exit 8 without a pending link at three tries and never log
 
 test("exit 3 uses expiry time and the approved decline question, not an automatic resend", () => {
   assert.match(row(3), /APPROVAL_REQUEST_EXPIRED/);
-  assert.match(row(3), /more than 2 minutes before `expiresAt`/);
-  assert.match(row(3), /If `now >= expiresAt - 2 minutes`, it is a real expiry: start a new request/);
-  assert.match(row(3), /If you never saw the exit-8 JSON, use the decline question below/);
+  assert.match(row(3), /Before doing anything else, use `pending\.expiresAt` from the earlier exit-8 JSON and compare it with now/);
+  assert.match(row(3), /If more than 2 minutes remain before `expiresAt`, do not run a command or create a link; ask exactly/);
+  assert.match(row(3), /Create a new request only when 2 minutes or less remain before `expiresAt`/);
+  assert.match(row(3), /If you don't have the earlier exit-8 JSON, ask the decline question and wait/);
 });
 
 const helper = (code, message) => {

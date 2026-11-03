@@ -113,3 +113,11 @@ test("CLI exit 6 is shared in the onboarding table; Courier 0.5.2 has no exit-6 
   const courier = text("courier");
   assert.doesNotMatch(courier, /\*\*Exit 6|rc === "6"|rc === 6/);
 });
+test("exit 3 blocks a fresh request until the saved exit-8 expiry is checked", () => {
+  const result = runBlock(`echo '{"error":{"code":"APPROVAL_REQUEST_EXPIRED"}}' >&2; exit 3`);
+  assert.equal(result.status, 3);
+  assert.match(result.stdout, /NEXT: Before doing anything else, compare now with pending\.expiresAt from the earlier exit-8 JSON/);
+  assert.match(result.stdout, /If more than 2 minutes remain, do not run a command or create a link; ask exactly "Did you decline that request\? If not, I'll send you a fresh link\."/);
+  assert.match(result.stdout, /If 2 minutes or less remain, it's a real expiry: run this block again to create a fresh link/);
+  assert.match(result.stdout, /If you do not have the earlier exit-8 JSON, ask the owner the decline question and wait/);
+});

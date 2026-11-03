@@ -170,8 +170,12 @@ test("the real CLI ends an expired link as exit 3 APPROVAL_REQUEST_EXPIRED, and 
     assert.equal(onboard().status, 8);
     const result = onboard();
     assert.equal(result.status, answer === "expired" ? 3 : 8, result.stderr);
-    // No pending link: the block prints the exit code, no NEXT line.
-    assert.equal(result.stdout, `ONBOARD_EXIT ${answer === "expired" ? 3 : 8}\n`);
+    if (answer === "expired") {
+      assert.match(result.stdout, /ONBOARD_EXIT 3\nNEXT: Before doing anything else, compare now with pending\.expiresAt/);
+      assert.match(result.stdout, /If more than 2 minutes remain, do not run a command or create a link/);
+    } else {
+      assert.equal(result.stdout, "ONBOARD_EXIT 8\n");
+    }
     assert.equal(JSON.parse(result.stderr.slice(result.stderr.indexOf("{"))).error.code, code);
     untouched();
   }

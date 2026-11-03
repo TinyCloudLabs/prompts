@@ -78,6 +78,7 @@ rm -f "$OUT" "$OUT.rc"
 if [ "$RC" = 0 ]; then echo "NEXT: onboarding is done; continue with the owner's goal."
 
 elif [ "$RC" = 8 ] && [ -n "$URL" ]; then echo "NEXT: send the owner this link in your reply now, on its own line, with the onboarding guide's line: $URL When the owner next writes to you, run this block again. If you already sent this exact link, don't send it again."
+elif [ "$RC" = 3 ]; then echo "ONBOARD_EXIT 3"; echo "NEXT: Before doing anything else, compare now with pending.expiresAt from the earlier exit-8 JSON. If more than 2 minutes remain, do not run a command or create a link; ask exactly \"Did you decline that request? If not, I'll send you a fresh link.\" and wait. If 2 minutes or less remain, it's a real expiry: run this block again to create a fresh link. If you do not have the earlier exit-8 JSON, ask the owner the decline question and wait."
 else echo "ONBOARD_EXIT $RC"; fi
 exit "$RC"
 ```
