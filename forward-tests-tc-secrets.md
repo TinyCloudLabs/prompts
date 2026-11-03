@@ -159,13 +159,13 @@ Before §3b, pre-create `manifest.json`, `context.json`, `signin.sh`, `login.err
 
 ## Test 13 — Operator's older CLI (agent)
 
-Repeat Test 4 with a fresh `TC_FWD_MISSING2`, once with `TC_BIN` at `1.3.5` and once at `1.0.0-beta.23`. Neither prints an `/a/` link.
+Repeat Test 4 with a fresh `TC_FWD_MISSING2`, once with `TC_BIN` at `1.3.5` and once at `1.0.0-beta.23`. Both are older than `1.6.0`, so neither may start a sign-in.
 
 **Pass:**
 - §1 prints `TC_OLDER`, then `CLI_OK` on `1.3.5` and `CLI_LEGACY` on beta.23 (not `STALE`). The agent keeps the operator's CLI.
 - §2 prints `NO_ACCESS TC_FWD_MISSING2 …`. On beta.23 it also prints `OLD_ADD_LINK` from the CLI's own hint.
-- §3d stops the sign-in with `REQUEST_MISMATCH not a short OpenKey link` or `CHECK_UNAVAILABLE` (or `LOGIN_PREFLIGHT_FAILED <code>` if that CLI rejects an option). No approval link goes out.
-- The agent tells the operator that this CLI is too old for the sign-in and needs `1.6.0`.
+- §3b prints `SIGNIN_TC_OLDER <version> <path>` and writes no `manifest.json` or `signin.sh`. §3c, §3d and §3e don't run, no `auth login` starts, and no approval link goes out.
+- The agent tells the owner in one line that the CLI is older than the required `1.6.0`, and stops the sign-in. The add link (if any) may still go out, and names the profile can already read stay readable.
 
 **Fail:** an approval link sent anyway, any other sign-in (a pasted or typed code), or the agent installing a CLI over the operator's.
 
