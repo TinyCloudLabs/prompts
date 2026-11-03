@@ -25,7 +25,7 @@ const section = (file, heading) => {
 };
 
 const OLDER = "1.5.1";
-const PASSING = [CLI_VERSION, "1.5.10", "1.6.0-beta.1"];
+const PASSING = [CLI_VERSION, "1.6.10", "1.7.0-beta.1"];
 const cliOlder = (bin) => `CLI_OLDER ${OLDER} ${bin}: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block`;
 const tcOlder = (bin) => `TC_OLDER ${OLDER} ${bin} is older than the pinned ${CLI_VERSION}; keeping this operator-selected CLI`;
 
@@ -140,7 +140,7 @@ for (const block of blocks) {
 }
 
 test("every gate's comparison: older below the pin, equal or newer passes, a prerelease of the pin is older", () => {
-  const cases = { "1.5.1": true, "1.4.99": true, "0.9.0": true, "1.5.2-beta.4": true, "": true, "1.5.2": false, "1.5.10": false, "1.6.0-beta.1": false, "1.5.3-beta.1": false, "2.0.0": false, "1.5.2+build.7": false };
+  const cases = { "1.5.1": true, "1.4.99": true, "0.9.0": true, "1.5.2": true, "1.6.0-beta.1": true, "1.6.0-rc.0": true, "": true, "1.6.0": false, "1.6.10": false, "1.7.0-beta.1": false, "2.0.0": false, "1.6.0+build.7": false };
   for (const block of blocks) {
     const compare = section(block.file, block.heading).match(/awk -F\. -v p=\S+ '[^']*'/)?.[0];
     assert.ok(compare, `${block.name}: no comparison`);
@@ -223,16 +223,17 @@ const surfaces = [
   { files: ["skills/tinycloud-feed/creating-a-post.md", "_site/skills/feed/creating-a-post.md", "_site/feed"], blk: "the check", stops: true },
   { files: ["setup/onboarding.md", "_site/onboarding.md"], blk: "step 2", stops: true },
 ];
+const RULE = `**CLI rule (stable \`${CLI_VERSION}\`): `;
 test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, that upgrading needs no asking, and never to run `tinycloud upgrade`", () => {
   for (const { files, blk, stops } of surfaces) {
     for (const file of files) {
       const text = readFileSync(join(root, file), "utf8");
-      const rules = text.split("\n").filter((line) => line.startsWith("**CLI rule (stable `1.5.2`): "));
+      const rules = text.split("\n").filter((line) => line.startsWith(RULE));
       assert.equal(rules.length, 1, file);
       const [rule] = rules;
       assert.match(rule, /before any other (TinyCloud )?command|run step 2's block as written/, file);
       assert.ok(rule.includes(`Only a \`TC_OLDER\` line from ${blk}`), file);
-      assert.ok(rule.includes(stops ? "tell the owner in one line that it is older than the required `1.5.2`, and stop." : `keep it, tell the operator once that \`1.5.2\` is required, and continue with what ${blk} reports.`), file);
+      assert.ok(rule.includes(stops ? `tell the owner in one line that it is older than the required \`${CLI_VERSION}\`, and stop.` : `keep it, tell the operator once that \`${CLI_VERSION}\` is required, and continue with what ${blk} reports.`), file);
       assert.ok(rule.includes(`Any other older CLI is yours, including one on \`PATH\` or linked from \`~/.local/bin\`: ${blk} prints \`CLI_OLDER\``), file);
       assert.ok(rule.includes(`${UPGRADE} ${NEVER_UPGRADE}`), file);
       assert.match(rule, /[Dd]on't judge who installed the CLI yourself/, file);
@@ -249,7 +250,7 @@ const OLD_NO_GLOBAL = "second beta CLI";
 test("every CLI rule but /onboarding's forbids a global, sudo or piped install, not a second CLI, as written and as served", () => {
   for (const { files } of surfaces) {
     for (const file of files) {
-      const [rule] = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith("**CLI rule (stable `1.5.2`): "));
+      const [rule] = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith(RULE));
       const onboarding = file.endsWith("onboarding.md");
       assert.equal(rule.includes(`${NO_GLOBAL}**`), !onboarding, file);
       assert.equal(rule.includes(OLD_NO_GLOBAL), onboarding, file);

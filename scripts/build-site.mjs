@@ -123,9 +123,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.5.2",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.5.2.tgz",
-    integrity: "sha512-M7bCmhZPNcKALcIzhrLMpLoxsl/f9iqyo1PpOGscSyb3Re+O/CLhqhCWuNzcNehjcTpVo5ZPFUikSC7RZco4qQ==",
+    version: "1.6.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.0.tgz",
+    integrity: "sha512-7Qz/9qWiAweKFoDKafAo1fpCzsiClaJb5gvRj12q15qMa1ll5X9l97N/fca/ftmBJlcwgjUVtICfL0WzwOi9/A==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -140,10 +140,10 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.5.2`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.0`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.5.2 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.0 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -164,9 +164,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.4.2",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.4.2.tgz",
-    integrity: "sha512-fTDhPUZ5iRLt2ZtazwIyvty8CefyBnImEnU2PXDAlmtdp0IBeeLaex51Ghg7qySWP1eGQ5suvMCw5fQ0r6dOjw==",
+    version: "0.5.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.0.tgz",
+    integrity: "sha512-kSgSPkcjQFWKZ24orVonR4VeG/mo8sM4S6zNrH35mqQJgzviyT4/ukFa6gq2iAgTG9vIuK0cgC3mozwzi1Bn8Q==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -176,18 +176,22 @@ const SKILLS = [
           "Offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the two-choice flow in the Courier guide, https://agents.tinycloud.xyz/courier.",
         ],
         [
-          "`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey (`tinycloud courier init --paste` also accepts the OpenKey `XXXX-XXXX`\ncode) and decides who to pair with.\nIf OpenKey reports the space is still being set up, `init` waits up to about 2.5 minutes; otherwise use `init --resume`.",
+          /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
           "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
         ],
       ],
       "start.md": [
         [
           "Start Courier for me using the installed courier command. Reuse my existing Courier profile and restricted grant. If setup is required, use the normal courier init approval flow; do not request my owner key or broader permissions.",
-          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote two-command setup below: request one Courier approval, give me its exact openkeyUrl with one plain permission sentence, and import the code I send back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
+          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote setup below: request one Courier approval, give me its exact openkeyUrl with one plain line, then collect my approval with courier init --wait --timeout 60s and run it again while it exits 8 (still pending, not a failure). Import a code only if I send one back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
+        ],
+        [
+          "use courier join '<exact link>' --consent instead of creating or selecting another chat.",
+          "use courier join '<exact link>' --consent --wait 60 instead of creating or selecting another chat. Each call waits at most a minute; while the issuer hasn't finished pairing it exits 1 with [invite-pending], so run the same join again in the same turn without asking me, at most 10 times in a row.",
         ],
         [
           "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
-          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent. Keep the issuer serving while the recipient joins. Give me its exact handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, in the same turn and without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.",
         ],
       ],
     },
@@ -203,9 +207,9 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.8.5",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.5.tgz",
-    integrity: "sha512-yL9vnJVPHMVGhm6Rmct6gQixq2Mh6ivsGWHWiPZZyrYAUcS3mnb+LTi4irAD+XixZlJU7NJIZW83RoSNxw1bLA==",
+    version: "0.8.6",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.6.tgz",
+    integrity: "sha512-yhmfXbAA/BFtNPlIyhKzN6TQxmXNbYx79lybf+sEblnO+q6syvgO7O1ZDD9jol060AE67E8cQs0dL0Tp/9Cefw==",
     dir: "package/skills/tinycloud-delegated-secrets",
   },
 ];
