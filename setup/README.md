@@ -19,10 +19,10 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 ## Home feed: [/feed](https://agents.tinycloud.xyz/feed)
 
-- **What it does:** your agent writes cards you asked for to TinyCloud Home, under its own bot folder.
+- **What it does:** you connect your agent to your TinyCloud Home feed once; it then posts the cards you asked for there, and reads your answers.
 - **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
-- **You approve:** `put` access to that bot's `applications` feed folder only if existing grants do not already cover it, following the agent client's documented flow. It uses the CLI selected by [/cli](tinycloud.md), stable `1.5.2`, which includes create-only writes.
-- **Undo:** revoke that bot's delegation through your TinyCloud account controls; local logout alone does not revoke the owner's grant.
+- **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your Home feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), stable `1.5.2`.
+- **Undo:** ask your agent to disconnect it: that revokes the agent's grant, and can also remove its cards from Home ([§8 of the page](https://agents.tinycloud.xyz/feed#8-disconnect)).
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
 
