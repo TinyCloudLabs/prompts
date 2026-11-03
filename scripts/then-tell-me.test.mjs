@@ -26,7 +26,7 @@ const text = (file) => readFileSync(join(site, file), "utf8");
 const count = (haystack, needle) => haystack.split(needle).length - 1;
 
 const OWNER_LINE = "Open this link and approve, then tell me.";
-const NEXT_RULE = "If the command's stderr has `Next:` lines, do every one in order, exactly as written.";
+const NEXT_RULE = "if the command's stderr has `Next:` lines, do every one in order, exactly as written. Run the command the `Next:` line names, using your selected `\"$TC\"` in place of `tinycloud`.";
 
 test("the owner line is in every place it must be, and the old line is nowhere in the built site", () => {
   const onboarding = text("onboarding.md");
@@ -101,11 +101,19 @@ test("the built onboarding block, when a resumed approval exits 6, says run it a
   assert.doesNotMatch(next, /send the owner this link|this is a new link/);
 });
 
-test("the Next: rule carries both halves once per guide, and each guide with an approval block handles exit 6", () => {
+test("the Next: rule carries both halves once per guide, and only /onboarding has an exit 6 branch (Courier returns 0, 1, 2 or 8)", () => {
   for (const guide of ["onboarding.md", "courier"]) {
     const body = text(guide);
     assert.equal(count(body, NEXT_RULE + " Exit 6 prints no `Next:` line: it is a network error, so run the same command again once"), 1, guide);
-    assert.ok(body.includes("- **Exit 6 (the block's `NEXT:` line says so):**"), guide);
+    assert.equal(body.includes("- **Exit 6 (the block's `NEXT:` line says so):**"), guide === "onboarding.md", guide);
   }
   assert.doesNotMatch(text("onboarding.md"), /exits within a few seconds/);
+});
+
+test("the Next: rule is scoped to approval commands; invitations follow their own steps", () => {
+  for (const guide of ["onboarding.md", "courier"]) {
+    const body = text(guide);
+    assert.equal(count(body, "For an approval command (`onboard`, `auth login`, `auth grant`, `courier init`): if the command's stderr"), 1, guide);
+    assert.equal(count(body, "For invitations, follow the invitation steps below, not the `Next:` lines."), 1, guide);
+  }
 });
