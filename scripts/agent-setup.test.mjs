@@ -634,6 +634,7 @@ for (const surface of COURIER_SURFACES) {
         [0, '{"ok":false}\n', "COURIER_EXIT 0"],
         [1, "", "COURIER_EXIT 1"],
         [2, "", "COURIER_EXIT 2"],
+        [6, "", "NEXT: OpenKey did not answer; the approval request is saved and the link you already sent still works. Run this block again once, with no new link; do not tell the owner it failed. If it exits 6 again, tell the owner in one plain line that you cannot reach OpenKey right now, and stop."],
       ]) {
         const env = { HOME: dir, TC: join(dir, "tc"), TC_LOG: log, FAKE_EXIT: String(exit), FAKE_STDOUT: stdout };
         if (selected) env.COURIER_HOME = courierHome;
@@ -641,7 +642,7 @@ for (const surface of COURIER_SURFACES) {
         assert.equal(result.status, exit, result.stderr);
         assert.equal(result.stdout, `${stdout}${last}\n`);
       }
-      assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${courierHome}\n`.repeat(8));
+      assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${courierHome}\n`.repeat(9));
       assert.equal(statSync(join(courierHome, "shown-link")).mode & 0o777, 0o600);
     }
   });

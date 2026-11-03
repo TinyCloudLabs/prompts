@@ -103,7 +103,7 @@ Its first line is `Approve on your phone: <link> (code <code>)`; the CLI needs a
 
 The message, with the link and code from that line:
 
-> Open <link> and approve the request on OpenKey. It should show the code <code>. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days. I'll carry on as soon as you approve.
+> Open <link> and approve the request on OpenKey. It should show the code <code>. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days. Approve it, then tell me.
 
 When the command exits, its output ends with JSON:
 - `"authenticated": true` and `"declined": []` → run §3 again, then carry on with the request.
