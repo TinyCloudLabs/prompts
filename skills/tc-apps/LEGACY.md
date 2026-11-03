@@ -40,18 +40,20 @@ Every key starts with `xyz.tinycloud.agent-data/`, written `<R>/` below:
   - With a time (including a part of the day, as for ids): date, time and UTC offset, written like `<NOW>`: `2026-10-06T08:00+02:00`.
   - With only a day from the owner: only the date, e.g. `"2026-10-06"`.
   - With neither, or when it's about right now: the clock, `<UTC>`, e.g. `"2026-10-06T16:30:12Z"`. If §1 ran more than 5 minutes before you write (a sign-in wait counts), run `date -u +%FT%TZ` again first and use that.
-- `data`: the fields the kind lists. Leave out what the owner didn't say. Times belong in `at` and the id, never in a field.
+- `data`: the kind's `fields`, by exactly those names: never a synonym or a new spelling (`gene_key`, not `key`). Write each value in the form its meaning gives. Leave out what the owner didn't say; a detail with no field → rule 3 first. Times belong in `at` and the id, never in a field.
 - `by`: your client: `claude-code`, `codex` or `opencode`.
 
 **An app record:** `{"app":"fitness","title":"Fitness","about":"Body weight, fitness goals and training.","created":"2026-10-06","by":"claude-code"}`
 
 **A kind record:** `{"app":"fitness","kind":"lift","about":"Strength training: one record per exercise per workout.","shape":"log","per":"time","v":1,"fields":{"exercise":"text: lowercase name, e.g. bench press","sets":"integer","reps":"integer: reps per set","kg":"number: load in kilograms"},"notes":"Volume = sets x reps x kg. The id ends with the exercise slug.","created":"2026-10-06","by":"claude-code"}`
 - `shape`: `log`, with `per` (`day` or `time`), or `item`, with `states`. New items start in the first state, e.g. `["open","done"]`.
-- `fields`: name → `"type: meaning"`. A field with a unit names it: `kg`, `km`, `minutes`.
+- `fields`: name → `"type: meaning"`. A field with a unit names it: `kg`, `km`, `minutes`. When you create a kind, each meaning states the value's form with one example (`"text: sphere name as the owner says it, e.g. Life's Work"`), so the next agent writes the same form.
 - Optional: `notes` (how to read or sum up the records), `history` (how to read records with an older `v`), `updated`.
 
 **Rules:**
 1. **Pick the app and the kind by their `about`, and keep kinds broad.**
+   - Find the app before naming it: §3's list shows every app as `<R>/catalog/<app>`. Read the app records that might fit and reuse the app whose title or about fits, under its existing name. Pick a new name only when none fits.
+   - Before writing to a kind, read its kind record: its `fields` are the record's field names.
    - Before creating a kind, read every kind record of the app, and extend the closest one with a new field or value (rule 3).
    - Name a kind for the category and put the specifics in fields: `session` with a `sport` field, not `run` and `bouldering`. The next sport is then a new value, not a new kind.
    - Make a new kind only when the records have a different shape, meaning other main fields, not just another subject. Running and bouldering share `session` (`sport`, `minutes`, `km`); strength exercises with `sets`, `reps` and `kg` are their own kind, like `lift` above.
@@ -82,7 +84,7 @@ TC_BIN='<TC_BIN>'; umask 077
   - `"state": "expired"` → it exists, but needs a new approval.
   - `PROFILE_NOT_FOUND` → there's no fast copy yet. That's normal, not an error.
 
-Then read the catalog records of the app or apps the request is about, with §5's block for several records. For "what do you keep for me?", read them all.
+Then read the catalog records of the app or apps the request is about, with §5's block for several records, including every kind record you will write to: its `fields` are the names a record of that kind uses. For "what do you keep for me?", read them all.
 
 ## 4. Sign in
 
@@ -166,6 +168,7 @@ EOF
 "$TC_BIN" kv get '<key>' --space default --json --profile agent-data
 ```
 
+- Build `data` from the kind record you read in §3 in this conversation, by its `fields` names; if you didn't read it, read it now.
 - Always write the record through `--stdin` like this. Never pass it as an argument: it would be stored as text and read back as a string.
 - For several records, catalog records included, repeat the `kv put` command with its own `EOF` lines inside the block. Then add one `kv get` line for each key you wrote, after the last `EOF`.
 - Report the values you read back, not the ones you sent.
@@ -204,7 +207,7 @@ Read `LEGACY-SQL.md` in full, at the install path shown below, when:
 - §3 showed the index (`present` or `expired`) and you write, move or delete a record;
 - §3 showed it `present` and a question needs more than about 40 records.
 
-For example:
+For example, with the shell, never the file-read tool:
 - Claude Code with the user-level install: `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/LEGACY-SQL.md"`.
 - Codex and OpenCode with the user-level install: `cat "$HOME/.agents/skills/tc-apps/LEGACY-SQL.md"`.
 

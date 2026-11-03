@@ -153,6 +153,7 @@ const op = pos[1], s = kv[space] || (kv[space] = {});
 if (op === "list") {
   const prefix = opts["--prefix"] || "";
   if (!allowed("list", prefix)) fail("PERMISSION_DENIED", 5);
+  if (ctl.failList) fail(ctl.failList, 7);
   const keys = Object.keys(s).filter((k) => k.startsWith(prefix)).sort();
   console.log(JSON.stringify({ keys, count: keys.length, prefix }));
 } else if (op === "get") {
@@ -540,15 +541,90 @@ test("layout.sh (f): when the entry check fails for another reason it says check
     assert.deepEqual(legacyLists(h), [], JSON.stringify(c));
   }
 });
+test("check-failed in a sandbox allows one network-approved retry, then stops without writing", () => {
+  const text = readFileSync(join(skill, "SKILL.md"), "utf8");
+  const rule = text.split("\n").find((line) => line.startsWith("- `check-failed` →"));
+  assert.ok(rule, "SKILL.md defines the check-failed action");
+  assert.match(rule, /sandbox/);
+  assert.match(rule, /same read once/);
+  assert.match(rule, /client(?:'s|’s) network approval/);
+  assert.match(rule, /if it still fails, report it and write nothing/i);
+});
+
 
 test("layout.sh: with no usable earlier sign-in for the old place it says ask, and with another failure it says check-failed", () => {
   const h = world();
   control(h, { missingProfiles: ["agent-data"] });
   assert.equal(runLayout(h, "fitness").stdout.trim(), "ask");
+  assert.ok(cliCalls(h).some((c) => c.profile === "agent-data" && c.argv[0] === "kv" && c.argv[1] === "list"));
   const g = world();
   const broken = join(g.dir, "broken-tinycloud");
   writeFileSync(broken, "#!/bin/sh\necho '{\"error\":{\"code\":\"NETWORK_ERROR\"}}' >&2\nexit 7\n", { mode: 0o755 });
   assert.equal(runLayout(g, "fitness", { TC_BIN: broken }).stdout.trim(), "check-failed");
+});
+
+// TC-2431: `ask` is never a question to the owner. A request that makes an app uses `new`; otherwise the agent
+// asks OpenKey for read-only access to the old catalog on the `agent-data` profile and runs §1a again.
+const askRule = () => {
+  const text = readFileSync(join(skill, "SKILL.md"), "utf8");
+  const start = text.indexOf("- `ask` →");
+  return text.slice(start, text.indexOf("- `check-failed` →", start));
+};
+
+test("layout.sh (TC-2431): ask, then the read-only old-catalog grant decides legacy or new; a network error is check-failed; nothing is written", () => {
+  const before = sourceRecords();
+  const noWrites = (h) => {
+    assert.deepEqual(readdirSync(h.state), []);
+    assert.deepEqual(store(h).applications, {});
+    assert.deepEqual(store(h).default, before);
+    assert.equal(cliCalls(h).some((c) => (c.argv[0] === "kv" && ["put", "delete"].includes(c.argv[1])) || (c.argv[0] === "sql" && c.argv[1] === "execute")), false);
+  };
+  // Without an agent-data sign-in, no old-catalog reads or writes occur.
+  for (const ctl of [{ missingProfiles: ["agent-data"] }]) {
+    const h = world();
+    control(h, ctl);
+    for (const app of ["fitness", "books"]) assert.equal(runLayout(h, app).stdout.trim(), "ask", JSON.stringify(ctl));
+    noWrites(h);
+  }
+  // The agent text path for `ask`: no question to the owner; `new` for a request that makes an app; otherwise the grant block.
+  const rule = askRule();
+  assert.match(rule, /Never ask the owner whether the app is new/);
+  assert.doesNotMatch(rule, /Ask whether this app had records|If the owner already said/);
+  assert.match(rule, /The request makes an app[^\n]*→ use `new`/);
+  assert.match(rule, /setup guide's default `todos` record → use `new`/);
+  assert.match(rule, /run §1a again\. Write nothing until it prints `new` or `legacy`/);
+  const manifest = JSON.parse(rule.match(/printf '%s\\n' '(\{.*\})' > "\$STATE\/agent-data-catalog\.json"/)[1]);
+  assert.deepEqual(manifest.permissions, [{ service: "tinycloud.kv", path: "xyz.tinycloud.agent-data/catalog/", skipPrefix: true, actions: ["get", "list"] }]);
+  assert.equal(manifest.space, "default");
+  assert.match(rule, /auth login --method openkey --no-popup --manifest "\$STATE\/agent-data-catalog\.json" --expiry 30d --profile agent-data/);
+  // With that grant (catalog get/list only), the rerun decides: fitness has old records, books has none.
+  const g = world();
+  control(g, { missingProfiles: ["agent-data"] });
+  assert.equal(runLayout(g, "fitness").stdout.trim(), "ask");
+  control(g, { agentDataCatalogOnly: true });
+  assert.equal(runLayout(g, "fitness").stdout.trim(), "legacy");
+  assert.equal(runLayout(g, "books").stdout.trim(), "new");
+  const catalogReads = cliCalls(g).filter((c) => c.argv[0] === "kv" && c.argv[1] === "list");
+  assert.ok(catalogReads.length > 0);
+  for (const c of catalogReads) {
+    assert.equal(c.profile, "agent-data");
+    assert.equal(c.argv[c.argv.indexOf("--space") + 1], "default");
+    assert.equal(c.argv[c.argv.indexOf("--prefix") + 1], `${OLD}/catalog/`);
+  }
+  noWrites(g);
+  // A network error on that listing: check-failed, never ask.
+  const n = world();
+  control(n, { agentDataCatalogOnly: true, failList: "NETWORK_ERROR" });
+  assert.equal(runLayout(n, "fitness").stdout.trim(), "check-failed");
+  noWrites(n);
+});
+
+test("tc-apps (TC-2431): no guide or script tells the agent to ask the owner about earlier records", () => {
+  assert.doesNotMatch(readFileSync(layout, "utf8"), /ask the owner/);
+  for (const file of ["skills/tc-apps/SKILL.md", "skills/tc-apps/TINY-APPS.md", "skills/tc-apps/LEGACY.md", "skills/tc-apps/QUICKSTART.md", "setup/tc-apps.md"]) {
+    assert.doesNotMatch(readFileSync(join(root, file), "utf8"), /Ask whether this app had records|is this (your|a) first record/i, file);
+  }
+  assert.match(readFileSync(join(skill, "TINY-APPS.md"), "utf8"), /Never ask the owner whether an app had earlier records/);
 });
 
 test("layout.sh rejects a name that is not a plain slug or is reserved, before any CLI call", () => {

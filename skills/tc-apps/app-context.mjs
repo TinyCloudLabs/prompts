@@ -145,9 +145,16 @@ export function appContext(cli, app, { write = false, remove = false, sql = fals
       return { status: "ready", ...selected, indexPresent: tables.rows.some((row) => (Array.isArray(row) ? row[0] : row?.name) === "records") };
     }
     const prefix = catalog ? `xyz.tinycloud.sample.${app}/knowledge/` : `xyz.tinycloud.tinyapps.${app}/catalog/`;
-    const listing = call(["--profile", profile.name, "--host", context.host, "kv", "list", "--prefix", prefix, "--space", context.spaceId, "--all", "--json"]);
-    if (!Array.isArray(listing.keys) || listing.truncated || listing.nextCursor) throw new Error("APP_CONTEXT_FAILED: incomplete app catalog listing.");
-    return { status: "ready", ...selected, catalogKeys: listing.keys };
+    const list = (prefix) => {
+      const listing = call(["--profile", profile.name, "--host", context.host, "kv", "list", "--prefix", prefix, "--space", context.spaceId, "--all", "--json"]);
+      if (!Array.isArray(listing.keys) || listing.truncated || listing.nextCursor) throw new Error("APP_CONTEXT_FAILED: incomplete app catalog listing.");
+      return listing.keys;
+    };
+    const catalogKeys = list(prefix);
+    if (catalog || !write) return { status: "ready", ...selected, catalogKeys };
+    // Before creating an app, the agent reuses an existing one: the names of every app with a discovery entry.
+    const appEntries = [...new Set(list("xyz.tinycloud.tinyapps.catalog/").map((key) => key.split("/")[1]).filter(Boolean))].sort();
+    return { status: "ready", ...selected, catalogKeys, appEntries };
   }
   // Only reuse onboarding's existing broad access here; never request it to
   // replace the catalog guide's narrower per-app flow.
