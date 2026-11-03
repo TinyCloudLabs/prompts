@@ -136,8 +136,8 @@ node "$HOME/.local/share/tinycloud/install-cli.mjs"
 $installer = Join-Path $env:USERPROFILE ".local\share\tinycloud\install-cli.mjs"
 $prefix = Join-Path $env:USERPROFILE ".local\share\tinycloud\cli"
 New-Item -ItemType Directory -Force $prefix | Out-Null
-Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile $installer -ErrorAction Stop
 Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-Path $env:USERPROFILE ".local\share\tinycloud\install.cjs") -ErrorAction Stop
+Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile $installer -ErrorAction Stop
 node $installer --needs-install
 if ($LASTEXITCODE -eq 0) {
   npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@{{CLI_VERSION}}"
