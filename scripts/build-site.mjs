@@ -48,8 +48,6 @@ const UNPUBLISHED = /^forward-tests.*\.md$/;
 // this repository's skills spell it out with the production URL, rewritten on a
 // preview like every other; released skills get it at build time. The build
 // fails without it. The html pages' rendered HTML, which owners see, leaves it out.
-// /owner is the owner's own page, so an agent line there would be owner-visible text.
-const NO_BANNER = new Set(["owner"]);
 const banner = (path, base = SITE) =>
   `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${base}/${path}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
 const frontMatter = (text) => text.match(/^---\n[\s\S]*?\n---\n\n*/)?.[0] ?? "";
@@ -59,11 +57,10 @@ const opensWithBanner = (text, path) => text.slice(frontMatter(text).length).sta
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
 // `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
-  { url: "onboarding", src: "setup/onboarding.md", html: true },
+  { url: "onboarding", src: "setup/onboarding.md", html: true, redirectFrom: ["owner", "owner.md", "setup/owner.md"] },
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
-  { url: "owner", src: "setup/owner.md", unlisted: true },
   { url: "connect", src: "setup/connect.md", html: true },
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "feed", src: "skills/tinycloud-feed/creating-a-post.md" },
@@ -214,8 +211,16 @@ const SKILLS = [
   },
 ];
 
-// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line.
+// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line, which
+// fetches `fetch` when the guide's Markdown lives at another URL than its page (/onboarding.md).
 const ABILITIES = [
+  {
+    title: "Set up TinyCloud",
+    url: "onboarding",
+    fetch: "onboarding.md",
+    text: "Your agent sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do.",
+    task: "Set me up with TinyCloud.",
+  },
   {
     title: "Personal records",
     url: "apps",
@@ -276,6 +281,7 @@ const url = (p) => `${BASE}/${p}`;
 // Every owner prompt names the guide to fetch raw and the installer it runs: Claude Code's auto mode
 // runs a downloaded installer when the owner's own prompt asked for it, and may refuse it otherwise.
 const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it, including running its installer. ${task}`;
+const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task);
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -461,7 +467,7 @@ for (const s of skills) {
   write(`skills/${s.short}.md`, s.text);
 }
 const unbannered = [
-  ...pages.filter((p) => !NO_BANNER.has(p.url)).map((p) => [p.html ? `${p.url}.md` : p.url, p.text]),
+  ...pages.map((p) => [p.html ? `${p.url}.md` : p.url, p.text]),
   ...skills.flatMap((s) => [
     [`skills/${s.short}.md`, s.text],
     [`skills/${s.short}.md`, s.files.find((f) => f.path === "SKILL.md").body.toString("utf8")],
@@ -672,12 +678,13 @@ const llms = [
   "",
   "## Abilities",
   "",
-  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${ownerPrompt(a.url, a.task)}"`),
+  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${abilityPrompt(a)}"`),
   "",
   "## Guides",
   "",
   `- [${page("setup").title}](${url("setup")}): ${page("setup").desc}`,
-  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}`),
+  // /onboarding is where setup starts, so its guide entry carries the set-up example too.
+  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}${p.url === "onboarding" ? ` Example prompt: "${abilityPrompt(ABILITIES.find((a) => a.url === "onboarding"))}"` : ""}`),
   "",
   "## Skills",
   "",
@@ -800,7 +807,7 @@ ${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE).length))}
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
-        <p>Try: <code>${esc(ownerPrompt(a.url, a.task))}</code></p>
+        <p>Try: <code>${esc(abilityPrompt(a))}</code></p>
       </li>`;
 const desc = "Paste one line into your AI agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
 write(

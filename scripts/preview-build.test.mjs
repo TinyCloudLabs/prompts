@@ -86,16 +86,14 @@ test("a production build serves the repository's skills byte for byte, pointing 
 // Fetch tools that summarize a page keep its first lines and drop its shell
 // blocks, so each served guide and skill opens with this line and its own URL.
 const rawLine = (url) => `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${url}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
-// /owner is the owner's own page and has no agent line.
 const GUIDES = ["onboarding.md", "connect.md", "setup", "agent", "apps", "chat", "feed", "publish", "share", "secrets", "courier", "cli", "openkey"];
 const afterFrontMatter = (text) => text.replace(/^---\n[\s\S]*?\n---\n\n/, "");
 
-test("every served Markdown guide but /owner, and every skill, opens with the read-raw line for its own URL, in production and on a preview", () => {
+test("every served Markdown guide and every skill, opens with the read-raw line for its own URL, in production and on a preview", () => {
   for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
     const guides = readdirSync(site, { withFileTypes: true }).filter((e) => e.isFile() && /^[a-z]+(\.md)?$/.test(e.name)).map((e) => e.name).sort();
-    assert.deepEqual(guides, [...GUIDES, "owner"].sort(), site);
+    assert.deepEqual(guides, GUIDES.sort(), site);
     for (const guide of GUIDES) assert.ok(readFileSync(join(site, guide), "utf8").startsWith(rawLine(`${base}/${guide}`)), `${base}/${guide}`);
-    assert.doesNotMatch(readFileSync(join(site, "owner"), "utf8"), /read this file raw/, `${base}/owner`);
     const { skills } = JSON.parse(readFileSync(join(site, "skills/index.json"), "utf8"));
     assert.deepEqual(skills.map((s) => s.short).sort(), ["apps", "chat", "cli", "courier", "feed", "mcp", "publish", "secrets"]);
     for (const { short } of skills) {
@@ -125,9 +123,10 @@ const OWNER_PROMPTS = {
   "onboarding.md": ["onboarding.md"], "connect.md": ["connect.md"],
   "skills/apps/QUICKSTART.md": ["apps"],
   "onboarding.html": ["onboarding.md"], "connect.html": ["connect.md"],
-  "index.html": ["apps", "feed", "publish", "secrets", "chat"],
-  // The five front-page examples, then /courier's guide description, which is its prompt.
-  "llms.txt": ["apps", "feed", "publish", "secrets", "chat", "courier"],
+  "index.html": ["onboarding.md", "apps", "feed", "publish", "secrets", "chat"],
+  // The six front-page examples, /onboarding's guide entry (the set-up example again), then /courier's
+  // guide description, which is its prompt.
+  "llms.txt": ["onboarding.md", "apps", "feed", "publish", "secrets", "chat", "onboarding.md", "courier"],
   "prompt.txt": ["chat"],
 };
 const ownerPrompts = (text) => [
@@ -137,7 +136,7 @@ const ownerPrompts = (text) => [
 test("every owner prompt on the served site fetches its guide with curl and names its installer, in production and on a preview", () => {
   for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
     // Every served guide is listed, so a new "Paste into…" line can't skip the check.
-    for (const guide of [...GUIDES, "owner"]) assert.ok(guide in OWNER_PROMPTS || !/\*\*Paste/.test(readFileSync(join(site, guide), "utf8")), `${base}/${guide} has an unlisted prompt`);
+    for (const guide of GUIDES) assert.ok(guide in OWNER_PROMPTS || !/\*\*Paste/.test(readFileSync(join(site, guide), "utf8")), `${base}/${guide} has an unlisted prompt`);
     for (const [file, guides] of Object.entries(OWNER_PROMPTS)) {
       const prompts = file === "prompt.txt" ? [readFileSync(join(site, file), "utf8").trim()] : ownerPrompts(readFileSync(join(site, file), "utf8"));
       // prompt.txt is copied as written, so it names production on a preview too.
@@ -145,6 +144,26 @@ test("every owner prompt on the served site fetches its guide with curl and name
       assert.deepEqual(prompts.map((prompt) => prompt.split(" ")[1]), guides.map((guide) => `${from}/${guide}`), `${base}/${file}`);
       for (const prompt of prompts) assert.match(prompt, /^Fetch \S+ with curl and follow it, including running its installer\. \S/, `${base}/${file}: ${prompt}`);
     }
+  }
+});
+
+// The set-up example is /onboarding's own prompt, word for word: the front page's first card, llms.txt's
+// first ability and its /onboarding guide entry.
+const SET_UP = (base) => `Fetch ${base}/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.`;
+test("the front page and llms.txt open with a set-up example, /onboarding's own prompt", () => {
+  assert.equal(SET_UP(SITE), "Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.");
+  for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
+    const prompt = SET_UP(base);
+    assert.ok(readFileSync(join(site, "onboarding.md"), "utf8").includes(`\n> ${prompt}\n`), `${base}/onboarding.md`);
+    const index = readFileSync(join(site, "index.html"), "utf8");
+    const card = index.split('<ul class="abilities">\n')[1].split("</li>")[0];
+    assert.match(card, /<h3><a href="\/onboarding">Set up TinyCloud<\/a><\/h3>/, base);
+    assert.ok(card.includes(`<p>Try: <code>${prompt}</code></p>`), `${base}/index.html: ${card}`);
+    const llms = readFileSync(join(site, "llms.txt"), "utf8").split("\n");
+    const firstAbility = llms[llms.indexOf("## Abilities") + 2];
+    assert.ok(firstAbility.startsWith(`- [Set up TinyCloud](${base}/onboarding): `) && firstAbility.endsWith(` Example prompt: "${prompt}"`), `${base}/llms.txt: ${firstAbility}`);
+    const guide = llms.find((line) => line.startsWith("- [") && line.includes(`](${base}/onboarding): `) && llms.indexOf(line) > llms.indexOf("## Guides"));
+    assert.ok(guide?.endsWith(` Example prompt: "${prompt}"`), `${base}/llms.txt: ${guide}`);
   }
 });
 
@@ -299,4 +318,19 @@ test("/cli's fallback stops on a private folder that holds another package: no n
   assert.deepEqual(callLines(join(fallback.home, "npm-calls")), []);
   assert.equal(readFileSync(project, "utf8"), original);
   assert.deepEqual(readdirSync(prefix(fallback.home)), ["package.json"]);
+});
+
+test("/owner and /owner/ redirect to /onboarding and no built page or listing links /owner", () => {
+  for (const site of [production, preview]) {
+    const redirects = readFileSync(join(site, "_redirects"), "utf8").split("\n");
+    assert.ok(redirects.includes("/owner /onboarding 301"), site);
+    assert.ok(redirects.includes("/owner/ /onboarding 301"), site);
+    assert.ok(redirects.includes("/owner.md /onboarding 301"), site);
+    assert.ok(redirects.includes("/setup/owner.md /onboarding 301"), site);
+    assert.ok(!existsSync(join(site, "owner")), site);
+    for (const name of readdirSync(site, { withFileTypes: true, recursive: true }).filter((e) => e.isFile() && e.name !== "_redirects").map((e) => join(e.parentPath, e.name))) {
+      const text = readFileSync(name, "utf8");
+      assert.doesNotMatch(text, /agents\.tinycloud\.xyz\/owner(?![\w.-])|href="\/owner\/?"|\]\(\/owner\/?\)/, name);
+    }
+  }
 });

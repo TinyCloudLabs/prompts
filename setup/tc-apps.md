@@ -99,7 +99,7 @@ Claude Code can ask you to confirm a step before it runs. Reply with the step, f
 
 **For coding agents:** when Claude Code denies a step or asks the owner to confirm it, show them the step and the exact "Go ahead: …" reply from above for them to send, then wait for their answer.
 
-Owners can read about an optional Claude Code setting for the sign-in command at https://agents.tinycloud.xyz/owner.
+What you approve, and how to undo it, in one place for owners: https://agents.tinycloud.xyz/onboarding#undo.
 
 ## Moving records from an earlier version
 
