@@ -15,7 +15,7 @@ Never share private keys or session files. Approval links also contain request m
 
 Add the setup link to your first request:
 
-> Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
+> Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 20, it stops and tells you; it doesn't install them.

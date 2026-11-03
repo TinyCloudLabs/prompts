@@ -7,7 +7,8 @@ This module installs and verifies only the TinyCloud CLI and its core skill, `ti
 ## For the owner
 
 - **What it does:** installs `1.6.0` into `~/.local/share/tinycloud/cli`, or upgrades an older copy there, unless you selected a CLI with `TC_BIN` (kept as is) or a newer one is present; then it installs the `tinycloud-cli` skill. Windows gets non-overwriting launchers in `%USERPROFILE%\.local\bin` when names are free, and a safe append to your user PATH. Unix links free names only when `~/.local/bin` is already on PATH. Unrelated commands are left alone.
-- **Paste into an agent that can run shell commands:** `Set up the TinyCloud CLI: https://agents.tinycloud.xyz/cli`. `/chat`, `/apps`, `/publish`, `/secrets` and `/courier` use this shared selection instead of installing an app-specific CLI.
+- **Paste into an agent that can run shell commands:** `Fetch https://agents.tinycloud.xyz/cli with curl and follow it, including running its installer. Set up the TinyCloud CLI.` `/chat`, `/apps`, `/publish`, `/secrets` and `/courier` use this shared selection instead of installing an app-specific CLI.
+- **If your agent app blocks the install:** your agent sends you one line naming the npm package and the folder. Reply "Go ahead: install the TinyCloud CLI" and it installs it once more; if that fails too, it stops and tells you.
 - **You approve:** nothing. It doesn't sign in or request any access.
 - **Then:** in a new terminal, `tinycloud --help` lists the commands.
 - **Undo:** see [Undo](#undo).
@@ -83,6 +84,58 @@ For each command name:
 - `TC_CONFLICT <name> no-path` is Unix-only. Add `export PATH="$HOME/.local/bin:$PATH"` to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`), open a new terminal, start your agent from it, and rerun this module. The rerun still leaves unrelated commands alone.
 - `TC_CONFLICT <name> link` means the destination could not be created. Report the conflict and use the selected absolute path.
 - `TC_INSTALL_FAILED` means selection, installation, verification or the Windows PATH update failed. Stop and report the actual error; do not retry with `sudo`, administrator privileges or another CLI version.
+
+### If the client blocks the installer
+
+This is for a client that refuses to run an installer call at all (for example Claude Code's auto mode, a permission rule or a sandbox declines the tool call), not for `TC_INSTALL_FAILED`, which stops setup as above. Don't retry the call, rephrase it or run it another way. Send the owner this one line and nothing else, then wait for their reply:
+
+> Claude Code blocked installing the TinyCloud CLI (npm package @tinycloud/cli {{CLI_VERSION}}, into ~/.local/share/tinycloud/cli). Reply "Go ahead: install the TinyCloud CLI" and I'll run it once more.
+
+Name Claude Code only when it is your client. Any other client sends the same line starting "Your agent app blocked installing the TinyCloud CLI" instead.
+
+When the owner replies "Go ahead: install the TinyCloud CLI", download the installer again (the blocked call may have been the download) and ask it with `--needs-install` whether it would install anything. It changes nothing and applies the installer's own rules:
+
+- `TC_INSTALL_NEEDED` (exit 0): install the pinned package yourself, exactly where and how the installer would: the same private folder and its `package.json`, the exact version, never global.
+- `TC_INSTALL_NOT_NEEDED <version> <path>` (exit 1): a CLI it keeps is already there, such as a private copy at the pin or newer, or one the operator selected. Skip npm: it would downgrade or replace it.
+- `TC_INSTALL_FAILED` (exit 2), for example an unrelated package or command in the private folder: install nothing, and stop as below.
+
+Then run the downloaded Node installer once more. It selects the install (`TC_SELECTED`, for the private install `node_modules/.bin/tinycloud`), saves it in `agent.env` and links the commands, as on a normal run. Run each block as its own shell call.
+
+**macOS/Linux or a POSIX shell:**
+
+```sh
+mkdir -p "$HOME/.local/share/tinycloud/cli" && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.mjs" https://agents.tinycloud.xyz/install-cli.mjs || exit 1
+node "$HOME/.local/share/tinycloud/install-cli.mjs" --needs-install
+case $? in
+  0) npm install --prefix "$HOME/.local/share/tinycloud/cli" --save-exact @tinycloud/cli@{{CLI_VERSION}} ;;
+  1) ;;
+  *) exit 2 ;;
+esac
+```
+
+In the next call:
+
+```sh
+node "$HOME/.local/share/tinycloud/install-cli.mjs"
+```
+
+**PowerShell (Windows):**
+
+```powershell
+$installer = Join-Path $env:USERPROFILE ".local\share\tinycloud\install-cli.mjs"
+$prefix = Join-Path $env:USERPROFILE ".local\share\tinycloud\cli"
+New-Item -ItemType Directory -Force $prefix | Out-Null
+Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile $installer -ErrorAction Stop
+node $installer --needs-install
+if ($LASTEXITCODE -eq 0) {
+  npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@{{CLI_VERSION}}"
+  if ($LASTEXITCODE -ne 0) { throw "TinyCloud CLI npm install failed." }
+} elseif ($LASTEXITCODE -ne 1) { throw "TinyCloud CLI install check failed; inspect the error above." }
+```
+
+In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects the install.
+
+Then read its output as above. If the owner replies anything else, or either call is blocked or fails, stop and report it to the owner in one line. Don't ask again or retry, and don't use `sudo`, administrator privileges, a global install or another version.
 
 ### Windows PATH and recovery
 

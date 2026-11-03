@@ -7,7 +7,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 ## For the owner
 
 - **What it does:** reuses the TinyCloud CLI from onboarding and installs the `tc-apps` skill only if needed, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
   - **Codex:** before you paste, type `/permissions` and choose "Ask for approval", then approve each step it asks for.
 - **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat your ordinary read/write grants. Otherwise it asks only for missing access and sends the actual OpenKey link. The older narrow catalog fallback uses a manual sign-in code in chat, but its access link completes automatically. The agent runs the commands and finishes the request; you never need a separate terminal.
