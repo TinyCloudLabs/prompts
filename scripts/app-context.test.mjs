@@ -157,6 +157,21 @@ test("an existing app profile for the same owner and host can be reused", () => 
   assert.deepEqual(w.writes, []);
 });
 
+test("going back on an app-scoped profile reports only the app's catalog del as missing", () => {
+  const scoped = profile("tinyapp-notes", [cap("xyz.tinycloud.tinyapps.notes/"), cap("xyz.tinycloud.tinyapps.catalog/", ["get", "list"]), cap("xyz.tinycloud.tinyapps.catalog/notes/", ["put"])]);
+  const w = world([scoped], { selected: "tinyapp-notes" });
+  assert.equal(appContext("/cli", "notes", { env: {}, run: w.run, write: true, remove: true }).status, "ready", "--delete alone never asks for the catalog");
+  const back = appContext("/cli", "notes", { env: {}, run: w.run, removeEntry: true });
+  assert.equal(back.status, "grant-required");
+  assert.equal(back.profile, "tinyapp-notes");
+  assert.deepEqual(back.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/notes/", actions: ["del"], space }]);
+  scoped.session.permissions.push(cap("xyz.tinycloud.tinyapps.catalog/notes/", ["del"]));
+  assert.equal(appContext("/cli", "notes", { env: {}, run: w.run, removeEntry: true }).status, "ready");
+  // Another app's catalog del does not count.
+  assert.deepEqual(missingPermissions(profile("o", [cap("xyz.tinycloud.tinyapps.catalog/notebook/", ["del"])]), space, appPermissions("notes", { removeEntry: true }), now).map((entry) => entry.path), ["xyz.tinycloud.tinyapps.notes/", "xyz.tinycloud.tinyapps.catalog/notes/"]);
+  assert.deepEqual(w.writes, []);
+});
+
 for (const mismatch of ["owner", "host"]) test(`a ${mismatch} mismatch never switches the app account`, () => {
   const other = profile("tinyapp-notes");
   if (mismatch === "owner") other.ownerDid = owner.replace(/a/g, "b");

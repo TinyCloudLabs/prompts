@@ -13,7 +13,7 @@ The generic-store scenarios below use an explicitly chosen custom fitness app, n
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.10 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.6.0` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected one stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
+  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.11 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.6.0` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected one stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -103,7 +103,7 @@ Transcripts are in each client's stock home:
 
 ## Follow-up test: moving records from an earlier version
 
-This test proves the move rule: an app with old records keeps working in the old layout, and its readers switch to the new place only after the script printed success and its receipt exists, never while some records exist only in the old place. Run it on a test account, never on an owner's real records.
+This test proves the move rule: an app with old records keeps working in the old layout, and its readers switch to the new place only after the script printed success and wrote the app's discovery entry (and, on its own computer, the receipt), never while some records exist only in the old place. Run it on a test account, never on an owner's real records.
 
 **Precondition:** the test account's `default` space holds old-layout records for two apps: `fitness` (a catalog record, a `weight` kind record, at least three weights across two months) and `todos` (a catalog record, a `todo` kind record, one open and one done todo), seeded with the earlier skill version or with `kv put` under `xyz.tinycloud.agent-data/`. Keep the full old key list (`kv list --prefix xyz.tinycloud.agent-data/ --all`) for the comparisons. The new `fitness` folder in `applications` is empty. Install the new skill on two clients, `$H1` and `$H2`, sharing one `$SHARED`.
 
@@ -113,10 +113,10 @@ This test proves the move rule: an app with old records keeps working in the old
 | M2 | `$H1` agent | "Move my fitness records." | Verify destination access, reusing onboarding where sufficient and asking only for missing permissions. Tell the owner to pause other writers. Use the selected CLI and explicit `--destination-profile <APP_PROFILE>` for migration. |
 | M3 | owner, own terminal | `sh migrate.sh --dry-run --destination-profile <APP_PROFILE> fitness` | Print the plan without writes; old/new key lists and `<STATE>` are unchanged. `layout.sh fitness` remains `legacy`. |
 | M4 | owner, own terminal | `sh migrate.sh --destination-profile <APP_PROFILE> fitness` | Copy, read back and re-list the source before `Moved and verified`. The destination matches the source, discovery and the verified receipt exist, and the source key list is unchanged. |
-| M5 | owner, then `$H2` agent, new conversation | Copy the receipt to `$H2`'s `<STATE>/migration/`. Ask "What was my weight on <a seeded date>?" | §1a prints `new`; §3 finds the entry. It answers from `applications`, and the answer matches the seeded value. Without the copied receipt, `$H2` stays in the old layout. |
+| M5 | `$H2` agent, new conversation, no receipt on `$H2` | Ask "What was my weight on <a seeded date>?" | §1a prints `new` because the discovery entry exists; §3 finds the entry. It answers from `applications`, and the answer matches the seeded value. |
 | M6 | `$H2` agent | "Log my weight: 80.0 kg today." | Written under `xyz.tinycloud.tinyapps.fitness/` only. The old place is unchanged. |
 | M7 | owner, own terminal | Re-run `sh migrate.sh --destination-profile <APP_PROFILE> fitness` | Refuse with `NOT SWITCHED` when M6 introduced a destination-only key; change nothing. |
-| M8 | `$H1` agent | Remove the receipt file, then "Log my weight: 79.5 kg today." | `layout.sh fitness` prints `legacy` again (a successful script run without its receipt is not a switch), and the record goes to the old layout. Restore the receipt afterwards. |
+| M8 | `$H1` agent | Remove the receipt file; run `layout.sh fitness`. Then delete `xyz.tinycloud.tinyapps.catalog/fitness/entry` and "Log my weight: 79.5 kg today." | With only the receipt removed it still prints `new` (the entry switches the app). With the entry deleted too, it prints `legacy` again, and the record goes to the old layout. Restore the entry (create-only) and the receipt afterwards. |
 | M9 | `$H1` agent | "Add a todo: renew my passport." with no old Todos records | Start the new layout, reuse sufficient access, and request only missing permissions if needed. |
 
 **Refusal cases** (each on a fresh copy of the precondition, for `fitness` or `todos`): the script must print `NOT SWITCHED`, write no discovery entry and no receipt, and leave the old key list unchanged.
@@ -126,7 +126,7 @@ This test proves the move rule: an app with old records keeps working in the old
 - The app's approval is missing or expired.
 
 **Pass:**
-- At every step, an app with old records and no receipt reads and writes only the old layout, and no new grant or profile appears.
+- At every step, an app with old records, no receipt and no discovery entry reads and writes only the old layout, and no new grant or profile appears.
 - No record exists only in the old place for an app that has switched.
 - The script never deletes: the old key list is the same before and after every step.
 - Every write the script makes is a create (`--if-none-match '*'`): grep the transcript, and the CLI's calls, for `kv put` without it.
