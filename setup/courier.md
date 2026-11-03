@@ -97,13 +97,13 @@ ERR=$(mktemp) || exit 1
 { { "$TC" courier join "$INVITATION_URL" --consent --wait 60; echo "$?" > "$ERR.rc"; } 2>&1 1>&3 | tee "$ERR" >&2; } 3>&1
 RC=$(cat "$ERR.rc")
 if [ "$RC" = 0 ]; then echo "NEXT: joined; continue."
-elif [ "$RC" = 1 ] && grep -q '\[invite-pending\]' "$ERR"; then echo "NEXT: the issuer has not finished pairing yet; run this block again now, in the same turn."
+elif [ "$RC" = 1 ] && grep -q '\[invite-pending\]' "$ERR"; then echo "NEXT: the issuer has not finished pairing yet; run this block again to continue joining."
 else echo "JOIN_EXIT $RC"; fi
 rm -f "$ERR" "$ERR.rc"
 exit "$RC"
 ```
 
-Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. It waits at most a minute for the issuer, so the call fits a tool time limit (Claude Code stops foreground calls after 2 minutes). If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: in the same turn and without asking the owner, run the same block again, at most 10 times in a row; then stop and report the result. `JOIN_EXIT <code>` means: read stderr and go by the rest of this paragraph. If the command reports missing Courier setup, complete [Set up Courier once](#set-up-courier-once), then retry this exact invitation with the same `COURIER_HOME`. If invitation verification fails, stop and report the result; do not initialize again or create a replacement session. Continue with the returned session ID and peer handle.
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. It waits at most a minute for the issuer, so the call fits a tool time limit (Claude Code stops foreground calls after 2 minutes). If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: without asking the owner, run the same block again, at most 10 times in a row; then stop and report the result. `JOIN_EXIT <code>` means: read stderr and go by the rest of this paragraph. If the command reports missing Courier setup, complete [Set up Courier once](#set-up-courier-once), then retry this exact invitation with the same `COURIER_HOME`. If invitation verification fails, stop and report the result; do not initialize again or create a replacement session. Continue with the returned session ID and peer handle.
 
 ## Discover the owner's chats
 
@@ -246,13 +246,13 @@ INVITE=$(node -e 'for (const line of require("fs").readFileSync(process.argv[1],
 if [ "$RC" = 0 ]; then echo "NEXT: paired; continue."
 elif [ "$RC" = 1 ] && [ -n "$INVITE" ] && grep -q '\[invite-pending\]' "$OUT.err"; then
   echo "INVITATION_ID=${INVITE%% *}"
-  echo "NEXT: before anything else, send the owner this invitation link, on its own line: ${INVITE#* } Only after that message is sent, run the serve block below, in the same turn."
+  echo "NEXT: before anything else, send the owner this invitation link, on its own line: ${INVITE#* } Only after that message is sent, run the serve block below."
 else echo "INVITE_EXIT $RC"; fi
 rm -f "$OUT" "$OUT.rc" "$OUT.err"
 exit "$RC"
 ```
 
-Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. With `--wait 1` it returns within seconds: its first JSON line has `status: invitation`, and it then exits 1 with `[invite-pending]` on stderr. That first `[invite-pending]` is expected: the invitation is kept. Give the owner its `link` at once, exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL. Only after that message is sent, in the same turn, keep the issuer serving as below. The block's last lines say the same: `INVITATION_ID=<id>`, then a `NEXT:` line with the link; do what it says. `INVITE_EXIT <code>` means: go by the list under "Keep the issuer serving".
+Include `--peer "$PEER"` if the selected session returned a peer. Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. With `--wait 1` it returns within seconds: its first JSON line has `status: invitation`, and it then exits 1 with `[invite-pending]` on stderr. That first `[invite-pending]` is expected: the invitation is kept. Give the owner its `link`, exactly, including the fragment, and keep its `invitationId` as `INVITATION_ID`. Do not infer authority from a page label or construct a new URL. Only after that message is sent, keep the issuer serving as below. The block's last lines say the same: `INVITATION_ID=<id>`, then a `NEXT:` line with the link; do what it says. `INVITE_EXIT <code>` means: go by the list under "Keep the issuer serving".
 
 ## Keep the issuer serving
 
@@ -263,7 +263,7 @@ ERR=$(mktemp) || exit 1
 { { "$TC" courier invite serve "$INVITATION_ID" --wait 60; echo "$?" > "$ERR.rc"; } 2>&1 1>&3 | tee "$ERR" >&2; } 3>&1
 RC=$(cat "$ERR.rc")
 if [ "$RC" = 0 ]; then echo "NEXT: paired; continue."
-elif [ "$RC" = 1 ] && grep -q '\[invite-pending\]' "$ERR"; then echo "NEXT: no one has joined yet; run this block again now, in the same turn."
+elif [ "$RC" = 1 ] && grep -q '\[invite-pending\]' "$ERR"; then echo "NEXT: no one has joined yet; run this block again to continue serving the invitation."
 else echo "INVITE_EXIT $RC"; fi
 rm -f "$ERR" "$ERR.rc"
 exit "$RC"
@@ -272,7 +272,7 @@ exit "$RC"
 Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says; `INVITE_EXIT <code>` means: go by the list below. The block doesn't count runs: keep the 10-run cap below yourself. Go by the result of each call:
 
 - **Exit 0, `"status": "paired"` on stdout:** pairing is complete.
-- **Exit 1, `[invite-pending]` on stderr** ("No claim received"): the recipient hasn't joined yet; the same invitation and any claim are kept. In the same turn and without asking the owner, run the `invite serve` block again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count. Then stop running it: don't issue a new invitation or send another link. The same invitation stays open until its `expiresAt`, so run `invite serve` again when the owner asks.
+- **Exit 1, `[invite-pending]` on stderr** ("No claim received"): the recipient hasn't joined yet; the same invitation and any claim are kept. Without asking the owner, run the `invite serve` block again. This is the normal wait, not a failure. Repeat until it prints `paired`, at most 10 `invite serve` runs in a row (about 10 minutes); the `invite` call's own `[invite-pending]` doesn't count. Then stop running it: don't issue a new invitation or send another link. The same invitation stays open until its `expiresAt`, so run `invite serve` again when the owner asks.
 - **Exit 1, `[invite-expired]`:** the invitation passed its `expiresAt`; no session was created. Don't issue a new invitation unless the owner asks for one.
 - **The call stopped first** (a tool timeout, a restart): run the `invite serve` command again; it resumes the same invitation.
 - **Any other error:** stop and report the result.
