@@ -110,17 +110,33 @@ test("the CLI table matches the 1.6.2 approval exits, including one-line error r
   assert.doesNotMatch(waitAgain, /exit 6/i);
 });
 
-test("feed auth request approval documents its blocking, no-timeout process requirement", () => {
-  for (const [source, url] of [
-    ["skills/tinycloud-feed/SKILL.md", "skills/feed/SKILL.md"],
-    ["skills/tinycloud-feed/creating-a-post.md", "feed"],
-  ]) {
-    for (const text of [read(source), served(url)]) {
-      assert.match(text, /This command does not return a pending-link result/);
-      assert.match(text, /persistent shell session that streams stderr and stays alive while you reply/);
-      assert.match(text, /If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow/);
-    }
+test("blocking auth request guidance covers every authored surface that invokes it", () => {
+  const surfaces = [
+    ["feed skill", read("skills/tinycloud-feed/SKILL.md")],
+    ["feed post guide", read("skills/tinycloud-feed/creating-a-post.md")],
+    ["served feed skill", served("skills/feed/SKILL.md")],
+    ["served feed guide", served("feed")],
+    ["onboarding", read("setup/onboarding.md")],
+    ["served onboarding", served("onboarding.md")],
+    ["tc-apps", read("skills/tc-apps/SKILL.md")],
+    ["served tc-apps", served("skills/apps/SKILL.md")],
+    ["CLI skill", served("skills/cli/SKILL.md")],
+    ["CLI auth reference", served("skills/cli/AUTH.md")],
+  ];
+  for (const [name, text] of surfaces) {
+    assert.match(text, /auth request/);
+    assert.match(text, /has no `--timeout`/);
+    assert.match(text, /blocks until the approval is resolved/);
+    assert.match(text, /pending-link result/);
+    assert.match(text, /persistent shell session that streams stderr and stays alive while you reply/);
+    assert.match(text, /If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow/);
   }
+});
+
+test("onboarding describes the status lines emitted for exit 3", () => {
+  const text = read("setup/onboarding.md");
+  assert.match(text, /then the block prints its final status lines/);
+  assert.doesNotMatch(text, /then the block prints one last line/);
 });
 
 test("the announcement tells the owner what to do when an app link has no code", () => {

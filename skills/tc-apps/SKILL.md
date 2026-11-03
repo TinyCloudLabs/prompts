@@ -199,6 +199,7 @@ Skip this section when §3 returns `ready`. On a signed-in selected profile, req
 TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' auth request --cap 'tinycloud.kv:applications:xyz.tinycloud.tinyapps.<APP>/:get,list,put' --grant --no-popup --expiry 30d
 ```
+This link-based `auth request --grant` has no `--timeout` and blocks until the approval is resolved; it does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply; send the complete short URL on its own line as soon as it appears. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption. Read the final output when the owner responds and follow the shared exit table.
 
 For `sign-in-required`, use the returned profile name. Create it with `init --name '<APP_PROFILE>' --key-only` only when `context` reports `PROFILE_NOT_FOUND`. Save `$STATE/tinyapp-<APP>.json` with this structure:
 
