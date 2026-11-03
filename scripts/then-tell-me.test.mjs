@@ -34,14 +34,15 @@ test("the owner line is in every place it must be, and the old line is nowhere i
   const courier = text("courier");
   for (const line of [
     `> Open this link and approve the one-time Courier permission, then tell me.`,
-    `"That link expired. Please open this new one and approve, then tell me."`,
     `"That didn't finish on my side. Please open this link and approve, then tell me."`,
-    `Then please open this new link and approve, then tell me."`,
+    `Did you decline that request? If not, I'll send you a fresh link.`,
+    `ask the decline question from the shared table`,
   ]) assert.ok(courier.includes(line), line);
   assert.ok(text("onboarding.md").includes("There's no code to send back: tell your agent when you've approved."));
+  const forbidden = new RegExp(["carry", "on", "as", "soon", "as", "you", "do"].join("\\s+") + "|" + ["nothing", "to", "tell", "your", "agent"].join("\\s+"), "i");
   for (const file of served()) {
     const body = readFileSync(join(site, file), "utf8");
-    assert.doesNotMatch(body, /carry on as soon as you do|as soon as you do\b|nothing to tell your agent/i, file);
+    assert.doesNotMatch(body, forbidden, file);
   }
 });
 
@@ -92,22 +93,11 @@ test("the built onboarding block ends with the done line when the CLI exits 0", 
   assert.equal(result.stdout, `{"onboarded":true}\nNEXT: onboarding is done; continue with the owner's goal.\n`);
 });
 
-test("the built onboarding block, when a resumed approval exits 6, says run it again once with no new link, and prints no ONBOARD_EXIT", () => {
+test("the built onboarding block prints only ONBOARD_EXIT 6; CLI network handling has no NEXT line", () => {
   const result = runBlock(`echo '{"error":{"code":"NETWORK_ERROR"}}' >&2; exit 6`);
   assert.equal(result.status, 6);
-  const next = result.stdout.trimEnd().split("\n").at(-1);
-  assert.equal(next, "NEXT: exit 6 is a network error; the approval request is saved and the link you already sent still works. Run this block again once, with no new link; do not tell the owner it failed. If it exits 6 again, tell the owner \"I can't set up TinyCloud right now. Please ask me again later.\", then the error code from stderr on its own line, and stop.");
-  assert.doesNotMatch(result.stdout, /ONBOARD_EXIT/);
-  assert.doesNotMatch(next, /send the owner this link|this is a new link/);
-});
-
-test("the Next: rule carries both halves once per guide, and only /onboarding has an exit 6 branch (Courier returns 0, 1, 2 or 8)", () => {
-  for (const guide of ["onboarding.md", "courier"]) {
-    const body = text(guide);
-    assert.equal(count(body, NEXT_RULE + " Exit 6 prints no `Next:` line: it is a network error, so run the same command again once"), 1, guide);
-    assert.equal(body.includes("- **Exit 6 (the block's `NEXT:` line says so):**"), guide === "onboarding.md", guide);
-  }
-  assert.doesNotMatch(text("onboarding.md"), /exits within a few seconds/);
+  assert.equal(result.stdout, "ONBOARD_EXIT 6\n");
+  assert.doesNotMatch(result.stdout, /NEXT:|send the owner this link|this is a new link/);
 });
 
 test("the Next: rule is scoped to approval commands; invitations follow their own steps", () => {
@@ -116,4 +106,10 @@ test("the Next: rule is scoped to approval commands; invitations follow their ow
     assert.equal(count(body, "For an approval command (`onboard`, `auth login`, `auth grant`, `courier init`): if the command's stderr"), 1, guide);
     assert.equal(count(body, "For invitations, follow the invitation steps below, not the `Next:` lines."), 1, guide);
   }
+});
+
+test("CLI exit 6 is shared in the onboarding table; Courier 0.5.2 has no exit-6 branch", () => {
+  assert.match(text("onboarding.md"), /\| 6 \| `NETWORK_ERROR`\./);
+  const courier = text("courier");
+  assert.doesNotMatch(courier, /\*\*Exit 6|rc === "6"|rc === 6/);
 });

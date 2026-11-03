@@ -72,14 +72,21 @@ test("a preview's skills send agents to the preview, not production, under match
   }
 });
 
+// Shared blocks are expanded from standard/blocks.md and expanded skills are listed as changed.
 test("a production build serves the repository's skills byte for byte, pointing at production", () => {
   assert.ok(readFileSync(join(production, "skills/apps.md"), "utf8").includes(`${SITE}/onboarding`));
   assert.deepEqual(servedSkillFiles(production).filter((p) => readFileSync(join(production, p), "utf8").includes(PREVIEW)), []);
   const index = assertIntegrity(production);
+  const parts = readFileSync(join(root, "standard/blocks.md"), "utf8").split(/^<!-- std:([a-z][a-z0-9-]*) -->\n/m).slice(1);
+  const blocks = new Map();
+  for (let i = 0; i < parts.length; i += 2) blocks.set(parts[i], parts[i + 1].trim());
   for (const [short, dir] of [["apps", "tc-apps"], ["feed", "tinycloud-feed"], ["publish", "tc-publish"], ["secrets", "tc-secrets"]]) {
     const skill = index.skills.find((s) => s.short === short);
-    assert.equal(skill.changed, undefined, short);
-    for (const file of skill.files) assert.ok(readFileSync(join(production, file.url)).equals(readFileSync(join(root, "skills", dir, file.path))), file.url);
+    const sources = skill.files.map((file) => [file, readFileSync(join(root, "skills", dir, file.path))]);
+    const expanded = (body) => body.toString("utf8").replace(/^\{\{std:([a-z][a-z0-9-]*)\}\}$/gm, (_, name) => blocks.get(name));
+    assert.deepEqual(skill.changed, sources.filter(([, body]) => expanded(body) !== body.toString("utf8")).map(([file]) => file.path).sort(), short);
+    assert.ok(skill.changed.includes("SKILL.md"), short);
+    for (const [file, body] of sources) assert.ok(readFileSync(join(production, file.url)).equals(Buffer.from(expanded(body))), file.url);
   }
 });
 

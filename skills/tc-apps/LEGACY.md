@@ -99,11 +99,11 @@ printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":
 Its first line is `Approve on your phone: <link> (code <code>)`; the CLI needs a few seconds to print it. Keep the command running until it exits. How depends on your client:
 - **Claude Code:** run the block with `run_in_background: true`. Read the output file it names; if the line isn't there yet, run `sleep 2` and read again. Send the message below and end your turn: Claude Code wakes you when the command exits. Then read the output file again.
 - **Codex:** pass `yield_time_ms: 5000`; it returns with a session id. If the line isn't there yet, poll once with `write_stdin`, empty `chars`. Send the message below as an update, without ending your turn, then call `write_stdin` with that session id, empty `chars` and `yield_time_ms: 300000`. Call it again each time it returns before the command exits.
-- **OpenCode:** you see the output only when the command exits, so first tell the owner: "Open the OpenKey link that appears below and approve the request." Then run the block with `timeout: 660000`.
+- **OpenCode:** you see the output only when the command exits, so first tell the owner: "Open the OpenKey link that appears below and approve; then paste the code it shows here." Then run the block with `timeout: 660000`.
 
 The message, with the link and code from that line:
 
-> Open <link> and approve the request on OpenKey. It should show the code <code>. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days. Approve it, then tell me.
+> It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days; OpenKey should show the code <code>. Open this link and approve, then paste the code here.
 
 When the command exits, its output ends with JSON:
 - `"authenticated": true` and `"declined": []` → run §3 again, then carry on with the request.

@@ -165,3 +165,9 @@ tinycloud --profile '<OWNER_PROFILE>' sql execute 'DELETE FROM feed_agents WHERE
 The token stays reserved for that agent; connect a different agent under a new token.
 
 The installed reference copy of this section is [creating-a-post.md](creating-a-post.md).
+
+## 9. Exit codes and owner lines
+
+Owner lines here are the shared ones, with `<what>` = "your Home feed".
+
+{{std:errors}}

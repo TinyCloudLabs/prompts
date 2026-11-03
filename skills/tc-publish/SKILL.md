@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.9"
+  version: "0.6.10"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/publish.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -564,6 +564,12 @@ mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -ty
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
       "$STATE/context.json" "$STATE/context.err" "$STATE/share-publishing.json"
 ```
+
+## Exit codes and owner lines
+
+Publishing's sign-in is one of the exceptions below: branch on the codes in this skill's tables. Owner lines are the shared ones, with `<what>` = "publishing".
+
+{{std:errors}}
 
 ## Errors — `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text
 

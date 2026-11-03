@@ -224,6 +224,12 @@ Verify the selected absolute path from `TC_SELECTED`: `"<TC_BIN>" --version` in 
 
 Return to the exact recorded app-guide heading and continue there without another user prompt.
 
+## Exit codes and owner lines
+
+Every guide and skill on this site carries this same table, three owner lines and the decline question. The installer's `TC_*` lines above are its own.
+
+{{std:errors}}
+
 ## Undo
 
 Delete only the links or `.cmd` launchers reported by `TC_LINKED`, after checking they still target the selected executable. Remove the private installation only if this module installed it, its downloaded installer files, and the `tinycloud-cli` skill folder if no longer wanted. Keep owner-selected or pre-existing global installations. On Windows, remove `%USERPROFILE%\.local\bin` from **user PATH** only if no other tools use it; never replace the whole PATH. Removing these files does not sign out or delete stored data.
