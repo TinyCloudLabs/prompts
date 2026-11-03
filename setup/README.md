@@ -28,14 +28,14 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 - **What it does:** your agent answers questions about your TinyChat meetings: recaps, follow-ups and what was said, with references to the transcript.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/chat with curl and follow it, including running its installer. How did my last meeting go?`
-- **You approve:** after [/onboarding](onboarding.md), at most one OpenKey link that lets your agent read your TinyChat meetings for 30 days; send back the code it shows.
+- **You approve:** after [/onboarding](onboarding.md), at most one OpenKey link that lets your agent read your TinyChat meetings for 30 days. TinyChat also needs the code OpenKey shows, pasted back to your agent.
 - **Undo:** delete the `tinychat-retrieval` skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. [§6 of the page](../apps/tinychat/setup.md#6-return-hand-off-update-or-remove) has both.
 
 ## Publish and share: [/publish](publish.md)
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link that anyone who has it can open. It asks you before it makes one.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a link.`
-- **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days; send back the code it shows.
+- **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days. Publishing also needs the code OpenKey shows, pasted back to your agent.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Share an artifact: [/share](share.md)

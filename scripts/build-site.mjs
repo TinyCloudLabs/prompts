@@ -214,8 +214,16 @@ const SKILLS = [
   },
 ];
 
-// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line.
+// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line, which
+// fetches `fetch` when the guide's Markdown lives at another URL than its page (/onboarding.md).
 const ABILITIES = [
+  {
+    title: "Set up TinyCloud",
+    url: "onboarding",
+    fetch: "onboarding.md",
+    text: "Your agent sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do.",
+    task: "Set me up with TinyCloud.",
+  },
   {
     title: "Personal records",
     url: "apps",
@@ -276,6 +284,7 @@ const url = (p) => `${BASE}/${p}`;
 // Every owner prompt names the guide to fetch raw and the installer it runs: Claude Code's auto mode
 // runs a downloaded installer when the owner's own prompt asked for it, and may refuse it otherwise.
 const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it, including running its installer. ${task}`;
+const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task);
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -672,12 +681,13 @@ const llms = [
   "",
   "## Abilities",
   "",
-  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${ownerPrompt(a.url, a.task)}"`),
+  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${abilityPrompt(a)}"`),
   "",
   "## Guides",
   "",
   `- [${page("setup").title}](${url("setup")}): ${page("setup").desc}`,
-  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}`),
+  // /onboarding is where setup starts, so its guide entry carries the set-up example too.
+  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}${p.url === "onboarding" ? ` Example prompt: "${abilityPrompt(ABILITIES.find((a) => a.url === "onboarding"))}"` : ""}`),
   "",
   "## Skills",
   "",
@@ -800,7 +810,7 @@ ${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE).length))}
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
-        <p>Try: <code>${esc(ownerPrompt(a.url, a.task))}</code></p>
+        <p>Try: <code>${esc(abilityPrompt(a))}</code></p>
       </li>`;
 const desc = "Paste one line into your AI agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
 write(

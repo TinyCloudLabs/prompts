@@ -121,13 +121,14 @@ test("the owner-facing HTML pages leave the read-raw line out", () => {
 const OWNER_PROMPTS = {
   setup: ["apps", "feed", "chat", "publish", "share", "secrets", "courier"],
   apps: ["apps"], chat: ["chat"], publish: ["publish"], share: ["share"], secrets: ["secrets"],
-  courier: ["courier"], cli: ["cli"], openkey: ["openkey"],
+  courier: ["courier"], cli: ["cli"], openkey: ["openkey"], owner: ["onboarding.md"],
   "onboarding.md": ["onboarding.md"], "connect.md": ["connect.md"],
   "skills/apps/QUICKSTART.md": ["apps"],
   "onboarding.html": ["onboarding.md"], "connect.html": ["connect.md"],
-  "index.html": ["apps", "feed", "publish", "secrets", "chat"],
-  // The five front-page examples, then /courier's guide description, which is its prompt.
-  "llms.txt": ["apps", "feed", "publish", "secrets", "chat", "courier"],
+  "index.html": ["onboarding.md", "apps", "feed", "publish", "secrets", "chat"],
+  // The six front-page examples, /onboarding's guide entry (the set-up example again), then /courier's
+  // guide description, which is its prompt.
+  "llms.txt": ["onboarding.md", "apps", "feed", "publish", "secrets", "chat", "onboarding.md", "courier"],
   "prompt.txt": ["chat"],
 };
 const ownerPrompts = (text) => [
@@ -145,6 +146,26 @@ test("every owner prompt on the served site fetches its guide with curl and name
       assert.deepEqual(prompts.map((prompt) => prompt.split(" ")[1]), guides.map((guide) => `${from}/${guide}`), `${base}/${file}`);
       for (const prompt of prompts) assert.match(prompt, /^Fetch \S+ with curl and follow it, including running its installer\. \S/, `${base}/${file}: ${prompt}`);
     }
+  }
+});
+
+// The set-up example is /onboarding's own prompt, word for word: the front page's first card, llms.txt's
+// first ability and its /onboarding guide entry.
+const SET_UP = (base) => `Fetch ${base}/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.`;
+test("the front page and llms.txt open with a set-up example, /onboarding's own prompt", () => {
+  assert.equal(SET_UP(SITE), "Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.");
+  for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
+    const prompt = SET_UP(base);
+    assert.ok(readFileSync(join(site, "onboarding.md"), "utf8").includes(`\n> ${prompt}\n`), `${base}/onboarding.md`);
+    const index = readFileSync(join(site, "index.html"), "utf8");
+    const card = index.split('<ul class="abilities">\n')[1].split("</li>")[0];
+    assert.match(card, /<h3><a href="\/onboarding">Set up TinyCloud<\/a><\/h3>/, base);
+    assert.ok(card.includes(`<p>Try: <code>${prompt}</code></p>`), `${base}/index.html: ${card}`);
+    const llms = readFileSync(join(site, "llms.txt"), "utf8").split("\n");
+    const firstAbility = llms[llms.indexOf("## Abilities") + 2];
+    assert.ok(firstAbility.startsWith(`- [Set up TinyCloud](${base}/onboarding): `) && firstAbility.endsWith(` Example prompt: "${prompt}"`), `${base}/llms.txt: ${firstAbility}`);
+    const guide = llms.find((line) => line.startsWith("- [") && line.includes(`](${base}/onboarding): `) && llms.indexOf(line) > llms.indexOf("## Guides"));
+    assert.ok(guide?.endsWith(` Example prompt: "${prompt}"`), `${base}/llms.txt: ${guide}`);
   }
 });
 
