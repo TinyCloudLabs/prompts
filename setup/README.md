@@ -21,7 +21,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 - **What it does:** you connect your agent to your TinyCloud Home feed once; it then posts the cards you asked for there, and reads your answers.
 - **Paste into your agent:** `Post the updates I ask for to my TinyCloud Home feed. Follow: https://agents.tinycloud.xyz/feed`
-- **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your Home feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), stable `1.5.2`.
+- **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your Home feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), `1.6.0`.
 - **Undo:** ask your agent to disconnect it: that revokes the agent's grant, and can also remove its cards from Home ([§8 of the page](https://agents.tinycloud.xyz/feed#8-disconnect)).
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
@@ -77,4 +77,4 @@ node "$HOME/.local/share/tinycloud/install.js" <skill> --agent <client>
 
 `<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
 
-`mcp` is the skill that goes with the TinyCloud MCP server (`@tinycloud/mcp` 0.8.5), for agents that already run that server. Agents that support remote MCP connect to the hosted server at `https://mcp.tinycloud.xyz/mcp` instead and sign in with OpenKey; [`/connect`](https://agents.tinycloud.xyz/connect) has the steps. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).
+`mcp` is the skill that goes with the TinyCloud MCP server (`@tinycloud/mcp` 0.8.6), for agents that already run that server. Agents that support remote MCP connect to the hosted server at `https://mcp.tinycloud.xyz/mcp` instead and sign in with OpenKey; [`/connect`](https://agents.tinycloud.xyz/connect) has the steps. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).

@@ -81,20 +81,45 @@ test("user PATH append preserves long raw values and is idempotent across Window
 });
 
 test("automatic reuse needs the pinned release and never downgrades a newer one", () => {
+  assert.equal(CLI_VERSION, "1.6.0");
   assert.equal(compatible("1.5.0-beta.23"), false);
-  assert.equal(compatible("1.5.0"), false);
-  assert.equal(compatible("1.5.1"), false);
-  assert.equal(compatible("1.5.2-beta.4"), false);
+  assert.equal(compatible("1.5.2"), false);
+  assert.equal(compatible("1.6.0-beta.1"), false);
+  assert.equal(compatible("1.6.0-rc.0"), false);
   assert.equal(compatible(CLI_VERSION), true);
-  assert.equal(compatible("1.5.3-beta.1"), true);
-  assert.equal(compatible("1.6.0"), true);
+  assert.equal(compatible("1.6.1-beta.0"), true);
+  assert.equal(compatible("1.6.1"), true);
+  assert.equal(compatible("1.7.0"), true);
   assert.equal(compatible("2.0.0"), true);
   assert.equal(compatible("not-a-cli-version"), false);
 });
 
-test("an older private CLI is upgraded in place to the pin and selected as tinycloud", { skip: windows }, () => {
+test("version order follows SemVer prerelease precedence", () => {
+  assert.equal(compatible("1.5.2-beta.4", "1.5.2"), false);
+  assert.equal(compatible("1.5.2", "1.5.2"), true);
+  assert.equal(compatible("1.5.3-beta.1", "1.5.2"), true);
+  assert.equal(compatible("1.5.3-beta.2", "1.5.3-beta.10"), false);
+  assert.equal(compatible("1.5.3-beta", "1.5.3-beta.0"), false);
+  assert.equal(compatible("1.5.3-beta.0.1", "1.5.3-beta.0"), true);
+  assert.equal(compatible("1.5.3-beta.x", "1.5.3-beta.9"), true);
+  assert.equal(compatible("1.5.10", "1.5.9"), true);
+});
+
+test("a PATH CLI at the previous stable 1.5.2 is not reused: the private copy gets the pin", { skip: windows }, () => {
   const dir = home();
-  const bin = privateCli(dir, "1.5.1");
+  const global = join(dir, "global");
+  const target = join(global, "lib/node_modules/@tinycloud/cli/cli.js");
+  executable(target, "1.5.2");
+  mkdirSync(join(global, "bin"), { recursive: true });
+  symlinkSync(target, join(global, "bin/tinycloud"));
+  const selected = installCli({ env: { ...envFor(dir), PATH: `${join(global, "bin")}:${fakeNpm(dir)}` }, log: () => {} });
+  assert.deepEqual(selected, { bin: join(privatePrefix(dir), "node_modules/.bin/tinycloud"), version: CLI_VERSION, source: "installed" });
+  assertPrivateOnly(dir);
+});
+
+for (const old of ["1.5.1", "1.5.2"]) test(`an older private CLI (${old}) is upgraded in place to the pin and selected as tinycloud`, { skip: windows }, () => {
+  const dir = home();
+  const bin = privateCli(dir, old);
   const log = [];
   const selected = installCli({ env: { ...envFor(dir), PATH: fakeNpm(dir) }, log: (line) => log.push(line) });
   assert.deepEqual(selected, { bin, version: CLI_VERSION, source: "installed" });

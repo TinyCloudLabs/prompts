@@ -8,21 +8,27 @@ import { after, test } from "node:test";
 // TC-2323: since OpenKey #407, a request that expired before it was approved gets 410 expired_request,
 // and CLI 1.5.1 exits 3 (APPROVAL_REQUEST_EXPIRED) and drops it. The guides send the new link on exit 3,
 // cap exit-8 retries at three, and never log out or edit the CLI's files to get past an expired link.
+// TC-2238: /onboarding runs `onboard --timeout 60s` (js-sdk #822), where exit 8 with a `pending` object is
+// the normal wait and an expired link can end as exit 3 once more before the next run makes a new one.
 const base = mkdtempSync(join("/var/tmp", "TC-2323."));
 for (const key of ["HOME", "TC_HOME"]) process.env[key] = base;
 after(() => rmSync(base, { recursive: true, force: true }));
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
-const exit8 = guide.split("- **Exit 8:**")[1]?.split("\n- ")[0];
+const exit8 = guide.split("- **Exit 8 without a `pending` object:**")[1]?.split("\n- ")[0];
 const expired = guide.split("- **`APPROVAL_REQUEST_EXPIRED` (exit 3):**")[1]?.split("\n- ")[0];
 
-test("onboarding caps exit 8 at three tries, then stops; an expired link is exit 3 and gets a new link", () => {
-  assert.ok(exit8 && expired, "the onboarding guide must handle exit 8 and exit 3");
-  assert.match(exit8, /at most three times in a row\. If it still exits 8, stop and report it to the owner; don't retry\./);
+test("onboarding caps exit 8 without a pending link at three tries and never logs out", () => {
+  assert.ok(exit8, "the onboarding guide must handle exit 8 without a pending object");
+  assert.match(exit8, /at most three times in a row\. If it still fails, stop and report it to the owner; don't retry\./);
   assert.match(exit8, /Never edit or delete the CLI's files yourself\./);
-  assert.match(expired, /Run `"\$TC" onboard` again and send the new link\./);
-  assert.doesNotMatch(guide, /auth logout`? \(|HTTP 400|approval-pending/, "no logout or file way-out for an expired link");
+  assert.doesNotMatch(guide, /"\$TC" auth logout|auth logout`? \(|HTTP 400|approval-pending/, "no logout or file way-out for an expired link");
+});
+
+test("onboarding reruns an expired link, which can end as exit 3 once more, then sends the new one", () => {
+  assert.ok(expired, "the onboarding guide must handle APPROVAL_REQUEST_EXPIRED");
+  assert.match(expired, /Run the same command again; it can end this way once more before it makes a new link\. Send the new link\./);
 });
 
 const helper = (code, message) => {
