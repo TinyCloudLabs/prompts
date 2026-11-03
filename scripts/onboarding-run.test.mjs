@@ -60,7 +60,7 @@ test("exit 8 with a pending link: send each new link at once, rerun, never resen
 test("the owner sees the same words as before the loop", () => {
   for (const line of [
     "> I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.",
-    '"Open this link and approve; tell me when you\'re done."',
+    '"Open this link and approve. I\'ll carry on as soon as you do."',
     'this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud."',
     "There's no code to send back: tell your agent when you've approved.",
   ]) once(guide, line);
@@ -180,8 +180,8 @@ test("the real CLI ends an expired link as exit 3 APPROVAL_REQUEST_EXPIRED, and 
 // Clarissa's cell (TC-2238): an agent ended its turn after sending a link and reran only after the owner's "done",
 // and piped the run through `tail`, losing `"onboarded": true`. The rerun is in the same paragraph as the owner line,
 // and the block says not to filter its output; on the source and the served page.
-const OWNER_LINE = '"Open this link and approve; tell me when you\'re done."';
-const SAME_TURN = 'Then, in the same turn and without waiting for a reply, run the block again: the owner\'s "done" is not needed, the command itself sees the approval.';
+const OWNER_LINE = '"Open this link and approve. I\'ll carry on as soon as you do."';
+const SAME_TURN = 'Then, in the same turn and without waiting for a reply, run the block again: the owner\'s reply is not needed, the command itself sees the approval.';
 const NO_FILTER = "Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output.";
 test("the same-turn rerun follows the owner line in its paragraph, and the run's output is read unfiltered", () => {
   for (const file of ["setup/onboarding.md", "_site/onboarding.md"]) {
@@ -191,6 +191,8 @@ test("the same-turn rerun follows the owner line in its paragraph, and the run's
     const paragraphs = step.split("\n\n").filter((paragraph) => paragraph.includes(OWNER_LINE));
     assert.equal(paragraphs.length, 1, file);
     assert.ok(paragraphs[0].includes(`followed by: ${OWNER_LINE} ${SAME_TURN}`), file);
+    // Sam's approved wording (02:41:54Z via Holden): no owner line asks the owner to say they're done.
+    assert.doesNotMatch(text, /tell me when you're done|says they're done/, file);
     const block = step.indexOf('exit "$RC"\n```');
     assert.ok(block > 0, file);
     assert.ok(step.slice(block).split("\n\n")[1].startsWith(NO_FILTER), `${file}: the no-filter line follows the block`);
