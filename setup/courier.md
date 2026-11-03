@@ -142,6 +142,7 @@ mkdir -p -m 700 "$COURIER_HOME"
 ```
 
 Send the owner that printed line exactly as printed, copied from the output: never retype, shorten or edit any part of it. Send it only to the owner, privately, in your reply, with this one line in the same message, then end your turn; run step 2 when the owner next writes to you:
+
 Use the onboarding guide's owner line for its links; this line is only for the Courier approval.
 
 > Open this link and approve the one-time Courier permission, then tell me.
