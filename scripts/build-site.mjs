@@ -242,9 +242,9 @@ const SKILLS = [
   },
   {
     short: "mcp",
-    version: "0.8.6",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.8.6.tgz",
-    integrity: "sha512-yhmfXbAA/BFtNPlIyhKzN6TQxmXNbYx79lybf+sEblnO+q6syvgO7O1ZDD9jol060AE67E8cQs0dL0Tp/9Cefw==",
+    version: "0.9.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.9.0.tgz",
+    integrity: "sha512-TvgwJ80z1w4VSXyOZ3PthkdxiQHxGszrMjK8EJrgUykcf75zUf+L5XRcLXbMam8aR+L9jNlG2bSlzCiGvwaJrg==",
     dir: "package/skills/tinycloud-delegated-secrets",
   },
 ];
