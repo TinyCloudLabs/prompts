@@ -106,24 +106,38 @@ if (args[0] === "profile" && args[1] === "show") {
 import { readdirSync } from "node:fs";
 // ---- migrate.sh: owner-device copy of one generic tiny app from `default` to its own `applications` root ----
 // A stand-in CLI keeps both spaces in one JSON file under the test home, records every call, and can be told to
-// misbehave (changed read-back, partial failure, late edits on the source).
+// misbehave (changed read-back, partial failure, late edits on the source). Its `status` and `context` describe one
+// onboarded owner profile, `owner`, that can read the owner's `applications` space, as app-context.mjs expects.
 const standInCli = String.raw`#!/usr/bin/env node
 const fs = require("fs");
 const home = process.env.HOME;
 const kvPath = home + "/kv-state.json", ctlPath = home + "/control.json", putsPath = home + "/put-count";
+const OWNER = "did:pkh:eip155:1:0x" + "a".repeat(40), HOST = "https://node.test", APPS = "tinycloud:" + OWNER.slice(4) + ":applications";
 const argv = process.argv.slice(2);
 const opts = {}, pos = [];
-const withValue = new Set(["--profile", "--space", "--prefix", "--file", "--if-none-match", "--limit", "--cursor", "-o", "--output"]);
+const withValue = new Set(["--profile", "--host", "--space", "--prefix", "--file", "--if-none-match", "--limit", "--cursor", "-o", "--output"]);
 for (let i = 0; i < argv.length; i++) { const a = argv[i]; if (withValue.has(a)) opts[a] = argv[++i]; else if (a.startsWith("--")) opts[a] = true; else pos.push(a); }
 fs.appendFileSync(home + "/calls.log", JSON.stringify({ profile: opts["--profile"], argv }) + "\n");
-const fail = (code, status) => { process.stderr.write(JSON.stringify({ error: { code } }) + "\n"); process.exit(status); };
+const fail = (code, status, message) => { process.stderr.write(JSON.stringify({ error: { code, ...(message ? { message } : {}) } }, null, 2) + "\n"); process.exit(status); };
 const ctl = fs.existsSync(ctlPath) ? JSON.parse(fs.readFileSync(ctlPath, "utf8")) : {};
+const ownerProfile = { name: "owner", ownerDid: OWNER, host: HOST, authenticated: true, delegations: [],
+  session: { present: true, expired: false, expiresAt: "2099-01-01T00:00:00Z", permissions: [{ service: "tinycloud.kv", space: APPS, path: "", actions: ["tinycloud.kv/get", "tinycloud.kv/list"] }] } };
+if (pos[0] === "status") {
+  console.log(JSON.stringify(ctl.status || { activeProfile: "owner", profiles: [ownerProfile] }));
+  process.exit(0);
+}
+if (pos[0] === "context") {
+  if (ctl.contextError) fail(ctl.contextError.code, ctl.contextError.status);
+  console.log(JSON.stringify({ profile: opts["--profile"], ownerDid: OWNER, host: HOST, spaceId: APPS, session: { state: "present" } }));
+  process.exit(0);
+}
 const kv = JSON.parse(fs.readFileSync(kvPath, "utf8"));
 const save = () => fs.writeFileSync(kvPath, JSON.stringify(kv));
-const profile = opts["--profile"] || "", space = opts["--space"] || "default";
-if ((ctl.missingProfiles || []).includes(profile) || !/^(agent-data|default|tinyapp-[a-z0-9-]+)$/.test(profile)) fail("PROFILE_NOT_FOUND", 3);
+const profile = opts["--profile"] || "", space = opts["--space"] === APPS ? "applications" : opts["--space"] || "default";
+if ((ctl.missingProfiles || []).includes(profile) || !/^(agent-data|default|owner|tinyapp-[a-z0-9-]+)$/.test(profile)) fail("PROFILE_NOT_FOUND", 3);
 const slug = (profile.match(/^tinyapp-(.*)$/) || [])[1];
 const allowed = (op, key) => {
+  if (profile === "owner") return space === "applications" && (op === "get" || op === "list");
   if (!slug) return space === "default";
   if (space !== "applications") return false;
   const own = "xyz.tinycloud.tinyapps." + slug + "/", cat = "xyz.tinycloud.tinyapps.catalog/";
@@ -140,8 +154,10 @@ if (op === "list") {
   console.log(JSON.stringify({ keys, count: keys.length, prefix }));
 } else if (op === "get") {
   const key = pos[2];
+  if (ctl.getError && ctl.getError.key === key) fail(ctl.getError.code, ctl.getError.status, ctl.getError.message);
   if (!allowed("get", key)) fail("PERMISSION_DENIED", 5);
-  if (!(key in s)) fail("NOT_FOUND", 4);
+  // The real CLI 1.6.0 turns the node's KV_NOT_FOUND into this exact error.
+  if (!(key in s)) fail("NOT_FOUND", 4, 'Key "' + key + '" not found');
   const value = space === "applications" && ctl.corruptRead && ctl.corruptRead[key] !== undefined ? ctl.corruptRead[key] : s[key];
   if (opts["--raw"]) process.stdout.write(value); else console.log(JSON.stringify({ key, data: value }));
 } else if (op === "put") {
@@ -364,47 +380,79 @@ test("migrate.sh has one write command, it creates only, and it has no delete co
   assert.equal(/\bkv (delete|del)\b|delegation revoke|\bsql\b/.test(text), false);
 });
 
-// ---- layout.sh: an app with old records and no verified move stays in the old layout ----
+// ---- layout.sh: receipt, then the discovery entry in `applications`, then the old catalog ----
 const layout = join(skill, "layout.sh");
 const runLayout = (h, slug, env = {}) => run(["sh", layout, slug], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
 const writeReceipt = (h, slug, receipt) => {
   mkdirSync(join(h.state, "migration"), { recursive: true });
   writeFileSync(receiptPath(h, slug), JSON.stringify(receipt));
 };
+const OWNER_DID = `did:pkh:eip155:1:0x${"a".repeat(40)}`;
+const APPS_SPACE = `tinycloud:${OWNER_DID.slice(4)}:applications`;
+const ENTRY = (slug) => `xyz.tinycloud.tinyapps.catalog/${slug}/entry`;
+const entryJson = (slug, title) => JSON.stringify({ v: 1, app: slug, id: NEW(slug), title });
+const op = (c) => {
+  const i = c.argv.findIndex((a) => ["status", "context", "kv"].includes(a));
+  return c.argv[i] === "kv" ? `kv ${c.argv[i + 1]}` : c.argv[i];
+};
+const ops = (h) => cliCalls(h).map(op);
+const entryReads = (h, slug) => cliCalls(h).filter((c) => op(c) === "kv get" && c.argv.includes(ENTRY(slug)));
+const legacyLists = (h) => cliCalls(h).filter((c) => op(c) === "kv list" && c.argv[c.argv.indexOf("--space") + 1] === "default");
 
-test("layout.sh: old records and no receipt stay in the old layout, with no new grant, profile or write", () => {
+test("layout.sh (c): no receipt, no discovery entry and an old catalog record stay in the old layout, with no grant, profile or write", () => {
   const h = world();
   const out = runLayout(h, "fitness");
   assert.equal(out.status, 0, out.stderr);
   assert.equal(out.stdout.trim(), "legacy");
-  const calls = cliCalls(h);
-  assert.deepEqual(calls.map((c) => c.argv.slice(0, 2).join(" ")), ["kv list"]);
-  assert.equal(calls[0].profile, "agent-data");
-  assert.equal(calls[0].argv[calls[0].argv.indexOf("--space") + 1], "default");
+  assert.deepEqual(ops(h), ["status", "context", "kv list", "kv get", "kv list"]);
+  // The entry is read with the profile, host and full space app-context.mjs selected, and found absent (KV_NOT_FOUND).
+  const [get] = entryReads(h, "fitness");
+  assert.equal(get.profile, "owner");
+  assert.equal(get.argv[get.argv.indexOf("--host") + 1], "https://node.test");
+  assert.equal(get.argv[get.argv.indexOf("--space") + 1], APPS_SPACE);
+  const [list] = legacyLists(h);
+  assert.equal(list.profile, "agent-data");
   assert.deepEqual(readdirSync(h.state), []);
+  assert.deepEqual(store(h).applications, {});
 });
 
-test("layout.sh: a verified receipt for the app switches it to the new layout without asking the network", () => {
+test("layout.sh (a): a verified receipt for the app switches it to the new layout without reading the entry or the network", () => {
   const h = world();
   writeReceipt(h, "fitness", { v: 1, app: "fitness", id: NEW("fitness"), verified: true });
   const out = runLayout(h, "fitness");
   assert.equal(out.stdout.trim(), "new");
+  assert.deepEqual(entryReads(h, "fitness"), []);
   assert.equal(cliCalls(h).length, 0);
 });
 
-test("layout.sh: an app with no old records starts in the new layout", () => {
+test("layout.sh (b): no receipt but the app's discovery entry exists (moved by the hosted MCP): new, even with the old catalog record", () => {
+  const h = world({ [ENTRY("fitness")]: entryJson("fitness", "Fitness") });
+  const out = runLayout(h, "fitness");
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(out.stdout.trim(), "new");
+  assert.equal(entryReads(h, "fitness").length, 1);
+  assert.deepEqual(legacyLists(h), [], "the old catalog is not consulted once the entry decides");
+  assert.equal(existsSync(receiptPath(h, "fitness")), false);
+});
+
+test("layout.sh (d): an app with no receipt, no discovery entry and no old records starts in the new layout", () => {
   const h = world();
   const out = runLayout(h, "books");
   assert.equal(out.stdout.trim(), "new");
-  assert.deepEqual(cliCalls(h).map((c) => c.argv.slice(0, 2).join(" ")), ["kv list"]);
+  assert.deepEqual(ops(h), ["status", "context", "kv list", "kv get", "kv list"]);
+  assert.equal(entryReads(h, "books").length, 1);
 });
 
-test("layout.sh: a successful migrate.sh without its receipt is still the old layout, and the receipt switches it", () => {
+test("layout.sh: migrate.sh's entry alone switches the app; deleting the entry and the receipt goes back to the old layout", () => {
   const h = world();
   assert.equal(runMigrate(h, ["fitness"]).status, 0);
   assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
   const receipt = readFileSync(receiptPath(h, "fitness"), "utf8");
   rmSync(receiptPath(h, "fitness"));
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "new", "another computer without the receipt sees the entry");
+  const kv = store(h);
+  delete kv.applications[ENTRY("fitness")];
+  writeFileSync(join(h.dir, "kv-state.json"), JSON.stringify(kv));
   assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
   writeFileSync(receiptPath(h, "fitness"), receipt);
   assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
@@ -422,7 +470,42 @@ test("layout.sh: a receipt that is unverified, damaged or for another app does n
   assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
 });
 
-test("layout.sh: with no usable earlier sign-in it says ask, and with another failure it says check-failed", () => {
+test("layout.sh (e): when the entry can't be read for want of a sign-in or grant it says ask, never legacy or new", () => {
+  const cases = [
+    { getError: { key: ENTRY("fitness"), code: "PERMISSION_DENIED", status: 5 } },
+    { getError: { key: ENTRY("fitness"), code: "AUTH_REQUIRED", status: 3 } },
+    // An earlier agent-data sign-in only: app-context selects it, and it has no grant in `applications`.
+    { status: { activeProfile: "agent-data", profiles: [{ name: "agent-data", authenticated: true }] } },
+    // No applications profile at all: app-context says onboard-first, and the entry is not read.
+    { status: { activeProfile: null, profiles: [] } },
+  ];
+  for (const c of cases) {
+    const h = world();
+    control(h, c);
+    assert.equal(runLayout(h, "fitness").stdout.trim(), "ask", JSON.stringify(c));
+    assert.deepEqual(legacyLists(h), [], JSON.stringify(c));
+  }
+});
+
+test("layout.sh (f): when the entry check fails for another reason it says check-failed, never legacy or new", () => {
+  const cases = [
+    { getError: { key: ENTRY("fitness"), code: "NETWORK_ERROR", status: 6 } },
+    // CLI 1.6.0 with the node unreachable.
+    { getError: { key: ENTRY("fitness"), code: "ERROR", status: 1, message: "Failed to fetch node info at https://node.test." } },
+    { getError: { key: ENTRY("fitness"), code: "SPACE_NOT_HOSTED", status: 1 } },
+    // Exit 4 that is not the CLI's translation of KV_NOT_FOUND for this key.
+    { getError: { key: ENTRY("fitness"), code: "NOT_FOUND", status: 4, message: "share not found" } },
+    { contextError: { code: "NETWORK_ERROR", status: 6 } },
+  ];
+  for (const c of cases) {
+    const h = world();
+    control(h, c);
+    assert.equal(runLayout(h, "fitness").stdout.trim(), "check-failed", JSON.stringify(c));
+    assert.deepEqual(legacyLists(h), [], JSON.stringify(c));
+  }
+});
+
+test("layout.sh: with no usable earlier sign-in for the old place it says ask, and with another failure it says check-failed", () => {
   const h = world();
   control(h, { missingProfiles: ["agent-data"] });
   assert.equal(runLayout(h, "fitness").stdout.trim(), "ask");
@@ -448,14 +531,14 @@ test("tc-apps scripts find the CLI like every skill: agent.env, then the shared 
   writeFileSync(join(saved.work, "cli-path"), "/nonexistent/tinycloud\n");
   const fromSaved = runLayout(saved, "fitness", { TC_BIN: "" });
   assert.equal(fromSaved.stdout.trim(), "legacy", fromSaved.stderr);
-  assert.equal(cliCalls(saved).length, 1);
+  assert.deepEqual(ops(saved), ["status", "context", "kv list", "kv get", "kv list"]);
   const own = world();
   const privateBin = join(own.dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud");
   mkdirSync(dirname(privateBin), { recursive: true });
   writeFileSync(privateBin, standInCli, { mode: 0o755 });
   const fromPrivate = runLayout(own, "fitness", { TC_BIN: "" });
   assert.equal(fromPrivate.stdout.trim(), "legacy", fromPrivate.stderr);
-  assert.equal(cliCalls(own).length, 1);
+  assert.deepEqual(ops(own), ["status", "context", "kv list", "kv get", "kv list"]);
   for (const script of ["layout.sh", "migrate.sh", "owner-grant.sh", "owner-undo.sh", "SKILL.md"]) {
     assert.doesNotMatch(readFileSync(join(skill, script), "utf8"), /cli-path/, script);
   }
@@ -465,10 +548,15 @@ test("tc-apps scripts find the CLI like every skill: agent.env, then the shared 
 test("layout.sh follows the old catalog's pages: an app whose key is on a later page is legacy", () => {
   const h = world();
   const paged = join(h.dir, "paged-tinycloud");
+  // Only the old catalog's listing is paged; every other call goes to the stand-in CLI.
   writeFileSync(paged, `#!/bin/sh
 case " $* " in
-  *" --all "*) echo '{"keys":["${OLD}/catalog/fitness","${OLD}/catalog/todos"],"count":2}' ;;
-  *) echo '{"keys":["${OLD}/catalog/fitness"],"count":1,"truncated":true,"nextCursor":"c1"}' ;;
+  *" kv list "*" --space default "*)
+    case " $* " in
+      *" --all "*) echo '{"keys":["${OLD}/catalog/fitness","${OLD}/catalog/todos"],"count":2}' ;;
+      *) echo '{"keys":["${OLD}/catalog/fitness"],"count":1,"truncated":true,"nextCursor":"c1"}' ;;
+    esac ;;
+  *) exec "${h.bin}" "$@" ;;
 esac
 `, { mode: 0o755 });
   assert.equal(runLayout(h, "todos", { TC_BIN: paged }).stdout.trim(), "legacy");
