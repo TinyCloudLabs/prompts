@@ -49,7 +49,7 @@ Follow these on every TinyCloud page.
 
 ```sh
 TC='<TC_BIN>'
-"$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY
+"$TC" onboard --help | grep -qF -- --timeout && echo ONBOARD_READY
 ```
 
 **CLI rule (stable `1.6.2`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: step 2 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun step 2. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.

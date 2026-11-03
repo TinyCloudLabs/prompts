@@ -41,7 +41,7 @@ test("the --timeout is one #822 accepts and keeps a call under a 2-minute tool l
 
 test("every onboarding run in the guide is bounded; only --help and the owner's reply name onboard without it", () => {
   const runs = [...guide.matchAll(/"\$TC"(?: --profile \S+)? onboard\b[^`\n]*/g)].map((match) => match[0]);
-  assert.deepEqual(runs.filter((line) => !line.includes("--timeout 1s")), ['"$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY']);
+  assert.deepEqual(runs.filter((line) => !line.includes("--timeout 1s")), ['"$TC" onboard --help | grep -qF -- --timeout && echo ONBOARD_READY']);
   assert.match(run, /Never run `onboard --code`/);
 });
 
