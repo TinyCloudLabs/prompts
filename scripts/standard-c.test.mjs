@@ -136,7 +136,6 @@ test("no exit-code rule for 3, 5 or 8 is left outside the shared table, except t
 const DONE_WORDING = /tell me when you(?:'|’)re done|tell me you(?:'|’)re done|says they(?:'|’)re done|tell your agent when you(?:'|’)ve approved|when you(?:'|’)ve approved, reply here/i;
 const CODE_WORDING = /sends? back the code|sends? (?:me )?(?:back )?the short code|paste (?:it|the code|its code) back|send it back to me here|paste the code here/i;
 const WORDING_EXCEPTIONS = {
-  "setup/README.md": "the /chat and /publish owner bullets: TinyChat's pack and publish's sign-in still need the code OpenKey shows",
   "setup/publish.md": "publish sign-in (auth login --paste)",
   "setup/share.md": "publish sign-in (auth login --paste)",
   "skills/tc-publish/SKILL.md": "publish sign-in (auth login --paste), and its device fallback's background waiter, which may not wake the agent",
@@ -157,11 +156,24 @@ test("no stray \"tell me when you're done\" or \"send back the code\" outside th
     }
   }
   assert.deepEqual([...found].sort(), Object.keys(WORDING_EXCEPTIONS).sort(), "every exception is still needed");
-  for (const path of ["setup/onboarding.md", "setup/courier.md", "skills/tinycloud-feed/SKILL.md", "skills/tc-apps/SKILL.md", "skills/tc-apps/SQL.md"]) {
+  for (const path of ["setup/onboarding.md", "setup/README.md", "setup/owner.md", "setup/courier.md", "skills/tinycloud-feed/SKILL.md", "skills/tc-apps/SKILL.md", "skills/tc-apps/SQL.md"]) {
     assert.doesNotMatch(read(path), DONE_WORDING, path);
     assert.doesNotMatch(read(path), CODE_WORDING, path);
   }
   assert.doesNotMatch(read("skills/tc-apps/announce.sh"), DONE_WORDING);
+  // The built llms.txt and llms-full.txt carry each guide's description and text: a match is allowed only in the
+  // entry or section of a listed flow's served page.
+  const SERVED_EXCEPTIONS = ["publish", "share", "secrets", "chat", "skills/publish.md", "skills/secrets.md", "skills/chat.md"].map((path) => `https://agents.tinycloud.xyz/${path}`);
+  for (const line of served("llms.txt").split("\n")) {
+    if (CODE_WORDING.test(line) || DONE_WORDING.test(line)) assert.ok(SERVED_EXCEPTIONS.includes(line.match(/\]\((\S+?)\)/)?.[1]), `llms.txt: ${line.slice(0, 160)}`);
+  }
+  const sections = served("llms-full.txt").split(/\n---\nSource: (\S+)\n---\n/);
+  assert.ok(sections.length > 20);
+  for (let i = 1; i < sections.length; i += 2) {
+    for (const line of sections[i + 1].split("\n")) {
+      if (CODE_WORDING.test(line) || DONE_WORDING.test(line)) assert.ok(SERVED_EXCEPTIONS.includes(sections[i]), `llms-full.txt ${sections[i]}: ${line.slice(0, 160)}`);
+    }
+  }
 });
 
 // OpenKey's short code lasts 5 minutes: CLI 1.6.0's `auth login --help` ("OpenKey return codes expire after 5 minutes")
