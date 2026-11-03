@@ -25,7 +25,8 @@ Before starting, retain all of the following from the caller:
 
 - the user's original task;
 - the selected client: `opencode`, `codex` or `claude-code` (any other agent: `codex`);
-- the calling app guide and its exact return heading.
+- the calling app guide and its exact return heading;
+- the action skill that guide installs, if it names one (for example `apps`, `courier` or `chat`), so the run call below installs it too.
 
 After the checks below pass, return directly to that heading and continue the original task in the same conversation. Do not ask the user to paste another prompt. If the owner sent you this page directly, there is no calling guide: report the result to them when you finish.
 
@@ -39,40 +40,50 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 Use the reusable platform-aware installer below. It respects process `TC_BIN` first, then a saved `TC_BIN` read by the data-only helper installed by [/agent](agent.md), then the private installation, then a CLI on PATH at `1.6.0` or newer. An operator selection is kept, never silently replaced; one older than `1.6.0` prints `TC_OLDER`. A `TC_BIN`, exported or saved, that points inside `~/.local/share/tinycloud/cli` (on Windows `%USERPROFILE%\.local\share\tinycloud\cli`) is the agent's own private copy, not an operator selection: it is upgraded like the private install and selected as `node_modules/.bin/tinycloud`. A private or PATH CLI older than `1.6.0` is not reused: the installer upgrades its own copy in `~/.local/share/tinycloud/cli` and leaves a PATH CLI untouched. A newer CLI is never downgraded. It never installs into npm's global prefix. When /agent's helper is installed, the installer also saves its own selection in `~/.config/tinycloud/agent.env`, the one saved CLI location every skill reads; it never rewrites an operator's `TC_BIN`.
 
-Download the installer, then run it as a **separate shell call**. Do not retype or shorten its implementation, pipe a download into a shell, or use PowerShell's `Invoke-Expression`.
+Download both installers in one shell call, then run them in **one separate shell call**: the CLI installer, then the skill installer for the core skill and, if the caller named one, its action skill. One download call and one run call keep the number of permission prompts low in clients that ask before each network call. Do not retype or shorten an installer's implementation, pipe a download into a shell, or use PowerShell's `Invoke-Expression`.
+
+Before the run call, check the core skill as described in [Install the core skill](#install-the-core-skill), and the action skill as its calling guide says. Leave out the core-skill lines if that skill already matches, and the action-skill lines if the caller named none or its skill already matches.
 
 **PowerShell (Windows):**
 
 ```powershell
-$installer = Join-Path $env:USERPROFILE ".local\share\tinycloud\install-cli.mjs"
-New-Item -ItemType Directory -Force (Split-Path -Parent $installer) | Out-Null
-Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile $installer
+$dir = Join-Path $env:USERPROFILE ".local\share\tinycloud"
+New-Item -ItemType Directory -Force $dir | Out-Null
+Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile (Join-Path $dir "install-cli.mjs")
+Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-Path $dir "install.cjs")
 ```
 
-In the next call:
+In the next call, with `CLIENT` replaced, and `ACTION` replaced by the caller's action skill (or its last two lines deleted):
 
 ```powershell
-$installer = Join-Path $env:USERPROFILE ".local\share\tinycloud\install-cli.mjs"
+$dir = Join-Path $env:USERPROFILE ".local\share\tinycloud"
+$installer = Join-Path $dir "install-cli.mjs"
 node $installer
 if ($LASTEXITCODE -ne 0) { throw "TinyCloud installation failed; inspect the error above." }
 $env:TC_BIN = (node $installer --resolve)
 if ($LASTEXITCODE -ne 0) { throw "TinyCloud selection failed." }
 $env:Path += ";$env:USERPROFILE\.local\bin"
+node (Join-Path $dir "install.cjs") cli --agent CLIENT
+if ($LASTEXITCODE -ne 0) { throw "Core skill installation failed." }
+node (Join-Path $dir "install.cjs") ACTION --agent CLIENT
+if ($LASTEXITCODE -ne 0) { throw "Action skill installation failed." }
 ```
 
 **macOS/Linux or a POSIX shell:**
 
 ```sh
-mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.sh" https://agents.tinycloud.xyz/skills/install-cli.sh
+mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.sh" https://agents.tinycloud.xyz/skills/install-cli.sh && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
 ```
 
-In the next call:
+In the next call, with `CLIENT` replaced, and `ACTION` replaced by the caller's action skill (or its line deleted, with the `&&` before it):
 
 ```sh
-sh "$HOME/.local/share/tinycloud/install-cli.sh"
+sh "$HOME/.local/share/tinycloud/install-cli.sh" &&
+node "$HOME/.local/share/tinycloud/install.js" cli --agent CLIENT &&
+node "$HOME/.local/share/tinycloud/install.js" ACTION --agent CLIENT
 ```
 
-This POSIX entry point downloads and runs the same `/install-cli.mjs` implementation; it has no separate CLI version or installation policy.
+This POSIX entry point downloads and runs the same `/install-cli.mjs` implementation; it has no separate CLI version or installation policy. Each skill the run call installs prints `SKILL_INSTALLED <name> <version> <folder>`; the calling guide skips its own install step for a skill installed here.
 
 `TC_SELECTED {"bin":"…","version":"…","source":"…"}` identifies the selected executable (for the private install, `node_modules/.bin/tinycloud`); retain that absolute path as `TC_BIN` when returning to the caller. `TC_OLDER <version> <path> …` means the operator selected a CLI outside the private install that is older than `1.6.0`: don't replace it, and return to the calling guide, which says what to do; without a calling guide, tell the owner in one line that it is older than the required `1.6.0`. The downloaded Node installer accepts `--resolve` to print only an existing selected path (exit 1 means absent; exit 2 means invalid/unsafe), without installing, upgrading or changing PATH.
 
@@ -125,6 +136,7 @@ node "$HOME/.local/share/tinycloud/install-cli.mjs"
 $installer = Join-Path $env:USERPROFILE ".local\share\tinycloud\install-cli.mjs"
 $prefix = Join-Path $env:USERPROFILE ".local\share\tinycloud\cli"
 New-Item -ItemType Directory -Force $prefix | Out-Null
+Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-Path $env:USERPROFILE ".local\share\tinycloud\install.cjs") -ErrorAction Stop
 Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile $installer -ErrorAction Stop
 node $installer --needs-install
 if ($LASTEXITCODE -eq 0) {
@@ -133,7 +145,7 @@ if ($LASTEXITCODE -eq 0) {
 } elseif ($LASTEXITCODE -ne 1) { throw "TinyCloud CLI install check failed; inspect the error above." }
 ```
 
-In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects the install.
+In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects the install, then installs the skills as there.
 
 Then read its output as above. If the owner replies anything else, or either call is blocked or fails, stop and report it to the owner in one line. Don't ask again or retry, and don't use `sudo`, administrator privileges, a global install or another version.
 
@@ -178,7 +190,7 @@ Mention command-name conflicts to the owner in one line and continue with the co
 
 Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse files matching the `cli` entry, version `1.6.0`, in `https://agents.tinycloud.xyz/skills/index.json`. Do not overwrite unrelated or locally modified files. An older managed `tc-cli` skill has a different name: retire that obsolete folder only after checking it is an unmodified TinyCloud-installed skill, so both versions are not loaded.
 
-This step is required: the skill is how you know the CLI's commands. If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls:
+This step is required: the skill is how you know the CLI's commands. If the run call in [Install the CLI](#install-the-cli) printed `SKILL_INSTALLED tinycloud-cli`, it is done. Otherwise, if the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls (skip the download if `$HOME/.local/share/tinycloud/install.js` was saved in this conversation):
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js

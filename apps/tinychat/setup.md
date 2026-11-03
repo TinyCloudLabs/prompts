@@ -27,7 +27,7 @@ Do not run the separate OpenKey CLI setup. TinyChat does not invoke the standalo
 
 The app pack is pinned to `tinychat-retrieval@0.1.1-onboarding.25`, as served by `agents.tinycloud.xyz`. Inspect an existing same-named skill before replacing it. Reuse it only when its files match the `chat` entry in `https://agents.tinycloud.xyz/skills/index.json`. An earlier `tinychat-retrieval` version installed from this site or from tinycloud.chat is a replaceable mismatch. Do not overwrite an unrelated or locally modified skill. If an installed pack has uncertain provenance, return the conflict unless its replacement was explicitly approved.
 
-For a missing or replaceable app pack, substitute the current client's installer name (for example `claude-code`, `codex` or `opencode`) for `CLIENT` and run this as a sequential foreground install:
+If the CLI setup's run call printed `SKILL_INSTALLED tinychat-retrieval 0.1.1-onboarding.25` in this conversation, the pack is installed: skip to loading it below. Otherwise, for a missing or replaceable app pack, substitute the current client's installer name (for example `claude-code`, `codex` or `opencode`) for `CLIENT` and run this as a sequential foreground install:
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js

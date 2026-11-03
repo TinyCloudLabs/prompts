@@ -45,7 +45,7 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and its `tinycloud-cli` skill; do both of its install steps. Replace `<TC_BIN>` in each shell block with the selected absolute executable path; separate tool calls need not share shell variables.
+**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and its `tinycloud-cli` skill in one download call and one run call. If a guide sent you here, give the CLI setup that guide's action skill too (`apps` for /apps, `courier` for /courier, `chat` for /chat), so the same run call installs it. Replace `<TC_BIN>` in each shell block with the selected absolute executable path; separate tool calls need not share shell variables.
 
 ```sh
 TC='<TC_BIN>'
