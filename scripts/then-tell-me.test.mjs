@@ -103,7 +103,7 @@ test("the Next: rule is scoped to approval commands; invitations follow their ow
 });
 
 test("CLI exit 6 is shared in the onboarding table; Courier 0.5.2 has no exit-6 branch", () => {
-  assert.match(text("onboarding.md"), /\| 6 \| `NETWORK_ERROR`\./);
+  assert.match(text("onboarding.md"), /\| 6 \| `NETWORK_ERROR`: the network did not answer/);
   const courier = text("courier");
   assert.doesNotMatch(courier, /\*\*Exit 6|rc === "6"|rc === 6/);
 });
