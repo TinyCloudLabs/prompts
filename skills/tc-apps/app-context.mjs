@@ -42,7 +42,7 @@ export function cliInvocation(cli, args, platform = process.platform) {
   return /\.(?:mjs|cjs|js)$/i.test(cli) ? { file: process.execPath, args: [cli, ...args] } : { file: cli, args };
 }
 
-export function appPermissions(app, { write = false, remove = false, sql = false, schema = false, catalog = false } = {}) {
+export function appPermissions(app, { write = false, remove = false, sql = false, schema = false, catalog = false, removeEntry = false } = {}) {
   if (catalog) return [
     { service: "tinycloud.kv", path: "", actions: ["get", "list", ...(write ? ["put"] : [])] },
     { service: "tinycloud.sql", path: "", actions: ["read", ...(write || remove ? ["write"] : [])] },
@@ -53,6 +53,8 @@ export function appPermissions(app, { write = false, remove = false, sql = false
     { service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.${app}/`, actions },
     ...(write ? [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/", actions: ["get", "list"] }] : []),
     ...(write ? [{ service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.catalog/${app}/`, actions: ["put"] }] : []),
+    // Going back from a move (SKILL.md §9) deletes this app's discovery entry, and nothing else in the catalog.
+    ...(removeEntry ? [{ service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.catalog/${app}/`, actions: ["del"] }] : []),
   ];
 }
 
@@ -72,7 +74,7 @@ export function missingPermissions(profile, space, required, now = Date.now()) {
   });
 }
 
-export function appContext(cli, app, { write = false, remove = false, sql = false, schema = false, catalog = false, env = process.env, run = spawnSync } = {}) {
+export function appContext(cli, app, { write = false, remove = false, sql = false, schema = false, catalog = false, removeEntry = false, env = process.env, run = spawnSync } = {}) {
   if (!/^[a-z][a-z0-9-]*$/.test(app) || (catalog ? !["healthlog", "recipes"].includes(app) : ["catalog", "index-stale", "healthlog", "recipes"].includes(app))) {
     throw new Error("APP_NAME_INVALID: select a generic app or a known catalog app with --catalog.");
   }
@@ -99,7 +101,7 @@ export function appContext(cli, app, { write = false, remove = false, sql = fals
   const dedicated = catalog ? undefined : summary.profiles.find((profile) => profile.name === dedicatedName);
   // An explicit profile is a boundary, not a hint to switch accounts.
   const candidates = env.TC_PROFILE ? [active] : [active, dedicated].filter((profile, index, all) => profile && all.indexOf(profile) === index);
-  const required = appPermissions(app, { write, remove, sql, schema, catalog });
+  const required = appPermissions(app, { write, remove, sql, schema, catalog, removeEntry });
   // No profile with an owner or a session: onboarding sets one up for every app. The scoped
   // sign-in flows (profile/missing below) are only for an agent that cannot run onboarding.
   // The SQL index check stays informational.
@@ -155,12 +157,12 @@ export function appContext(cli, app, { write = false, remove = false, sql = fals
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [cli, app, ...options] = process.argv.slice(2);
-  if (!cli || !app || options.some((option) => !["--write", "--delete", "--sql", "--schema", "--catalog"].includes(option)) || options.includes("--schema") && !options.includes("--sql") || options.includes("--catalog") && options.includes("--sql")) {
-    console.error("usage: node app-context.mjs <CLI> <app> [--write] [--delete] [--sql [--schema] | --catalog]");
+  if (!cli || !app || options.some((option) => !["--write", "--delete", "--remove-entry", "--sql", "--schema", "--catalog"].includes(option)) || options.includes("--schema") && !options.includes("--sql") || options.includes("--catalog") && options.includes("--sql") || options.includes("--remove-entry") && (options.includes("--sql") || options.includes("--catalog"))) {
+    console.error("usage: node app-context.mjs <CLI> <app> [--write] [--delete] [--remove-entry] [--sql [--schema] | --catalog]");
     process.exitCode = 2;
   } else {
     try {
-      console.log(JSON.stringify(appContext(cli, app, { write: options.includes("--write"), remove: options.includes("--delete"), sql: options.includes("--sql"), schema: options.includes("--schema"), catalog: options.includes("--catalog") }), null, 2));
+      console.log(JSON.stringify(appContext(cli, app, { write: options.includes("--write"), remove: options.includes("--delete"), removeEntry: options.includes("--remove-entry"), sql: options.includes("--sql"), schema: options.includes("--schema"), catalog: options.includes("--catalog") }), null, 2));
     } catch (error) {
       console.error(error.message);
       process.exitCode = 1;

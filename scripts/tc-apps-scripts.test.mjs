@@ -143,7 +143,10 @@ const allowed = (op, key) => {
   const own = "xyz.tinycloud.tinyapps." + slug + "/", cat = "xyz.tinycloud.tinyapps.catalog/";
   if (key.startsWith(own)) return true;
   if (op === "get" || op === "list") return key.startsWith(cat);
-  return op === "put" && key.startsWith(cat + slug + "/");
+  if (op === "put") return key.startsWith(cat + slug + "/");
+  // An app profile deletes in the catalog only with a granted del there, as listed by status.
+  const granted = ((ctl.status?.profiles || []).find((p) => p.name === profile)?.session?.permissions || []);
+  return op === "del" && key.startsWith(cat + slug + "/") && granted.some((p) => p.space === APPS && key.startsWith(p.path) && p.actions.includes("tinycloud.kv/del"));
 };
 if (pos[0] !== "kv") fail("USAGE_ERROR", 2);
 const op = pos[1], s = kv[space] || (kv[space] = {});
@@ -172,9 +175,11 @@ if (op === "list") {
   save();
   console.log(JSON.stringify({ key, written: true }));
 } else if (op === "delete") {
-  delete s[pos[2]];
+  const key = pos[2];
+  if (!allowed("del", key)) fail("PERMISSION_DENIED", 5);
+  delete s[key];
   save();
-  console.log(JSON.stringify({ key: pos[2], deleted: true }));
+  console.log(JSON.stringify({ key, deleted: true }));
 } else fail("USAGE_ERROR", 2);
 `;
 
@@ -468,6 +473,37 @@ test("layout.sh: a receipt that is unverified, damaged or for another app does n
   mkdirSync(join(h.state, "migration"), { recursive: true });
   writeFileSync(receiptPath(h, "fitness"), "{not json");
   assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
+});
+
+test("going back on an app-scoped profile: the helper requests only the catalog del, the entry is deleted first, then the receipt", () => {
+  const h = world();
+  assert.equal(runMigrate(h, ["fitness"]).status, 0);
+  const perm = (path, actions) => ({ service: "tinycloud.kv", space: APPS_SPACE, path, actions: actions.map((a) => `tinycloud.kv/${a}`) });
+  const scoped = { name: "tinyapp-fitness", ownerDid: OWNER_DID, host: "https://node.test", authenticated: true, delegations: [],
+    session: { present: true, expired: false, expiresAt: "2099-01-01T00:00:00Z", permissions: [
+      perm(`${NEW("fitness")}/`, ["get", "list", "put", "del"]), perm("xyz.tinycloud.tinyapps.catalog/", ["get", "list"]), perm("xyz.tinycloud.tinyapps.catalog/fitness/", ["put"]),
+    ] } };
+  const setStatus = () => control(h, { status: { activeProfile: "tinyapp-fitness", profiles: [scoped] } });
+  const helper = () => JSON.parse(run(["node", join(skill, "app-context.mjs"), h.bin, "fitness", "--remove-entry"], { HOME: h.dir }).stdout);
+  const entryCmd = (verb) => run([h.bin, "--profile", "tinyapp-fitness", "--host", "https://node.test", "kv", verb, ENTRY("fitness"), "--space", APPS_SPACE, "--json"], { HOME: h.dir });
+  setStatus();
+  // Without the app's catalog del the delete is refused, and the helper names exactly that permission for §4.
+  assert.equal(entryCmd("delete").status, 5);
+  const before = helper();
+  assert.equal(before.status, "grant-required");
+  assert.equal(before.profile, "tinyapp-fitness");
+  assert.deepEqual(before.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/fitness/", actions: ["del"], space: APPS_SPACE }]);
+  // §4 grants exactly that.
+  scoped.session.permissions.push(perm("xyz.tinycloud.tinyapps.catalog/fitness/", ["del"]));
+  setStatus();
+  assert.equal(helper().status, "ready");
+  // The entry first: the receipt still switches this computer, so a failure after this point never strands it.
+  assert.equal(entryCmd("delete").status, 0);
+  assert.equal(entryCmd("get").status, 4);
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
+  rmSync(receiptPath(h, "fitness"));
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
+  assert.deepEqual(Object.keys(store(h).default).sort(), Object.keys(sourceRecords()).sort());
 });
 
 test("layout.sh (e): when the entry can't be read for want of a sign-in or grant it says ask, never legacy or new", () => {
