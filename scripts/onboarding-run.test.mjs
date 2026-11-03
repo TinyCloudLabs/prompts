@@ -41,7 +41,7 @@ test("the --timeout is one #822 accepts and keeps a call under a 2-minute tool l
 
 test("every onboarding run in the guide is bounded; only --help and the owner's reply name onboard without it", () => {
   const runs = [...guide.matchAll(/"\$TC"(?: --profile \S+)? onboard\b[^`\n]*/g)].map((match) => match[0]);
-  assert.deepEqual(runs.filter((line) => !line.includes("--timeout 1s")), ['"$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY']);
+  assert.deepEqual(runs.filter((line) => !line.includes("--timeout 1s")), ['"$TC" onboard --help | grep -qF -- --timeout && echo ONBOARD_READY']);
   assert.match(run, /Never run `onboard --code`/);
 });
 
@@ -52,17 +52,17 @@ test("exit 8 with a pending link: send each new link at once, rerun, never resen
   assert.match(pending, /When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message\./);
   assert.match(pending, /When it shows a link you already sent, don't send it again; run the block again on the owner's next message\./);
   assert.match(pending, /never counts toward a retry limit/);
-  for (const code of ["APPROVAL_REQUEST_EXPIRED", "SPACE_SETUP_PENDING", "PROFILE_NOT_ONBOARDABLE"]) assert.ok(run.includes(`**\`${code}\``), code);
-  assert.match(run, /\*\*Exit 8 without a `pending` object:\*\*/);
-  assert.match(run, /\*\*Any other error:\*\* stop and report it to the owner\./);
+  for (const code of ["SPACE_SETUP_PENDING", "PROFILE_NOT_ONBOARDABLE"]) assert.ok(run.includes(`**\`${code}\``), code);
+  // Standard C's expiry, exit-6 and exit-8 prose is supplied by the shared standard block.
+  assert.match(run, /exit codes go by the \[shared table\]\(#exit-codes-and-owner-lines\), with `<what>` = "TinyCloud"/);
+  assert.ok(guide.includes("\n## Exit codes and owner lines\n\n{{std:errors}}\n"));
 });
 
 test("the owner sees the same words as before the loop", () => {
   for (const line of [
-    "> I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.",
-    '"Open this link and approve, then tell me."',
-    'this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud."',
     "There's no code to send back: tell your agent when you've approved.",
+    "Open this link and approve, then tell me.",
+    'this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud."',
   ]) once(guide, line);
 });
 
@@ -205,6 +205,7 @@ test("the run block prints the done line on exit 0 and only ONBOARD_EXIT on othe
   for (const [exit, stdout, last] of [
     [0, '{\n  "onboarded": true,\n  "profile": "default"\n}', "NEXT: onboarding is done; continue with the owner's goal."],
     [1, "", "ONBOARD_EXIT 1"],
+    [6, "", "ONBOARD_EXIT 6"],
     [8, "", "ONBOARD_EXIT 8"],
     [8, '{"pending":{"step":2,"of":2}}', "ONBOARD_EXIT 8"],
   ]) {

@@ -79,14 +79,14 @@ if [ ! -s "$DIR/owner-did.txt" ]; then
   printf '%s\n' "$OWNER_DID" > "$DIR/owner-did.txt"
 fi
 RC=0
-echo 'Access link: the owner approves it in OpenKey and no code comes back. This step finishes on its own after the approval.' >&2
+echo 'Access link: the owner approves it in OpenKey. When this command exits, follow the shared exit-code table and tell the owner what happened.' >&2
 "$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
 ACTIVE_PID=$!
 wait "$ACTIVE_PID" || RC=$?
 ACTIVE_PID=
 if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
-  echo 'APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link.' >&2
+  echo 'APPROVAL_REQUEST_EXPIRED above means the access link may have expired before it was approved: use the shared exit-3 decline/expiry rule before starting a new request.' >&2
   echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
   exit 1
 fi

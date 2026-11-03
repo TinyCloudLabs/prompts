@@ -87,6 +87,12 @@ Report honestly what revoke did. `share revoke` is for shares this profile creat
 
 Use the skill's report template. State: the expiry date, what the recipient will see (use the HTML note for HTML and the Artifacts paragraph for JSX), and that you can revoke. For HTML or JSX, add these words: **"Shared HTML and JSX pages run the sender's code in a sandbox. The sender can tell that you opened it."** Never tell the owner viewers are anonymous. Leave the line out for Markdown. End with the link, once, in your reply to the owner.
 
+## Exit codes and owner lines
+
+Sharing signs in with a pasted code (see the exceptions below); the publish skill's own tables give each code. Its owner lines are the shared ones, with `<what>` = "sharing".
+
+{{std:errors}}
+
 ## Undo
 
 Same as [Publish and share](publish.md#undo): revoking a share is separate from clearing the agent's local login; `"$TC_BIN" --profile publisher auth logout` clears only the local session.

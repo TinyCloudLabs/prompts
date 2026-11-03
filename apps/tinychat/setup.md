@@ -106,6 +106,12 @@ Keep coverage limits visible:
 
 Browsing uses `discover`, an explicit displayed 1-based meeting selection with `read`, then the same `next` flow. Topic discovery requires bounded literal body search rather than title or summary matching. Follow the installed skill and pinned meeting contract for command details, provenance, continuation and error handling.
 
+## Exit codes and owner lines
+
+TinyChat's own steps report statuses and still use a pasted code (see the exceptions below); onboarding's CLI commands go by the shared table. Its owner lines are the shared ones, with `<what>` = "TinyChat".
+
+{{std:errors}}
+
 ## 6. Return, hand off, update or remove
 
 On a later visit, run the installed helper's `prepare` again (in OpenCode, `tinychat_setup` without arguments). Reuse valid context and authority. To use another account, run onboarding again with that account; never switch identities to work around a read failure.

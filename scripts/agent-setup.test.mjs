@@ -515,22 +515,22 @@ const requested = (issued, courierHome, surface) => {
   assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
   return approval;
 };
-// Sam's approved wording (14:59:32Z): every approval line ends "then tell me."
-test("every Courier approval line ends with \"then tell me.\", on every served surface", () => {
+// Courier link handling follows #152's relay line; expired links use the approved decline question.
+test("Courier approval messages use the relay line and the decline rule, on every served surface", () => {
   for (const surface of COURIER_SURFACES) {
     const text = readFileSync(join(root, surface), "utf8");
     assert.doesNotMatch(text, /tell me when you're done|says they're done/, surface);
     for (const line of [
       "> Open this link and approve the one-time Courier permission, then tell me.",
-      '"That link expired. Please open this new one and approve, then tell me."',
       '"That didn\'t finish on my side. Please open this link and approve, then tell me."',
       REFUSED_GRANT_LINE,
-      "end your turn, and re-run `courier init --wait --timeout 60s` when the owner next writes to you.",
+      "Send `pending.approvalUrl` once and wait for the owner",
+      "ask the decline question from the shared table",
     ]) assert.ok(text.includes(line), `${surface}: ${line}`);
   }
 });
-// js-sdk #821's exit-8 sentences, verbatim from its Courier README, skills/courier/SKILL.md and `courier --help`.
-const EXIT_PENDING_RULING = "Exit 8 is not a failure: the approval is still pending. Send the owner the `pending.approvalUrl` (the same link as `openkeyUrl`), ask them to approve it, end your turn, and re-run `courier init --wait --timeout 60s` when the owner next writes to you. Repeat while it exits 8.";
+// js-sdk #821's exit-8 contract: wait for the owner and follow the `Next:` line.
+const EXIT_PENDING_RULING = "Send `pending.approvalUrl` once and wait for the owner; if you already sent this exact link, don't send it again.";
 const EXIT_OTHER_RULING = "Any other non-zero exit is an error: stderr carries `[code]`.";
 // The real-CLI tests run the pinned CLI; COURIER_TEST_TC points them at a candidate build before a pin bump.
 const COURIER_CLI = process.env.COURIER_TEST_TC || join(root, "node_modules/.bin/tinycloud");
@@ -611,7 +611,7 @@ for (const surface of COURIER_SURFACES) {
     // Rotating the key would clear every pairing: no setup block may run it, though the CLI's errors suggest it.
     assert.doesNotMatch(section.match(/```sh\n[\s\S]*?\n```/g).join("\n"), /--rotate-key/);
     assert.ok(section.includes("Never run `init --rotate-key`, even when stderr suggests it."));
-    // A foreground call: no background job, sleep or loop, and a wait well under a 2-minute tool limit.
+    assert.doesNotMatch(wait, /rc === "6"/, "Courier errors use exit 1, not the CLI's exit-6 behavior");
     assert.doesNotMatch(wait, /&\s*$|\bsleep\b|\bwhile\b|\buntil\b|\bnohup\b/m);
     assert.ok(Number(wait.match(/--timeout (\d+)s\b/)[1]) <= 90);
     // The block shows the CLI's stdout in full, exits with its code, then prints what to do next.

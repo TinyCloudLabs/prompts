@@ -5,30 +5,29 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
-// TC-2323: since OpenKey #407, a request that expired before it was approved gets 410 expired_request,
-// and CLI 1.5.1 exits 3 (APPROVAL_REQUEST_EXPIRED) and drops it. The guides send the new link on exit 3,
-// cap exit-8 retries at three, and never log out or edit the CLI's files to get past an expired link.
-// TC-2238: /onboarding runs `onboard --timeout 1s` (js-sdk #822), where exit 8 with a `pending` object is
-// the normal wait and an expired link can end as exit 3 once more before the next run makes a new one.
+// The 1.6.2 expired-request message and the shared agent-side decline rule are checked against standard/blocks.md.
 const base = mkdtempSync(join("/var/tmp", "TC-2323."));
 for (const key of ["HOME", "TC_HOME"]) process.env[key] = base;
 after(() => rmSync(base, { recursive: true, force: true }));
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
-const exit8 = guide.split("- **Exit 8 without a `pending` object:**")[1]?.split("\n- ")[0];
-const expired = guide.split("- **`APPROVAL_REQUEST_EXPIRED` (exit 3):**")[1]?.split("\n- ")[0];
+const errors = readFileSync(join(root, "standard/blocks.md"), "utf8").split(/^<!-- std:errors -->\n/m)[1].trim();
+const row = (exit) => errors.split("\n").find((line) => line.startsWith(`| ${exit} |`));
 
 test("onboarding caps exit 8 without a pending link at three tries and never logs out", () => {
-  assert.ok(exit8, "the onboarding guide must handle exit 8 without a pending object");
-  assert.match(exit8, /at most three times in a row\. If it still fails, stop and report it to the owner; don't retry\./);
-  assert.match(exit8, /Never edit or delete the CLI's files yourself\./);
-  assert.doesNotMatch(guide, /"\$TC" auth logout|auth logout`? \(|HTTP 400|approval-pending/, "no logout or file way-out for an expired link");
+  assert.ok(guide.includes("\n{{std:errors}}\n"), "the onboarding guide must carry the shared table");
+  assert.match(row(8), /Or OpenKey is down: no `pending` object\./);
+  assert.match(row(8), /at most 3 times in a row; then send the “can't” failed line and stop\./);
+  assert.match(row(8), /Waiting never counts as a retry/);
+  assert.doesNotMatch(guide, /"\$TC" auth logout|auth logout`? \(|HTTP 400|approval-pending/, "no logout or private-file way out for an expired link");
 });
 
-test("onboarding reruns an expired link, which can end as exit 3 once more, then sends the new one", () => {
-  assert.ok(expired, "the onboarding guide must handle APPROVAL_REQUEST_EXPIRED");
-  assert.match(expired, /Run the same command again; it can end this way once more before it makes a new link\. Send the new link\./);
+test("exit 3 uses expiry time and the approved decline question, not an automatic resend", () => {
+  assert.match(row(3), /APPROVAL_REQUEST_EXPIRED/);
+  assert.match(row(3), /more than 2 minutes before `expiresAt`/);
+  assert.match(row(3), /If `now >= expiresAt - 2 minutes`, it is a real expiry: start a new request/);
+  assert.match(row(3), /If you never saw the exit-8 JSON, use the decline question below/);
 });
 
 const helper = (code, message) => {
@@ -54,8 +53,8 @@ test("owner-grant.sh caps exit 8 at three tries and names no logout", () => {
   assert.ok(!calls.includes("logout"), "the helper never logs the owner out");
 });
 
-test("owner-grant.sh sends the agent back for a new link when the access link expired (exit 3)", () => {
+test("owner-grant.sh uses the shared decline/expiry rule after exit 3, not an automatic new link", () => {
   const { out } = helper(3, '{"error":{"code":"APPROVAL_REQUEST_EXPIRED"}}');
   assert.equal(out.status, 1);
-  assert.match(out.stderr, /APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link\./);
+  assert.match(out.stderr, /APPROVAL_REQUEST_EXPIRED above means the access link may have expired before it was approved: use the shared exit-3 decline\/expiry rule before starting a new request\./);
 });

@@ -17,6 +17,12 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 
 Keep the owner's request, read [setup/agent.md](agent.md), select **Secrets** and follow its steps. Install only `tc-secrets`; choose a role-and-purpose-specific `TC_SECRETS_PROFILE` rather than silently sharing `api-keys`. Once setup is ready, read the installed skill's `SKILL.md` and continue the original task from §1 in this conversation. Missing CLI or owner DID is `NEEDS_SETUP`, not a reason to request a value in chat or a broad grant.
 
+## Exit codes and owner lines
+
+Secrets signs in with a pasted code (see the exceptions below); the skill's own table gives each code. Its owner lines are the shared ones, with `<what>` = "access to your secrets".
+
+{{std:errors}}
+
 ## Undo
 
 - **Local session:** if you approved the agent, `"$TC_BIN" --profile "$TC_SECRETS_PROFILE" auth logout` clears that profile's session on this computer. Set `TC_BIN` to your private CLI path (or read it with `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN`), and use the actual role-specific `TC_SECRETS_PROFILE`. This does **not** revoke the grant or erase a value already read; the grant lasts until expiry or owner revocation. `PROFILE_NOT_FOUND` means this profile never signed in.

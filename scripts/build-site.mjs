@@ -144,10 +144,11 @@ const RESOLVER = [
   '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+// Courier's setup section is published inside its skill as well as this guide.
 const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
   .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
 if (!courierSetup) throw new Error("Courier guide is missing executable remote setup.");
-const COURIER_SETUP = `## Set up Courier once\n${courierSetup.trim()}`;
+const COURIER_SETUP = `## Set up Courier once\n${expandStd(courierSetup.trim(), "setup/courier.md")}`;
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
 const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
@@ -476,8 +477,8 @@ const route = new Map(copied.map((f) => [f, `/${f}`]));
 for (const p of PAGES) if (!route.has(p.src)) route.set(p.src, `/${p.url}`);
 for (const s of skills) if (!s.tarball) for (const f of s.files) route.set(`${s.dir}/${f.path}`, f.path === "SKILL.md" ? `/skills/${s.short}.md` : f.url);
 
-// A guide as published: relative links become absolute public URLs, {{CLI_VERSION}} becomes
-// install-cli.mjs's pin, and on a preview every production URL points at the preview.
+// A guide as published: standard blocks expand, relative links become absolute public URLs,
+// {{CLI_VERSION}} becomes install-cli.mjs's pin, and on a preview every production URL points at the preview.
 function render(src) {
   return expandStd(readFileSync(join(ROOT, src), "utf8"), src)
     .replace(/\]\((?!https?:|mailto:|#)([^)\s#]+)(#[^)\s]*)?\)/g, (_, target, hash = "") => {

@@ -107,6 +107,12 @@ For the agent: follow `SKILL.md` §9. Run `migrate.sh` yourself, with `--dry-run
 
 To go back, the owner asks in chat. Follow `SKILL.md` §9's going-back procedure; never delete the discovery entry or remove the receipt before newer records have been copied and read back.
 
+## Exit codes and owner lines
+
+The skill's own codes come first; the shared table covers the rest. Its owner lines are the shared ones, with `<what>` = "your <app> app" (for example "your Health Log app").
+
+{{std:errors}}
+
 ## Undo
 
 Access expires on the date shown at approval: onboarding and new app grants normally use 30 days; the older narrow Health Log grant uses 7 days. Revoke access at https://account.tinycloud.xyz/delegations to end it sooner. Local logout is not revocation.

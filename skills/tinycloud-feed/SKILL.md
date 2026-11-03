@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Connect an agent to the owner's TinyCloud Home feed once, post cards there with `tinycloud feed publish`, and read the owner's answers.
 metadata:
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -172,3 +172,9 @@ tinycloud --profile '<OWNER_PROFILE>' sql execute 'DELETE FROM feed_agents WHERE
 The token stays reserved for that agent; connect a different agent under a new token.
 
 The installed reference copy of this section is [creating-a-post.md](creating-a-post.md).
+
+## 9. Exit codes and owner lines
+
+Owner lines here are the shared ones, with `<what>` = "your Home feed".
+
+{{std:errors}}
