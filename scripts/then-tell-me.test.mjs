@@ -96,7 +96,7 @@ test("the built onboarding block, when a resumed approval exits 6, says run it a
   const result = runBlock(`echo '{"error":{"code":"NETWORK_ERROR"}}' >&2; exit 6`);
   assert.equal(result.status, 6);
   const next = result.stdout.trimEnd().split("\n").at(-1);
-  assert.equal(next, "NEXT: exit 6 is a network error; the approval request is saved and the link you already sent still works. Run this block again once, with no new link; do not tell the owner it failed. If it exits 6 again, tell the owner \"I can't reach TinyCloud right now.\" and stop.");
+  assert.equal(next, "NEXT: exit 6 is a network error; the approval request is saved and the link you already sent still works. Run this block again once, with no new link; do not tell the owner it failed. If it exits 6 again, tell the owner \"I can't set up TinyCloud right now. Please ask me again later.\", then the error code from stderr on its own line, and stop.");
   assert.doesNotMatch(result.stdout, /ONBOARD_EXIT/);
   assert.doesNotMatch(next, /send the owner this link|this is a new link/);
 });
