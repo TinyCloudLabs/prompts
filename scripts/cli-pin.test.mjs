@@ -25,7 +25,7 @@ const section = (file, heading) => {
 };
 
 const OLDER = "1.5.1";
-const PASSING = [CLI_VERSION, "1.6.10", "1.7.0-beta.1"];
+const PASSING = [CLI_VERSION, "1.6.2", "1.7.0", "1.6.10", "1.7.0-beta.1"];
 const cliOlder = (bin) => `CLI_OLDER ${OLDER} ${bin}: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block`;
 const tcOlder = (bin) => `TC_OLDER ${OLDER} ${bin} is older than the pinned ${CLI_VERSION}; keeping this operator-selected CLI`;
 
@@ -137,7 +137,7 @@ for (const block of blocks) {
 }
 
 test("every gate's comparison: older below the pin, equal or newer passes, a prerelease of the pin is older", () => {
-  const cases = { "1.5.1": true, "1.4.99": true, "0.9.0": true, "1.5.2": true, "1.6.0-beta.1": true, "1.6.0-rc.0": true, "": true, "1.6.0": false, "1.6.10": false, "1.7.0-beta.1": false, "2.0.0": false, "1.6.0+build.7": false };
+  const cases = { "1.5.1": true, "1.4.99": true, "0.9.0": true, "1.5.2": true, "1.5.9": true, "1.6.0": true, "1.6.0-beta.1": true, "1.6.1-beta.2": true, "1.6.1-rc.0": true, "": true, "1.6.1": false, "1.6.2": false, "1.6.10": false, "1.7.0": false, "1.7.0-beta.1": false, "2.0.0": false, "1.6.1+build.7": false };
   for (const block of blocks) {
     const compare = section(block.file, block.heading).match(/awk -F\. -v p=\S+ '[^']*'/)?.[0];
     assert.ok(compare, `${block.name}: no comparison`);

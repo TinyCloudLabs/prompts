@@ -158,9 +158,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.6.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.0.tgz",
-    integrity: "sha512-7Qz/9qWiAweKFoDKafAo1fpCzsiClaJb5gvRj12q15qMa1ll5X9l97N/fca/ftmBJlcwgjUVtICfL0WzwOi9/A==",
+    version: "1.6.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.1.tgz",
+    integrity: "sha512-XtLjcg1CZw55ofF+M3fzXAsuMCFHSPknY9nm+4FDkE2/9hcO7Goes9Xq4EvBX/6VDJ5CgdouAmM4LzRPQYyEOw==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -175,10 +175,10 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.0`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.1`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.0 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.1 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -199,9 +199,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.5.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.0.tgz",
-    integrity: "sha512-kSgSPkcjQFWKZ24orVonR4VeG/mo8sM4S6zNrH35mqQJgzviyT4/ukFa6gq2iAgTG9vIuK0cgC3mozwzi1Bn8Q==",
+    version: "0.5.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.1.tgz",
+    integrity: "sha512-5vsqn+fxwd6GRoWQWS8jj/zsm0ZqyyXgyd0nqyatAfDDZcxHGp9XbCPupCnEa2CbsDtTVDy2V11CoI9DLALtAg==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -302,7 +302,7 @@ if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
 }
 
 // Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
-// package's version (`@tinycloud/cli 1.6.0`, `@tinycloud/cli@1.6.0`) names the pin. Markdown is served as
+// package's version (`@tinycloud/cli 1.6.1`, `@tinycloud/cli@1.6.1`) names the pin. Markdown is served as
 // written, so each spells the pin out and must spell the installer's. Text may instead write {{CLI_VERSION}},
 // which render() fills in from install-cli.mjs (as /cli's blocked-install line and fallback commands do).
 const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));
