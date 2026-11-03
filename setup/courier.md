@@ -19,7 +19,7 @@ Route by capability, not by client name:
 
 ## Before onboarding
 
-Use Node.js 20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. A saved path inside the shared private install is the agent's own copy: onboarding's CLI setup upgrades it, so this check leaves it to onboarding. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. Any other selected path that is missing or not CLI `1.6.0` stops here; do not switch binaries. With no selection, continue to onboarding, which installs the default CLI.
+Use Node.js 20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. A saved path inside the shared private install is the agent's own copy: onboarding's CLI setup upgrades it, so this check leaves it to onboarding. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. Any other selected path that is missing or older than CLI `1.6.1` (a prerelease of `1.6.1` is older) stops here; do not switch binaries. A newer CLI passes. With no selection, continue to onboarding, which installs the default CLI.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -33,17 +33,17 @@ fi
 if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
   TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
-  [ "$TC_VERSION" = 1.6.0 ] || { echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.0; binary left unchanged" >&2; exit 1; }
+  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.1 or newer; binary left unchanged" >&2; exit 1; fi
 fi
 ```
 
 Keep the owner's original request and any incoming invitation URL exactly as supplied. Reuse the existing TinyCloud CLI sign-in from `/onboarding`; do not create another TinyCloud CLI profile for Courier. Codes and delegations are fine in chat; secrets are not. Never ask for an owner key, use hidden code files or owner-run `tc auth grant`, or ask the owner to construct grant JSON.
 
-**One extra Courier approval:** CLI `1.6.0` and Courier `0.5.0` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
+**One extra Courier approval:** CLI `1.6.1` and Courier `0.5.1` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
 
 ## Install the Courier skill
 
-After onboarding, install or reuse the Courier action skill `courier` `0.5.0`. This step is required: the skill is how you run Courier. Inspect an existing `courier/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/courier/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Reuse files matching the `courier` entry, version `0.5.0`, in `https://agents.tinycloud.xyz/skills/index.json`; do not overwrite a modified skill.
+After onboarding, install or reuse the Courier action skill `courier` `0.5.1`. This step is required: the skill is how you run Courier. Inspect an existing `courier/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/courier/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Reuse files matching the `courier` entry, version `0.5.1`, in `https://agents.tinycloud.xyz/skills/index.json`; do not overwrite a modified skill.
 
 If the CLI setup's run call printed `SKILL_INSTALLED courier` in this conversation, this step is done: read the skill as below. Otherwise, if the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls. Skip the download if [the CLI setup](tinycloud.md#install-the-core-skill) already saved `$HOME/.local/share/tinycloud/install.js` in this conversation. `CLIENT` is `claude-code`, `codex` or `opencode`, as there.
 
@@ -55,11 +55,11 @@ mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tin
 node "$HOME/.local/share/tinycloud/install.js" courier --agent CLIENT
 ```
 
-It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 0.5.0 <folder>`; any failure stops setup. Then read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). Only if your client is none of those three, read SKILL.md and start.md directly instead, and set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
+It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 0.5.1 <folder>`; any failure stops setup. Then read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). Only if your client is none of those three, read SKILL.md and start.md directly instead, and set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
 
 ## Check the installed CLI
 
-After onboarding, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks the pinned release `1.6.0` and required subcommands. Without a selection, it uses the installed CLI. A selected binary that is not `1.6.0` stops this flow; report its path and version.
+After onboarding, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks the pinned release `1.6.1` or newer and required subcommands. Without a selection, it uses the installed CLI. A selected binary older than `1.6.1` (a prerelease of `1.6.1` is older) stops this flow; report its path and version. A newer CLI passes.
 
 Run this in the same shell as the later commands:
 
@@ -78,7 +78,7 @@ TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 [ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"
 [ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
-[ "$TC_VERSION" = 1.6.0 ] || { echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.0; binary left unchanged" >&2; exit 1; }
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.1 or newer; binary left unchanged" >&2; exit 1; fi
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
 for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac
