@@ -156,7 +156,7 @@ test("the real CLI's first run exits 8 with step 1's pending link, and a rerun w
   const started = Date.now();
   const again = onboard();
   assert.equal(again.status, 8, again.stderr);
-  assert.ok(Date.now() - started >= 2000, "the rerun waits for the owner until --timeout");
+  assert.ok(Date.now() - started >= 900, "the rerun waits for the owner until --timeout (1s)");
   assert.deepEqual(JSON.parse(cliStdout(again)), { pending });
   assert.equal(lastLine(again), next(pending.approvalUrl));
   const id = new URL(pending.approvalUrl).pathname.split("/").pop();
