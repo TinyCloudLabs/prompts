@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.0`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature checks decide: 1.0.0-beta.23 still reads secrets through the skill's old-CLI steps (no `secrets request`/`wait`). The sign-in needs a CLI that prints short OpenKey links (verified on `1.6.0`): an older CLI's link fails §3d's check, and the agent tells the operator.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.0`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature checks decide: 1.0.0-beta.23 still reads names the profile can already read, through the skill's old-CLI steps (no `secrets request`/`wait`). A new sign-in needs `1.6.0`'s short OpenKey link: with an older CLI, §3b stops with `SIGNIN_TC_OLDER` and starts nothing, and the agent tells the owner in one line that the CLI is older than the required `1.6.0`.
 
 ## 0. Operator setup (once, not run by the agent)
 
@@ -22,7 +22,7 @@ The owner keeps the secrets in Secret Manager (secrets.tinycloud.xyz). The agent
 
 ## Walkthrough
 
-1. **Check the CLI** (§1). Feature probes plus `TC_OWNER_DID`: `CLI_OK`, `CLI_LEGACY` (an older CLI; the skill falls back) or `STALE` (stop and tell the owner; never install anything). Old CLIs answer `secrets wait --help` with the general `secrets` help, so the probe looks for the `--timeout` and `--requester` options.
+1. **Check the CLI** (§1). Feature probes plus `TC_OWNER_DID`: `CLI_OK`, `CLI_LEGACY` (an older operator CLI: reads fall back; a new sign-in stops at §3b) or `STALE` (stop and tell the owner; never install anything). Old CLIs answer `secrets wait --help` with the general `secrets` help, so the probe looks for the `--timeout` and `--requester` options.
 2. **Check access** (§2). First confirm the profile belongs to `TC_OWNER_DID`; a profile signed in to another account stops with `OWNER_MISMATCH`, and the agent never switches or resets it. Then one `secrets wait NAMES --timeout 0` asks TinyCloud which names exist and which the profile can read, without decrypting:
    - `READY` → use it.
    - `MISSING` → the secret doesn't exist yet. `NO_ACCESS` → the profile can't read it (it may or may not exist).

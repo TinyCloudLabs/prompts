@@ -152,7 +152,9 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }
 STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; PROFILE="${1:-publisher}"
-rm -f "$STATE/signin.rc" "$STATE/login.json" "$STATE/login.err"
+rm -f "$STATE/signin.rc" "$STATE/login.json" "$STATE/login.err" "$STATE/context.json"
+# This profile's key and node, for the link check.
+"$TC_BIN" --profile "$PROFILE" context --json < /dev/null > "$STATE/context.json" 2> /dev/null
 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --no-popup --manifest "$STATE/share-publishing.json" --expiry 30d < /dev/null > "$STATE/login.json" 2> "$STATE/login.err" &
 echo "$!" > "$STATE/signin.pid"
 wait "$!"
@@ -182,43 +184,94 @@ fi
 
 Never run two sign-ins at once. Running the script again after it stopped resumes the same link: the CLI saved it before printing it.
 
-**Check the link before you send it.** A few seconds after starting, run this block. It takes the link only from this sign-in's own output (the line after `Approve this request in OpenKey (open the complete link):`) and accepts only the exact short form `https://openkey.so/a/<id>#v=4&k=<key>&c=<hash>`. Never send a link from anywhere else.
+**Check the link before you send it.** A few seconds after starting, run this block. It sends nothing. It accepts the link only if all of these hold:
+
+1. **It came from this sign-in.** The block takes the link only from the output of the sign-in you started (`$STATE/login.err`, the line after `Approve this request in OpenKey (open the complete link):`). Never check or send a link from anywhere else.
+2. **It is a short OpenKey link:** exactly `https://openkey.so/a/<id>#v=4&k=<key>&c=<hash>`.
+3. **It asks for exactly the permission list above.** The block opens the sealed request the way OpenKey's page will, with the CLI's own link reader (it fetches the sealed record, checks its signature and content hash, and decrypts it with the key in the link). The request must be signed by and grant to this profile's own key, be for this profile's node, last at most 30 days, and ask for exactly the entries in `$STATE/share-publishing.json`, in the profile's `default` space, and nothing else.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 for i in $(seq 30); do { [ -s "$STATE/signin.rc" ] || grep -q '^https://' "$STATE/login.err"; } 2>/dev/null && break; sleep 1; done
-python3 - "$STATE/login.err" "$STATE/signin.rc" "$STATE/approve.url" <<'PY'
-import os, re, sys
-err_f, rc_f, url_f = sys.argv[1:4]
-def read(f):
-    try: return open(f, errors="replace").read()
-    except OSError: return ""
-lines, rc = read(err_f).splitlines(), read(rc_f).strip()
-at = [i for i, l in enumerate(lines) if l.strip() == "Approve this request in OpenKey (open the complete link):"]
-if not at:
-    if not rc: sys.exit(print("NO_URL"))
-    codes = re.findall(r'"code":\s*"([A-Z0-9_]+)"', read(err_f))
-    sys.exit(print("LOGIN_PREFLIGHT_FAILED", codes[-1] if codes else f"exit-{rc}"))
-if rc: sys.exit(print("SIGNIN_ENDED"))
-urls = {lines[i + 1].strip() if i + 1 < len(lines) else "" for i in at}
-if len(urls) != 1 or sum(1 for l in lines if re.search(r"https?://", l)) != len(at): sys.exit(print("REQUEST_MISMATCH more than one link"))
-url = urls.pop()
-if not re.fullmatch(r"https://openkey\.so/a/[a-z2-7]{26}#v=4&k=[A-Za-z0-9_-]{43}&c=bafkrei[a-z2-7]{52}", url): sys.exit(print("REQUEST_MISMATCH not a short OpenKey link"))
-same = read(url_f).strip() == url
-fd = os.open(url_f, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-with os.fdopen(fd, "w") as f: f.write(url)
-print("APPROVE_URL_SAVED", "SAME_LINK" if same else "NEW_LINK")
-PY
+R=$(node - "$STATE/login.err" "$STATE/signin.rc" "$STATE/context.json" "$STATE/approve.url" "$STATE/share-publishing.json" <<'JS'
+const fs = require("fs"), { createRequire } = require("module");
+const [errFile, rcFile, ctxFile, urlFile, manifestFile] = process.argv.slice(2);
+const read = (f) => { try { return fs.readFileSync(f, "utf8"); } catch { return ""; } };
+const done = (...words) => { console.log(words.join(" ")); process.exit(0); };
+const fail = (why) => done("REQUEST_MISMATCH", why);
+const text = read(errFile), lines = text.split("\n");
+// 1. Only this sign-in's own output: the line after the CLI's prompt, and no other link in it.
+const prompt = lines.flatMap((l, i) => (l.trim() === "Approve this request in OpenKey (open the complete link):" ? [i] : []));
+if (!prompt.length) {
+  if (!read(rcFile).trim()) done("NO_URL");
+  const codes = [...text.matchAll(/"code":\s*"([A-Z0-9_]+)"/g)];
+  done("LOGIN_PREFLIGHT_FAILED", codes.length ? codes.at(-1)[1] : "exit-" + read(rcFile).trim());
+}
+if (read(rcFile).trim()) done("SIGNIN_ENDED");
+const url = (lines[prompt[0] + 1] || "").trim();
+if (new Set(prompt.map((i) => (lines[i + 1] || "").trim())).size !== 1 || lines.filter((l) => /https?:\/\//.test(l)).length !== prompt.length) fail("more than one link");
+// 2. The short form OpenKey's approval page opens, and nothing else.
+if (!/^https:\/\/openkey\.so\/a\/[a-z2-7]{26}#v=4&k=[A-Za-z0-9_-]{43}&c=bafkrei[a-z2-7]{52}$/.test(url)) fail("not a short OpenKey link");
+let ctx, manifest;
+try { ctx = JSON.parse(read(ctxFile)); } catch { fail("no profile context"); }
+try { manifest = JSON.parse(read(manifestFile)); } catch { fail("no permission list"); }
+// 3. Open the sealed request as OpenKey's page will, with the CLI's own link reader.
+let links;
+try { links = createRequire(fs.realpathSync(process.env.TC_BIN))("@tinycloud/share-envelope/links"); } catch { done("CHECK_UNAVAILABLE"); }
+(async () => {
+  let request;
+  try {
+    ({ request } = await links.resolveApprovalRequest(url, { trustedOrigins: ["https://openkey.so"], apiOrigin: process.env.TC_LINKS_API_ORIGIN ?? "https://api.tinycloud.xyz" }));
+  } catch (e) {
+    if (e?.code === "service_unavailable") done("CHECK_RETRY");
+    fail("the sealed request doesn't open (" + (e?.code || "error") + ")");
+  }
+  if (request.issuer !== String(ctx.sessionDid || "").split("#")[0]) fail("link is for another key");
+  if (request.nodeOrigin !== ctx.host) fail("link is for another node");
+  if (!(request.grantLifetimeSeconds <= 2592000)) fail("lifetime over 30 days");
+  const lower = (s) => (typeof s === "string" ? s.toLowerCase() : s);
+  const spaces = new Set([manifest.space]);
+  const [, , , chain, addr] = String(ctx.ownerDid || "").split("#")[0].split(":");
+  if (chain && addr) spaces.add(`tinycloud:pkh:eip155:${chain}:${lower(addr)}:${manifest.space}`);
+  const want = new Set(manifest.permissions.map((p) => `${p.service}|${p.path}|${p.actions.join(",")}`));
+  const got = new Set(), spaceValues = new Set();
+  for (const e of request.permissions) {
+    if (Object.keys(e).some((k) => !["service", "space", "path", "actions"].includes(k)) || !Array.isArray(e.actions)) fail("unexpected entry fields");
+    const space = lower(e.space).startsWith("tinycloud:pkh:") ? lower(e.space) : e.space;
+    if (!spaces.has(space)) fail("entry outside the profile's default space");
+    spaceValues.add(space);
+    const t = `${e.service}|${e.path}|${e.actions.join(",")}`;
+    if (got.has(t)) fail("duplicate entry");
+    got.add(t);
+  }
+  if (got.size !== want.size || [...want].some((t) => !got.has(t)) || spaceValues.size !== 1) fail("requested permissions differ from the publishing list");
+  const same = read(urlFile).trim() === url;
+  fs.writeFileSync(urlFile, url, { mode: 0o600 });
+  done("APPROVE_URL_SAVED", same ? "SAME_LINK" : "NEW_LINK");
+})();
+JS
+)
+echo "${R:-CHECK_UNAVAILABLE}"
+case "$R" in
+  APPROVE_URL_SAVED*|SIGNIN_ENDED|NO_URL|CHECK_RETRY) ;;
+  *) kill "$(cat "$STATE/signin.pid" 2>/dev/null)" 2>/dev/null; rm -f "$STATE/approve.url" "$STATE/signin.pid" ;;
+esac
 ```
 
 - `APPROVE_URL_SAVED NEW_LINK` → read `$STATE/approve.url` once, put the link in the message below, send it, then run the wait block.
 - `APPROVE_URL_SAVED SAME_LINK` → it's the link you already sent: don't send it again; run the wait block.
 - `SIGNIN_ENDED` → the sign-in already finished; run the wait block.
 - `NO_URL` → the link isn't printed yet. Run this block once more; if it repeats, run the wait block, which reports why.
+- `CHECK_RETRY` → TinyCloud's links service couldn't be reached. Run this block again in a minute, at most 3 times in a row; then stop and tell the owner.
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link; see the errors table.
-- `REQUEST_MISMATCH <why>` → don't send anything. Stop the sign-in (`kill "$(cat "$STATE/signin.pid")"`) and report it. On a `TC_OLDER` CLI, `not a short OpenKey link` means that CLI is too old for this sign-in: tell the operator it needs `1.6.0`.
+- `REQUEST_MISMATCH <why>` or `CHECK_UNAVAILABLE` → the block stopped the sign-in. Don't send any link; report what the check said. If §1 printed `TC_OLDER`, `not a short OpenKey link` or `CHECK_UNAVAILABLE` means that CLI can't make this sign-in's short link: tell the owner in one line that the CLI is older than the required `1.6.0`, and stop. Publishing with an existing session still works.
 
 Send exactly this, with the link on its own line, as printed:
 

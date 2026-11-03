@@ -100,10 +100,10 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 ```
 
 - `CLI_OK` and `OWNER_OK` → continue with §2.
-- `CLI_LEGACY` → the CLI predates `secrets request` and `secrets wait`. Everything still works with the older steps marked **(old CLI)** below. Tell the operator once that the CLI should be upgraded to the pinned version.
+- `CLI_LEGACY` → the CLI predates `secrets request` and `secrets wait` (only an operator-selected CLI can get here; §1 sends an agent-installed one to /cli). Reading names the profile can already read still works, with the older steps marked **(old CLI)** in §2. A new sign-in can't: it needs `1.6.0`'s short link, so §3b stops with `SIGNIN_TC_OLDER`. Tell the operator once that the CLI should be upgraded to the pinned version.
 - `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/agent for the pinned private install or the owner's non-secret DID, then return to this same task. Do not ask for a secret value or start a broad grant.
 - `CLI_OLDER <version> <path>` (the block stops before any other TinyCloud command) → the CLI the agent installed is older than `1.6.0`: follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
-- `TC_OLDER <version> <path>` → the operator selected that older CLI: keep it, tell the operator once that `1.6.0` is required, and continue with what this block reports. The line after `CLI_OK`, `CLI_LEGACY` or `STALE` is the CLI version.
+- `TC_OLDER <version> <path>` → the operator selected that older CLI: keep it, tell the operator once that `1.6.0` is required, and continue with what this block reports. Reads with an existing approval keep working; a new sign-in (§3) needs `1.6.0`, and §3b stops with `SIGNIN_TC_OLDER`. The line after `CLI_OK`, `CLI_LEGACY` or `STALE` is the CLI version.
 
 If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tinycloud` command.
 
@@ -339,6 +339,10 @@ PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
 
 rm -f "$STATE/manifest.json" "$STATE/context.json" "$STATE/signin.sh"
+TC_VERSION=$("$TC_BIN" --version 2>/dev/null)
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  echo "SIGNIN_TC_OLDER ${TC_VERSION:-unknown} $TC_BIN: this sign-in needs 1.6.0"
+else
 python3 - "$STATE/manifest.json" "$TC_OWNER_DID" $NAMES <<'PY'
 import json, re, sys
 out, owner, names = sys.argv[1], sys.argv[2], sys.argv[3:]
@@ -370,9 +374,10 @@ echo "$?" > "$STATE/signin.rc"
 W
   echo REQUEST_READY
 fi
+fi
 ```
 
-`REQUEST_READY` → §3c. `BAD_INPUT` → fix the names or `TC_OWNER_DID`. `SETUP_FAILED` → run §3a, then this block again.
+`REQUEST_READY` → §3c. `BAD_INPUT` → fix the names or `TC_OWNER_DID`. `SETUP_FAILED` → run §3a, then this block again. `SIGNIN_TC_OLDER <version> <path>` → the operator's CLI is too old for a short-link sign-in, and nothing was started: tell the owner in one line that the CLI is older than the required `1.6.0`, and stop. Don't use any other sign-in. Names the profile can already read stay readable (§4).
 
 **3c. Start the sign-in and keep it running.** The script runs `auth login --method openkey --no-popup --manifest "$STATE/manifest.json" --owner "$TC_OWNER_DID" --expiry 30d` on this profile. The CLI prints a short OpenKey link, then waits and fetches the owner's approval by itself: no code comes back. It has no time limit of its own (the link lasts an hour), so it must keep running while you talk to the owner. Start it **once**:
 
@@ -492,7 +497,7 @@ esac
 - `NO_URL` → the sign-in hasn't printed its link yet. Run this block once more; if it repeats, run §3e, which reports why.
 - `CHECK_RETRY` → TinyCloud's links service couldn't be reached. Run this block again in a minute, at most 3 times in a row; then stop and tell the owner.
 - `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
-- `REQUEST_MISMATCH <why>` or `CHECK_UNAVAILABLE` → the block stopped the sign-in. Don't send any link. Tell the owner what the check reported. On a `TC_OLDER` CLI, `not a short OpenKey link` or `CHECK_UNAVAILABLE` means that CLI is too old for this sign-in: tell the operator it needs `1.6.0`.
+- `REQUEST_MISMATCH <why>` or `CHECK_UNAVAILABLE` → the block stopped the sign-in. Don't send any link. Tell the owner what the check reported. With an operator's older CLI (§1 printed `TC_OLDER` or `CLI_LEGACY`), §3b normally stops first with `SIGNIN_TC_OLDER`; if not, `not a short OpenKey link` or `CHECK_UNAVAILABLE` here means the same thing: tell the owner in one line that the CLI is older than the required `1.6.0`, and stop.
 
 **3e. Wait for the approval.** Run this block right after you send the link, in the same turn, and again each time it prints `WAITING`, without waiting for the owner to reply: the sign-in sees the approval itself. Each run waits at most a minute.
 
