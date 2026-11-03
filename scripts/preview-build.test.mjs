@@ -86,16 +86,14 @@ test("a production build serves the repository's skills byte for byte, pointing 
 // Fetch tools that summarize a page keep its first lines and drop its shell
 // blocks, so each served guide and skill opens with this line and its own URL.
 const rawLine = (url) => `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${url}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
-// /owner is the owner's own page and has no agent line.
 const GUIDES = ["onboarding.md", "connect.md", "setup", "agent", "apps", "chat", "feed", "publish", "share", "secrets", "courier", "cli", "openkey"];
 const afterFrontMatter = (text) => text.replace(/^---\n[\s\S]*?\n---\n\n/, "");
 
-test("every served Markdown guide but /owner, and every skill, opens with the read-raw line for its own URL, in production and on a preview", () => {
+test("every served Markdown guide and every skill, opens with the read-raw line for its own URL, in production and on a preview", () => {
   for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
     const guides = readdirSync(site, { withFileTypes: true }).filter((e) => e.isFile() && /^[a-z]+(\.md)?$/.test(e.name)).map((e) => e.name).sort();
-    assert.deepEqual(guides, [...GUIDES, "owner"].sort(), site);
+    assert.deepEqual(guides, GUIDES.sort(), site);
     for (const guide of GUIDES) assert.ok(readFileSync(join(site, guide), "utf8").startsWith(rawLine(`${base}/${guide}`)), `${base}/${guide}`);
-    assert.doesNotMatch(readFileSync(join(site, "owner"), "utf8"), /read this file raw/, `${base}/owner`);
     const { skills } = JSON.parse(readFileSync(join(site, "skills/index.json"), "utf8"));
     assert.deepEqual(skills.map((s) => s.short).sort(), ["apps", "chat", "cli", "courier", "feed", "mcp", "publish", "secrets"]);
     for (const { short } of skills) {
@@ -121,7 +119,7 @@ test("the owner-facing HTML pages leave the read-raw line out", () => {
 const OWNER_PROMPTS = {
   setup: ["apps", "feed", "chat", "publish", "share", "secrets", "courier"],
   apps: ["apps"], chat: ["chat"], publish: ["publish"], share: ["share"], secrets: ["secrets"],
-  courier: ["courier"], cli: ["cli"], openkey: ["openkey"], owner: ["onboarding.md"],
+  courier: ["courier"], cli: ["cli"], openkey: ["openkey"],
   "onboarding.md": ["onboarding.md"], "connect.md": ["connect.md"],
   "skills/apps/QUICKSTART.md": ["apps"],
   "onboarding.html": ["onboarding.md"], "connect.html": ["connect.md"],
@@ -138,7 +136,7 @@ const ownerPrompts = (text) => [
 test("every owner prompt on the served site fetches its guide with curl and names its installer, in production and on a preview", () => {
   for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
     // Every served guide is listed, so a new "Paste into…" line can't skip the check.
-    for (const guide of [...GUIDES, "owner"]) assert.ok(guide in OWNER_PROMPTS || !/\*\*Paste/.test(readFileSync(join(site, guide), "utf8")), `${base}/${guide} has an unlisted prompt`);
+    for (const guide of GUIDES) assert.ok(guide in OWNER_PROMPTS || !/\*\*Paste/.test(readFileSync(join(site, guide), "utf8")), `${base}/${guide} has an unlisted prompt`);
     for (const [file, guides] of Object.entries(OWNER_PROMPTS)) {
       const prompts = file === "prompt.txt" ? [readFileSync(join(site, file), "utf8").trim()] : ownerPrompts(readFileSync(join(site, file), "utf8"));
       // prompt.txt is copied as written, so it names production on a preview too.
@@ -320,4 +318,17 @@ test("/cli's fallback stops on a private folder that holds another package: no n
   assert.deepEqual(callLines(join(fallback.home, "npm-calls")), []);
   assert.equal(readFileSync(project, "utf8"), original);
   assert.deepEqual(readdirSync(prefix(fallback.home)), ["package.json"]);
+});
+
+test("/owner and /owner/ redirect to /onboarding and no built page or listing links /owner", () => {
+  for (const site of [production, preview]) {
+    const redirects = readFileSync(join(site, "_redirects"), "utf8").split("\n");
+    assert.ok(redirects.includes("/owner /onboarding 301"), site);
+    assert.ok(redirects.includes("/owner/ /onboarding 301"), site);
+    assert.ok(!existsSync(join(site, "owner")), site);
+    for (const name of readdirSync(site, { withFileTypes: true, recursive: true }).filter((e) => e.isFile() && e.name !== "_redirects").map((e) => join(e.parentPath, e.name))) {
+      const text = readFileSync(name, "utf8");
+      assert.doesNotMatch(text, /agents\.tinycloud\.xyz\/owner(?![\w.-])|href="\/owner\/?"|\]\(\/owner\/?\)/, name);
+    }
+  }
 });
