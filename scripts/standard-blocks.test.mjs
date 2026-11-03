@@ -82,7 +82,7 @@ test("a repo-authored skill that carries a marker is expanded, listed as changed
   assert.equal(apps.files.find((f) => f.path === "TINY-APPS.md").sha256, createHash("sha256").update(body).digest("hex"));
 });
 
-test("the build fails on an unknown marker, a marker that isn't alone, an unused block, a bad block and a pasted copy", async () => {
+test("the build fails on an unknown marker, a marker that isn't alone, an unclosed marker, an unused block, a bad block and a pasted copy", async () => {
   const guide = (dir, change) => {
     const file = join(dir, "setup/publish.md");
     writeFileSync(file, change(readFileSync(file, "utf8")));
@@ -91,13 +91,15 @@ test("the build fails on an unknown marker, a marker that isn't alone, an unused
   const errors = await Promise.all([
     stderrOf("unknown", (dir) => guide(dir, (t) => t.replace("{{std:read-raw}}", "{{std:no-such-block}}"))),
     stderrOf("inline", (dir) => guide(dir, (t) => t.replace("{{std:read-raw}}", "See {{std:read-raw}} here.\n\n{{std:read-raw}}"))),
+    stderrOf("unclosed", (dir) => guide(dir, (t) => t.replace("{{std:read-raw}}", "{{std:read-raw}"))),
     stderrOf("unused", (dir) => addBlock(dir, "<!-- std:spare -->\nNothing carries this.")),
     stderrOf("relative", (dir) => addBlock(dir, "<!-- std:rel -->\nSee [the CLI](tinycloud.md).")),
     stderrOf("pasted", (dir) => guide(dir, (t) => t.replace("{{std:read-raw}}", readRaw))),
   ]);
   assert.match(errors[0], /\{\{std:no-such-block\}\} isn't in standard\/blocks\.md/);
-  assert.match(errors[1], /must be alone on its line/);
-  assert.match(errors[2], /no guide or skill carries \{\{std:spare\}\}/);
-  assert.match(errors[3], /std:rel has a relative link/);
-  assert.match(errors[4], /setup\/publish\.md: carries the text of std:read-raw instead of \{\{std:read-raw\}\}/);
+  assert.match(errors[1], /must be \{\{std:NAME\}\} alone on its line/);
+  assert.match(errors[2], /\{\{std:read-raw\} must be \{\{std:NAME\}\} alone on its line/);
+  assert.match(errors[3], /no guide or skill carries \{\{std:spare\}\}/);
+  assert.match(errors[4], /std:rel has a relative link/);
+  assert.match(errors[5], /setup\/publish\.md: carries the text of std:read-raw instead of \{\{std:read-raw\}\}/);
 });

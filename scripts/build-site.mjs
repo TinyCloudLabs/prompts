@@ -74,8 +74,8 @@ function expandStd(text, file) {
     STD_USED.add(name);
     return body;
   });
-  const left = out.match(/\{\{std:[^}]*\}\}/);
-  if (left) throw new Error(`${file}: ${left[0]} must be alone on its line and name a block`);
+  const left = out.match(/\{\{std:[^\n]*/);
+  if (left) throw new Error(`${file}: ${left[0].slice(0, 60)} must be {{std:NAME}} alone on its line, naming a block`);
   return out;
 }
 // Fetch tools such as Claude Code's WebFetch can hand the agent a summary that
