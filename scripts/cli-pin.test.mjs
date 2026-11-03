@@ -86,13 +86,12 @@ esac
 for (const block of blocks) {
   test(`${block.name}: an agent-installed CLI older than the pin prints CLI_OLDER and makes no further CLI call`, () => {
     for (const where of ["private", "saved-private", "process-private"]) {
-      const { bin, cwd, result, calls } = fresh(block, where, OLDER);
+      const { bin, result, calls } = fresh(block, where, OLDER);
       assert.notEqual(result.status, 0, `${where}: ${result.stdout}`);
       assert.equal(calls, "--version\n", where);
       assert.doesNotMatch(result.stdout + result.stderr, /TC_OLDER|CLI_OK|STALE/, where);
       if (block.onboarding) {
         assert.equal(result.stderr, `${cliOlder(bin)}\n`, where);
-        assert.equal(readFileSync(join(cwd, "onboard.err"), "utf8"), `${cliOlder(bin)}\n`, where);
       } else {
         assert.equal(result.stdout.trimEnd().split("\n").at(-1), cliOlder(bin), where);
       }
@@ -106,7 +105,7 @@ for (const block of blocks) {
         assert.equal(result.status, 0, `${version} ${where}: ${result.stdout}${result.stderr}`);
         assert.doesNotMatch(result.stdout + result.stderr, /CLI_OLDER|TC_OLDER/, `${version} ${where}`);
         assert.ok(calls.startsWith("--version\n"), `${version} ${where}: ${calls}`);
-        if (block.onboarding) assert.equal(calls, "--version\nonboard\n");
+        if (block.onboarding) assert.equal(calls, "--version\nonboard --timeout 60s\n");
         else if (block.probes) {
           assert.equal(calls, `--version\n${block.probes}`, `${version} ${where}`);
           assert.match(result.stdout, new RegExp(`^${block.ok}\\n${version.replaceAll(".", "\\.")}$`, "m"));
@@ -121,15 +120,13 @@ for (const block of blocks) {
 
   test(`${block.name}: an operator TC_BIN older than the pin prints TC_OLDER and ${block.stops ? "stops" : "continues to the feature probes"}`, () => {
     for (const where of ["process", "saved"]) {
-      const { bin, cwd, result, calls } = fresh(block, where, OLDER);
+      const { bin, result, calls } = fresh(block, where, OLDER);
       assert.doesNotMatch(result.stdout + result.stderr, /CLI_OLDER/, where);
       if (block.stops) {
         assert.notEqual(result.status, 0, where);
         assert.equal(calls, "--version\n", where);
-        if (block.onboarding) {
-          assert.equal(result.stderr, `${tcOlder(bin)}\n`, where);
-          assert.equal(readFileSync(join(cwd, "onboard.err"), "utf8"), `${tcOlder(bin)}\n`, where);
-        } else assert.equal(result.stdout.trimEnd().split("\n").at(-1), tcOlder(bin), where);
+        if (block.onboarding) assert.equal(result.stderr, `${tcOlder(bin)}\n`, where);
+        else assert.equal(result.stdout.trimEnd().split("\n").at(-1), tcOlder(bin), where);
       } else {
         assert.equal(result.status, 0, `${where}: ${result.stderr}`);
         assert.equal(calls, `--version\n${block.probes}`, where);

@@ -53,7 +53,7 @@ echo "$*" >> ${JSON.stringify(join(dir, "calls"))}
 case "$*" in
   --version) echo 1.6.0 ;;
   "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' '  join link --consent' ;;
-  onboard) echo '{"onboarded": true}' ;;
+  "onboard --timeout 60s") echo '{"onboarded": true}' ;;
 esac
 `, { mode: 0o700 });
   return { dir, home, cwd, tc, calls: join(dir, "calls") };
@@ -69,10 +69,11 @@ const guarded = {
     block: sh(onboardingGuide, "**2. Run onboarding.**"),
     // <TC_BIN> is replaced by the selected CLI.
     run: (run, env) => exec("sh", ["-c", guarded.onboarding.block.replaceAll("<TC_BIN>", run.tc)], { cwd: run.cwd, env }),
-    ran: (run) => {
-      assert.equal(callsOf(run), "--version\nonboard\n");
-      assert.equal(readFileSync(join(run.cwd, "onboard.out"), "utf8"), '{"onboarded": true}\n');
-      assert.equal(readFileSync(join(run.cwd, "onboard.err"), "utf8"), "");
+    // A foreground run: the result is on stdout.
+    ran: (run, result) => {
+      assert.equal(callsOf(run), "--version\nonboard --timeout 60s\n");
+      assert.equal(result.stdout, '{"onboarded": true}\nNEXT: onboarding is done; continue with the owner\'s goal.\n');
+      assert.equal(result.stderr, "");
     },
   },
   courier: {
@@ -127,8 +128,6 @@ for (const [page, guard] of Object.entries(guarded)) {
       assert.equal(result.stderr, guard.message);
       assert.equal(result.stdout, "");
       assert.equal(callsOf(run), "", "the CLI must not run");
-      // Onboarding runs in the background; the agent reads onboard.err for the link, so the reason is there too.
-      if (page === "onboarding") assert.equal(readFileSync(join(run.cwd, "onboard.err"), "utf8"), guard.message);
     }
   });
 

@@ -82,11 +82,11 @@ This was a supplied-guide smoke on an already connected account with retained me
 
 ### `/onboarding`
 
-`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Set me up with TinyCloud: <preview>/onboarding` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard` (js-sdk #775) and `/cli` pinned to it.
+`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Set me up with TinyCloud: <preview>/onboarding` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard --timeout` (js-sdk #822) and `/cli` pinned to it.
 
 | Client | Request | Required behavior |
 | --- | --- | --- |
-| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then `tinycloud onboard`. Explains both approvals once; sends each actual short link complete on its own line and keeps the command running. No pasted code. An interruption resumes with the identical command/profile. Success is `"onboarded": true`; app setup then reuses that CLI/profile and covered grants. |
+| Any agent with a shell (Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes) | none | Follows `/cli`, then runs `tinycloud onboard --timeout 60s` in the foreground, one shell call per run. Explains both approvals once, word for word; sends each actual short link complete on its own line and reruns at once, without waiting for the owner's reply. Sends step 2's link as soon as a run shows it, without the step-1 text; never sends a link twice. No pasted code. No background `onboard`, sleep loop or `auth logout`; no tool call stopped by a time limit. An interruption resumes with the identical command/profile. Success is `"onboarded": true`; app setup then reuses that CLI/profile and covered grants. |
 | Any agent with a shell | `Log my weight: 80.5 kg today.` | After onboarding, fetches `/apps` itself, without asking for another link, and continues with it. |
 | Chat apps with a TinyCloud connector | none | Chat-app route: the app's connector steps from `/connect`, then `tinycloud_connect` → `approvalUrl` → approve → `connected`. No shell, CLI or sandbox. |
 
