@@ -203,13 +203,12 @@ test("ending the turn follows the owner line in its paragraph, and the run's out
   }
 });
 
-// The block itself says what to do next (agents follow tool output more reliably than page prose): exit 0 →
-// the done line, with the CLI's JSON still shown; any exit other than 0, or 8 with a pending link → ONBOARD_EXIT.
-test("the run block prints the done line on exit 0 and only ONBOARD_EXIT on other exits, after the CLI's full stdout", () => {
+// The block itself says what to do next: exit 0 → done; exit 6 → rerun once; pending exit 8 with a link → send it; otherwise → ONBOARD_EXIT.
+test("the run block prints done on exit 0, a bounded same-block retry on exit 6, and ONBOARD_EXIT otherwise", () => {
   for (const [exit, stdout, last] of [
     [0, '{\n  "onboarded": true,\n  "profile": "default"\n}', "NEXT: onboarding is done; continue with the owner's goal."],
     [1, "", "ONBOARD_EXIT 1"],
-    [6, "", "ONBOARD_EXIT 6"],
+    [6, "", "NEXT: exit 6 is a network error; run this same block again once. If an approval request was saved, it resumes; do not create a new link. If that rerun also exits 6, follow the shared table."],
     [8, "", "ONBOARD_EXIT 8"],
     [8, '{"pending":{"step":2,"of":2}}', "ONBOARD_EXIT 8"],
   ]) {
@@ -222,6 +221,6 @@ test("the run block prints the done line on exit 0 and only ONBOARD_EXIT on othe
     assert.equal(result.status, exit, result.stderr);
     assert.equal(result.stderr, "cli stderr\n");
     assert.equal(result.stdout, `${stdout ? `${stdout}\n` : ""}${last}\n`);
-    assert.equal(result.stdout.split("\n").filter((line) => line.startsWith("NEXT:")).length, exit === 0 ? 1 : 0);
+    assert.equal(result.stdout.split("\n").filter((line) => line.startsWith("NEXT:")).length, exit === 0 || exit === 6 ? 1 : 0);
   }
 });

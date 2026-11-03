@@ -93,12 +93,6 @@ test("the built onboarding block ends with the done line when the CLI exits 0", 
   assert.equal(result.stdout, `{"onboarded":true}\nNEXT: onboarding is done; continue with the owner's goal.\n`);
 });
 
-test("the built onboarding block prints only ONBOARD_EXIT 6; CLI network handling has no NEXT line", () => {
-  const result = runBlock(`echo '{"error":{"code":"NETWORK_ERROR"}}' >&2; exit 6`);
-  assert.equal(result.status, 6);
-  assert.equal(result.stdout, "ONBOARD_EXIT 6\n");
-  assert.doesNotMatch(result.stdout, /NEXT:|send the owner this link|this is a new link/);
-});
 
 test("the Next: rule is scoped to approval commands; invitations follow their own steps", () => {
   for (const guide of ["onboarding.md", "courier"]) {
