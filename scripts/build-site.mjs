@@ -109,10 +109,14 @@ const RESOLVER = [
   '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+// One exit-code table and the four owner lines, written once in setup/errors.md: every guide and skill
+// authored here has {{ERRORS}} on a line of its own, and the build pastes the block there.
+const ERRORS = readFileSync(join(ROOT, "setup/errors.md"), "utf8").trimEnd();
+const withErrors = (text) => text.replaceAll("{{ERRORS}}", ERRORS);
 const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
   .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
 if (!courierSetup) throw new Error("Courier guide is missing executable remote setup.");
-const COURIER_SETUP = `## Set up Courier once\n${courierSetup.trim()}`;
+const COURIER_SETUP = withErrors(`## Set up Courier once\n${courierSetup.trim()}`);
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
 const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
@@ -337,6 +341,13 @@ async function loadSkill(skill) {
   }
   files.sort(([a], [b]) => (a < b ? -1 : 1));
   const changed = new Set();
+  if (!skill.tarball) {
+    files = files.map(([path, body]) => {
+      if (!path.endsWith(".md") || !body.includes("{{ERRORS}}")) return [path, body];
+      changed.add(path);
+      return [path, Buffer.from(withErrors(body.toString("utf8")))];
+    });
+  }
   for (const [path, change] of Object.entries(skill.changes || {})) {
     const i = files.findIndex(([p]) => p === path);
     if (i < 0) throw new Error(`${skill.short}: changes ${path}, which isn't in ${skill.tarball || skill.dir}`);
@@ -414,17 +425,18 @@ async function loadSkill(skill) {
 }
 
 const skills = await Promise.all(SKILLS.map(loadSkill));
-const copied = walk("").filter((f) => !PAGES.some((p) => p.src === f));
+// setup/errors.md is pasted into the guides, not served on its own (a /setup/ folder would clash with /setup).
+const copied = walk("").filter((f) => f !== "setup/errors.md" && !PAGES.some((p) => p.src === f));
 
 // Repository path → public path, for rewriting the guides' relative links.
 const route = new Map(copied.map((f) => [f, `/${f}`]));
 for (const p of PAGES) if (!route.has(p.src)) route.set(p.src, `/${p.url}`);
 for (const s of skills) if (!s.tarball) for (const f of s.files) route.set(`${s.dir}/${f.path}`, f.path === "SKILL.md" ? `/skills/${s.short}.md` : f.url);
 
-// A guide as published: relative links become absolute public URLs, {{CLI_VERSION}} becomes
-// install-cli.mjs's pin, and on a preview every production URL points at the preview.
+// A guide as published: {{ERRORS}} becomes setup/errors.md, relative links become absolute public URLs,
+// {{CLI_VERSION}} becomes install-cli.mjs's pin, and on a preview every production URL points at the preview.
 function render(src) {
-  return readFileSync(join(ROOT, src), "utf8")
+  return withErrors(readFileSync(join(ROOT, src), "utf8"))
     .replace(/\]\((?!https?:|mailto:|#)([^)\s#]+)(#[^)\s]*)?\)/g, (_, target, hash = "") => {
       const to = route.get(posix.normalize(posix.join(posix.dirname(src), target)));
       if (!to) throw new Error(`${src}: links to ${target}, which is not published`);

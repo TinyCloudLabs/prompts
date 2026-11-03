@@ -72,14 +72,21 @@ test("a preview's skills send agents to the preview, not production, under match
   }
 });
 
+// Standard C: the only change is {{ERRORS}}, pasted from setup/errors.md, and index.json lists those files as changed.
 test("a production build serves the repository's skills byte for byte, pointing at production", () => {
   assert.ok(readFileSync(join(production, "skills/apps.md"), "utf8").includes(`${SITE}/onboarding`));
   assert.deepEqual(servedSkillFiles(production).filter((p) => readFileSync(join(production, p), "utf8").includes(PREVIEW)), []);
   const index = assertIntegrity(production);
+  const errors = readFileSync(join(root, "setup/errors.md"), "utf8").trimEnd();
   for (const [short, dir] of [["apps", "tc-apps"], ["feed", "tinycloud-feed"], ["publish", "tc-publish"], ["secrets", "tc-secrets"]]) {
     const skill = index.skills.find((s) => s.short === short);
-    assert.equal(skill.changed, undefined, short);
-    for (const file of skill.files) assert.ok(readFileSync(join(production, file.url)).equals(readFileSync(join(root, "skills", dir, file.path))), file.url);
+    const sources = skill.files.map((file) => [file, readFileSync(join(root, "skills", dir, file.path))]);
+    assert.deepEqual(skill.changed, sources.filter(([, body]) => body.includes("{{ERRORS}}")).map(([file]) => file.path).sort(), short);
+    assert.ok(skill.changed.includes("SKILL.md"), short);
+    for (const [file, body] of sources) {
+      const want = body.includes("{{ERRORS}}") ? Buffer.from(body.toString("utf8").replaceAll("{{ERRORS}}", errors)) : body;
+      assert.ok(readFileSync(join(production, file.url)).equals(want), file.url);
+    }
   }
 });
 

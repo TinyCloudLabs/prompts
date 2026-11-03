@@ -48,7 +48,7 @@ Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use
 
 ## 2. Install only the skill
 
-If the installed `tc-apps` skill is version `0.3.10` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+If the installed `tc-apps` skill is version `0.3.11` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 
@@ -66,7 +66,7 @@ Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-
 node (Join-Path $D 'install.cjs') apps --agent '<CLIENT>'
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.3.10 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.3.11 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
@@ -108,6 +108,12 @@ Earlier versions kept all apps together in `default`. They keep working until yo
 For the agent: follow `SKILL.md` §9. Run `migrate.sh` yourself, with `--dry-run` first, then without it only after the owner accepts the plan in chat. The script needs `jq` and the same CLI selected above. It never deletes the old records. A verified receipt in `<STATE>/migration/` records the switch; an agent on another computer can install that receipt at the owner's request. A move doesn't import old meal records into Health Log.
 
 To go back, the owner asks in chat. Follow `SKILL.md` §9's going-back procedure; never remove the receipt before newer records have been copied and read back.
+
+## Exit codes and owner lines
+
+The skill's own codes come first; the shared table covers the rest. Its owner lines are the shared ones, with `<what>` = "your <app> app" (for example "your Health Log app").
+
+{{ERRORS}}
 
 ## Undo
 

@@ -8,13 +8,13 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 > Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
+- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back, and nothing to tell your agent: it carries on as soon as you approve.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
 ## How this works
 
-The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each short link names a signed request; only the requesting CLI can collect and verify the encrypted result. Keep the command running while the owner approves. No pasted code or localhost callback is needed, including from a phone or a remote agent. The owner tells the agent when approval is complete; hosted MCP uses approval links too.
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each short link names a signed request; only the requesting CLI can collect and verify the encrypted result. Keep the command running while the owner approves. No pasted code or localhost callback is needed, including from a phone or a remote agent, and the owner doesn't need to say when they've approved: the command sees it. Hosted MCP uses approval links too.
 
 After an interruption, rerun the same command with the same profile to resume the pending approval. The owner can revoke a grant at https://account.tinycloud.xyz/delegations.
 
@@ -81,31 +81,29 @@ else echo "ONBOARD_EXIT $RC"; fi
 exit "$RC"
 ```
 
-Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below. Run the block again until it exits 0, and go by its exit code each time.
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below and the [shared table](#exit-codes-and-owner-lines). Run the block again until it exits 0, and go by its exit code each time.
 
-**Exit 8 with a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve. I'll carry on as soon as you do." Then, in the same turn and without waiting for a reply, run the block again: the owner's reply is not needed, the command itself sees the approval. Before the first link, say this text word for word:
+**Still waiting: a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve. I'll carry on as soon as you do." Then, in the same turn and without waiting for a reply, run the block again: the owner's reply is not needed, the command itself sees the approval. Before the first link, say this text word for word:
 
 > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
-When a rerun shows step 2's link, send it at once, without the step-1 text, and run the block again. When it shows a link you already sent, don't send it again; just run the block again. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
+When a rerun shows step 2's link, send it at once, without the step-1 text, and run the block again. When it shows a link you already sent, don't send it again; just run the block again. This is the normal wait, not a failure: it never counts toward a retry limit.
 
-- **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, report success, then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. For setup only, end with what the owner can ask next: records, sharing, stored API keys or meetings.
+- **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, send the done line ("TinyCloud is set up."), then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. For setup only, end with what the owner can ask next: records, sharing, stored API keys or meetings.
 - **The command stopped first** (a tool timeout, a restart): rerun the identical command/profile. It preserves completed approvals and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.
 
 Never run `onboard --code`: these links don't produce a code, and the approval is retrieved automatically, including from a phone.
 
-**If something goes wrong:**
+**If something goes wrong:** exit codes go by the [shared table](#exit-codes-and-owner-lines), with `<what>` = "TinyCloud". These come first:
 
 - **`SKILL_MISSING`:** install the `tinycloud-cli` skill as in [the CLI setup's "Install the core skill" step](tinycloud.md#install-the-core-skill), then rerun the block. Installing the skill is part of the owner's request: don't ask first; at most one short line ("Installing the TinyCloud skill.").
 - **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.6.0` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
 - **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.6.0`, and stop; don't replace it.
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
-- **Exit 8 without a `pending` object:** OpenKey couldn't be reached. Wait a minute and run the same command again, at most three times in a row. If it still fails, stop and report it to the owner; don't retry. Never edit or delete the CLI's files yourself.
-- **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run the same command again; it can end this way once more before it makes a new link. Send the new link.
+- Never edit or delete the CLI's files yourself, and never log out, to get past an error or an expired link.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run the same command again. Don't ask for another approval.
 - **`PROFILE_NOT_ONBOARDABLE`:** preserve the existing profile. Inspect `"$TC" status --json` and use the owner's existing account and permissions where possible; do not overwrite them or silently switch accounts. If a separate onboarding profile is necessary, explain why, choose an unused profile name explicitly and run `"$TC" --profile <name> onboard --timeout 60s` the same way. Keep using that returned profile for the goal.
 - **The link is incomplete:** rerun the identical command and use the current link it returns. Do not reconstruct a fragment or reuse a link from another request.
-- **Any other error:** stop and report it to the owner. Don't retry with other options.
 
 ## MCP
 
@@ -141,7 +139,11 @@ TC='<TC_BIN>'
 "$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --no-popup --expiry 30d
 ```
 
-Keep the command running, send the full short URL it prints on its own line, and let the owner approve. It retrieves the result automatically; no return code is needed. After an interruption, rerun the same command/profile. Do not add `--paste`, which deliberately selects the older long-URL manual flow.
+Keep the command running, send the full short URL it prints on its own line with the ask line below, and let the owner approve. It retrieves the result automatically; no return code is needed. After an interruption, rerun the same command/profile. Do not add `--paste`, which deliberately selects the older long-URL manual flow. Its exit codes are the shared table's.
+
+## Exit codes and owner lines
+
+{{ERRORS}}
 
 ## Undo
 
