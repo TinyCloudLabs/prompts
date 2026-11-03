@@ -325,6 +325,8 @@ test("/owner and /owner/ redirect to /onboarding and no built page or listing li
     const redirects = readFileSync(join(site, "_redirects"), "utf8").split("\n");
     assert.ok(redirects.includes("/owner /onboarding 301"), site);
     assert.ok(redirects.includes("/owner/ /onboarding 301"), site);
+    assert.ok(redirects.includes("/owner.md /onboarding 301"), site);
+    assert.ok(redirects.includes("/setup/owner.md /onboarding 301"), site);
     assert.ok(!existsSync(join(site, "owner")), site);
     for (const name of readdirSync(site, { withFileTypes: true, recursive: true }).filter((e) => e.isFile() && e.name !== "_redirects").map((e) => join(e.parentPath, e.name))) {
       const text = readFileSync(name, "utf8");

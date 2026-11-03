@@ -57,7 +57,7 @@ const opensWithBanner = (text, path) => text.slice(frontMatter(text).length).sta
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
 // `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
-  { url: "onboarding", src: "setup/onboarding.md", html: true, redirectFrom: ["owner"] },
+  { url: "onboarding", src: "setup/onboarding.md", html: true, redirectFrom: ["owner", "owner.md", "setup/owner.md"] },
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
