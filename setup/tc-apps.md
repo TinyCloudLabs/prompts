@@ -40,7 +40,7 @@ Run each block as one shell tool call. Use the same `TC_BIN`, `TC_HOME` and sele
 
 ## 1. Reuse the CLI
 
-Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation. It checks Node.js 20 or later with npm. It installs the pinned release, `1.6.0`, or upgrades the agent's own older copy to it. Preserve an operator-provided `TC_BIN`; a missing or broken override is an explicit error, not permission to replace it. If it prints `TC_OLDER`, the operator selected a CLI older than `1.6.0`: tell the owner in one line that it is older than the required `1.6.0`, and stop. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
+Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation, with `apps` as the action skill, so its one run call also installs this guide's skill. It checks Node.js 20 or later with npm. It installs the pinned release, `1.6.0`, or upgrades the agent's own older copy to it. Preserve an operator-provided `TC_BIN`; a missing or broken override is an explicit error, not permission to replace it. If it prints `TC_OLDER`, the operator selected a CLI older than `1.6.0`: tell the owner in one line that it is older than the required `1.6.0`, and stop. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. Later conversations find the same CLI the way every TinyCloud skill does: process `TC_BIN`, then the selection in `~/.config/tinycloud/agent.env`, then the shared private install. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 
@@ -48,7 +48,7 @@ Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use
 
 ## 2. Install only the skill
 
-If the installed `tc-apps` skill is version `0.3.11` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+If the installed `tc-apps` skill is version `0.3.11` or newer and its helpers are present, or the CLI setup's run call printed `SKILL_INSTALLED tc-apps` in this conversation, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 

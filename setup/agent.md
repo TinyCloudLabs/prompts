@@ -26,6 +26,8 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. New installs and older agent-owned installs in `~/.local/share/tinycloud/cli` use `@tinycloud/cli@1.6.0`; an operator-selected CLI is kept. Preserve the operator's `TC_BIN`; a missing or broken selected binary stops setup instead of being replaced. If the setup printed `TC_OLDER` (an operator-selected CLI older than `1.6.0`): for Courier, tell the owner in one line that it is older than the required `1.6.0`, and stop; Secrets and publish/share continue, and their skill's §1 feature check decides. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it; do not switch installation methods. Do not sign in yet.
 
+Give the CLI setup the selected action (`secrets`, `publish` or `courier`) as its action skill, so its one run call installs that skill too and step 3 is already done.
+
 ### 2. Non-secret owner defaults
 
 The file `~/.config/tinycloud/agent.env` holds only `TC_BIN`, `TC_OWNER_DID` and `TC_OWNER_EMAIL`. It is **data**, not shell code. Every skill call reads it through a fixed allowlist parser; process variables take precedence. `TC_AGENT_ENV` selects a different file on a multi-owner host. Role profiles and state directories are not shared defaults. `TC_HOME` is the *home root* to which the CLI appends `.tinycloud`.
@@ -120,7 +122,7 @@ Replace the example with the owner's answer. The parser writes a 0600 file in a 
 
 ### 3. The one action skill
 
-Install **only** the skill for the selected action using the site's checksum-checking installer (which reads `/skills/index.json`): `secrets`, `publish` or `courier`. Inspect a same-named existing skill before replacement; stop if it is unrelated or locally modified. Replace `<action>` and `<client>` with the selected values:
+If the CLI setup's run call printed `SKILL_INSTALLED` for this action's skill in this conversation, skip to reading it below. Otherwise install **only** the skill for the selected action using the site's checksum-checking installer (which reads `/skills/index.json`): `secrets`, `publish` or `courier`. Inspect a same-named existing skill before replacement; stop if it is unrelated or locally modified. Replace `<action>` and `<client>` with the selected values:
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js

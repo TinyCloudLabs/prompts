@@ -45,7 +45,7 @@ Keep the owner's original request and any incoming invitation URL exactly as sup
 
 After onboarding, install or reuse the Courier action skill `courier` `0.5.0`. This step is required: the skill is how you run Courier. Inspect an existing `courier/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/courier/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Reuse files matching the `courier` entry, version `0.5.0`, in `https://agents.tinycloud.xyz/skills/index.json`; do not overwrite a modified skill.
 
-If the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls. Skip the download if [the CLI setup](tinycloud.md#install-the-core-skill) already saved `$HOME/.local/share/tinycloud/install.js` in this conversation. `CLIENT` is `claude-code`, `codex` or `opencode`, as there.
+If the CLI setup's run call printed `SKILL_INSTALLED courier` in this conversation, this step is done: read the skill as below. Otherwise, if the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls. Skip the download if [the CLI setup](tinycloud.md#install-the-core-skill) already saved `$HOME/.local/share/tinycloud/install.js` in this conversation. `CLIENT` is `claude-code`, `codex` or `opencode`, as there.
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
