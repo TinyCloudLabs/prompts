@@ -148,10 +148,14 @@ for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/SKILL.md" "$HOME
 for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/SKILL.md" "$HOME/.agents/skills/tc-secrets/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## 4\. Use a secret$/,$p' "$f"; break; fi; done
 ```
 
-Publish and share (`tc-publish`), two calls:
+Publish and share (`tc-publish`), three calls:
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md" "$HOME/.agents/skills/tc-publish/SKILL.md"; do if [ -f "$f" ]; then sed '/^## 3\. Publish/,$d' "$f"; break; fi; done
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md" "$HOME/.agents/skills/tc-publish/SKILL.md"; do if [ -f "$f" ]; then sed '/^## 2\. Sign in/,$d' "$f"; break; fi; done
+```
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md" "$HOME/.agents/skills/tc-publish/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## 2\. Sign in/,$p' "$f" | sed '/^## 3\. Publish/,$d'; break; fi; done
 ```
 
 ```sh
