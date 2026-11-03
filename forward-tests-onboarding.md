@@ -13,7 +13,7 @@ Coding-agent rows are run by QA with test accounts. Chat-app rows need a person 
 
 ## New universal entry candidate: `/connect`
 
-Keep the `/apps` prompts and results below as the baseline. Separately paste **`Set up TinyCloud using https://agents.tinycloud.xyz/connect`** into each fresh chat-app and coding-agent conversation, using the branch's Pages preview host before deployment. Use exactly the same prompt and URL for every client; do not supply a `.md` suffix or coach the assistant to pick a format.
+Keep the `/apps` prompts and results below as the baseline. Separately paste **`Fetch https://agents.tinycloud.xyz/connect.md with curl and follow it, including running its installer. Set up TinyCloud.`** (the prompt `/connect` gives owners) into each fresh chat-app and coding-agent conversation, using the branch's Pages preview host before deployment. Use exactly the same prompt and URL for every client, and don't coach the assistant to pick a format.
 
 Apply the existing client-specific approval and first-record checks. Chat apps must receive the complete MCP connection instructions in their first successful fetch. Coding agents must fetch the unchanged guide for their request from the handoff links (`/apps` for setup only) and follow it in full for the original request, without asking the owner to paste another URL or reconstructing the installation from a summary. Both HTML and Markdown versions of `/connect` give the same handoff; format preference must not select a different setup workflow. A plain request must get readable HTML, not raw Markdown. Record both page retrievals, route selection, approval and record read-back separately; local browser rendering is not evidence that a coding agent followed the handoff or that ChatGPT or Claude retrieved the page.
 
@@ -82,7 +82,7 @@ This was a supplied-guide smoke on an already connected account with retained me
 
 ### `/onboarding`
 
-`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Set me up with TinyCloud: <preview>/onboarding` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard --timeout` (js-sdk #822) and `/cli` pinned to it.
+`/onboarding` sets up the owner's profile, OpenKey sign-in (or new account) and the starting grant (applications read/write, then account read, 30 days each), then routes to the goal guide. Paste exactly `Fetch <preview>/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.` into a fresh conversation, optionally followed by a request. Don't coach. Needs a published `@tinycloud/cli` with `tinycloud onboard --timeout` (js-sdk #822) and `/cli` pinned to it.
 
 | Client | Request | Required behavior |
 | --- | --- | --- |
@@ -111,12 +111,12 @@ Identical in every client, pasted as one message into a new conversation. Don't 
 
 | ID | Prompt | Source |
 |---|---|---|
-| **O** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Set up TinyCloud for me and save my first record.` | Candidate onboarding prompt (F-68), now using `/apps` after the separate landing page was removed. |
+| **O** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Set up TinyCloud for me and save my first record.` | Candidate onboarding prompt (F-68), now using `/apps` after the separate landing page was removed. |
 | **S** | `I want to understand how to use https://agents.tinycloud.xyz/apps` | The 16 Oct opener. |
-| **T1** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log my weight: 80.5 kg today.` | "Try:" on `/`: Personal records. |
-| **T2** | `Publish this report and send me a private link. Use TinyCloud: https://agents.tinycloud.xyz/publish` | "Try:" on `/`: Publish. |
-| **T3** | `Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud: https://agents.tinycloud.xyz/secrets` | "Try:" on `/`: Secrets. |
-| **T4** | `How did my last meeting go? Check TinyCloud: https://agents.tinycloud.xyz/chat` | "Try:" on `/`: Meetings. |
+| **T1** | `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log my weight: 80.5 kg today.` | "Try:" on `/`: Personal records. |
+| **T2** | `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a private link.` | "Try:" on `/`: Publish. |
+| **T3** | `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it, including running its installer. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.` | "Try:" on `/`: Secrets. |
+| **T4** | `Fetch https://agents.tinycloud.xyz/chat with curl and follow it, including running its installer. How did my last meeting go?` | "Try:" on `/`: Meetings. |
 
 The `T` lines are the `ABILITIES` prompts in `scripts/build-site.mjs` on `main`. If that list changes, update this table before the next run.
 
