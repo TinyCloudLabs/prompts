@@ -26,11 +26,11 @@ before(async () => {
   site = join(dir, "_site");
 });
 
-const SHORT = { "tc-apps": "apps", "tc-secrets": "secrets", "tc-publish": "publish" };
+const SHORT = { "tc-apps": "apps", "tc-secrets": "secrets", "tc-publish": "publish", courier: "courier" };
 const built = (skill, file) => readFileSync(join(site, "skills", SHORT[skill], file));
 // The served guides and skills that tell an agent how to read an installed skill file.
 const SOURCES = ["apps", "agent", "publish", "secrets", "share", "skills/apps/SKILL.md", "skills/apps/LEGACY.md", "skills/apps/TINY-APPS.md"];
-const PATH_RE = /skills\/(tc-apps|tc-secrets|tc-publish)\/([A-Z][A-Z-]*\.md)/;
+const PATH_RE = /skills\/(tc-apps|tc-secrets|tc-publish|courier)\/([A-Za-z][A-Za-z-]*\.md)/;
 
 // Each one-line ```sh block that reads an installed skill file, grouped per source, file and client, in order.
 const documentedReads = () => {
@@ -63,7 +63,7 @@ const runPart = (line, skill, file) => {
 
 test("every documented shell read of an installed skill file prints parts of at most 25,000 bytes that make up the whole built file", () => {
   const groups = documentedReads();
-  for (const want of ["apps tc-apps/SKILL.md claude", "apps tc-apps/SKILL.md agents", "skills/apps/SKILL.md tc-apps/TINY-APPS.md both", "agent tc-secrets/SKILL.md both", "agent tc-publish/SKILL.md both"]) {
+  for (const want of ["apps tc-apps/SKILL.md claude", "apps tc-apps/SKILL.md agents", "skills/apps/SKILL.md tc-apps/TINY-APPS.md both", "agent tc-secrets/SKILL.md both", "agent tc-publish/SKILL.md both", "agent courier/SKILL.md both", "agent courier/start.md both"]) {
     assert.ok(groups.some((g) => `${g.source} ${g.skill}/${g.file} ${g.client}` === want), `no documented read for ${want}`);
   }
   for (const g of groups) {
@@ -78,7 +78,7 @@ test("every documented shell read of an installed skill file prints parts of at 
 test("no guide reads an installed skill file over 25,000 bytes in one piece, or with the client's file-read tool", () => {
   for (const source of SOURCES) {
     const text = readFileSync(join(site, source), "utf8");
-    for (const m of text.matchAll(/\bcat "[^"]*skills\/(tc-apps|tc-secrets|tc-publish)\/([A-Z][A-Z-]*\.md)"/g)) {
+    for (const m of text.matchAll(/\bcat "[^"]*skills\/(tc-apps|tc-secrets|tc-publish|courier)\/([A-Za-z][A-Za-z-]*\.md)"/g)) {
       assert.ok(built(m[1], m[2]).length <= CAP, `${source} cats ${m[1]}/${m[2]} (${built(m[1], m[2]).length} bytes) in one piece`);
     }
     assert.doesNotMatch(text, /Read its installed `SKILL\.md` by path/, source);
