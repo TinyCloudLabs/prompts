@@ -37,9 +37,47 @@ const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
 // docs/: internal notes, kept in the repository, never published.
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills"]);
+const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills", "standard"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
+
+// Shared blocks. The text every guide and skill must carry identically (the read-raw rule, and
+// the CLI rule, owner lines and exit table as they move in) is written once in standard/blocks.md,
+// split by `<!-- std:NAME -->` lines. A guide or skill carries `{{std:NAME}}` alone on a line; the
+// build expands it before anything else (links, {{CLI_VERSION}}, the preview host), so the
+// production and preview builds expand identically. standard/ is never published or listed.
+// The build fails on an unknown marker, a marker that isn't alone on its line, a block nothing
+// uses, a block with a relative link (it would resolve against whichever file carries it), and a
+// guide or skill that pastes a block's text instead of the marker.
+const STD = new Map();
+{
+  const [preamble, ...parts] = readFileSync(join(ROOT, "standard/blocks.md"), "utf8").split(/^<!-- std:([a-z][a-z0-9-]*) -->\n/m);
+  if (preamble.trim()) throw new Error("standard/blocks.md: text before the first <!-- std:NAME --> line");
+  for (let i = 0; i < parts.length; i += 2) {
+    const body = parts[i + 1].trim();
+    if (!body) throw new Error(`standard/blocks.md: std:${parts[i]} is empty`);
+    if (STD.has(parts[i])) throw new Error(`standard/blocks.md: std:${parts[i]} appears twice`);
+    if (/\]\((?!https?:|mailto:|#)/.test(body) || body.includes("{{std:")) throw new Error(`standard/blocks.md: std:${parts[i]} has a relative link or a nested marker`);
+    STD.set(parts[i], body);
+  }
+}
+const STD_USED = new Set();
+// Files that still carry a block's text pasted in: setup/share.md until prompts#147 (TC-2431), which edits it, lands.
+const STD_UNMIGRATED = new Set(["setup/share.md"]);
+function expandStd(text, file) {
+  if (!STD_UNMIGRATED.has(file)) {
+    for (const [name, body] of STD) if (text.includes(body)) throw new Error(`${file}: carries the text of std:${name} instead of {{std:${name}}}`);
+  }
+  const out = text.replace(/^\{\{std:([a-z][a-z0-9-]*)\}\}$/gm, (_, name) => {
+    const body = STD.get(name);
+    if (!body) throw new Error(`${file}: {{std:${name}}} isn't in standard/blocks.md`);
+    STD_USED.add(name);
+    return body;
+  });
+  const left = out.match(/\{\{std:[^\n]*/);
+  if (left) throw new Error(`${file}: ${left[0].slice(0, 60)} must be {{std:NAME}} alone on its line, naming a block`);
+  return out;
+}
 // Fetch tools such as Claude Code's WebFetch can hand the agent a summary that
 // keeps a page's first lines and drops its shell blocks. So every served
 // Markdown guide and skill opens with this line, above its title (a skill:
@@ -343,6 +381,17 @@ async function loadSkill(skill) {
   }
   files.sort(([a], [b]) => (a < b ? -1 : 1));
   const changed = new Set();
+  if (!skill.tarball) {
+    // Repo-authored skills expand shared blocks like the guides do; a file that changes is listed as `changed`.
+    files = files.map(([path, body]) => {
+      if (!path.endsWith(".md") || !isUtf8(body)) return [path, body];
+      const text = body.toString("utf8");
+      const out = expandStd(text, `${skill.dir}/${path}`);
+      if (out === text) return [path, body];
+      changed.add(path);
+      return [path, Buffer.from(out)];
+    });
+  }
   for (const [path, change] of Object.entries(skill.changes || {})) {
     const i = files.findIndex(([p]) => p === path);
     if (i < 0) throw new Error(`${skill.short}: changes ${path}, which isn't in ${skill.tarball || skill.dir}`);
@@ -430,7 +479,7 @@ for (const s of skills) if (!s.tarball) for (const f of s.files) route.set(`${s.
 // A guide as published: relative links become absolute public URLs, {{CLI_VERSION}} becomes
 // install-cli.mjs's pin, and on a preview every production URL points at the preview.
 function render(src) {
-  return readFileSync(join(ROOT, src), "utf8")
+  return expandStd(readFileSync(join(ROOT, src), "utf8"), src)
     .replace(/\]\((?!https?:|mailto:|#)([^)\s#]+)(#[^)\s]*)?\)/g, (_, target, hash = "") => {
       const to = route.get(posix.normalize(posix.join(posix.dirname(src), target)));
       if (!to) throw new Error(`${src}: links to ${target}, which is not published`);
@@ -459,6 +508,8 @@ const pages = PAGES.map((p) => {
   write(p.html ? `${p.url}.md` : p.url, text);
   return { ...p, text, ...describe(text, p.url) };
 });
+const unusedStd = [...STD.keys()].filter((name) => !STD_USED.has(name));
+if (unusedStd.length) throw new Error(`standard/blocks.md: no guide or skill carries {{std:${unusedStd.join("}}, {{std:")}}}`);
 const page = (name) => pages.find((p) => p.url === name);
 
 for (const s of skills) {
