@@ -27,6 +27,7 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
   TC_BIN='<TC_BIN>'; umask 077
   "$TC_BIN" --profile '<INDEX_PROFILE>' --host '<APP_HOST>' auth request --cap 'tinycloud.sql:applications:xyz.tinycloud.tinyapps.<APP>/index:schema' --grant --no-popup --expiry 30d
   ```
+  This link-based `auth request --grant` has no `--timeout` or pending-link result and blocks until the approval is resolved. Run it in a persistent shell session that streams stderr and stays alive while you reply; send the complete short URL on its own line as soon as it appears, then wait for the owner's next message and read the final output. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption.
 
 - `sign-in-required`: sign in the returned index profile with an applications-space manifest for `tinycloud.sql` on `xyz.tinycloud.tinyapps.<APP>/index`, containing only the required `read`, `write` and, for a new table, `schema` actions. Use `auth login --method openkey --no-popup --manifest FILE --expiry 30d`, creating a key-only profile only if it is absent.
 
