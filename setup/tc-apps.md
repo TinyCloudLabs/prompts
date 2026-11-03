@@ -22,9 +22,7 @@ In Claude, to avoid approving each record-writing tool call, go to **Settings โ
 
 ## For the agent
 
-**Read this page raw first.** If you can run a shell, fetch the exact text of this page, and of any guide it sends you to, with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
-
-**Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
+{{std:read-raw}}
 
 Keep the owner's original request in this conversation and carry it out with the skill; don't ask the owner to send it again. **Already onboarded? Do not install another CLI or start another sign-in.** Keep the same selected CLI, profile, host and owner. The skill checks existing grants and actual read access before asking for anything more. A first record in an existing catalog needs only the write and read-back commands in skill ยง6; creating a new app also creates its catalog entries, not another CLI installation.
 
