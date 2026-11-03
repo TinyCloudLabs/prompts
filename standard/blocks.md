@@ -25,8 +25,6 @@
 
 **Declined approval, owner line:** “Did you decline that request? If not, I'll send you a fresh link.”
 
-While a command is waiting for an approval, don't ask the owner to tell you when they're done or to send back a code: the command sees the approval itself.
-
 **Exceptions: commands with other codes.**
 
 - `auth login --paste` and `auth request --grant --paste` (the Secrets and publish sign-ins, and the older apps fallbacks): exit 3 `PASTE_CODE_MISSING` is the expected first stop, with the link printed and no code yet, not an expired link. These flows still ask the owner for the code OpenKey shows after they approve. It works once, for 5 minutes; a used or expired code ends as exit 1, “Delegation code not found or expired”.

@@ -66,7 +66,7 @@ test("the shared table is expanded once into every guide and skill that carries 
   }
   const leftover = AUTHORED.filter((path) => !SURFACES.some(([source]) => source === path) && read(path).includes("{{std:errors}}"));
   assert.deepEqual(leftover, []);
-  for (const url of [...SURFACES.map(([, url]) => url), ...SERVED_ONLY, "llms-full.txt"]) assert.doesNotMatch(served(url), /\{\{std:/, url);
+  for (const url of [...SURFACES.map(([, url]) => url), ...SERVED_ONLY, "llms-full.txt"]) assert.doesNotMatch(served(url), /\{\{/, url);
 });
 
 test("the CLI table matches the 1.6.2 approval exits, including one-line error reporting", () => {
@@ -99,7 +99,7 @@ test("the three owner lines and declined line are exact and have no pasted copy"
   for (const [path, text] of texts) {
     if (text.includes(errors) && path !== "standard/blocks.md") assert.equal(count(text, errors), 1, path);
   }
-  const forbidden = new RegExp(["nothing", "to tell", "your agent"].join("\\s+") + "|" + ["carries", "on", "as soon as", "you", "approve"].join("\\s+") + "|" + ["as soon", "as", "you", "do"].join("\\s+"), "i");
+  const forbidden = new RegExp(["nothing", "to tell", "your agent"].join("\\s+") + "|" + ["carries", "on", "as soon as", "you", "approve"].join("\\s+") + "|" + ["as soon", "as", "you", "do"].join("\\s+") + "|" + ["don't ask", "the owner", "to tell you", "when they're done"].join("\\s+"), "i");
   for (const [path, text] of texts) assert.doesNotMatch(text, forbidden, path);
 });
 test("the real built onboarding block sends exit 3 through the agent-side expiry rule", () => {
@@ -145,8 +145,8 @@ test("Courier expiry uses the same recorded-expiry decision and never reads priv
   const exit3 = errors.split("\n").find((line) => line.startsWith("| 3 |"));
   assert.match(exit3, /more than 2 minutes before `expiresAt`/);
   assert.match(exit3, /`now >= expiresAt - 2 minutes`/);
-  assert.match(expired, /use the shared exit-3 decline\/expiry rule/);
-  assert.doesNotMatch(expired, /approval-pending\.json/);
+  assert.match(expired, /apply the shared exit-3 decline\/expiry rule/);
+  assert.match(expired, /Never read `approval-pending\.json`; it contains private keys/);
 });
 
 
@@ -154,6 +154,7 @@ test("Courier expiry uses the same recorded-expiry decision and never reads priv
 // shared block and shell blocks is in one of these files, for the reason given.
 const EXIT_EXCEPTIONS = {
   "setup/onboarding.md": "the guide's exit-8 pending-link instructions; shared block owns error decisions",
+  "setup/courier.md": "Courier has its own exits: 0, 8, 2 and 1 with [code], including `[approval-expired]`",
   "skills/tc-apps/SKILL.md": "data commands: kv put --if-none-match exits 5 KV_ALREADY_EXISTS; layout.sh exits 3 when jq is missing",
   "skills/tc-publish/SKILL.md": "publish sign-in (device: 3 DEVICE_AUTH_EXPIRED, 5 DEVICE_AUTH_DENIED/SCOPE_REJECTED/BINDING_MISMATCH) and share commands (3 AUTH_REQUIRED session, 5 PERMISSION_DENIED scope)",
   "skills/tc-secrets/SKILL.md": "secrets sign-in (3 PASTE_CODE_MISSING expected), reads (3 AUTH_REQUIRED, 5 PERMISSION_DENIED) and secrets wait (8 still missing)",
@@ -181,14 +182,13 @@ const DONE_WORDING = /tell me when you(?:'|’)re done|tell me you(?:'|’)re do
 const CODE_WORDING = /sends? back the code|sends? (?:me )?(?:back )?the short code|paste (?:it|the code|its code) back|send it back to me here|paste the code here/i;
 const WORDING_EXCEPTIONS = {
   "setup/onboarding.md": "the owner's approved instruction to tell the agent when they have approved",
-  "setup/README.md": "the /chat and /publish owner bullets: TinyChat's pack and publish's sign-in still need the code OpenKey shows",
   "setup/publish.md": "publish sign-in (auth login --paste)",
   "setup/share.md": "publish sign-in (auth login --paste)",
   "skills/tc-publish/SKILL.md": "publish sign-in (auth login --paste), and its device fallback's background waiter, which may not wake the agent",
   "skills/tc-publish/QUICKSTART.md": "publish sign-in (auth login --paste)",
-  "skills/tc-secrets/SKILL.md": "secrets sign-in (auth login --paste)",
   "apps/tinychat/setup.md": "TinyChat's pack (authorize, then login --code)",
-  "skills/tc-apps/LEGACY.md": "device sign-in flow: owner pastes the code OpenKey shows",
+  "skills/tc-secrets/SKILL.md": "Secrets owner message needs the OpenKey code pasted after approval",
+  "skills/tc-apps/LEGACY-SQL.md": "older SQL index sign-in (auth login --paste) asks the owner to paste the code",
   "skills/tc-apps/announce.sh": "the older Health Log fallback's owner sign-in (init --name owner --paste)",
   "skills/tc-apps/owner-grant.sh": "the older Health Log fallback's owner sign-in (init --name owner --paste)",
 };
