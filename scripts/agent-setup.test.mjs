@@ -246,7 +246,7 @@ test("/connect sends an agent that can run the CLI to /onboarding and gives each
     assert.ok(coding.includes(`](https://agents.tinycloud.xyz/${guide})`), `Markdown routes to /${guide}`);
     assert.ok(html.includes(`href="https://agents.tinycloud.xyz/${guide}"`), `HTML routes to /${guide}`);
   }
-  for (const [app, id] of [["Grok", "grok"], ["Perplexity", "perplexity"], ["Gemini", "gemini"], ["Meta Muse", "meta-muse"]]) {
+  for (const [app, id] of [["Grok", "grok"], ["Grok Bot", "grok-bot"], ["Perplexity", "perplexity"], ["Gemini", "gemini"], ["Meta Muse", "meta-muse"]]) {
     const section = markdown.split(`\n## ${app}\n`)[1]?.split("\n## ")[0];
     assert.ok(section, `${app} section`);
     assert.match(section, /`https:\/\/mcp\.tinycloud\.xyz\/mcp`/);
