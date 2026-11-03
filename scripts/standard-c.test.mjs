@@ -100,6 +100,27 @@ test("the CLI table matches the 1.6.2 approval exits, including one-line error r
   assert.match(courier, /`init --request`, exit 0 may still create and print an approval link/);
   assert.match(courier, /follow every stderr `Next:` line by the shared relay rule, regardless of the exit code/);
   assert.match(courier, /`init --wait`, exit 8 is pending only when stdout contains a non-empty `pending\.approvalUrl`/);
+  assert.match(courier, /Courier 0\.5\.2 exits only 0, 1, 2 or 8; exit 6 is not a Courier code/);
+  const courierGuide = read("setup/courier.md");
+  const waitAgain = courierGuide.split("Any other non-zero exit is an error:")[1].split("\n  - **A refused grant:")[0];
+  assert.match(waitAgain, /\[approval-rejected\].*\[approval-unavailable\].*exit 1/s);
+  assert.match(waitAgain, /saved request is kept/);
+  assert.match(waitAgain, /Run the same `"\$TC" courier init --wait --timeout 60s` again/);
+  assert.match(waitAgain, /do not create or send a new link/);
+  assert.doesNotMatch(waitAgain, /exit 6/i);
+});
+
+test("feed auth request approval documents its blocking, no-timeout process requirement", () => {
+  for (const [source, url] of [
+    ["skills/tinycloud-feed/SKILL.md", "skills/feed/SKILL.md"],
+    ["skills/tinycloud-feed/creating-a-post.md", "feed"],
+  ]) {
+    for (const text of [read(source), served(url)]) {
+      assert.match(text, /This command does not return a pending-link result/);
+      assert.match(text, /persistent shell session that streams stderr and stays alive while you reply/);
+      assert.match(text, /If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow/);
+    }
+  }
 });
 
 test("the announcement tells the owner what to do when an app link has no code", () => {
