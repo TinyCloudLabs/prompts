@@ -2,13 +2,13 @@
 
 # Publish and share with TinyCloud
 
-Your agent publishes a document or web page from your computer to your TinyCloud and sends you a link. Anyone with the link can open it, so the agent asks you first and makes the link only after you say yes. The first time, you approve one sign-in in OpenKey and paste its code back.
+Your agent publishes a document or web page from your computer to your TinyCloud and sends you a link. Anyone with the link can open it, so the agent asks you first and makes the link only after you say yes. The first time, you approve one short OpenKey link; there's no code to send back.
 
 ## For the owner
 
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a link.`
 - Your agent follows [the shared setup](agent.md): it installs or reuses the pinned CLI, installs only the `tc-publish` skill and continues this request. Before it makes a link, it asks: "Anyone with the link can open it. Make a link?" If you say no, nothing is published and the file stays on your computer. Sharing with an email address or a domain is not available yet.
-- **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant. Publishing has its own single approval, separate from /onboarding: the first time, you approve one sign-in in OpenKey and paste its code back to your agent.
+- **You approve:** an OpenKey request for standing read/write authority across the share prefixes, not just this document. It can mint narrowed read-only links. Check the requested duration (up to 30 days). This setup step does not itself request a grant. Publishing has its own single approval, separate from /onboarding: the first time, you approve one short OpenKey link, and your agent carries on as soon as you do.
 - **Undo:** the receipt must distinguish revoking a share from clearing the agent's local login. Revoking a share stops its link opening; copies already downloaded can't be recalled. After key rotation, older links may last until expiry.
 
 ## For the agent
@@ -21,7 +21,7 @@ Keep the owner's request, read [setup/agent.md](agent.md), select **publish/shar
 
 ## Exit codes and owner lines
 
-Publishing signs in with a pasted code (see the exceptions below); the skill's own tables give each code. Its owner lines are the shared ones, with `<what>` = "publishing".
+Publishing signs in with a short OpenKey link, like the other guides. Its owner lines are the shared ones, with `<what>` = "publishing"; the share commands have codes of their own, which the skill gives.
 
 {{ERRORS}}
 

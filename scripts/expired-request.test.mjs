@@ -33,14 +33,19 @@ test("onboarding reruns an expired link, which can end as exit 3 once more, then
   assert.match(row(3), /Run the same command again\. It can end with 3 once more before it makes a new link\. Send the new link once, with the retry line\./);
 });
 
-const helper = (code, message) => {
-  const dir = join(base, `apps-${code}`);
+const helper = (code, message, { signedIn = true, name = `apps-${code}` } = {}) => {
+  const dir = join(base, name);
   const state = join(dir, "state");
   mkdirSync(state, { recursive: true });
   writeFileSync(join(state, "meal-request.json"), "{}");
-  writeFileSync(join(state, "owner-did.txt"), "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+  if (signedIn) writeFileSync(join(state, "owner-did.txt"), "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
   const cli = join(dir, "tinycloud");
-  writeFileSync(cli, `#!/bin/sh\necho "$*" >> "$HOME/calls"\ncase " $* " in *" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; *" auth grant "*) echo '${message}' >&2; exit ${code} ;; esac\n`, { mode: 0o755 });
+  // Signed in: the access grant ends with the given exit. Not signed in: no owner profile yet, and the sign-in
+  // (init) ends with it.
+  const cases = signedIn
+    ? `*" context "*) echo '{"ownerDid":"did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' ;; *" auth grant "*) echo '${message}' >&2; exit ${code} ;;`
+    : `*" profile show "*) echo '{"error":{"code":"PROFILE_NOT_FOUND"}}' >&2; exit 4 ;; *" init "*) echo '${message}' >&2; exit ${code} ;;`;
+  writeFileSync(cli, `#!/bin/sh\necho "$*" >> "$HOME/calls"\ncase " $* " in ${cases} esac\n`, { mode: 0o755 });
   const out = spawnSync("sh", [join(root, "skills/tc-apps/owner-grant.sh"), "healthlog"], {
     encoding: "utf8", input: "", timeout: 20000,
     env: { PATH: process.env.PATH, HOME: dir, TC_HOME: dir, TC_APPS_STATE: state, TC_BIN: cli },
@@ -60,4 +65,12 @@ test("owner-grant.sh sends the agent back for a new link when the access link ex
   const { out } = helper(3, '{"error":{"code":"APPROVAL_REQUEST_EXPIRED"}}');
   assert.equal(out.status, 1);
   assert.match(out.stderr, /APPROVAL_REQUEST_EXPIRED above means the access link expired before it was approved: run this step again for a new link\./);
+});
+
+test("owner-grant.sh sends the agent back for a new link when the sign-in link expired (exit 3)", () => {
+  const { out, calls } = helper(3, '{"error":{"code":"APPROVAL_REQUEST_EXPIRED"}}', { signedIn: false, name: "apps-signin-3" });
+  assert.equal(out.status, 1);
+  assert.match(out.stderr, /APPROVAL_REQUEST_EXPIRED above means the sign-in link expired before it was approved: run this step again for a new link, and send it with the retry line\./);
+  assert.ok(calls.includes("init --name owner --no-popup\n"), calls);
+  assert.ok(!calls.includes("auth grant"), "nothing is granted after an expired sign-in");
 });

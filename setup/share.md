@@ -9,7 +9,7 @@ Your agent publishes a document or web page from your computer to your own TinyC
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it, including running its installer. Share this with TinyCloud.`
 - You need a shell, Node.js 20 or later, and npm. An agent that can't run the TinyCloud CLI can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
 - **What it does:** installs the pinned TinyCloud CLI and the `tc-publish` skill, asks you before it makes the link, publishes, and returns the link.
-- **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one sign-in in OpenKey and paste its code back to your agent.
+- **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one short OpenKey link, and your agent carries on as soon as you do.
 - **It asks first.** Anyone with the link can open it, so the agent makes one only after you say yes. If you say no, nothing is published and the file stays on your computer.
 - **Undo:** see [Undo](#undo).
 
@@ -89,7 +89,7 @@ Use the skill's report template. State: the expiry date, what the recipient will
 
 ## Exit codes and owner lines
 
-Sharing signs in with a pasted code (see the exceptions below); the publish skill's own tables give each code. Its owner lines are the shared ones, with `<what>` = "sharing".
+Sharing signs in with a short OpenKey link, like the other guides. Its owner lines are the shared ones, with `<what>` = "sharing"; the share commands have codes of their own, which the publish skill gives.
 
 {{ERRORS}}
 

@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.20"
+  version: "0.5.21"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/secrets.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -57,10 +57,10 @@ The preamble turns off inherited shell tracing and exit-on-error, keeps new file
 - **Add only, never replace.** Ask the owner only to add names that §2 reports as missing or unknown. If a secret exists, use it. If it exists but doesn't work (for example the provider rejects it), don't ask for a new one and don't invent a second name: stop and tell the owner which secret failed and how, with the link from §6 "Replace".
 - **Never set `TC_PRIVATE_KEY`.** The blocks use the profile's stored session.
 - **Never enable shell tracing.** Every block here disables it first.
-- **Approval link and code:** the link and the code the owner sends back complete one sign-in for this profile.
-  - The link lives in `$STATE/approve.url` (0600). Read it once, to compose your one message to the owner. The CLI also writes it into the temporary `$STATE/login.err`, which the blocks parse and then delete. Never display that file. The link must not appear anywhere else.
-  - Keep your copy of the code only in `$STATE` until the sign-in completes, then delete it. The owner's original message stays wherever the harness keeps it; leave that untouched.
-- **Only the owner adds secrets and approves.** Never open the add link or the approval link yourself, never approve anything for the owner, and never relay a code you didn't get from the owner.
+- **Approval link:** one short OpenKey link completes one sign-in for this profile. No code comes back: the sign-in fetches the approval itself.
+  - The link lives in `$STATE/approve.url` (0600) once §3d has checked it. Read it once, to compose your one message to the owner. The CLI also writes it into the temporary `$STATE/login.err`, which the blocks parse and then delete. Never display that file. The link must not appear anywhere else.
+  - Send only a link §3d accepted. Never send, check or relay a link from anywhere else.
+- **Only the owner adds secrets and approves.** Never open the add link or the approval link yourself, and never approve anything for the owner.
 - **Run only the blocks the task needs, as written.**
   - Don't create, rename or delete profiles beyond §3a's `init`, and never run `profile delete`.
   - Don't improvise extra `tinycloud` commands to "test" access: §2 is the access test.
@@ -209,7 +209,7 @@ rm -f "$STATE/context.json" "$STATE/context.err" "$STATE/wait.json" "$STATE/wait
 - Every name `READY` → go to §4.
 - Any `MISSING` (the secret doesn't exist yet) or `NO_ACCESS` (this profile can't read it, so it may or may not exist) → build what the owner needs, then send **one** message (§2c):
   - every `MISSING` and `NO_ACCESS` name goes into the add link (§2b). The owner's page shows names that already exist as "Already in your vault" and changes nothing;
-  - if any name is `NO_ACCESS`, also run §3a and §3b with the **full** list of names the task needs.
+  - if any name is `NO_ACCESS`, also run §3a–§3d with the **full** list of names the task needs.
 - `MIGRATE` → run §2a once, then this block again.
 - `RETRY <code>` → run this block again once after a minute; if it repeats, report it. `RETRY CANCELLED` means the wait was interrupted; run it again.
 - `OWNER_MISMATCH` or `OWNER_UNKNOWN` → stop. The profile is signed in to a different account than `TC_OWNER_DID`, or has a session with no recorded owner. Tell the operator. Never switch profiles, log out or replace the session yourself.
@@ -288,11 +288,11 @@ rm -f "$STATE/request.json" "$STATE/request.err"
 
 ### 2c. Send the owner one message, then wait
 
-Compose **one** message from the template at the end, with the add link (if §2b ran) and the approval link (if §3b ran). Then:
-- If you sent an approval link, wait for the owner's code and run §3c **as soon as it arrives**; the code works once and only for 5 minutes.
+Compose **one** message from the template at the end, with the add link (if §2b ran) and the approval link (if §3d accepted one). Then:
+- If you sent an approval link, run §3e right away, in the same turn, until it reports a result. Don't wait for the owner to reply.
 - Then run §2 with `WAIT='9m'`. Never send the links again while waiting.
   - `MISSING` names after it → the owner hasn't added them yet. Run §2 with `WAIT='9m'` again, up to three times in total, then ask the owner whether they still want to add them.
-  - `NO_ACCESS … PERMISSION_DENIED` after a completed sign-in → the owner unticked that name. Tell them; don't ask again unless they say so.
+  - `NO_ACCESS … PERMISSION_DENIED` after a completed sign-in → the session doesn't cover that name (for example, the task now needs a name the sign-in didn't ask for). Run §3 again with the full list of names.
 - **(old CLI)** there is no wait: the message asks the owner to tell you when the secrets are saved. Then run §2 with `WAIT='0'`.
 
 ## 3. Consent — only when §2 reports `NO_ACCESS`
@@ -319,12 +319,12 @@ rm -f "$STATE/context.err"
 
 `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
-**3b. Build the request and check it before anyone signs.** OpenKey's phone-code (device) sign-in can't grant secrets, so this uses the OpenKey approval page, which shows a code at the end. The CLI prints the approval link and, with no code on stdin, stops with `PASTE_CODE_MISSING`. The checker then accepts the link only if it requests exactly:
+**3b. Build the request.** OpenKey's phone-code (device) sign-in can't grant secrets, so this uses a short OpenKey approval link. The request asks for exactly:
 - read (`tinycloud.kv/get`) on `vault/secrets/<NAME>` in the owner's `secrets` space, for each name;
 - decrypt on the owner's default encryption network;
 - the permission check (`tinycloud.capabilities/read`) that OpenKey requires.
 
-It also requires this profile's key, this profile's node, no callback and at most 30 days.
+This block writes that request to `$STATE/manifest.json`, records this profile's key and node in `$STATE/context.json` for §3d, and writes the sign-in script `$STATE/signin.sh`. It starts nothing.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
@@ -338,7 +338,7 @@ STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; c
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 NAMES='<SECRET_NAME …>'
 
-rm -f "$STATE/manifest.json" "$STATE/approve.url" "$STATE/login.err" "$STATE/context.json"
+rm -f "$STATE/manifest.json" "$STATE/context.json" "$STATE/signin.sh"
 python3 - "$STATE/manifest.json" "$TC_OWNER_DID" $NAMES <<'PY'
 import json, re, sys
 out, owner, names = sys.argv[1], sys.argv[2], sys.argv[3:]
@@ -350,155 +350,197 @@ perms.append({"service": "tinycloud.capabilities", "path": "", "actions": ["read
 json.dump({"manifest_version": 1, "app_id": "xyz.tinycloud.agent-secrets", "name": "Agent secret reads",
            "space": "secrets", "permissions": perms}, open(out, "w"))
 PY
-if [ -s "$STATE/manifest.json" ]; then
-  "$TC_BIN" --profile "$PROFILE" context --json < /dev/null > "$STATE/context.json" 2> /dev/null
-  timeout 60 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" --paste \
-    --owner "$TC_OWNER_DID" --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
-  echo "LOGIN_EXIT $?"
+if [ ! -s "$STATE/manifest.json" ]; then echo "BAD_INPUT — fix TC_OWNER_DID or the secret names"
+elif ! "$TC_BIN" --profile "$PROFILE" context --json < /dev/null > "$STATE/context.json" 2> /dev/null; then rm -f "$STATE/context.json"; echo SETUP_FAILED
 else
-  echo "BAD_INPUT — fix TC_OWNER_DID or the secret names" > "$STATE/login.err"
+  cat > "$STATE/signin.sh" <<'W'
+{ set +x; } 2>/dev/null; set +e; umask 077
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
 fi
-python3 - "$STATE/login.err" "$STATE/context.json" "$STATE/approve.url" "$TC_OWNER_DID" $NAMES <<'PY'
-import base64, json, re, sys, urllib.parse
-if open(sys.argv[1], errors="replace").read().startswith("BAD_INPUT"): sys.exit(print(open(sys.argv[1]).read().strip()))
-err_file, ctx_file, out_file, owner, names = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:]
-text = open(err_file, errors="replace").read()
-dec, i, last = json.JSONDecoder(), 0, {}
-while (m := re.compile(r"\{").search(text, i)):
-    try: o, i = dec.raw_decode(text, m.start()); last = o if isinstance(o, dict) and "error" in o else last
-    except ValueError: i = m.start() + 1
-code = (last.get("error") or {}).get("code")
-if code not in (None, "PASTE_CODE_MISSING"):
-    sys.exit(print("LOGIN_PREFLIGHT_FAILED", code, re.sub(r"https://\S+", "<link>", last["error"].get("message") or "")[:200]))
-# The approval link is the line that holds nothing but the URL.
-urls = [l.strip() for l in text.splitlines() if re.fullmatch(r"\s*https://\S+\s*", l)]
-if len(set(urls)) != 1: sys.exit(print("NO_URL" if not urls else "REQUEST_MISMATCH ambiguous link"))
-url = urls[0]
-try: ctx = json.load(open(ctx_file))
-except Exception: sys.exit(print("REQUEST_MISMATCH no profile context"))
-u = urllib.parse.urlsplit(url); q = urllib.parse.parse_qs(u.query, keep_blank_values=True)
-def fail(why): sys.exit(print("REQUEST_MISMATCH", why))
-if (u.scheme, u.netloc, u.path) != ("https", "openkey.so", "/delegate"): fail("not the OpenKey approval page")
-if set(q) - {"did", "jwk", "host", "permissions", "reason", "expiry", "protocolVersion"}: fail("unexpected parameters " + ",".join(sorted(set(q) - {"did", "jwk", "host", "permissions", "reason", "expiry", "protocolVersion"})))
-if any(len(v) != 1 for v in q.values()): fail("repeated parameter")
-one = {k: v[0] for k, v in q.items()}
-if one.get("did") != ctx.get("sessionDid"): fail("link is for another key")
-# OpenKey signs for the key in `jwk`, so it must be this profile's public key.
-B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-def b58(b):
-    n, s = int.from_bytes(b, "big"), ""
-    while n: n, r = divmod(n, 58); s = B58[r] + s
-    return "1" * (len(b) - len(b.lstrip(b"\0"))) + s
-try:
-    j = one.get("jwk", ""); jwk = json.loads(base64.urlsafe_b64decode(j + "=" * (-len(j) % 4)))
-    x = base64.urlsafe_b64decode(jwk["x"] + "=" * (-len(jwk["x"]) % 4))
-except Exception: fail("unreadable key")
-if set(jwk) - {"kid", "kty", "crv", "x"} or jwk.get("kty") != "OKP" or jwk.get("crv") != "Ed25519" or len(x) != 32:
-    fail("key is not a public Ed25519 key")
-if "did:key:z" + b58(b"\xed\x01" + x) != (ctx.get("sessionDid") or "").split("#")[0]: fail("link signs for another key")
-if one.get("host") != ctx.get("host"): fail("link is for another node")
-if not re.fullmatch(r"\d+s", one.get("expiry", "")) or int(one["expiry"][:-1]) > 2592000: fail("lifetime over 30 days")
-p = one.get("permissions", "")
-try: perms = json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4)))["permissions"]
-except Exception: fail("unreadable permissions")
-chain, addr = owner.split(":")[3], owner.split(":")[4].lower()
-spaces = {"secrets", f"tinycloud:pkh:eip155:{chain}:{addr}:secrets"}
-def norm_space(s): return s.lower() if isinstance(s, str) and s.lower().startswith("tinycloud:pkh:") else s
-def norm_urn(s): return s.lower() if isinstance(s, str) else s
-want = {("tinycloud.kv", f"vault/secrets/{n}", ("tinycloud.kv/get",)) for n in names}
-want |= {("tinycloud.encryption", f"urn:tinycloud:encryption:did:pkh:eip155:{chain}:{addr}:default", ("tinycloud.encryption/decrypt",)),
-         ("tinycloud.capabilities", "", ("tinycloud.capabilities/read",))}
-got, space_values = set(), set()
-for e in perms:
-    if not isinstance(e, dict) or set(e) - {"service", "space", "path", "actions"}: fail("unexpected entry fields")
-    svc, path, acts = e.get("service"), e.get("path"), e.get("actions")
-    if not isinstance(acts, list): fail("bad actions")
-    if svc == "tinycloud.encryption":
-        if e.get("space", "encryption") != "encryption": fail("decrypt not requested as a network grant")
-        path = norm_urn(path)
-    else:
-        if norm_space(e.get("space")) not in spaces: fail("entry outside the owner's secrets space")
-        space_values.add(norm_space(e.get("space")))
-    t = (svc, path, tuple(acts))
-    if t in got: fail("duplicate entry")
-    got.add(t)
-if got != want or len(perms) != len(want) or len(space_values) != 1: fail("requested permissions differ from the named secrets")
-with open(out_file, "w") as f: f.write(url)
-print("APPROVAL_READY")
-PY
-[ -s "$STATE/approve.url" ] || rm -f "$STATE/approve.url"
-rm -f "$STATE/login.err" "$STATE/context.json"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
+rm -f "$STATE/signin.rc" "$STATE/login.json" "$STATE/login.err"
+"$TC_BIN" --profile "$PROFILE" auth login --method openkey --no-popup --manifest "$STATE/manifest.json" --owner "$TC_OWNER_DID" --expiry 30d < /dev/null > "$STATE/login.json" 2> "$STATE/login.err" &
+echo "$!" > "$STATE/signin.pid"
+wait "$!"
+echo "$?" > "$STATE/signin.rc"
+W
+  echo REQUEST_READY
+fi
 ```
 
-- `APPROVAL_READY` → put the link from one read of `$STATE/approve.url` into the §2c message.
-- `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
-- `REQUEST_MISMATCH <why>` or `NO_URL` → don't send a link. Tell the owner what the check reported. A mismatch about the decrypt grant means the CLI is older than 1.0.0-beta.23.
+`REQUEST_READY` → §3c. `BAD_INPUT` → fix the names or `TC_OWNER_DID`. `SETUP_FAILED` → run §3a, then this block again.
 
-**3c. Finish the sign-in with the owner's code.** After approving, OpenKey shows an 8-character code such as `K7M2-Q9XA`. It works once, for **5 minutes**. Redeem it as soon as it arrives. The code completes sign-in only for this profile's key. The owner sends it in your 1:1 channel; never repeat, quote or echo it anywhere else (not in replies, notes, logs or other tools).
+**3c. Start the sign-in and keep it running.** The script runs `auth login --method openkey --no-popup --manifest "$STATE/manifest.json" --owner "$TC_OWNER_DID" --expiry 30d` on this profile. The CLI prints a short OpenKey link, then waits and fetches the owner's approval by itself: no code comes back. It has no time limit of its own (the link lasts an hour), so it must keep running while you talk to the owner. Start it **once**:
 
-- **(old CLI)** CLIs older than 1.1.0-beta.14 (see the version §1 printed) can't redeem the short code. The §2c message then asks the owner to click "Use full delegation code instead" and send that long code (about 7–10 KB). Copying a code that long by hand can corrupt it, so prefer upgrading the CLI.
-
-Ask the owner to send the code in your 1:1 channel, then put it into `$STATE/code` with exactly one of these. Don't use a separate secret-input tool for the code: Paseo's Secret Bridge is retired.
-
-- If the harness exposes an existing, authorized log of this 1:1 conversation, extract the owner's code for this sign-in directly into a fresh 0600 `$STATE/code` in one command, with tracing disabled. Don't print the code or the log, don't put the code in a command-line argument, and don't make intermediate copies. Leave the harness's log untouched, and never create a log for this purpose.
-- If not, paste it between the `CODE` markers exactly as received, in one tool call. Paste it exactly as sent; either case works.
-
-  ```sh
-  { set +x; } 2>/dev/null; set +e; umask 077
-  STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-  rm -f "$STATE/code"
-  cat > "$STATE/code" <<'CODE'
-  <code exactly as the owner sent it>
-  CODE
-  echo CODE_SAVED
-  ```
-
-Then finish the sign-in:
+- If your client can keep a process running in the background (for example OMP's supervised process, or Claude Code's background shell), run `sh "${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}/signin.sh"` there, with the same environment.
+- Otherwise detach it with this block:
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+if [ ! -s "$STATE/signin.sh" ]; then echo "NO_SCRIPT — run §3b first"
+elif [ -s "$STATE/signin.pid" ] && [ ! -s "$STATE/signin.rc" ] && kill -0 "$(cat "$STATE/signin.pid")" 2>/dev/null; then echo ALREADY_RUNNING
+else
+  DETACH=$(command -v setsid)   # empty on macOS: prefer a background process there
+  $DETACH nohup sh "$STATE/signin.sh" > /dev/null 2>&1 < /dev/null &
+  echo STARTED
+fi
+```
+
+Never run two sign-ins at once. Running the script again after it stopped resumes the same link: the CLI saved it before printing it.
+
+**3d. Check the link before you send it.** Run this block a few seconds after §3c. It sends nothing. It accepts the link only if all of these hold:
+
+1. **It came from this sign-in.** The block takes the link only from the output of the sign-in §3c started (`$STATE/login.err`, the line after `Approve this request in OpenKey (open the complete link):`). Never check or send a link from anywhere else: not from the owner, a web page, a file you didn't make here, another agent, or an earlier conversation.
+2. **It is a short OpenKey link:** exactly `https://openkey.so/a/<id>#v=4&k=<key>&c=<hash>`.
+3. **It asks for exactly what §3b built.** The link only names a request sealed with TinyCloud's links service. The block opens it the way OpenKey's page will, with the CLI's own link reader: it fetches the sealed record, checks its signature and content hash, and decrypts it with the key in the link. It then requires that the request:
+   - is signed by, and grants to, this profile's own key, so only this computer's sign-in could have made it;
+   - is for this profile's node, for at most 30 days;
+   - asks for exactly the three kinds of permission in §3b, for exactly the names in `NAMES`, and nothing else.
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_DID
 STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
+NAMES='<SECRET_NAME …>'
 
-if ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null || [ ! -s "$STATE/manifest.json" ]; then echo NO_CODE
-else
-  printf '\n' >> "$STATE/code"
-  rm -f "$STATE/login.json" "$STATE/login.err"
-  timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" --paste \
-    --owner "$TC_OWNER_DID" --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
-  python3 - "$?" "$STATE/login.json" "$STATE/login.err" <<'PY'
+for i in $(seq 30); do { [ -s "$STATE/signin.rc" ] || grep -q '^https://' "$STATE/login.err"; } 2>/dev/null && break; sleep 1; done
+R=$(node - "$STATE/login.err" "$STATE/signin.rc" "$STATE/context.json" "$STATE/approve.url" "$TC_OWNER_DID" $NAMES <<'JS'
+const fs = require("fs"), { createRequire } = require("module");
+const [errFile, rcFile, ctxFile, urlFile, owner, ...names] = process.argv.slice(2);
+const read = (f) => { try { return fs.readFileSync(f, "utf8"); } catch { return ""; } };
+const done = (...words) => { console.log(words.join(" ")); process.exit(0); };
+const fail = (why) => done("REQUEST_MISMATCH", why);
+const text = read(errFile), lines = text.split("\n");
+// 1. Only this sign-in's own output: the line after the CLI's prompt, and no other link in it.
+const prompt = lines.flatMap((l, i) => (l.trim() === "Approve this request in OpenKey (open the complete link):" ? [i] : []));
+if (!prompt.length) {
+  if (!read(rcFile).trim()) done("NO_URL");
+  const codes = [...text.matchAll(/"code":\s*"([A-Z0-9_]+)"/g)];
+  done("LOGIN_PREFLIGHT_FAILED", codes.length ? codes.at(-1)[1] : "exit-" + read(rcFile).trim());
+}
+if (read(rcFile).trim()) done("SIGNIN_ENDED");
+const url = (lines[prompt[0] + 1] || "").trim();
+if (new Set(prompt.map((i) => (lines[i + 1] || "").trim())).size !== 1 || lines.filter((l) => /https?:\/\//.test(l)).length !== prompt.length) fail("more than one link");
+// 2. The short form OpenKey's approval page opens, and nothing else.
+if (!/^https:\/\/openkey\.so\/a\/[a-z2-7]{26}#v=4&k=[A-Za-z0-9_-]{43}&c=bafkrei[a-z2-7]{52}$/.test(url)) fail("not a short OpenKey link");
+let ctx;
+try { ctx = JSON.parse(read(ctxFile)); } catch { fail("no profile context"); }
+// 3. Open the sealed request as OpenKey's page will, with the CLI's own link reader.
+let links;
+try { links = createRequire(fs.realpathSync(process.env.TC_BIN))("@tinycloud/share-envelope/links"); } catch { done("CHECK_UNAVAILABLE"); }
+(async () => {
+  let request;
+  try {
+    ({ request } = await links.resolveApprovalRequest(url, { trustedOrigins: ["https://openkey.so"], apiOrigin: process.env.TC_LINKS_API_ORIGIN ?? "https://api.tinycloud.xyz" }));
+  } catch (e) {
+    if (e?.code === "service_unavailable") done("CHECK_RETRY");
+    fail("the sealed request doesn't open (" + (e?.code || "error") + ")");
+  }
+  if (request.issuer !== String(ctx.sessionDid || "").split("#")[0]) fail("link is for another key");
+  if (request.nodeOrigin !== ctx.host) fail("link is for another node");
+  if (!(request.grantLifetimeSeconds <= 2592000)) fail("lifetime over 30 days");
+  const [, , , chain, addr] = owner.split(":");
+  const lower = (s) => (typeof s === "string" ? s.toLowerCase() : s);
+  const spaces = new Set(["secrets", `tinycloud:pkh:eip155:${chain}:${lower(addr)}:secrets`]);
+  const want = new Set(names.map((n) => `tinycloud.kv|vault/secrets/${n}|tinycloud.kv/get`));
+  want.add(`tinycloud.encryption|urn:tinycloud:encryption:did:pkh:eip155:${chain}:${lower(addr)}:default|tinycloud.encryption/decrypt`);
+  want.add("tinycloud.capabilities||tinycloud.capabilities/read");
+  const got = new Set(), spaceValues = new Set();
+  for (const e of request.permissions) {
+    if (Object.keys(e).some((k) => !["service", "space", "path", "actions"].includes(k)) || !Array.isArray(e.actions)) fail("unexpected entry fields");
+    let path = e.path;
+    if (e.service === "tinycloud.encryption") {
+      if (e.space !== "encryption") fail("decrypt not requested as a network grant");
+      path = lower(path);
+    } else {
+      const space = lower(e.space).startsWith("tinycloud:pkh:") ? lower(e.space) : e.space;
+      if (!spaces.has(space)) fail("entry outside the owner's secrets space");
+      spaceValues.add(space);
+    }
+    const t = `${e.service}|${path}|${e.actions.join(",")}`;
+    if (got.has(t)) fail("duplicate entry");
+    got.add(t);
+  }
+  if (got.size !== want.size || [...want].some((t) => !got.has(t)) || spaceValues.size !== 1) fail("requested permissions differ from the named secrets");
+  const same = read(urlFile).trim() === url;
+  fs.writeFileSync(urlFile, url, { mode: 0o600 });
+  done("APPROVAL_READY", same ? "SAME_LINK" : "NEW_LINK");
+})();
+JS
+)
+echo "${R:-CHECK_UNAVAILABLE}"
+case "$R" in
+  APPROVAL_READY*|SIGNIN_ENDED|NO_URL|CHECK_RETRY) ;;
+  *) kill "$(cat "$STATE/signin.pid" 2>/dev/null)" 2>/dev/null; rm -f "$STATE/approve.url" "$STATE/signin.pid" ;;
+esac
+```
+
+- `APPROVAL_READY NEW_LINK` → put the link from one read of `$STATE/approve.url` into the §2c message, then run §3e.
+- `APPROVAL_READY SAME_LINK` → it's the link you already sent: don't send it again; run §3e.
+- `SIGNIN_ENDED` → the sign-in already finished; run §3e.
+- `NO_URL` → the sign-in hasn't printed its link yet. Run this block once more; if it repeats, run §3e, which reports why.
+- `CHECK_RETRY` → TinyCloud's links service couldn't be reached. Run this block again in a minute, at most 3 times in a row; then stop and tell the owner.
+- `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
+- `REQUEST_MISMATCH <why>` or `CHECK_UNAVAILABLE` → the block stopped the sign-in. Don't send any link. Tell the owner what the check reported. On a `TC_OLDER` CLI, `not a short OpenKey link` or `CHECK_UNAVAILABLE` means that CLI is too old for this sign-in: tell the operator it needs `1.6.0`.
+
+**3e. Wait for the approval.** Run this block right after you send the link, in the same turn, and again each time it prints `WAITING`, without waiting for the owner to reply: the sign-in sees the approval itself. Each run waits at most a minute.
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077
+ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -r "$ENV_HELPER" ]; then
+  [ -n "${TC_OWNER_DID:-}" ] || TC_OWNER_DID=$(node "$ENV_HELPER" get TC_OWNER_DID)
+fi
+STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+
+for i in $(seq 60); do [ -s "$STATE/signin.rc" ] && break; [ -s "$STATE/signin.pid" ] && kill -0 "$(cat "$STATE/signin.pid")" 2>/dev/null || break; sleep 1; done
+ALIVE=no; [ ! -s "$STATE/signin.rc" ] && [ -s "$STATE/signin.pid" ] && kill -0 "$(cat "$STATE/signin.pid")" 2>/dev/null && ALIVE=yes
+python3 - "$ALIVE" "$STATE/signin.rc" "$STATE/login.json" "$STATE/login.err" "$TC_OWNER_DID" <<'PY'
 import json, re, sys
-rc, out, err = int(sys.argv[1]), sys.argv[2], sys.argv[3]
-if rc == 124: sys.exit(print("LOGIN_TIMEOUT"))
-try:
-    r = json.load(open(out))
-    if r.get("authenticated"):
-        sys.exit(print("SIGNED_IN expires", r.get("expiresAt"), "declined", json.dumps(r.get("declined", []))))
-except Exception: pass
-text = open(err, errors="replace").read(); dec, i, last = json.JSONDecoder(), 0, {}
+alive, rc_f, out_f, err_f, owner = sys.argv[1:6]
+def read(f):
+    try: return open(f, errors="replace").read()
+    except OSError: return ""
+try: out = json.loads(read(out_f) or "{}")
+except ValueError: out = {}
+rc = read(rc_f).strip() or ("0" if out.get("authenticated") else "")
+# No result yet, or the CLI was killed by a signal (exit 128 and up): the saved link resumes.
+if not rc or (int(rc) >= 128 and not out.get("authenticated")): sys.exit(print("WAITING" if alive == "yes" else "SIGNIN_STOPPED"))
+text, dec, i, last = read(err_f), json.JSONDecoder(), 0, {}
 while (m := re.compile(r"\{").search(text, i)):
     try: o, i = dec.raw_decode(text, m.start()); last = o if isinstance(o, dict) and "error" in o else last
     except ValueError: i = m.start() + 1
-e = last.get("error") or {}
-msg = e.get("message") or ""
-expired = bool(re.search(r"not found|expired", msg, re.I)) and bool(re.search(r"code", msg, re.I))
-print("CODE_EXPIRED" if expired else "LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", msg)[:200])
+code = (last.get("error") or {}).get("code") or f"exit-{rc}"
+norm = lambda d: d.split("#")[0].rsplit(":", 1)[0] + ":" + d.split("#")[0].rsplit(":", 1)[-1].lower() if d else ""
+if rc == "0" and out.get("authenticated") and norm(out.get("ownerDid") or "") == norm(owner):
+    sys.exit(print("SIGNED_IN expires", out.get("expiresAt")))
+if rc == "0": sys.exit(print("LOGIN_FAILED OWNER_MISMATCH"))
+if rc == "3": sys.exit(print("LINK_EXPIRED", code))
+if rc == "5": sys.exit(print("NOT_APPROVED", code))
+print("LOGIN_FAILED", code)
 PY
-fi
-rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
+[ "$ALIVE" = yes ] || rm -f "$STATE/signin.rc" "$STATE/signin.pid" "$STATE/login.json" "$STATE/login.err"
 ```
 
-- `SIGNED_IN … declined []` → continue with §2c (run §2).
-- `SIGNED_IN` with a non-empty `declined` → something wasn't granted. Tell the owner which names stay unreadable and why:
-  - an item they unticked;
-  - or, if the declined entry is the decrypt permission and everything was ticked, an OpenKey deployment too old to grant agent decryption.
-- `CODE_EXPIRED` → the short code is older than 5 minutes, was already used, or was mistyped. If the owner still has the OpenKey page open, ask for the long code behind "Use full delegation code instead" (it doesn't expire after 5 minutes) and run §3c again with it. Otherwise run §3b again and send the owner only the new approval link (not the add link again).
-- `NO_CODE` → the code never arrived. Ask the owner to send it again.
-- `LOGIN_TIMEOUT` → the CLI didn't finish in two minutes. Report it; don't loop.
-- `LOGIN_FAILED <code>` → see §5. A code copied wrongly fails here: ask the owner to send it again. Don't start a new request.
+Exit codes here are the [shared table](#exit-codes-and-owner-lines)'s, with `<what>` = "access to your secrets":
 
-Never reuse a code for another profile.
+- `WAITING` → the owner hasn't approved yet. Run this block again now; don't send the link again. Waiting never counts as a retry.
+- `SIGNED_IN expires <date>` → send the done line ("Access to your secrets is set up."), delete `$STATE/approve.url`, and continue with §2c (run §2).
+- `SIGNIN_STOPPED` → the sign-in stopped without a result (a restart, or a killed process). Run §3c again, then §3d. It resumes the same link (`SAME_LINK`): don't send it again; run this block.
+- `LINK_EXPIRED <code>` (exit 3) → the link expired before the owner approved it. Run §3c and §3d again. §3c can end with `LINK_EXPIRED` once more before it makes a new link; then run them once more. Send the new link once, with the retry line: "That link expired. Please open this new one and approve. I'll carry on as soon as you do." If that link expires too, send the "couldn't" failed line and stop.
+- `NOT_APPROVED <code>` (exit 5) → the owner declined, unticked an item (`OPENKEY_APPROVAL_NARROWER`: OpenKey's short links are all or nothing), or approved with another account. Nothing was saved. Send the "couldn't" failed line and stop; ask again only if the owner wants to.
+- `LOGIN_FAILED <code>` → send the "couldn't" failed line, then the code on its own line, and see §5. Don't retry.
 
 ## 4. Use a secret
 
@@ -579,7 +621,7 @@ The value goes to a temporary file next to `$DEST` and replaces it only after a 
 
 ## Exit codes and owner lines
 
-Secrets' sign-in and `secrets wait` are among the exceptions below: branch on the codes in §5. Owner lines are the shared ones, with `<what>` = "access to your secrets".
+The sign-in (§3e) follows the shared table below, with `<what>` = "access to your secrets". Reads (§2, §4) and `secrets wait` are among its exceptions: branch on the codes in §5.
 
 {{ERRORS}}
 
@@ -604,13 +646,15 @@ Branch on `code`, never on the exit status alone: exit 8 means "still pending" o
 | `INVALID_SECRET_NAME`, `TOO_MANY_SECRET_NAMES` | The name isn't `UPPER_SNAKE`, or more than 10 names | Fix the names |
 | `SESSION_IN_USE` | A new request would narrow or shorten the live session | Ask the owner. Never add `--replace-session` on your own |
 | `INVALID_LOGIN_SCOPE` | The request has no secrets, or mixes spaces | Rebuild the manifest with §3b |
-| `PASTE_CODE_MISSING` (exit 3) | Expected in §3b: no code on stdin | Nothing; §3b handles it |
+| `APPROVAL_REQUEST_EXPIRED` (exit 3) | The approval link expired before the owner approved it | §3e `LINK_EXPIRED` |
+| `OPENKEY_APPROVAL_NARROWER` (exit 5) | The owner unticked an item; a short link is all or nothing, so nothing was saved | §3e `NOT_APPROVED`: stop |
+| `OPENKEY_OWNER_MISMATCH` (exit 5) | The owner approved with another account | §3e `NOT_APPROVED`: stop |
 | `DEVICE_AUTH_UNSUPPORTED_SCOPE` | Device login can't grant secrets | Use §3, never `--device` |
 
 ## 6. Lifecycle
 
-- **Expiry:** the session lasts up to 30 days from approval. `"$TC_BIN" --profile "$PROFILE" context --json` shows `session.expiresAt`. Before it ends, renew by running §3b–§3c with the same names; the owner approves again.
-- **More secrets:** run §2 for the new names, then §3b–§3c with the full list. A request that adds names and lasts at least as long needs no extra flag.
+- **Expiry:** the session lasts up to 30 days from approval. `"$TC_BIN" --profile "$PROFILE" context --json` shows `session.expiresAt`. Before it ends, renew by running §3b–§3e with the same names; the owner approves again.
+- **More secrets:** run §2 for the new names, then §3b–§3e with the full list. A request that adds names and lasts at least as long needs no extra flag.
 - **Replace:** only the owner replaces a secret, in Secret Manager. When an existing secret doesn't work, give the owner the page from `"$TC_BIN" secrets manage <NAME> --no-open --json` (its `url`; on an old CLI, `https://secrets.tinycloud.xyz/app?secret=<NAME>`), say what failed, and stop.
 - **Stop reading:** `"$TC_BIN" --profile "$PROFILE" auth logout` clears the local session. The approval stays valid on TinyCloud until it expires, so tell the owner that.
 
@@ -622,9 +666,11 @@ Send **one** message. Fill in the placeholders, and keep only the paragraphs tha
 >
 > *(add link)* Add the missing ones here: <add link>. You enter each value on that page; names that are already in your vault show "Already in your vault". Never send a value to me.
 >
-> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve. OpenKey then shows an 8-character code, valid for 5 minutes: send it back to me here.
+> *(approval link)* To let me read them, I need one permission from the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked.
 >
-> *(old CLI, approval link)* Replace the last sentence with: OpenKey then shows a short code; click "Use full delegation code instead" and send me that long code here.
+> <approval link>
+>
+> Open this link and approve. I'll carry on as soon as you do.
 >
 > *(old CLI, add link)* Replace the add-link paragraph with: <NAMES> isn't in your TinyCloud Secrets yet. Open <OLD_ADD_LINK> to add it: Secret Manager opens with the name filled in, and you enter the value there. Never send the value to me. Tell me when it's saved and I'll continue.
 >

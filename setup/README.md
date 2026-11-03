@@ -35,7 +35,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link that anyone who has it can open. It asks you before it makes one.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a link.`
-- **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days. Publishing also needs the code OpenKey shows, pasted back to your agent.
+- **You approve:** its own single OpenKey link to let your agent publish to your share folders, for up to 30 days. There's no code to send back.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Share an artifact: [/share](share.md)

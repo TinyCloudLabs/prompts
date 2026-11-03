@@ -1,4 +1,4 @@
-**Exit codes and owner lines (the same in every TinyCloud guide).** This table is for the CLI's approval commands: `onboard`, `auth grant` and `auth login` without `--paste`, and `auth request --grant`. A code the guide names itself, such as `SPACE_SETUP_PENDING`, goes by the guide. The commands under "Exceptions" have codes of their own.
+**Exit codes and owner lines (the same in every TinyCloud guide).** This table is for the CLI's approval commands: `onboard`, `init`, `auth grant` and `auth login` without `--paste`, and `auth request --grant`. A code the guide names itself, such as `SPACE_SETUP_PENDING`, goes by the guide. The commands under "Exceptions" have codes of their own.
 
 | Exit | Means | Do |
 | --- | --- | --- |
@@ -19,10 +19,13 @@ While a command is waiting for an approval, don't ask the owner to tell you when
 
 **Exceptions: commands with other codes.**
 
-- `auth login --paste` and `auth request --grant --paste` (the Secrets and publish sign-ins, and the older apps fallbacks): exit 3 `PASTE_CODE_MISSING` is the expected first stop, with the link printed and no code yet, not an expired link. These flows still ask the owner for the code OpenKey shows after they approve. It works once, for 5 minutes; a used or expired code ends as exit 1, "Delegation code not found or expired".
-- `auth login --device` (publish's fallback and the older apps sign-in): 3 is `DEVICE_AUTH_EXPIRED` and 5 is `DEVICE_AUTH_DENIED`, as above. Each new run counts toward OpenKey's limit of 5 device sign-ins per 10 minutes; over it, exit 1 `DEVICE_AUTH_RATE_LIMITED`.
 - Data commands (`kv`, `sql`, `share`, `secrets get`, `feed`): exit 3 is `AUTH_REQUIRED`, a missing or expired session, so sign in again as the guide says; there is no link to resend. Exit 5 is `PERMISSION_DENIED` or `KV_ALREADY_EXISTS`, not the owner declining. Branch on the code.
 - `secrets wait`: exit 8 means a named secret was still missing when the wait ended.
 - Courier (`tinycloud courier …`): exit 0 done, 8 still waiting, 2 usage, and 1 for every error, with `[code]` on stderr. An expired link is exit 1 `[approval-expired]` or `[approval-result-expired]`. The Courier guide lists each code.
-- TinyChat (`tinychat-retrieval`): it reports statuses, not these codes, and still asks for the code OpenKey shows. The TinyChat guide says how.
+- TinyChat (`tinychat-retrieval`): it reports statuses, not these codes, and still asks for the code OpenKey shows (see below). The TinyChat guide says how.
 - Installers and helper scripts (`install-cli.mjs`, `agent-env.mjs`, the apps skill's `.sh` helpers) have their own exit codes, listed where they run. For example, `layout.sh` exits 3 when `jq` is missing.
+
+**Codes the owner still pastes.** Every other guide uses a short link and no code. These are the only flows that still take a code OpenKey shows, each with an owner and an end date:
+
+- **TinyChat's sign-in** (`tinychat-retrieval` runs `auth request --grant --paste`, then `login --code`): after approving, the owner copies the code OpenKey shows into the chat; it works once, for 5 minutes. The CLI can already do this with a short link, but the pack must change first. **Owner:** TBD (Holden and Naomi to name one). **Ends:** the next TinyChat pack release.
+- **Courier's code import** (`courier init --grant-file -`): never asked for; used only when the owner replies with a code from an older OpenKey link instead of approving. **Owner:** TBD (Holden and Naomi to name one). **Ends:** the next Courier release.

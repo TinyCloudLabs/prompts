@@ -58,13 +58,13 @@ Onboarding grants ordinary SQL reads/writes, not table creation. If the pinned i
 
 ### Scoped setup without onboarding
 
-The remaining flow supports an existing narrow `agent-meal` setup. Use it only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding. Its sign-in explicitly uses the legacy manual-code fallback and its longer links; the access grant uses a short link and automatic retrieval. The agent runs the commands and relays approvals. Never ask the owner to open a terminal or restart. Every data command passes the full validated applications space ID.
+The remaining flow supports an existing narrow `agent-meal` setup. Use it only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding. Its sign-in and its access grant each use a short link with automatic retrieval; the owner just approves each link. The agent runs the commands and relays approvals. Never ask the owner to open a terminal or restart. Every data command passes the full validated applications space ID.
 
 **Say the two steps first.** The owner signs in to, or creates, their OpenKey, then gives you permission for what they asked; signing in is not what gives you access. The `FIRST` message from `announce.sh` says this: copy that message into your reply exactly, character for character, once, and do not reword any line of it. If the action skill's own message already opens with this, don't repeat it. Call it "permission", not "delegation", "DID" or "capability".
 
 Check the actual existing grant, not the current preset's name. In CLI `1.6.0`, `apps-agent --write --app xyz.tinycloud.sample.healthlog` includes knowledge writes and schema access for Health Log's catalog database; older or read-only grants may not. A sufficiently scoped existing grant can run the same pinned installer on `agent-meal`. If installation authority is absent, use the published app or request only the missing installation actions with the owner's approval; do not silently widen the grant.
 
-Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent relays each OpenKey link and only the sign-in's chat code in step 3, then imports in step 4.
+Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent relays each OpenKey link in step 3 (no code comes back), then imports in step 4.
 
 **Health Log account and timezone.** Never ask the owner for their TinyCloud address or timezone. After successful sign-in, `owner-grant.sh` saves the explicit `owner` profile's address in `$STATE/owner-did.txt`, before granting access. It keeps an existing binding: never change it to match an imported grant. Do not try to save it before sign-in creates the profile.
 
@@ -110,13 +110,13 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 "$TC_BIN" --profile agent-meal auth request --preset apps-agent --write --app xyz.tinycloud.sample.healthlog --emit "$STATE/meal-request.json"
 ```
 
-3. **The owner's approval (agent-run, the sign-in code in chat).** Print the approval message:
+3. **The owner's approval (agent-run, links only).** Print the approval message:
 
 ```sh
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
-   Copy only the text between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE` into your reply once, exactly as printed. The `STATE:` line is for you. Then start the grant script yourself in a live interactive tool session (PTY), with stdin available across replies:
+   Copy only the text between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE` into your reply once, exactly as printed. The `STATE:` line is for you. Then start the grant script yourself in a live interactive tool session (PTY) that keeps running across replies:
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"; umask 077
@@ -131,15 +131,15 @@ kill -TERM '<OWNER_GRANT_PID>'
 
    Observe that session exit before continuing. The helper records each approval CLI child's PID with `$!`, stops only that child on cancellation, and removes its temporary grant file. Never stop processes by name or command-line pattern, or reuse a PID from a finished session. If you start a background process yourself, record `$!` immediately and stop only that PID.
 
-   **Without a live interactive session** (for example Claude Code, where each shell call ends): don't build your own pipe, and never stop a `tail` or any other process by pattern. Start the helper with this block instead. It gives the helper a pipe of its own, so no `tail` runs, and it records the helper's PID in `pid`, the only process to stop:
+   **Without a live interactive session** (for example Claude Code, where each shell call ends): never stop a `tail` or any other process by pattern. Start the helper in the background with this block instead. It writes the helper's output to `out` and records the helper's PID in `pid`, the only process to stop:
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"; umask 077
 S="$STATE/owner-grant-session"
 P=$(cat "$S/pid" 2>/dev/null); if [ -n "$P" ] && ps -p "$P" -o args= 2>/dev/null | grep -q 'owner-grant\.sh'; then echo "HELPER_RUNNING"; cat "$S/out"; else
-mkdir -p "$S"; [ -p "$S/in" ] || mkfifo "$S/in"
+mkdir -p "$S"
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/owner-grant.sh" ]; then G="$d/owner-grant.sh"; break; fi; done
-nohup sh -c 'exec 3<>"$1"; exec sh "$2" healthlog <&3' _ "$S/in" "$G" > "$S/out" 2>&1 < /dev/null &
+nohup sh "$G" healthlog > "$S/out" 2>&1 < /dev/null &
 echo "$!" > "$S/pid"; sleep 2; cat "$S/out"; fi
 ```
 
@@ -147,17 +147,16 @@ echo "$!" > "$S/pid"; sleep 2; cat "$S/out"; fi
 
 ```sh
 cat '<STATE>/owner-grant-session/out'
-printf '%s\n' '<the code>' > '<STATE>/owner-grant-session/in'
 P=$(cat '<STATE>/owner-grant-session/pid'); if ps -p "$P" -o args= | grep -q 'owner-grant\.sh'; then kill -TERM "$P"; else echo NOT_RUNNING; fi
 ```
 
-   Read `out` again until it shows the OpenKey URL. Send the sign-in code the owner pastes with the `printf` line; the access link needs none. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. The folder stays; the next start reuses it. After a cancel, if the owner still wants to approve, run the start block again and send the link it prints, even if it looks the same as before; don't resend a link from earlier messages.
+   Read `out` again until it shows the OpenKey URL, and after each approval until it shows the next URL, `Done` or an error. To cancel, use the `kill` line and nothing else: it stops that PID only while it is still the helper. The folder stays; the next start reuses it. After a cancel, if the owner still wants to approve, run the start block again and send the link it prints, even if it looks the same as before; don't resend a link from earlier messages.
 
-   - Relay each OpenKey URL printed by the running process. For the explicit fallback sign-in link, the owner approves and pastes the code in chat; send it, newline-terminated, to that same tool session. For the access link there is no code: send it with "Open this link and approve. I'll carry on as soon as you do.", keep the process running, and keep reading its output until it shows `Done` or an error; the owner doesn't need to tell you they've approved. Do not run a second process or approval.
-   - On a fresh computer, this scoped fallback script first runs `init --name owner --paste`. After that code, it records the owner address and starts the app grant. Relay that next URL the same way; it needs no code. First time: two approvals (sign-in and app); then one per new app. This does not replace or repeat onboarding.
-   - `auth grant` in CLI `1.6.0` prints a short OpenKey link and waits until the owner approves it; it reads no code. Do not add `--paste` to it: that flag reads a request artifact, not an approval code. Do not close stdin, hide stderr, or run it as a non-interactive one-shot shell call; the block above keeps stdin open through its pipe and stderr in its `out` file.
-   - The helper turns the CLI's exit code into one line; act on it as the shared table in `SKILL.md` §10 says. `APPROVAL_REQUEST_EXPIRED`: the access link expired before it was approved; run the step again and send the new link once, with "That link expired. Please open this new one and approve. I'll carry on as soon as you do." OpenKey couldn't be reached: wait a minute and run the step again, at most three times, never in an unbounded loop; if it still fails, send "I can't set up your Health Log app right now. Please ask me again later." (or Recipes) and stop. Never reset authentication or edit the CLI's files to get past it.
-   - If the owner sign-in has expired, the agent runs `"$TC_BIN" --profile owner auth login --method openkey --paste` in a live interactive session, relays the link and chat code, then starts the grant script again.
+   - Relay each OpenKey URL printed by the running process, the sign-in link and the access link alike: send it with "Open this link and approve. I'll carry on as soon as you do.", keep the process running, and keep reading its output until it shows the next URL, `Done` or an error. No code comes back, and the owner doesn't need to tell you they've approved. Do not run a second process or approval.
+   - On a fresh computer, this scoped fallback script first runs `init --name owner --no-popup`, which prints the sign-in link. Once the owner approves it, the script records the owner address and starts the app grant, which prints the access link. First time: two approvals (sign-in and app); then one per new app. This does not replace or repeat onboarding.
+   - The sign-in and `auth grant` in CLI `1.6.0` each print a short OpenKey link and wait until the owner approves it, for up to an hour; none of them reads a code. Do not add a paste flag to any of them: on the sign-in it selects the older manual-code flow, and on `auth grant` it reads a request artifact. Do not hide stderr or run the helper as a one-shot shell call that waits for it to end; the block above runs it in the background with stderr in its `out` file.
+   - The helper turns the CLI's exit code into one line; act on it as the shared table in `SKILL.md` §10 says. `APPROVAL_REQUEST_EXPIRED`: the sign-in or access link expired before it was approved; run the step again and send the new link once, with "That link expired. Please open this new one and approve. I'll carry on as soon as you do." OpenKey couldn't be reached: wait a minute and run the step again, at most three times, never in an unbounded loop; if it still fails, send "I can't set up your Health Log app right now. Please ask me again later." (or Recipes) and stop. Never reset authentication or edit the CLI's files to get past it.
+   - If the owner sign-in has expired, the agent runs `"$TC_BIN" --profile owner auth login --method openkey --no-popup`, kept running in the client's background/interactive job, sends its link with the same ask line, and starts the grant script again once that sign-in finishes.
    - If the owner declines or cancels, stop the waiting helper by its recorded PID as above. If the grant fails or `meal-grant.json` is empty, stop, report it in one line, and write nothing. Don't retry in a loop.
    - If a tool step is denied, stop. Explain the step and ask for a chat reply naming it, such as "Go ahead: run the Health Log approval step." Don't edit settings or run it another way.
 

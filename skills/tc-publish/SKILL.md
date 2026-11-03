@@ -2,18 +2,18 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.10"
+  version: "0.6.11"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/publish.md` and follow that text. Summaries drop the shell blocks you must run.
 
 # Publish documents and HTML with `tinycloud share`
 
-Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
+Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves with one short OpenKey link — no passwords, no copied credentials, no codes.
 
 **CLI rule (stable `1.6.0`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.6.0` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
-With an operator's older CLI (`TC_OLDER`), §1's feature probe is authoritative: it needs 1.0.0-beta.18 or newer (TC-540 device login with `--manifest` and `enable share`; TC-577 file names with spaces and storage-quota errors). It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
+With an operator's older CLI (`TC_OLDER`), §1's feature probe checks the sign-in options, and §2's link check stops on anything but a short OpenKey link, which this sign-in needs (verified on `1.6.0`). CLI `1.0.0-beta.17` also can't publish unusual file names (TC-577), so read the version §1 prints (§3 **File names**).
 
 Operator defaults `TC_BIN` and `TC_OWNER_EMAIL` come from process variables first, then `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host), read as data through the pinned parser installed by [setup/agent.md](https://agents.tinycloud.xyz/agent). Never source the data file. `TC_HOME` (CLI home root) and `TC_PUBLISH_STATE` (this skill's state, default `$HOME/.local/state/tc-publish`) stay role-specific. Without `TC_BIN`, use the shared private CLI or `tinycloud` on `PATH`, never bare `tc`.
 
@@ -22,7 +22,7 @@ Operator defaults `TC_BIN` and `TC_OWNER_EMAIL` come from process variables firs
 Agent shells lose variables and umask between calls. **Start every shell call with this preamble**; each block below already does:
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -40,8 +40,8 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 - Everything after `#` in any share URL is a credential (`#tc1=…`).
 - A full share URL may appear only in: the CLI command's own output; a 0600 file inside the 0700 `$STATE` directory; the tool output of the single read used to deliver it (the harness's own storage of that output is allowed); and one message to the owner in their 1:1 channel.
 - **Never retype, reassemble, or chunk a link.** Links are about 2.6 KB; a hand-copied link corrupts. If the owner's channel is a command, pipe the link from the state file into it (§6) so it never passes through your output. If the only channel is your reply, read the file once in a single tool call and copy it verbatim.
-- The OpenKey approval link and code may appear in the protected `$LOG`, in your tool output while you read them to compose the one owner message, and in that message — nowhere else. Delete `$LOG` after the waiter finishes.
-- Never put a link or code in notes, memory, the journal, summaries, other files, commits, group chats or other tools.
+- The OpenKey approval link may appear in `$STATE/login.err` and `$STATE/approve.url` (both 0600), in your tool output while you read it to compose the one owner message, and in that message — nowhere else. The §2 blocks delete those files when the sign-in ends.
+- Never put a link in notes, memory, the journal, summaries, other files, commits, group chats or other tools.
 - If a request comes from a group chat, send the link to the owner privately and say so in the group.
 
 ## Ask before making a link
@@ -55,7 +55,7 @@ Always pass `--to anyone`. Never pass `email:`, `domain:` or `did:`, and never r
 ## 1. Check the CLI — the pinned version, then feature probes
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -75,8 +75,7 @@ if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
   fi
 fi
 if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/publish or set TC_BIN"
-elif "$TC_BIN" enable share --help | grep -q -- '--replace-session' \
-  && "$TC_BIN" auth login --help | grep -q -- '--expiry'; then echo CLI_OK
+elif "$TC_BIN" auth login --help | awk '/--no-popup/{p=1} /--expiry/{e=1} END{exit !(p&&e)}'; then echo CLI_OK
 else echo STALE; fi
 [ -z "$TC_VERSION" ] || printf '%s\n' "$TC_VERSION"
 ```
@@ -90,7 +89,7 @@ Start ONE login and wait for it to finish; never start a second login while one 
 Check the profile and session first:
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -114,26 +113,23 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 ```
 
 - `SESSION: present` → **skip to §3.** Come back here only when a publish returns `AUTH_REQUIRED`.
-- `SESSION: missing` / `expired` / `unknown-expiry` → run the paste sign-in below.
+- `SESSION: missing` / `expired` / `unknown-expiry` → run the sign-in below.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
-**The sign-in: paste.** Run it when there is no live session. It is one approval; later runs reuse the saved session, up to 30 days. The approval is tied to this profile's key, which the check above creates (`init --name "$PROFILE" --key-only`; say nothing to the owner about it), so use the same `--profile "$PROFILE"` in every call.
+**The sign-in: one short link.** Run it when there is no live session. It is one approval; later runs reuse the saved session, up to 30 days. The approval is tied to this profile's key, which the check above creates (`init --name "$PROFILE" --key-only`; say nothing to the owner about it), so use the same profile in every call.
 
-Call 1 writes the sign-in's permission list to `$STATE/share-publishing.json` (links only: the capability read OpenKey requires and the three share folders in `default`; no decryption, which links don't use) and prints the approval link (it then stops with `PASTE_CODE_MISSING`, which is expected; the link is on its own line); you send the owner the message below and wait for the code; you save the code; call 2 finishes the sign-in with the same file.
-
-Call 1:
+The CLI prints a short OpenKey link, then waits and fetches the owner's approval by itself: no code comes back. It has no time limit of its own (the link lasts an hour), so it runs as a script that keeps going while you talk to the owner. This block writes the sign-in's permission list to `$STATE/share-publishing.json` (links only: the capability read OpenKey requires and the three share folders in `default`; no decryption, which links don't use) and the script to `$STATE/signin.sh`. It starts nothing:
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
 fi
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-PROFILE=publisher   # unless the owner names another profile
 
-rm -f "$STATE/approve.url" "$STATE/login.err"
+rm -f "$STATE/approve.url" "$STATE/signin.sh"
 cat > "$STATE/share-publishing.json" <<'JSON'
 {
   "app_id": "xyz.tinycloud.share",
@@ -148,238 +144,130 @@ cat > "$STATE/share-publishing.json" <<'JSON'
 }
 JSON
 chmod 600 "$STATE/share-publishing.json"
-timeout 60 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest "$STATE/share-publishing.json" --expiry 30d < /dev/null > /dev/null 2> "$STATE/login.err"
-grep -E '^[[:space:]]*https://[^[:space:]]+[[:space:]]*$' "$STATE/login.err" | head -1 | tr -d '[:space:]' > "$STATE/approve.url"
-[ -s "$STATE/approve.url" ] && echo APPROVE_URL_SAVED || { echo NO_URL; sed -E 's#https://[^ ]+#<link>#g' "$STATE/login.err" | head -3; }
-```
-
-- `APPROVE_URL_SAVED` → read `$STATE/approve.url` once, put the link in the message below, and send it. Then wait for the code.
-- `NO_URL` → report it; don't retry in a loop.
-
-Send exactly:
-
-> To publish for you, I need one approval in OpenKey:
-> 1. Open this link: {approveUrl}
-> 2. Approve, then copy the code OpenKey shows you.
-> 3. Paste the code here.
-
-Save the owner's code, exactly as received, to a fresh 0600 file (never print or repeat it, never pass it as an argument), as `tc-secrets` §3c does:
-
-```sh
-{ set +x; } 2>/dev/null; set +e; umask 077
-STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; mkdir -p "$STATE"; chmod 700 "$STATE"
-rm -f "$STATE/code"
-cat > "$STATE/code" <<'CODE'
-<code exactly as the owner sent it>
-CODE
-echo CODE_SAVED
-```
-
-Call 2 (finish the sign-in):
-
-```sh
+cat > "$STATE/signin.sh" <<'W'
 { set +x; } 2>/dev/null; set +e; umask 077
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
-STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; mkdir -p "$STATE"; chmod 700 "$STATE"
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }
+STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; PROFILE="${1:-publisher}"
+rm -f "$STATE/signin.rc" "$STATE/login.json" "$STATE/login.err"
+"$TC_BIN" --profile "$PROFILE" auth login --method openkey --no-popup --manifest "$STATE/share-publishing.json" --expiry 30d < /dev/null > "$STATE/login.json" 2> "$STATE/login.err" &
+echo "$!" > "$STATE/signin.pid"
+wait "$!"
+echo "$?" > "$STATE/signin.rc"
+W
+echo "SIGNIN_READY $STATE/signin.sh"
+```
+
+**Start it once.** It takes the profile as its argument: `publisher` unless the owner named another profile.
+
+- If your client can keep a process running in the background (for example OMP's supervised process, or Claude Code's background shell), run `sh <the signin.sh path printed above> <profile>` there, with the same environment (`TC_BIN`, `TC_HOME`, `TC_PUBLISH_STATE`).
+- Otherwise detach it with this block:
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
+mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
-if ! grep -q '[^[:space:]]' "$STATE/code" 2>/dev/null || [ ! -s "$STATE/share-publishing.json" ]; then echo NO_CODE
+
+if [ ! -s "$STATE/signin.sh" ]; then echo "NO_SCRIPT — run the block above first"
+elif [ -s "$STATE/signin.pid" ] && [ ! -s "$STATE/signin.rc" ] && kill -0 "$(cat "$STATE/signin.pid")" 2>/dev/null; then echo ALREADY_RUNNING
 else
-  printf '\n' >> "$STATE/code"
-  rm -f "$STATE/login.json" "$STATE/login.err"
-  timeout 120 "$TC_BIN" --profile "$PROFILE" auth login --method openkey --paste --manifest "$STATE/share-publishing.json" --expiry 30d < "$STATE/code" > "$STATE/login.json" 2> "$STATE/login.err"
-  python3 - "$?" "$STATE/login.json" "$STATE/login.err" <<'PY'
+  DETACH=$(command -v setsid)   # empty on macOS: prefer a background process there
+  $DETACH nohup sh "$STATE/signin.sh" "$PROFILE" > /dev/null 2>&1 < /dev/null &
+  echo STARTED
+fi
+```
+
+Never run two sign-ins at once. Running the script again after it stopped resumes the same link: the CLI saved it before printing it.
+
+**Check the link before you send it.** A few seconds after starting, run this block. It takes the link only from this sign-in's own output (the line after `Approve this request in OpenKey (open the complete link):`) and accepts only the exact short form `https://openkey.so/a/<id>#v=4&k=<key>&c=<hash>`. Never send a link from anywhere else.
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
+mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+
+for i in $(seq 30); do { [ -s "$STATE/signin.rc" ] || grep -q '^https://' "$STATE/login.err"; } 2>/dev/null && break; sleep 1; done
+python3 - "$STATE/login.err" "$STATE/signin.rc" "$STATE/approve.url" <<'PY'
+import os, re, sys
+err_f, rc_f, url_f = sys.argv[1:4]
+def read(f):
+    try: return open(f, errors="replace").read()
+    except OSError: return ""
+lines, rc = read(err_f).splitlines(), read(rc_f).strip()
+at = [i for i, l in enumerate(lines) if l.strip() == "Approve this request in OpenKey (open the complete link):"]
+if not at:
+    if not rc: sys.exit(print("NO_URL"))
+    codes = re.findall(r'"code":\s*"([A-Z0-9_]+)"', read(err_f))
+    sys.exit(print("LOGIN_PREFLIGHT_FAILED", codes[-1] if codes else f"exit-{rc}"))
+if rc: sys.exit(print("SIGNIN_ENDED"))
+urls = {lines[i + 1].strip() if i + 1 < len(lines) else "" for i in at}
+if len(urls) != 1 or sum(1 for l in lines if re.search(r"https?://", l)) != len(at): sys.exit(print("REQUEST_MISMATCH more than one link"))
+url = urls.pop()
+if not re.fullmatch(r"https://openkey\.so/a/[a-z2-7]{26}#v=4&k=[A-Za-z0-9_-]{43}&c=bafkrei[a-z2-7]{52}", url): sys.exit(print("REQUEST_MISMATCH not a short OpenKey link"))
+same = read(url_f).strip() == url
+fd = os.open(url_f, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w") as f: f.write(url)
+print("APPROVE_URL_SAVED", "SAME_LINK" if same else "NEW_LINK")
+PY
+```
+
+- `APPROVE_URL_SAVED NEW_LINK` → read `$STATE/approve.url` once, put the link in the message below, send it, then run the wait block.
+- `APPROVE_URL_SAVED SAME_LINK` → it's the link you already sent: don't send it again; run the wait block.
+- `SIGNIN_ENDED` → the sign-in already finished; run the wait block.
+- `NO_URL` → the link isn't printed yet. Run this block once more; if it repeats, run the wait block, which reports why.
+- `LOGIN_PREFLIGHT_FAILED <code>` → the CLI refused before making a link; see the errors table.
+- `REQUEST_MISMATCH <why>` → don't send anything. Stop the sign-in (`kill "$(cat "$STATE/signin.pid")"`) and report it. On a `TC_OLDER` CLI, `not a short OpenKey link` means that CLI is too old for this sign-in: tell the operator it needs `1.6.0`.
+
+Send exactly this, with the link on its own line, as printed:
+
+> To publish for you, I need one permission in OpenKey: publish-only access to your share folders for up to 30 days. Leave every item ticked. Only approve if you asked me for this just now.
+>
+> {approveUrl}
+>
+> Open this link and approve. I'll carry on as soon as you do.
+
+**Wait for the approval.** Run this block right after you send the link, in the same turn, and again each time it prints `WAITING`, without waiting for the owner to reply: the sign-in sees the approval itself. Each run waits at most a minute.
+
+```sh
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
+mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
+
+for i in $(seq 60); do [ -s "$STATE/signin.rc" ] && break; [ -s "$STATE/signin.pid" ] && kill -0 "$(cat "$STATE/signin.pid")" 2>/dev/null || break; sleep 1; done
+ALIVE=no; [ ! -s "$STATE/signin.rc" ] && [ -s "$STATE/signin.pid" ] && kill -0 "$(cat "$STATE/signin.pid")" 2>/dev/null && ALIVE=yes
+python3 - "$ALIVE" "$STATE/signin.rc" "$STATE/login.json" "$STATE/login.err" <<'PY'
 import json, re, sys
-rc, out, err = int(sys.argv[1]), sys.argv[2], sys.argv[3]
-if rc == 124: sys.exit(print("LOGIN_TIMEOUT"))
-text = open(err, errors="replace").read()
-try: signed = bool(json.load(open(out)).get("authenticated"))
-except Exception: signed = False
-if signed:
-    lines, declined = text.splitlines(), []
-    for k, l in enumerate(lines):
-        if "Not granted in this session:" in l:
-            for m in lines[k + 1:]:
-                if m.strip() and m[:1].isspace(): declined.append(m.strip())
-                else: break
-            break
-    for d in declined: print("NOT_GRANTED", d)
-    sys.exit(print("SIGNED_IN"))
-dec, i, last = json.JSONDecoder(), 0, {}
+alive, rc_f, out_f, err_f = sys.argv[1:5]
+def read(f):
+    try: return open(f, errors="replace").read()
+    except OSError: return ""
+try: out = json.loads(read(out_f) or "{}")
+except ValueError: out = {}
+rc = read(rc_f).strip() or ("0" if out.get("authenticated") else "")
+# No result yet, or the CLI was killed by a signal (exit 128 and up): the saved link resumes.
+if not rc or (int(rc) >= 128 and not out.get("authenticated")): sys.exit(print("WAITING" if alive == "yes" else "SIGNIN_STOPPED"))
+if rc == "0" and out.get("authenticated"): sys.exit(print("SIGNED_IN expires", out.get("expiresAt")))
+text, dec, i, last = read(err_f), json.JSONDecoder(), 0, {}
 while (m := re.compile(r"\{").search(text, i)):
     try: o, i = dec.raw_decode(text, m.start()); last = o if isinstance(o, dict) and "error" in o else last
     except ValueError: i = m.start() + 1
-e = last.get("error") or {}
-msg = e.get("message") or ""
-if re.search(r"not found|expired", msg, re.I) and re.search(r"code", msg, re.I): sys.exit(print("CODE_EXPIRED"))
-print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", msg)[:200])
+code = (last.get("error") or {}).get("code") or f"exit-{rc}"
+print("LINK_EXPIRED" if rc == "3" else "NOT_APPROVED" if rc == "5" else "LOGIN_FAILED", code)
 PY
-fi
-rm -f "$STATE/code" "$STATE/login.json" "$STATE/login.err" "$STATE/approve.url"
+[ "$ALIVE" = yes ] || rm -f "$STATE/signin.rc" "$STATE/signin.pid" "$STATE/login.json" "$STATE/login.err"
 ```
 
-- `SIGNED_IN` → go to §3. A `NOT_GRANTED <entry>` line means the owner left that permission out: tell them which.
-- `CODE_EXPIRED` → say exactly: "That short code has expired. Please paste the full code OpenKey shows instead." Then wait for the full code, save it, and run call 2 again.
-- `NO_CODE` → save the code (the step before) and run call 2 again; if `$STATE/share-publishing.json` is gone, run call 1 again first.
-- `LOGIN_TIMEOUT` or `LOGIN_FAILED <code>` → report the error code and ask the owner to paste their code again (save it and run call 2 again). The second `LOGIN_TIMEOUT` or `LOGIN_FAILED` for a sign-in means the paste sign-in isn't working here: offer the device sign-in below.
+Exit codes here are the [shared table](#exit-codes-and-owner-lines)'s, with `<what>` = "publishing":
+
+- `WAITING` → the owner hasn't approved yet. Run this block again now; don't send the link again. Waiting never counts as a retry.
+- `SIGNED_IN expires <date>` → send the done line ("Publishing is set up."), delete `$STATE/approve.url` and `$STATE/signin.sh`, and go to §3.
+- `SIGNIN_STOPPED` → the sign-in stopped without a result (a restart, or a killed process). Start it again and run the check block: it resumes the same link (`SAME_LINK`), so don't send it again; run this block.
+- `LINK_EXPIRED <code>` (exit 3) → the link expired before the owner approved it. Start the sign-in again and run the check block. It can end with `LINK_EXPIRED` once more before it makes a new link; then start it once more. Send the new link once, with the retry line: "That link expired. Please open this new one and approve. I'll carry on as soon as you do." If that link expires too, send the "couldn't" failed line and stop.
+- `NOT_APPROVED <code>` (exit 5) → the owner declined, unticked an item (`OPENKEY_APPROVAL_NARROWER`: short links are all or nothing), or approved with another account. Nothing was saved. Send the "couldn't" failed line and stop; ask again only if the owner wants to.
+- `LOGIN_FAILED <code>` → send the "couldn't" failed line, then the code on its own line, and see the errors table. Don't retry.
 
 **Renewing.** Renew by running the §2 sign-in again (the same profile). Don't use `--replace-session`.
-
-**The fallback: the device sign-in.** Offer it only when the owner says they can't paste a code, or when a paste sign-in ends with `LOGIN_TIMEOUT` or `LOGIN_FAILED` twice. Say exactly:
-
-> If pasting a code doesn't work for you, I can use a sign-in that needs no code. Reply "Use the other sign-in" if you want that.
-
-Run the device sign-in only after that reply. Never switch on your own. The device sign-in uses the waiter below.
-
-**Consent is precious.** OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on it. Every launch counts — including relaunches after an expired or dead waiter. Never run two waiters at once, and never start a new request while a code is outstanding (waiter alive, deadline not passed).
-
-**Write the waiter script.** It records its own pid, runs the device login, and appends `TC_EXIT=` when it ends:
-
-```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
-ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-if [ -r "$ENV_HELPER" ]; then
-  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-  [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
-fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
-mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-
-rm -f "$LOG" "$STATE/waiter.pid"
-cat > "$STATE/waiter.sh" <<'W'
-umask 077
-STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
-echo $$ > "$STATE/waiter.pid"
-if [ -n "$2" ]; then
-  "$TC_BIN" --profile "$1" auth login --device --manifest builtin:share-publishing --expiry "$2"
-else
-  "$TC_BIN" --profile "$1" enable share
-fi > "$STATE/enable-share.log" 2>&1
-echo "TC_EXIT=$?" >> "$STATE/enable-share.log"
-W
-echo "waiter script: $STATE/waiter.sh"
-```
-
-**Start it so it survives the end of this tool call and of your turn.** A plain `( … ) &` job is killed when the command or turn ends, and an approval that lands with nobody waiting is lost.
-
-- **If your harness offers a supervised background process** (for example OMP's supervised process), start `sh <waiter script path> <profile>` there — the path printed above, and `publisher` unless the owner named another profile — with the same environment (`TC_BIN`, `TC_HOME`, `TC_PUBLISH_STATE`). Run this ONCE; wait for it to finish; never start another login.
-- **Otherwise detach it:**
-
-```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
-ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-if [ -r "$ENV_HELPER" ]; then
-  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-  [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
-fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
-mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-PROFILE=publisher   # unless the owner names another profile
-
-DETACH=$(command -v setsid)   # empty on macOS — prefer a supervised process there
-# run this ONCE; wait for it to finish; never start another login
-$DETACH nohup sh "$STATE/waiter.sh" "$PROFILE" > /dev/null 2>&1 < /dev/null &
-echo STARTED
-```
-
-`enable share` has no `--expiry`: it requests the maximum 30-day session and the owner can pick a shorter lifetime on the consent page. For a shorter request, pass the lifetime as a second argument — `sh <waiter script path> "$PROFILE" 7d` — which runs `auth login --device --manifest builtin:share-publishing --expiry 7d`. `--expiry` accepts 1 minute to 30 days; anything else is `INVALID_EXPIRY`.
-
-**Check the waiter in a separate command before sending anything:**
-
-```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
-ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-if [ -r "$ENV_HELPER" ]; then
-  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-  [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
-fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
-mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-
-for i in $(seq 30); do grep -qE '^(Approve on your phone:|TC_EXIT=)|"code"' "$LOG" 2>/dev/null && break; sleep 1; done
-if [ -s "$STATE/waiter.pid" ] && kill -0 "$(cat "$STATE/waiter.pid")" 2>/dev/null; then echo WAITER_ALIVE; else echo WAITER_GONE; fi
-grep -E '^(Approve on your phone:|  Or open|  Waiting for approval until|TC_EXIT=)|"code"' "$LOG" 2>/dev/null
-```
-
-- `WAITER_ALIVE` and an `Approve on your phone:` line → send the approval message (template below).
-- `TC_EXIT=` present → the waiter already finished; don't send a code; use the outcome table.
-- `WAITER_GONE` with no `TC_EXIT=` → the waiter died. **Don't send the code** — nobody would receive the approval. Fix the launch (supervised process, or the detached form) and start again, within the rate limit.
-
-**Waiting.** If you can keep working in the same turn, poll in chunks of about 90 seconds:
-
-```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
-ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-if [ -r "$ENV_HELPER" ]; then
-  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-  [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
-fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
-mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-
-for i in $(seq 9); do grep -q '^TC_EXIT=' "$LOG" 2>/dev/null && break; sleep 10; done
-grep -E '^TC_EXIT=|"code"' "$LOG" 2>/dev/null \
-  || { kill -0 "$(cat "$STATE/waiter.pid" 2>/dev/null)" 2>/dev/null && echo WAITING || echo WAITER_DIED; }
-```
-
-**Turn boundaries — be honest.** Only promise a follow-up ("I'll tell you when it's done") if your harness will wake you when the waiter exits; OMP supervised processes do. Otherwise — any reply-only channel such as Codex or SWE-2 — sending the approval message ends your turn and nothing watches for you, so end the message by asking the owner to reply once they've approved. On their next message, run the poll and status blocks and report.
-
-### Waiter outcomes — branch on `code`, never on exit status alone (exits 4, 5 and 6 each cover several errors)
-
-Read the status structurally — the log may contain pretty-printed JSON:
-
-```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
-ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
-if [ -r "$ENV_HELPER" ]; then
-  [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
-  [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
-fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
-mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
-
-python3 - "$LOG" <<'PY'
-import json, re, sys
-txt = open(sys.argv[1]).read()
-dec, objs, i = json.JSONDecoder(), [], 0
-while True:
-    m = re.compile(r'[\[{]').search(txt, i)
-    if not m: break
-    try:
-        obj, end = dec.raw_decode(txt, m.start())
-        objs.append(obj); i = end
-    except json.JSONDecodeError:
-        i = m.start() + 1
-last = next((o for o in reversed(objs) if isinstance(o, dict)), {})
-exitm = re.search(r'^TC_EXIT=(\d+)', txt, re.M)
-print("TC_EXIT:", exitm.group(1) if exitm else None)
-print("code:", last.get("error", {}).get("code"))
-print("message:", last.get("error", {}).get("message"))
-print("enabled:", last.get("enabled"), "authenticated:", last.get("authenticated"))
-print("declined:", json.dumps(last.get("declined")))
-print("expiresAt:", last.get("expiresAt"))
-PY
-```
-
-| Status | Meaning | Action |
-|---|---|---|
-| `TC_EXIT: 0`, `enabled: True`, `declined: []` | Approved (`enable share`) | Done; go to §3 |
-| `TC_EXIT: 0`, `authenticated: True`, `declined: []` | Approved (`auth login --device`) | Done; go to §3 |
-| `TC_EXIT: 0`, `declined` non-empty | A capability was unchecked | Proceed, and tell the owner: `xyz.tinycloud.share/shares/` declined → links fail |
-| `TC_EXIT: 3`, `DEVICE_AUTH_EXPIRED` | Window closed (~10 min) | Re-run the waiter (counts against the rate limit) — it issues a **new** code; send the new link and code |
-| `TC_EXIT: 5`, `DEVICE_AUTH_DENIED` | Owner declined | Do not re-run unless the owner asks |
-| `TC_EXIT: 2`, `SESSION_IN_USE` | A live session would be narrowed or shortened | Ask the owner; never add `--replace-session` on your own |
-| `TC_EXIT: 6`, `OPENKEY_UNREACHABLE` | Can't reach OpenKey | Report; retry when connectivity returns |
-| `TC_EXIT: 5`, `SCOPE_REJECTED` | Manifest rejected | Report; do not retry the same request |
-| `TC_EXIT: 1`, `PROFILE_STATE_INCONSISTENT` | Corrupt local profile state | Report; do not delete the profile |
-| `DEVICE_AUTH_RATE_LIMITED` (1); on CLI `1.0.0-beta.18` and earlier, `DEVICE_AUTH_FAILED` (1) with `message` containing `rate_limited` | More than 5 device sign-in starts in 10 minutes on this network | Wait at least 10 minutes, then start **one** more waiter. Never retry in a loop. Tell the owner why there's a delay |
-| `DEVICE_AUTH_BINDING_MISMATCH` (5) / `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (1), any other message | Delegation binding or verification failed | Report; re-run once, then stop |
-| `TC_EXIT: None` with `WAITER_GONE`/`WAITER_DIED`, or more than 1 minute past the deadline | Waiter died | Don't send (or re-send) a code. Tell the owner any approval they made was lost; fix the launch (§2), then re-run within the rate limit and send the new link and code |
-
-Delete the waiter files once it has finished: `rm -f "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/enable-share.log" "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/waiter.pid" "${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}/waiter.sh"`.
 
 ## 3. Publish — run exactly this block
 
@@ -394,7 +282,7 @@ Always pass `--expires` — 24h unless the owner says otherwise — and always t
 Run EXACTLY this block; do not write your own `share publish` command.
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -427,7 +315,7 @@ On `PUBLISH_FAILED`, stop and use the errors table. Record the share id and file
 Receive and hash; `receive`'s status is checked, so a failure can't pass:
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -458,7 +346,7 @@ fi
 **List active shares:**
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -479,7 +367,7 @@ for s in json.load(sys.stdin)["shares"]:
 **Reveal a share's link again** (into the state file, for delivery per §6):
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -499,7 +387,7 @@ rm -f "$STATE/last-url"
 **Revoke a share:**
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -526,7 +414,7 @@ Give the owner the link in your reply, ready to forward, with the expiry. Never 
 **If the owner's channel is a command** (for example an HTTP send endpoint), build the message from the state file and pipe it in — the link never passes through your output. Adapt the JSON shape and the send command to the channel:
 
 ```sh
-{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+{ set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
@@ -547,7 +435,7 @@ PY
 **If the only channel is your reply**, read the file once, in a single tool call, and copy the link verbatim into your reply:
 
 ```sh
-umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
@@ -557,7 +445,7 @@ cat "$STATE/last-url"
 **Last step, always — clean up:**
 
 ```sh
-umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
@@ -567,7 +455,7 @@ rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.j
 
 ## Exit codes and owner lines
 
-Publishing's sign-in is one of the exceptions below: branch on the codes in this skill's tables. Owner lines are the shared ones, with `<what>` = "publishing".
+Publishing's sign-in (§2) follows the shared table below, with `<what>` = "publishing". The share commands' own codes are among its exceptions: branch on them in the errors table.
 
 {{ERRORS}}
 
@@ -591,24 +479,11 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |
 | `PROFILE_NOT_FOUND` | 1 | No profile yet — the only case where `init` runs |
 | `PROFILE_EXISTS` | 1 | `init` on an existing profile — use it; never `profile delete` |
-| `DEVICE_AUTH_EXPIRED` | 3 | Approval window closed — re-run sends a new code |
-| `DEVICE_AUTH_DENIED` | 5 | Owner declined — don't re-run unless asked |
-| `DEVICE_AUTH_BINDING_MISMATCH` | 5 | Session/transaction binding failed — report; re-run once |
-| `DEVICE_AUTH_RATE_LIMITED` (on CLI `1.0.0-beta.18` and earlier: `DEVICE_AUTH_FAILED`, message contains `rate_limited`) | 1 | More than 5 device sign-in starts in 10 minutes on this network — wait at least 10 minutes, then start one more waiter; never retry in a loop |
-| `DEVICE_AUTH_INVALID_RESPONSE` / `DEVICE_AUTH_FAILED` (other messages) | 1 | Malformed or unverifiable OpenKey response — report; re-run once, then stop |
+| `APPROVAL_REQUEST_EXPIRED` | 3 | The sign-in link expired before the owner approved it — §2's wait block reports `LINK_EXPIRED` |
+| `OPENKEY_APPROVAL_NARROWER` | 5 | The owner unticked an item; a short link is all or nothing, so nothing was saved — stop |
 | `OPENKEY_UNREACHABLE` | 6 | OpenKey unreachable — report, retry later |
 | `SCOPE_REJECTED` | 5 | Manifest rejected — report; don't retry the same request |
 | `PROFILE_STATE_INCONSISTENT` | 1 | Corrupt local profile state — report; don't delete the profile |
-
-## Approval message template (to the owner, 1:1)
-
-Send exactly this text, filling in the placeholders — don't shorten it or drop sentences. `<lifetime>` is 30 days for `enable share`, or the `--expiry` you requested:
-
-> To let me publish to your TinyCloud, open <link> (code <code>) before <deadline>. It asks for publish-only access to your share folders for up to <lifetime>. Leave every item ticked. Only approve if you asked me for this just now.
-
-If your harness won't wake you when the waiter exits (see "Turn boundaries" in §2), add this final sentence:
-
-> When you've approved, reply here and I'll finish setting up.
 
 ## HTML
 
@@ -617,7 +492,7 @@ If your harness won't wake you when the waiter exits (see "Turn boundaries" in �
 Before publishing HTML, check that it is self-contained. Any `src`, `href` or CSS `url()` whose value isn't a `data:` URI or a `#` fragment counts as external — absolute, protocol-relative (`//cdn…`) and relative (`app.js`) references all fail to load in the viewer:
 
 ```sh
-umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 FILE='<absolute path of the file>'

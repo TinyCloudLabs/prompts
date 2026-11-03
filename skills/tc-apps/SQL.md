@@ -45,7 +45,7 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
   Keep only the actions the helper reports missing; schema access is for creation, not ordinary reads or updates.
 - An owner/host mismatch or actual read failure stops the index operation. Answer from the original KV records; do not switch accounts or widen the grant.
 
-When additional approval is necessary, first answer from the KV records you already read. Say in one line that the missing permission enables a fast, searchable copy, send the actual short URL on its own line followed by: "Open this link and approve. I'll carry on as soon as you do.", and keep the command running. The owner approves; the CLI retrieves the result automatically. After interruption, rerun the same command/profile. Never add `--paste`, reconstruct a URL or ask the owner to run a command. Its exit codes go by the shared table in `SKILL.md` §10.
+When additional approval is necessary, first answer from the KV records you already read. Say in one line that the missing permission enables a fast, searchable copy, send the actual short URL on its own line followed by: "Open this link and approve. I'll carry on as soon as you do.", and keep the command running. The owner approves; the CLI retrieves the result automatically. After interruption, rerun the same command/profile. Never switch to the older manual-code (paste) flow, reconstruct a URL or ask the owner to run a command. Its exit codes go by the shared table in `SKILL.md` §10. The approval is all or nothing: if the owner unticks a permission, the whole approval fails as `OPENKEY_APPROVAL_NARROWER`.
 
 After successful approval, repeat the helper. For a new index, run §2, then rebuild every kind with §6, skipping its clearing step because the table is empty. If the owner declines, leave the records unchanged and continue with KV reads.
 
@@ -82,7 +82,7 @@ ROWS=$(sed 's/\\/\\\\/g; s/"/\\"/g' "$STATE/rows" | paste -s -d, -)
 - **`NETWORK_ERROR`** ("superseded checkpoint") → another write hit the index at the same moment. Run the block again once; it's safe to repeat.
 - **Up to 200 keys per block.** For more, run it again with the next 200.
 
-If the block still fails, or `SKILL.md` §3 showed the index's session `"expired"`, mark the kind as behind, once per kind you touched, so the next agent with a working index rebuilds it:
+If the block still fails, or `SKILL.md` §3's index check (`--sql --write`) showed that an existing index's permissions have expired or are insufficient (`grant-required` or `sign-in-required` rather than `ready`), mark the kind as behind, once per kind you touched, so the next agent with a working index rebuilds it:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
@@ -151,8 +151,8 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
 
 ## 7. Lifetime and errors
 
-- **The index session lasts 30 days.** `SKILL.md` §3's `context` shows `"state": "present"` while it's valid, and `"expired"` afterwards. While it's expired, writes mark kinds behind (§3), and reads use KV. The next time an answer needs many records, ask for a new approval with §1.
-- **`AUTH_UNAUTHORIZED` ending in `tinycloud.sql/schema`** → the owner unchecked the schema permission (§1b). Everything except §2 still works.
+- **The index session lasts 30 days.** While it's valid, `SKILL.md` §3's index check (`--sql --write`) returns `status: ready`; afterwards it returns `sign-in-required` or `grant-required`. While it's expired, writes mark kinds behind (§3), and reads use KV. The next time an answer needs many records, ask for a new approval with §1.
+- **`AUTH_UNAUTHORIZED` ending in `tinycloud.sql/schema`** → this profile has no schema permission: it wasn't requested, or an older approval left it out (a new approval can't: an unticked row fails the whole approval as `OPENKEY_APPROVAL_NARROWER`). Everything except §2 still works; to create the table, run §1's helper with `--sql --write --schema` and request only what it reports missing.
 - **`SQL_ERROR` "no such table" or "no such view"** → run §2, then §6 for every kind.
 - **`SQL_PERMISSION_DENIED`** → the statement type isn't allowed: rewrite it with `SELECT` or `WITH`.
 - Anything else → `SKILL.md` §8.
