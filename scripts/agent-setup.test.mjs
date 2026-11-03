@@ -490,7 +490,7 @@ test("the pinned CLI's Courier ends an unclaimed invite wait with exit 1 [invite
 
 // The served Courier setup: request, wait, then the fallback code import and its separate read.
 const COURIER_SURFACES = ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"];
-const REFUSED_GRANT_LINE = `"I couldn't use that approval. You can remove it at https://account.tinycloud.xyz/delegations: it's the newest "Courier agent" row. Then please open this new link and approve; tell me when you're done." Do not send the owner the CID.`;
+const REFUSED_GRANT_LINE = `"I couldn't use that approval. You can remove it at https://account.tinycloud.xyz/delegations: it's the newest "Courier agent" row. Then please open this new link and approve. I'll carry on as soon as you do." Do not send the owner the CID.`;
 const courierSetup = (surface) => {
   const text = readFileSync(join(root, surface), "utf8");
   const section = text.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
@@ -515,6 +515,20 @@ const requested = (issued, courierHome, surface) => {
   assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
   return approval;
 };
+// Sam's approved wording (02:41:54Z via Holden): every approval line ends "I'll carry on as soon as you do."
+test("every Courier approval line ends with \"I'll carry on as soon as you do.\", on every served surface", () => {
+  for (const surface of COURIER_SURFACES) {
+    const text = readFileSync(join(root, surface), "utf8");
+    assert.doesNotMatch(text, /tell me when you're done|says they're done/, surface);
+    for (const line of [
+      "> Open this link and approve the one-time Courier permission. I'll carry on as soon as you do.",
+      '"That link expired. Please open this new one and approve. I\'ll carry on as soon as you do."',
+      '"That didn\'t finish on my side. Please open this link and approve. I\'ll carry on as soon as you do."',
+      REFUSED_GRANT_LINE,
+      "end your turn after sending the link, then run this step on the owner's next message.",
+    ]) assert.ok(text.includes(line), `${surface}: ${line}`);
+  }
+});
 // js-sdk #821's exit-8 sentences, verbatim from its Courier README, skills/courier/SKILL.md and `courier --help`.
 const EXIT_PENDING_RULING = "Exit 8 is not a failure: the approval is still pending. Send the owner the `pending.approvalUrl` (the same link as `openkeyUrl`), ask them to approve it, then re-run `courier init --wait --timeout 60s`. Repeat while it exits 8.";
 const EXIT_OTHER_RULING = "Any other non-zero exit is an error: stderr carries `[code]`.";
@@ -592,7 +606,7 @@ for (const surface of COURIER_SURFACES) {
   test(`Courier setup collects the approval in one bounded foreground call and passes exit 8 through: ${surface}`, () => {
     const { section, wait } = courierSetup(surface);
     for (const sentence of [EXIT_PENDING_RULING, EXIT_OTHER_RULING]) assert.ok(section.includes(sentence), `${surface}: missing js-sdk #821's exit-8 wording: ${sentence}`);
-    assert.ok(section.includes("> Open this link and approve the one-time Courier permission; tell me when you're done."));
+    assert.ok(section.includes("> Open this link and approve the one-time Courier permission. I'll carry on as soon as you do."));
     assert.doesNotMatch(section, /paste the short code here/);
     // Rotating the key would clear every pairing: no setup block may run it, though the CLI's errors suggest it.
     assert.doesNotMatch(section.match(/```sh\n[\s\S]*?\n```/g).join("\n"), /--rotate-key/);
