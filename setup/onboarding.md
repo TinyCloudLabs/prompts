@@ -14,13 +14,15 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 ## How this works
 
-The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each short link names a signed request; only the requesting CLI can collect and verify the encrypted result. Keep the command running while the owner approves. No pasted code or localhost callback is needed, including from a phone or a remote agent. The owner tells the agent when approval is complete; hosted MCP uses approval links too.
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each short link names a signed request; only the requesting CLI can collect and verify the encrypted result. The agent sends the link, and reruns the command when the owner next writes. No pasted code or localhost callback is needed, including from a phone or a remote agent. The owner tells the agent when approval is complete; hosted MCP uses approval links too.
 
 After an interruption, rerun the same command with the same profile to resume the pending approval. The owner can revoke a grant at https://account.tinycloud.xyz/delegations.
 
 ## For the agent
 
 {{std:read-raw}}
+
+{{std:relay}}
 
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
 
@@ -50,9 +52,9 @@ TC='<TC_BIN>'
 "$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY
 ```
 
-**CLI rule (stable `1.6.1`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.1`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: step 2 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun step 2. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
+**CLI rule (stable `1.6.2`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: step 2 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun step 2. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. No global installation, second beta CLI, `sudo`, or download piped into a shell.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
 
-**2. Run onboarding.** It asks for both approvals, step 1 first, then step 2. It uses the selected default profile, or `TC_PROFILE` if set. Run this in the foreground, as its own shell call. Each run waits at most a minute for the owner and ends within about two minutes:
+**2. Run onboarding.** It asks for both approvals, step 1 first, then step 2. It uses the selected default profile, or `TC_PROFILE` if set. Run this in the foreground, as its own shell call. Each run prints the pending link and exits, unless the owner has already approved; a rerun resumes the same link, and a resumed run can spend up to about 10 seconds checking the approval:
 
 ```sh
 CLAUDE_DIR=${CLAUDE_CONFIG_DIR-}; CLAUDE_DIR=${CLAUDE_DIR#"${CLAUDE_DIR%%[![:space:]]*}"}; CLAUDE_DIR=${CLAUDE_DIR%"${CLAUDE_DIR##*[![:space:]]}"}
@@ -60,32 +62,33 @@ CLAUDE_DIR=${CLAUDE_CONFIG_DIR-}; CLAUDE_DIR=${CLAUDE_DIR#"${CLAUDE_DIR%%[![:spa
   { echo 'SKILL_MISSING tinycloud-cli: run the "Install the core skill" step at https://agents.tinycloud.xyz/cli (it is required), then rerun this block' >&2; exit 1; }
 TC='<TC_BIN>'
 V=$("$TC" --version)
-if printf '%s\n' "$V" | awk -F. -v p=1.6.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+if printf '%s\n' "$V" | awk -F. -v p=1.6.2 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   O=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
   if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; fi
   [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$HOME/.local/share/tinycloud/cli" || O=
-  if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.6.1; keeping this operator-selected CLI"
+  if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.6.2; keeping this operator-selected CLI"
   else M="CLI_OLDER $V $TC: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
   echo "$M" >&2; exit 1
 fi
 OUT=$(mktemp) || exit 1
-{ "$TC" onboard --timeout 60s; echo "$?" > "$OUT.rc"; } | tee "$OUT"
+{ "$TC" onboard --timeout 1s; echo "$?" > "$OUT.rc"; } | tee "$OUT"
 RC=$(cat "$OUT.rc")
 URL=$(node -e 'try{const p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).pending;if(p&&typeof p.approvalUrl==="string")console.log(p.approvalUrl)}catch{}' "$OUT")
 rm -f "$OUT" "$OUT.rc"
 if [ "$RC" = 0 ]; then echo "NEXT: onboarding is done; continue with the owner's goal."
-elif [ "$RC" = 8 ] && [ -n "$URL" ]; then echo "NEXT: send the owner this link now, on its own line, with the onboarding guide's message for it: $URL Then, in the same turn and without waiting for a reply, run this block again. If you already sent this exact link, don't send it again; just run this block again now."
+elif [ "$RC" = 6 ]; then echo "NEXT: exit 6 is a network error; the approval request is saved and the link you already sent still works. Run this block again once, with no new link; do not tell the owner it failed. If it exits 6 again, tell the owner \"I can't set up TinyCloud right now. Please ask me again later.\", then the error code from stderr on its own line, and stop."
+elif [ "$RC" = 8 ] && [ -n "$URL" ]; then echo "NEXT: send the owner this link in your reply now, on its own line, with the onboarding guide's line: $URL When the owner next writes to you, run this block again. If you already sent this exact link, don't send it again."
 else echo "ONBOARD_EXIT $RC"; fi
 exit "$RC"
 ```
 
 Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below. Run the block again until it exits 0, and go by its exit code each time.
 
-**Exit 8 with a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve. I'll carry on as soon as you do." Then, in the same turn and without waiting for a reply, run the block again: the owner's reply is not needed, the command itself sees the approval. Before the first link, say this text word for word:
+**Exit 8 with a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve, then tell me." Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval. Before the first link, say this text word for word:
 
 > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
-When a rerun shows step 2's link, send it at once, without the step-1 text, and run the block again. When it shows a link you already sent, don't send it again; just run the block again. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
+When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message. When it shows a link you already sent, don't send it again; run the block again on the owner's next message. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
 
 - **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, report success, then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. For setup only, end with what the owner can ask next: records, sharing, stored API keys or meetings.
 - **The command stopped first** (a tool timeout, a restart): rerun the identical command/profile. It preserves completed approvals and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.
@@ -95,13 +98,14 @@ Never run `onboard --code`: these links don't produce a code, and the approval i
 **If something goes wrong:**
 
 - **`SKILL_MISSING`:** install the `tinycloud-cli` skill as in [the CLI setup's "Install the core skill" step](tinycloud.md#install-the-core-skill), then rerun the block. Installing the skill is part of the owner's request: don't ask first; at most one short line ("Installing the TinyCloud skill.").
-- **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.6.1` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
-- **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.6.1`, and stop; don't replace it.
+- **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.6.2` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
+- **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.6.2`, and stop; don't replace it.
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
+- **Exit 6 (the block's `NEXT:` line says so):** a network error. The approval request is saved and the link you sent still works: run the block again once, with no new link, and don't report a failure to the owner. If it exits 6 again, tell the owner exactly "I can't set up TinyCloud right now. Please ask me again later.", then the error code from stderr on its own line, and stop.
 - **Exit 8 without a `pending` object:** OpenKey couldn't be reached. Wait a minute and run the same command again, at most three times in a row. If it still fails, stop and report it to the owner; don't retry. Never edit or delete the CLI's files yourself.
 - **`APPROVAL_REQUEST_EXPIRED` (exit 3):** the link expired before it was approved. Run the same command again; it can end this way once more before it makes a new link. Send the new link.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run the same command again. Don't ask for another approval.
-- **`PROFILE_NOT_ONBOARDABLE`:** preserve the existing profile. Inspect `"$TC" status --json` and use the owner's existing account and permissions where possible; do not overwrite them or silently switch accounts. If a separate onboarding profile is necessary, explain why, choose an unused profile name explicitly and run `"$TC" --profile <name> onboard --timeout 60s` the same way. Keep using that returned profile for the goal.
+- **`PROFILE_NOT_ONBOARDABLE`:** preserve the existing profile. Inspect `"$TC" status --json` and use the owner's existing account and permissions where possible; do not overwrite them or silently switch accounts. If a separate onboarding profile is necessary, explain why, choose an unused profile name explicitly and run `"$TC" --profile <name> onboard --timeout 1s` the same way. Keep using that returned profile for the goal.
 - **The link is incomplete:** rerun the identical command and use the current link it returns. Do not reconstruct a fragment or reuse a link from another request.
 - **Any other error:** stop and report it to the owner. Don't retry with other options.
 

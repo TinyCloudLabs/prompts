@@ -53,8 +53,8 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tinycloud-feed` | `feed` | [`skills/tinycloud-feed`](skills/tinycloud-feed), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
-| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.6.1`](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.1) (js-sdk), with the overlays below |
-| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.5.1`](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.1) (js-sdk), with changes (below) |
+| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.6.2`](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.2) (js-sdk), with the overlays below |
+| `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.5.2`](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.2) (js-sdk), with changes (below) |
 | `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.25`](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz), unchanged |
 | `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.9.0`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) (js-sdk), with the onboarding-profile overlay below |
 
@@ -99,8 +99,8 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.6.1` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.1) |
-| `courier` skill | `@tinycloud/courier@0.5.1` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.1) |
+| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.6.2` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.2) |
+| `courier` skill | `@tinycloud/courier@0.5.2` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.2) |
 | `mcp` skill | `@tinycloud/mcp@0.9.0` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) |
 | TinyChat retrieval pack | `0.1.1-onboarding.25` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.5` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.5), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/54e3bfc5b7626e1a288e2cf54eed9a06ae3c0140/packages/cli) |
@@ -112,7 +112,7 @@ The installer checks every file against `/skills/index.json` before writing anyt
 ## Other files
 
 - [`prompt.txt`](prompt.txt) is the TinyChat test prompt. It points at `https://agents.tinycloud.xyz/chat`.
-- [`standard/blocks.md`](standard/blocks.md) holds the text every guide and skill must carry identically, one block per `<!-- std:NAME -->` line (today `read-raw`: the read-the-page-raw and send-links-exactly rules). A guide or a skill in `skills/` carries `{{std:NAME}}` alone on a line; the build expands it first, before link rewriting, `{{CLI_VERSION}}` and the preview host, so production and preview builds expand alike, and lists an expanded skill file as `changed` in `skills/index.json`. It fails on an unknown marker, a marker that isn't alone on its line or is unclosed, a block nothing uses, a block with a relative link, or a guide or skill that pastes a block's text instead of the marker (`setup/share.md` is exempt until prompts#147 lands). `standard/` is never published or listed. Change a block there, not in a guide; `node --test scripts/standard-blocks.test.mjs` covers it. Blocks for the CLI rule, owner lines and the exit table move in next.
+- [`standard/blocks.md`](standard/blocks.md) holds the text every guide and skill must carry identically, one block per `<!-- std:NAME -->` line (today `read-raw`: the read-the-page-raw and send-links-exactly rules; `relay`: send each link then stop and wait for the owner, and do every `Next:` line, carried by `/onboarding` and `/courier`). A guide or a skill in `skills/` carries `{{std:NAME}}` alone on a line; the build expands it first, before link rewriting, `{{CLI_VERSION}}` and the preview host, so production and preview builds expand alike, and lists an expanded skill file as `changed` in `skills/index.json`. It fails on an unknown marker, a marker that isn't alone on its line or is unclosed, a block nothing uses, a block with a relative link, or a guide or skill that pastes a block's text instead of the marker (`setup/share.md` is exempt until prompts#147 lands). `standard/` is never published or listed. Change a block there, not in a guide; `node --test scripts/standard-blocks.test.mjs` covers it. Blocks for the CLI rule, owner lines and the exit table move in next.
 - [`skills/tc-apps/SQL.md`](skills/tc-apps/SQL.md) is `tc-apps`'s optional SQL index; each skill's `QUICKSTART.md` covers the owner's setup, what they see, and why it works the way it does.
 - [`forward-tests.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests.md) (`tc-publish`), [`forward-tests-tc-secrets.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-secrets.md) and [`forward-tests-tc-apps.md`](https://github.com/TinyCloudLabs/prompts/blob/main/forward-tests-tc-apps.md) are the coordinator runbooks: fresh-agent prompts, expected commands, and how to verify each outcome. They stay in this repository and are not published on the site.
 

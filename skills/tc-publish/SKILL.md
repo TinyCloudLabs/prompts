@@ -11,7 +11,7 @@ metadata:
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through OpenKey device authorization — no passwords, no copied credentials.
 
-**CLI rule (stable `1.6.1`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.6.1` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
+**CLI rule (stable `1.6.2`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.6.2` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
 With an operator's older CLI (`TC_OLDER`), §1's feature probe is authoritative: it needs 1.0.0-beta.18 or newer (TC-540 device login with `--manifest` and `enable share`; TC-577 file names with spaces and storage-quota errors). It can't tell beta.17 from beta.18, so also read the version it prints (§3 **File names**).
 
@@ -69,8 +69,8 @@ PROFILE=publisher   # unless the owner names another profile
 TC_VERSION=
 if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
   TC_VERSION=$("$TC_BIN" --version)
-  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
-    if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.6.1; keeping this operator-selected CLI"
+  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.2 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+    if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.6.2; keeping this operator-selected CLI"
     else echo "CLI_OLDER $TC_VERSION $TC_BIN: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; exit 1; fi
   fi
 fi
@@ -81,7 +81,7 @@ else echo STALE; fi
 [ -z "$TC_VERSION" ] || printf '%s\n' "$TC_VERSION"
 ```
 
-If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI the agent installed is older than `1.6.1`, so follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. If it prints `TC_OLDER <version> <path>`, the operator selected the older CLI: keep it, tell the operator once that `1.6.1` is required, and continue with what this block reports.
+If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI the agent installed is older than `1.6.2`, so follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. If it prints `TC_OLDER <version> <path>`, the operator selected the older CLI: keep it, tell the operator once that `1.6.2` is required, and continue with what this block reports.
 
 ## 2. Sign in — only when there is no live session
 
