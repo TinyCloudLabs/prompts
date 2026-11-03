@@ -29,7 +29,7 @@ const entry = (short, name, version) => ({
   files: [{ path: "SKILL.md", url: `/skills/${short}/SKILL.md`, sha256: createHash("sha256").update(skillBody(name)).digest("hex") }],
 });
 const site = {
-  "/skills/index.json": JSON.stringify({ skills: [entry("cli", "tinycloud-cli", "1.6.1"), entry("courier", "courier", "0.5.1")] }),
+  "/skills/index.json": JSON.stringify({ skills: [entry("cli", "tinycloud-cli", "1.6.2"), entry("courier", "courier", "0.5.2")] }),
   "/skills/cli/SKILL.md": skillBody("tinycloud-cli"),
   "/skills/courier/SKILL.md": skillBody("courier"),
 };
@@ -40,7 +40,7 @@ let runs = 0;
 const exec = (file, args, options) =>
   new Promise((done) => execFile(file, args, options, (error, stdout, stderr) => done({ code: error ? error.code : 0, stdout, stderr })));
 
-// A fresh home and working folder, and a stand-in 1.6.1 CLI with Courier that records each call.
+// A fresh home and working folder, and a stand-in 1.6.2 CLI with Courier that records each call.
 function fresh() {
   const dir = join(work, `run-${++runs}`);
   const home = join(dir, "home");
@@ -51,9 +51,9 @@ function fresh() {
   writeFileSync(tc, `#!/bin/sh
 echo "$*" >> ${JSON.stringify(join(dir, "calls"))}
 case "$*" in
-  --version) echo 1.6.1 ;;
+  --version) echo 1.6.2 ;;
   "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' '  join link --consent' ;;
-  "onboard --timeout 60s") echo '{"onboarded": true}' ;;
+  "onboard --timeout 1s") echo '{"onboarded": true}' ;;
 esac
 `, { mode: 0o700 });
   return { dir, home, cwd, tc, calls: join(dir, "calls") };
@@ -71,7 +71,7 @@ const guarded = {
     run: (run, env) => exec("sh", ["-c", guarded.onboarding.block.replaceAll("<TC_BIN>", run.tc)], { cwd: run.cwd, env }),
     // A foreground run: the result is on stdout.
     ran: (run, result) => {
-      assert.equal(callsOf(run), "--version\nonboard --timeout 60s\n");
+      assert.equal(callsOf(run), "--version\nonboard --timeout 1s\n");
       assert.equal(result.stdout, '{"onboarded": true}\nNEXT: onboarding is done; continue with the owner\'s goal.\n');
       assert.equal(result.stderr, "");
     },

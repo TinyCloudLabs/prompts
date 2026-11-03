@@ -5,8 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
-// TC-2238: /onboarding runs `onboard --timeout 60s` in the foreground and reruns it, sending each new link as soon
-// as it exists (js-sdk #822). The real-CLI tests run the pinned devDependency (1.6.1, with #822 and #824).
+// TC-2238: /onboarding runs `onboard --timeout 1s` in the foreground; each run prints the pending link and exits, and the agent
+// sends the link and reruns when the owner next writes (js-sdk #822). The real-CLI tests run the pinned devDependency (1.6.2, with #822 and #824).
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(root, "node_modules/.bin/tinycloud");
 const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
@@ -20,7 +20,7 @@ test("onboarding runs one bounded foreground command, with no background run, fi
   assert.ok(run, "the onboarding guide must have its run step");
   // One block: the skill and CLI-version gates, then the one bounded onboard run.
   assert.equal(blocks(run).length, 1);
-  assert.ok(blocks(run)[0].includes('\n{ "$TC" onboard --timeout 60s; echo "$?" > "$OUT.rc"; } | tee "$OUT"\n'));
+  assert.ok(blocks(run)[0].includes('\n{ "$TC" onboard --timeout 1s; echo "$?" > "$OUT.rc"; } | tee "$OUT"\n'));
   assert.equal(blocks(run)[0].split("\n").at(-1), 'exit "$RC"');
   assert.doesNotMatch(blocks(run)[0], /&\s*$|\bnohup\b|\bwhile\b|\buntil\b/m);
   assert.match(run, /Run this in the foreground, as its own shell call\./);
@@ -41,7 +41,7 @@ test("the --timeout is one #822 accepts and keeps a call under a 2-minute tool l
 
 test("every onboarding run in the guide is bounded; only --help and the owner's reply name onboard without it", () => {
   const runs = [...guide.matchAll(/"\$TC"(?: --profile \S+)? onboard\b[^`\n]*/g)].map((match) => match[0]);
-  assert.deepEqual(runs.filter((line) => !line.includes("--timeout 60s")), ['"$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY']);
+  assert.deepEqual(runs.filter((line) => !line.includes("--timeout 1s")), ['"$TC" onboard --help | grep -q -e --timeout && echo ONBOARD_READY']);
   assert.match(run, /Never run `onboard --code`/);
 });
 
@@ -49,8 +49,8 @@ test("exit 8 with a pending link: send each new link at once, rerun, never resen
   const pending = run.split("**Exit 8 with a `pending` object on stdout**")[1]?.split("\n- **Exit 0")[0];
   assert.ok(pending, "the guide must handle exit 8 with a pending object");
   assert.match(pending, /`step` \(1 or 2\), `of` \(2\), `approvalUrl` \(the link\) and `expiresAt`/);
-  assert.match(pending, /When a rerun shows step 2's link, send it at once, without the step-1 text, and run the block again\./);
-  assert.match(pending, /When it shows a link you already sent, don't send it again; just run the block again\./);
+  assert.match(pending, /When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message\./);
+  assert.match(pending, /When it shows a link you already sent, don't send it again; run the block again on the owner's next message\./);
   assert.match(pending, /never counts toward a retry limit/);
   for (const code of ["APPROVAL_REQUEST_EXPIRED", "SPACE_SETUP_PENDING", "PROFILE_NOT_ONBOARDABLE"]) assert.ok(run.includes(`**\`${code}\``), code);
   assert.match(run, /\*\*Exit 8 without a `pending` object:\*\*/);
@@ -60,7 +60,7 @@ test("exit 8 with a pending link: send each new link at once, rerun, never resen
 test("the owner sees the same words as before the loop", () => {
   for (const line of [
     "> I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.",
-    '"Open this link and approve. I\'ll carry on as soon as you do."',
+    '"Open this link and approve, then tell me."',
     'this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud."',
     "There's no code to send back: tell your agent when you've approved.",
   ]) once(guide, line);
@@ -127,8 +127,8 @@ const sandbox = (answer) => {
     PATH: process.env.PATH, HOME: dir, TC_HOME: join(dir, "tc"), FORCE_COLOR: "0", NODE_OPTIONS: `--require=${fence}`,
     TC_OPENKEY_HOST: OPENKEY, TC_OPENKEY_API_HOST: OPENKEY, TC_LINKS_API_ORIGIN: LINKS_API,
   };
-  // The guide's run block for the selected CLI, with its 60 s wait shortened so the test is quick; the owner never approves.
-  const script = blocks(run)[0].replace("<TC_BIN>", CLI).replace("--timeout 60s", "--timeout 2s");
+  // The guide's run block for the selected CLI, as written: the 1 s wait returns at once while the owner never approves.
+  const script = blocks(run)[0].replace("<TC_BIN>", CLI);
   const onboard = () => spawnSync("sh", ["-c", script], { env, encoding: "utf8", timeout: 20000 });
   const untouched = () => assert.equal(existsSync(forbidden), false, existsSync(forbidden) ? readFileSync(forbidden, "utf8") : "");
   return { onboard, polled: () => readFileSync(polls, "utf8").trim().split("\n"), untouched };
@@ -137,7 +137,7 @@ const PROMPT = "Approve in OpenKey (open the complete link):";
 // The block shows the CLI's stdout in full, then one line of its own: what to do next.
 const lastLine = (result) => result.stdout.trimEnd().split("\n").at(-1);
 const cliStdout = (result) => result.stdout.trimEnd().split("\n").slice(0, -1).join("\n");
-const next = (url) => `NEXT: send the owner this link now, on its own line, with the onboarding guide's message for it: ${url} Then, in the same turn and without waiting for a reply, run this block again. If you already sent this exact link, don't send it again; just run this block again now.`;
+const next = (url) => `NEXT: send the owner this link in your reply now, on its own line, with the onboarding guide's line: ${url} When the owner next writes to you, run this block again. If you already sent this exact link, don't send it again.`;
 
 test("the real CLI's first run exits 8 with step 1's pending link, and a rerun waits and shows the same link", () => {
   assert.ok(run.includes(`stderr shows the same link on the line after \`${PROMPT}\``));
@@ -180,10 +180,10 @@ test("the real CLI ends an expired link as exit 3 APPROVAL_REQUEST_EXPIRED, and 
 // Clarissa's cell (TC-2238): an agent ended its turn after sending a link and reran only after the owner's "done",
 // and piped the run through `tail`, losing `"onboarded": true`. The rerun is in the same paragraph as the owner line,
 // and the block says not to filter its output; on the source and the served page.
-const OWNER_LINE = '"Open this link and approve. I\'ll carry on as soon as you do."';
-const SAME_TURN = 'Then, in the same turn and without waiting for a reply, run the block again: the owner\'s reply is not needed, the command itself sees the approval.';
+const OWNER_LINE = '"Open this link and approve, then tell me."';
+const SAME_TURN = 'Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval.';
 const NO_FILTER = "Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output.";
-test("the same-turn rerun follows the owner line in its paragraph, and the run's output is read unfiltered", () => {
+test("ending the turn follows the owner line in its paragraph, and the run's output is read unfiltered", () => {
   for (const file of ["setup/onboarding.md", "_site/onboarding.md"]) {
     const text = readFileSync(join(root, file), "utf8");
     const step = text.split("**2. Run onboarding.**")[1]?.split("\n## MCP\n")[0];
@@ -212,7 +212,7 @@ test("the run block prints the done line on exit 0 and only ONBOARD_EXIT on othe
     mkdirSync(join(dir, ".agents/skills/tinycloud-cli"), { recursive: true });
     writeFileSync(join(dir, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
     const cli = join(dir, "tinycloud");
-    writeFileSync(cli, `#!/bin/sh\ncase "$*" in --version) echo 9.9.9 ;; "onboard --timeout 60s") printf '%s\\n' '${stdout}' | sed '/^$/d'; echo 'cli stderr' >&2; exit ${exit} ;; esac\n`, { mode: 0o700 });
+    writeFileSync(cli, `#!/bin/sh\ncase "$*" in --version) echo 9.9.9 ;; "onboard --timeout 1s") printf '%s\\n' '${stdout}' | sed '/^$/d'; echo 'cli stderr' >&2; exit ${exit} ;; esac\n`, { mode: 0o700 });
     const result = spawnSync("sh", ["-c", blocks(run)[0].replace("<TC_BIN>", cli)], { cwd: dir, env: { PATH: process.env.PATH, HOME: dir }, encoding: "utf8" });
     assert.equal(result.status, exit, result.stderr);
     assert.equal(result.stderr, "cli stderr\n");

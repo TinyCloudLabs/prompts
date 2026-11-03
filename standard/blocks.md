@@ -2,3 +2,6 @@
 **Read this page raw first.** If you can run a shell, fetch the exact text of this page, and of any guide it sends you to, with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy every shell block from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.
 
 **Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
+
+<!-- std:relay -->
+> **Agents: send each link, then stop and wait for the owner.** After any command prints an OpenKey approval link, write that complete link in your reply to the owner, using this guide's line for it, then stop and wait for the owner. When the owner next writes to you, run the next command the guide gives (for a pending approval, the same command again: it picks up their approval). Don't rely on the owner seeing command output. If you already wrote that exact link in an earlier reply, don't write it again. An invitation link is different: send it, then serve the invitation as the guide's serve step says. If the command's stderr has `Next:` lines, do every one in order, exactly as written.

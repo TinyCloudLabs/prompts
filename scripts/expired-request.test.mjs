@@ -8,7 +8,7 @@ import { after, test } from "node:test";
 // TC-2323: since OpenKey #407, a request that expired before it was approved gets 410 expired_request,
 // and CLI 1.5.1 exits 3 (APPROVAL_REQUEST_EXPIRED) and drops it. The guides send the new link on exit 3,
 // cap exit-8 retries at three, and never log out or edit the CLI's files to get past an expired link.
-// TC-2238: /onboarding runs `onboard --timeout 60s` (js-sdk #822), where exit 8 with a `pending` object is
+// TC-2238: /onboarding runs `onboard --timeout 1s` (js-sdk #822), where exit 8 with a `pending` object is
 // the normal wait and an expired link can end as exit 3 once more before the next run makes a new one.
 const base = mkdtempSync(join("/var/tmp", "TC-2323."));
 for (const key of ["HOME", "TC_HOME"]) process.env[key] = base;
