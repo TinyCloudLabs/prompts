@@ -524,6 +524,7 @@ test("Courier approval messages use the relay line and the decline rule, on ever
       "> Open this link and approve the one-time Courier permission, then tell me.",
       '"That didn\'t finish on my side. Please open this link and approve, then tell me."',
       REFUSED_GRANT_LINE,
+      "Use the onboarding guide's owner line for its links; this line is only for the Courier approval.",
       "Exit 8 is pending only when stdout contains a JSON object with a non-empty `pending.approvalUrl`:",
       "Send `pending.approvalUrl` once and wait for the owner",
       "ask the decline question from the shared table",

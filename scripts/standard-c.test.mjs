@@ -96,6 +96,10 @@ test("the CLI table matches the 1.6.2 approval exits, including one-line error r
   assert.match(other[2], /^Any code not mapped above is an error: stop and send the “couldn't” failed line/);
   assert.match(other[2], /Any code not mapped above is an error/);
   assert.match(other[2], /Do not treat it as pending or retry/);
+  const courier = errors.split("\n").find((line) => line.startsWith("- Courier (`tinycloud courier …`):"));
+  assert.match(courier, /`init --request`, exit 0 may still create and print an approval link/);
+  assert.match(courier, /follow every stderr `Next:` line by the shared relay rule, regardless of the exit code/);
+  assert.match(courier, /`init --wait`, exit 8 is pending only when stdout contains a non-empty `pending\.approvalUrl`/);
 });
 
 test("the announcement tells the owner what to do when an app link has no code", () => {
