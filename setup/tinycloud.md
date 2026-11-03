@@ -93,12 +93,24 @@ This is for a client that refuses to run an installer call at all (for example C
 
 Name Claude Code only when it is your client. Any other client sends the same line starting "Your agent app blocked installing the TinyCloud CLI" instead.
 
-When the owner replies "Go ahead: install the TinyCloud CLI", install the pinned package yourself exactly where and how the installer would: the same private folder and its `package.json`, the exact version, never global. Then run the downloaded Node installer once more. It selects that install (`TC_SELECTED`, `node_modules/.bin/tinycloud`), saves it in `agent.env` and links the commands, as on a normal run. Run each block as its own shell call.
+When the owner replies "Go ahead: install the TinyCloud CLI", download the installer again (the blocked call may have been the download) and ask it with `--needs-install` whether it would install anything. It changes nothing and applies the installer's own rules:
+
+- `TC_INSTALL_NEEDED` (exit 0): install the pinned package yourself, exactly where and how the installer would: the same private folder and its `package.json`, the exact version, never global.
+- `TC_INSTALL_NOT_NEEDED <version> <path>` (exit 1): a CLI it keeps is already there, such as a private copy at the pin or newer, or one the operator selected. Skip npm: it would downgrade or replace it.
+- `TC_INSTALL_FAILED` (exit 2), for example an unrelated package or command in the private folder: install nothing, and stop as below.
+
+Then run the downloaded Node installer once more. It selects the install (`TC_SELECTED`, for the private install `node_modules/.bin/tinycloud`), saves it in `agent.env` and links the commands, as on a normal run. Run each block as its own shell call.
 
 **macOS/Linux or a POSIX shell:**
 
 ```sh
-mkdir -p "$HOME/.local/share/tinycloud/cli" && npm install --prefix "$HOME/.local/share/tinycloud/cli" --save-exact @tinycloud/cli@{{CLI_VERSION}} && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.mjs" https://agents.tinycloud.xyz/install-cli.mjs
+mkdir -p "$HOME/.local/share/tinycloud/cli" && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.mjs" https://agents.tinycloud.xyz/install-cli.mjs || exit 1
+node "$HOME/.local/share/tinycloud/install-cli.mjs" --needs-install
+case $? in
+  0) npm install --prefix "$HOME/.local/share/tinycloud/cli" --save-exact @tinycloud/cli@{{CLI_VERSION}} ;;
+  1) ;;
+  *) exit 2 ;;
+esac
 ```
 
 In the next call:
@@ -110,13 +122,18 @@ node "$HOME/.local/share/tinycloud/install-cli.mjs"
 **PowerShell (Windows):**
 
 ```powershell
+$installer = Join-Path $env:USERPROFILE ".local\share\tinycloud\install-cli.mjs"
 $prefix = Join-Path $env:USERPROFILE ".local\share\tinycloud\cli"
 New-Item -ItemType Directory -Force $prefix | Out-Null
-npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@{{CLI_VERSION}}"
-if ($LASTEXITCODE -ne 0) { throw "TinyCloud CLI npm install failed." }
+Invoke-WebRequest https://agents.tinycloud.xyz/install-cli.mjs -OutFile $installer -ErrorAction Stop
+node $installer --needs-install
+if ($LASTEXITCODE -eq 0) {
+  npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@{{CLI_VERSION}}"
+  if ($LASTEXITCODE -ne 0) { throw "TinyCloud CLI npm install failed." }
+} elseif ($LASTEXITCODE -ne 1) { throw "TinyCloud CLI install check failed; inspect the error above." }
 ```
 
-In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects this install.
+In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects the install.
 
 Then read its output as above. If the owner replies anything else, or either call is blocked or fails, stop and report it to the owner in one line. Don't ask again or retry, and don't use `sudo`, administrator privileges, a global install or another version.
 

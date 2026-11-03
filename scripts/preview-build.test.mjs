@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -158,8 +158,10 @@ test("/cli's blocked-install line and fallback commands carry install-cli.mjs's 
     const section = blockedSection(site);
     assert.ok(section.includes(`\n> ${BLOCKED}\n`), `${base}/cli: blocked line`);
     assert.ok(section.includes('"Your agent app blocked installing the TinyCloud CLI"'), `${base}/cli: other clients' line`);
-    assert.ok(section.includes(`npm install --prefix "$HOME/.local/share/tinycloud/cli" --save-exact @tinycloud/cli@${CLI_VERSION} && curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.mjs" ${base}/install-cli.mjs\n`), `${base}/cli: POSIX fallback`);
-    assert.ok(section.includes(`npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@${CLI_VERSION}"\n`), `${base}/cli: PowerShell fallback`);
+    assert.ok(section.includes(`curl -fsSL -o "$HOME/.local/share/tinycloud/install-cli.mjs" ${base}/install-cli.mjs || exit 1\nnode "$HOME/.local/share/tinycloud/install-cli.mjs" --needs-install\n`), `${base}/cli: POSIX download and check`);
+    assert.ok(section.includes(`  0) npm install --prefix "$HOME/.local/share/tinycloud/cli" --save-exact @tinycloud/cli@${CLI_VERSION} ;;\n`), `${base}/cli: POSIX fallback`);
+    assert.ok(section.includes(`Invoke-WebRequest ${base}/install-cli.mjs -OutFile $installer -ErrorAction Stop\nnode $installer --needs-install\n`), `${base}/cli: PowerShell download and check`);
+    assert.ok(section.includes(`  npm.cmd install --prefix $prefix --save-exact "@tinycloud/cli@${CLI_VERSION}"\n`), `${base}/cli: PowerShell fallback`);
     const unfilled = readdirSync(site, { recursive: true, withFileTypes: true })
       .filter((e) => e.isFile() && readFileSync(join(e.parentPath, e.name), "utf8").includes("{{CLI_VERSION}}"))
       .map((e) => join(e.parentPath, e.name).slice(site.length));
@@ -204,7 +206,12 @@ function curlStandIn() {
   fs.copyFileSync(process.env.TC_TEST_INSTALLER, args[args.indexOf("-o") + 1]);
 }
 
-test("/cli's fallback, run in a fresh home with a stand-in npm, makes the installer's private install, which the installer then selects and saves", { skip: process.platform === "win32" }, () => {
+// The POSIX fallback's two blocks as served, a stand-in npm and curl (the curl saves this repository's
+// installer) and fresh homes with /agent's helper. PATH holds only the stand-ins, node and the system:
+// `npm test` puts this repository's own CLI (a devDependency) on PATH, and node's directory can hold a global one.
+let kit;
+const fallbackKit = () => {
+  if (kit) return kit;
   const blocks = [...blockedSection(production).matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
   assert.equal(blocks.length, 2);
   const tools = join(work, "fallback-tools");
@@ -217,27 +224,36 @@ test("/cli's fallback, run in a fresh home with a stand-in npm, makes the instal
     const config = join(home, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
     writeFileSync(join(config, "agent-env.mjs"), readFileSync(join(root, "scripts/agent-env.mjs")), { mode: 0o600 });
-    // Only the stand-ins and node, ahead of the system: `npm test` puts this repository's own CLI (a devDependency)
-    // on PATH, and node's own directory can hold a global one; the installer would reuse either.
     return { home, env: { HOME: home, PATH: `${tools}:/usr/bin:/bin`, TC_TEST_INSTALLER: join(root, "scripts/install-cli.mjs") } };
   };
-  const prefix = (home) => join(home, ".local/share/tinycloud/cli");
-  const selected = (stdout) => JSON.parse(stdout.match(/^TC_SELECTED (.+)$/m)[1]);
-  const saved = ({ home, env }) => spawnSync(process.execPath, [join(home, ".config/tinycloud/agent-env.mjs"), "get", "TC_BIN"], { env, encoding: "utf8" }).stdout.trim();
-  const lines = (file) => readFileSync(file, "utf8").trim().split("\n");
-
-  const fallback = freshHome("fallback-home");
-  for (const block of blocks) {
-    const result = spawnSync("sh", ["-c", block], { env: fallback.env, encoding: "utf8" });
+  const run = (script, { env }) => spawnSync("sh", ["-c", script], { env, encoding: "utf8" });
+  // A private copy laid out by the stand-in npm, as if installed earlier; its call is not recorded in this home.
+  const privateCopy = ({ home, env }, version) => {
+    const result = spawnSync(join(tools, "npm"), ["install", "--prefix", prefix(home), "--save-exact", `@tinycloud/cli@${version}`], { env: { ...env, HOME: join(home, "..") }, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
-    fallback.stdout = result.stdout;
-  }
+  };
+  kit = { blocks, freshHome, run, privateCopy };
+  return kit;
+};
+const prefix = (home) => join(home, ".local/share/tinycloud/cli");
+const selectedCli = (stdout) => JSON.parse(stdout.match(/^TC_SELECTED (.+)$/m)[1]);
+const savedCli = ({ home, env }) => spawnSync(process.execPath, [join(home, ".config/tinycloud/agent-env.mjs"), "get", "TC_BIN"], { env, encoding: "utf8" }).stdout.trim();
+const callLines = (file) => existsSync(file) ? readFileSync(file, "utf8").trim().split("\n") : [];
+
+test("/cli's fallback, run in a fresh home with a stand-in npm, makes the installer's private install, which the installer then selects and saves", { skip: process.platform === "win32" }, () => {
+  const { blocks, freshHome, run } = fallbackKit();
+  const fallback = freshHome("fallback-home");
+  const check = run(blocks[0], fallback);
+  assert.equal(check.status, 0, check.stderr);
+  assert.match(check.stdout, new RegExp(`^TC_INSTALL_NEEDED ${CLI_VERSION.replaceAll(".", "\\.")} `, "m"));
+  const rerun = run(blocks[1], fallback);
+  assert.equal(rerun.status, 0, rerun.stderr);
   const bin = join(prefix(fallback.home), "node_modules/.bin/tinycloud");
-  assert.deepEqual(selected(fallback.stdout), { bin, version: CLI_VERSION, source: "private" });
-  assert.equal(saved(fallback), bin);
-  assert.deepEqual(lines(join(fallback.home, "curl-calls")), [`${SITE}/install-cli.mjs`]);
+  assert.deepEqual(selectedCli(rerun.stdout), { bin, version: CLI_VERSION, source: "private" });
+  assert.equal(savedCli(fallback), bin);
+  assert.deepEqual(callLines(join(fallback.home, "curl-calls")), [`${SITE}/install-cli.mjs`]);
   // One npm call, the fallback's own: the rerun installer selects that install rather than installing again.
-  const [call, ...more] = lines(join(fallback.home, "npm-calls")).map((line) => JSON.parse(line));
+  const [call, ...more] = callLines(join(fallback.home, "npm-calls")).map((line) => JSON.parse(line));
   assert.deepEqual(more, []);
   assert.deepEqual(call, ["install", "--prefix", prefix(fallback.home), "--save-exact", `@tinycloud/cli@${CLI_VERSION}`]);
 
@@ -245,10 +261,42 @@ test("/cli's fallback, run in a fresh home with a stand-in npm, makes the instal
   const installer = freshHome("installer-home");
   const result = spawnSync(process.execPath, [join(root, "scripts/install-cli.mjs")], { env: installer.env, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(selected(result.stdout), { bin: join(prefix(installer.home), "node_modules/.bin/tinycloud"), version: CLI_VERSION, source: "installed" });
-  const installs = lines(join(installer.home, "npm-calls")).map((line) => JSON.parse(line));
+  assert.deepEqual(selectedCli(result.stdout), { bin: join(prefix(installer.home), "node_modules/.bin/tinycloud"), version: CLI_VERSION, source: "installed" });
+  const installs = callLines(join(installer.home, "npm-calls")).map((line) => JSON.parse(line));
   assert.deepEqual(installs.map((args) => args.filter((arg) => !["--no-audit", "--no-fund"].includes(arg)).map((arg) => arg === prefix(installer.home) ? prefix(fallback.home) : arg)), [call]);
   for (const file of ["package.json", "node_modules/@tinycloud/cli/package.json"]) {
     assert.equal(readFileSync(join(prefix(fallback.home), file), "utf8"), readFileSync(join(prefix(installer.home), file), "utf8"), file);
   }
+});
+
+test("/cli's fallback keeps a newer private copy: no npm install, and the installer selects it", { skip: process.platform === "win32" }, () => {
+  const { blocks, freshHome, run, privateCopy } = fallbackKit();
+  const newer = "1.7.0";
+  const fallback = freshHome("fallback-newer/home");
+  privateCopy(fallback, newer);
+  const bin = join(prefix(fallback.home), "node_modules/.bin/tinycloud");
+  const check = run(blocks[0], fallback);
+  assert.equal(check.status, 0, check.stderr);
+  assert.match(check.stdout, new RegExp(`^TC_INSTALL_NOT_NEEDED ${newer.replaceAll(".", "\\.")} ${bin}$`, "m"));
+  const rerun = run(blocks[1], fallback);
+  assert.equal(rerun.status, 0, rerun.stderr);
+  assert.deepEqual(selectedCli(rerun.stdout), { bin, version: newer, source: "private" });
+  assert.equal(savedCli(fallback), bin);
+  assert.deepEqual(callLines(join(fallback.home, "npm-calls")), []);
+  assert.equal(JSON.parse(readFileSync(join(prefix(fallback.home), "node_modules/@tinycloud/cli/package.json"), "utf8")).version, newer);
+});
+
+test("/cli's fallback stops on a private folder that holds another package: no npm install, nothing changed", { skip: process.platform === "win32" }, () => {
+  const { blocks, freshHome, run } = fallbackKit();
+  const fallback = freshHome("fallback-occupied");
+  mkdirSync(prefix(fallback.home), { recursive: true });
+  const project = join(prefix(fallback.home), "package.json");
+  const original = JSON.stringify({ dependencies: { "left-pad": "1.3.0" } });
+  writeFileSync(project, original);
+  const check = run(blocks[0], fallback);
+  assert.equal(check.status, 2, check.stdout);
+  assert.match(check.stderr, /^TC_INSTALL_FAILED Unrelated packages occupy the private CLI directory: left-pad$/m);
+  assert.deepEqual(callLines(join(fallback.home, "npm-calls")), []);
+  assert.equal(readFileSync(project, "utf8"), original);
+  assert.deepEqual(readdirSync(prefix(fallback.home)), ["package.json"]);
 });

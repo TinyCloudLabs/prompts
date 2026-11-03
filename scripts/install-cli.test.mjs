@@ -394,3 +394,28 @@ test("private install refuses to overwrite an unrelated executable", { skip: win
   assert.deepEqual(readFileSync(bin), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli/package.json")), false);
 });
+
+test("--needs-install keeps a newer private copy, asks for the pin in an empty home, and refuses a private folder holding other packages, changing nothing", { skip: windows }, () => {
+  const run = (dir) => spawnSync(process.execPath, [installer, "--needs-install"], { env: { ...envFor(dir), PATH: "" }, encoding: "utf8" });
+  const newer = home();
+  const bin = privateCli(newer, "1.7.0");
+  let result = run(newer);
+  assert.equal(result.status, 1, result.stderr);
+  assert.equal(result.stdout.trim(), `TC_INSTALL_NOT_NEEDED 1.7.0 ${bin}`);
+  const empty = home();
+  result = run(empty);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), `TC_INSTALL_NEEDED ${CLI_VERSION} ${privatePrefix(empty)}`);
+  assert.equal(existsSync(privatePrefix(empty)), false);
+  const occupied = home();
+  const project = join(privatePrefix(occupied), "package.json");
+  mkdirSync(privatePrefix(occupied), { recursive: true });
+  writeFileSync(project, JSON.stringify({ dependencies: { "left-pad": "1.3.0" } }));
+  result = run(occupied);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /^TC_INSTALL_FAILED Unrelated packages occupy the private CLI directory: left-pad$/m);
+  // The installer refuses the same folder.
+  assert.throws(() => installCli({ env: { ...envFor(occupied), PATH: "" }, log: () => {} }), /Unrelated packages occupy the private CLI directory/);
+  assert.deepEqual(npmCalls(occupied), []);
+  assert.deepEqual(readFileSync(project, "utf8"), JSON.stringify({ dependencies: { "left-pad": "1.3.0" } }));
+});

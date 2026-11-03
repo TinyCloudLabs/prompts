@@ -263,6 +263,34 @@ export function linkCommands(selected, input = {}) {
   }
 }
 
+// What installCli keeps: an operator selection at any version, else the private copy or a PATH CLI at the pin or
+// newer. Null means it installs the pin into the private prefix, which must then hold nothing unrelated.
+// /cli's blocked-install fallback asks the same question (--needs-install) before it runs that npm install
+// itself, so it never downgrades a newer copy or installs over another package.
+export function keptCli(input = {}) {
+  const opts = options(input);
+  const selected = resolveCli(opts);
+  if (selected && compatible(selected.version)) return selected;
+  // Never modify an operator's binary. An older private copy is upgraded in place; an older PATH CLI stays untouched beside the new private copy.
+  if (selected && (selected.source === "TC_BIN" || selected.source === "agent-env")) {
+    opts.log(`TC_OLDER ${selected.version} ${selected.bin} is older than the pinned ${CLI_VERSION}; keeping this operator-selected CLI`);
+    return selected;
+  }
+  const prefix = privatePrefix(opts);
+  for (const name of names) {
+    for (const extension of opts.platform === "win32" ? ["", ".cmd", ".ps1"] : [""]) {
+      const file = path.join(prefix, "node_modules/.bin", name + extension);
+      if (present(file) && !ownedTarget(file, opts.platform)) throw new Error(`Unrelated private executable exists: ${file}`);
+    }
+  }
+  const manifest = path.join(prefix, "node_modules/@tinycloud/cli/package.json");
+  if (existsSync(manifest) && JSON.parse(readFileSync(manifest, "utf8")).name !== "@tinycloud/cli") throw new Error("Unrelated package occupies the private CLI directory");
+  const project = path.join(prefix, "package.json");
+  const others = existsSync(project) ? Object.keys(JSON.parse(readFileSync(project, "utf8")).dependencies || {}).filter((name) => name !== "@tinycloud/cli") : [];
+  if (others.length) throw new Error(`Unrelated packages occupy the private CLI directory: ${others.join(", ")}`);
+  return null;
+}
+
 export function installCli(input = {}) {
   const opts = options(input);
   if (opts.platform === "win32") {
@@ -270,22 +298,9 @@ export function installCli(input = {}) {
     opts.searchPath = [opts.env.PATH || opts.env.Path, persistent.machine, persistent.user].filter(Boolean).join(";");
     opts.searchPath = opts.searchPath.replace(/%([^%]+)%/g, (all, name) => Object.entries(opts.env).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? all);
   }
-  let selected = resolveCli(opts);
-  if (selected && !compatible(selected.version)) {
-    // Never modify an operator's binary. An older private copy is upgraded in place; an older PATH CLI stays untouched beside the new private copy.
-    if (selected.source === "TC_BIN" || selected.source === "agent-env") opts.log(`TC_OLDER ${selected.version} ${selected.bin} is older than the pinned ${CLI_VERSION}; keeping this operator-selected CLI`);
-    else selected = null;
-  }
+  let selected = keptCli(opts);
   if (!selected) {
     const prefix = privatePrefix(opts);
-    for (const name of names) {
-      for (const extension of opts.platform === "win32" ? ["", ".cmd", ".ps1"] : [""]) {
-        const file = path.join(prefix, "node_modules/.bin", name + extension);
-        if (present(file) && !ownedTarget(file, opts.platform)) throw new Error(`Unrelated private executable exists: ${file}`);
-      }
-    }
-    const manifest = path.join(prefix, "node_modules/@tinycloud/cli/package.json");
-    if (existsSync(manifest) && JSON.parse(readFileSync(manifest, "utf8")).name !== "@tinycloud/cli") throw new Error("Unrelated package occupies the private CLI directory");
     mkdirSync(prefix, { recursive: true });
     // --save-exact: the private package.json records the pin itself, as /cli's blocked-install fallback writes it.
     if (opts.platform === "win32") {
@@ -323,11 +338,16 @@ export function installCli(input = {}) {
 if (process.argv[1] && real(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [action, ...rest] = process.argv.slice(2);
-    if (rest.length || (action && !["--resolve", "--repair-path"].includes(action))) throw new Error("Usage: node install-cli.mjs [--resolve|--repair-path]");
+    if (rest.length || (action && !["--resolve", "--repair-path", "--needs-install"].includes(action))) throw new Error("Usage: node install-cli.mjs [--resolve|--repair-path|--needs-install]");
     if (action === "--resolve") {
       const selected = resolveCli();
       if (selected) console.log(selected.bin);
       else process.exitCode = 1;
+    } else if (action === "--needs-install") {
+      // Exit 0: the pin goes into the private prefix; exit 1: a CLI the installer keeps is already there. Changes nothing.
+      const kept = keptCli();
+      if (kept) { console.log(`TC_INSTALL_NOT_NEEDED ${kept.version} ${kept.bin}`); process.exitCode = 1; }
+      else console.log(`TC_INSTALL_NEEDED ${CLI_VERSION} ${privatePrefix(options())}`);
     } else if (action === "--repair-path") repairWindowsPath();
     else installCli();
   } catch (error) {
