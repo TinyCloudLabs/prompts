@@ -371,6 +371,6 @@ TC_BIN='<TC_BIN>'; umask 077
 "$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv get 'xyz.tinycloud.tinyapps.catalog/<APP>/entry' --space '<APP_SPACE>' --json
 ```
 
-3. Only when that read gives `NOT_FOUND` (exit 4), remove the receipt file, `<STATE>/migration/<APP>.receipt.json`. If the delete or the read fails, keep the receipt, report the error and stop: the app stays in the new layout.
+3. Only when that read gives `NOT_FOUND` (exit 4), remove the receipt file, `<STATE>/migration/<APP>.receipt.json`. A `NOT_FOUND` from the delete itself means the entry is already gone (for example on a rerun): continue to the read-back. If the delete or the read fails any other way, keep the receipt, report the error and stop: the app stays in the new layout.
 
 Deleting the entry, together with the receipt, is what flips the layout back: while either is there `layout.sh` prints `new`; with both gone it prints `legacy` again, here and on every other computer without a receipt. If a key differs between the two places, keep both and ask the owner which is right; never overwrite either.
