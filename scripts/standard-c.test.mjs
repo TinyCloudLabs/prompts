@@ -75,24 +75,81 @@ test("the CLI table matches the 1.6.2 approval exits, including one-line error r
   const [done, expired, network, waiting, declined, other] = rows;
   assert.match(done[1], /^Done\.$/);
   assert.equal(expired[1], '`APPROVAL_REQUEST_EXPIRED`: “This approval request expired before it was approved. Start a new request.”');
-  assert.match(expired[2], /ask the owner the decline question below/);
-  assert.match(expired[2], /is more than 2 minutes before `expiresAt`/);
-  assert.match(expired[2], /If you never saw the exit-8 JSON, use the decline question below/);
+  assert.match(expired[2], /ask exactly “Did you decline that request\? If not, I'll send you a fresh link\.” and wait/);
+  assert.match(expired[2], /If more than 2 minutes remain before `expiresAt`, do not run a command or create a link/);
+  assert.match(expired[2], /If you don't have the earlier exit-8 JSON, ask the decline question and wait/);
   assert.match(expired[2], /Never read `approval-pending\.json`/);
-  assert.equal(network[1], "`NETWORK_ERROR`.");
+  assert.equal(network[1], "`NETWORK_ERROR`: the network did not answer (for example, an OpenKey status check or a node fetch).");
+  assert.match(network[1], /OpenKey status check or a node fetch/);
   assert.match(network[2], /same command again once; make no new link/);
-  assert.ok(network[2].includes("If it exits 6 again, tell the owner exactly “I can't set up TinyCloud right now. Please ask me again later.”, then put the stderr error code on its own line and stop."));
-  assert.match(network[2], /No `Next:` line is printed/);
-  const onboardingExit6 = read("setup/onboarding.md").split("\n").find((line) => line.startsWith("- **Exit 6:**"));
+  assert.match(network[2], /For a resumed approval, the saved request is kept/);
+  assert.ok(network[2].includes("If the retry also exits 6, tell the owner exactly “I can't set up TinyCloud right now. Please ask me again later.”, then put the stderr error code on its own line and stop."));
+  assert.match(network[2], /CLI stderr has no `Next:` line/);
+  assert.match(network[2], /guide block may print its own `NEXT:` line/);
+  assert.doesNotMatch(network[2], /--timeout/);
+  const onboarding = read("setup/onboarding.md");
+  const onboardingExit6 = onboarding.split("\n").find((line) => line.startsWith("- **Exit 6:**"));
   assert.ok(onboardingExit6?.includes("I can't set up TinyCloud right now. Please ask me again later."));
   assert.ok(onboardingExit6?.includes("stderr error code on its own line and stop."));
-  assert.doesNotMatch(network[1], /OpenKey|TinyCloud/);
-  assert.match(waiting[1], /^Still waiting: .* Or OpenKey is down: no `pending` object\.$/);
-  assert.match(waiting[2], /send the link once and wait for the owner/);
+  assert.match(onboardingExit6, /run the same command again once/);
+  assert.doesNotMatch(onboardingExit6, /OpenKey only|OpenKey did not answer/);
+  const onboardingRunExit6 = onboarding.split("\n").find((line) => line.includes("elif [ \"$RC\" = 6 ]"));
+  assert.match(onboardingRunExit6, /run this same block again once/);
+  assert.match(onboardingRunExit6, /If an approval request was saved, it resumes; do not create a new link/);
+  assert.match(waiting[1], /^Still waiting only when stdout contains a non-empty `pending\.approvalUrl` link\./);
+  assert.match(waiting[1], /Exit 8 without it is not pending/);
+  assert.match(waiting[2], /send it once and wait for the owner/);
   assert.match(waiting[2], /Follow the shared relay block's `Next:` lines rule/);
   assert.match(declined[2], /^Stop and send the “couldn't” failed line, then the error code on its own line/);
   assert.match(declined[2], /never send a CID/);
-  assert.match(other[2], /^Stop, and send the “couldn't” failed line, then the code on its own line/);
+  assert.match(other[2], /^Any code not mapped above is an error: stop and send the “couldn't” failed line/);
+  assert.match(other[2], /Any code not mapped above is an error/);
+  assert.match(other[2], /Do not treat it as pending or retry/);
+  const courier = errors.split("\n").find((line) => line.startsWith("- Courier (`tinycloud courier …`):"));
+  assert.match(courier, /`init --request`, exit 0 may still create and print an approval link/);
+  assert.match(courier, /follow every stderr `Next:` line by the shared relay rule, regardless of the exit code/);
+  assert.match(courier, /`init --wait`, exit 8 is pending only when stdout contains a non-empty `pending\.approvalUrl`/);
+  assert.match(courier, /Courier 0\.5\.2 exits only 0, 1, 2 or 8; exit 6 is not a Courier code/);
+  const courierGuide = read("setup/courier.md");
+  const waitAgain = courierGuide.split("Any other non-zero exit is an error:")[1].split("\n  - **A refused grant:")[0];
+  assert.match(waitAgain, /\[approval-rejected\].*\[approval-unavailable\].*exit 1/s);
+  assert.match(waitAgain, /saved request is kept/);
+  assert.match(waitAgain, /Run the same `"\$TC" courier init --wait --timeout 60s` again/);
+  assert.match(waitAgain, /do not create or send a new link/);
+  assert.doesNotMatch(waitAgain, /exit 6/i);
+});
+
+test("blocking auth request guidance covers every authored surface that invokes it", () => {
+  const surfaces = [
+    ["feed skill", read("skills/tinycloud-feed/SKILL.md")],
+    ["feed post guide", read("skills/tinycloud-feed/creating-a-post.md")],
+    ["served feed skill", served("skills/feed/SKILL.md")],
+    ["served feed guide", served("feed")],
+    ["onboarding", read("setup/onboarding.md")],
+    ["served onboarding", served("onboarding.md")],
+    ["tc-apps", read("skills/tc-apps/SKILL.md")],
+    ["tc-apps TINY-APPS", read("skills/tc-apps/TINY-APPS.md")],
+    ["served tc-apps TINY-APPS", served("skills/apps/TINY-APPS.md")],
+    ["tc-apps SQL", read("skills/tc-apps/SQL.md")],
+    ["served tc-apps SQL", served("skills/apps/SQL.md")],
+    ["served tc-apps", served("skills/apps/SKILL.md")],
+    ["CLI skill", served("skills/cli/SKILL.md")],
+    ["CLI auth reference", served("skills/cli/AUTH.md")],
+  ];
+  for (const [name, text] of surfaces) {
+    assert.match(text, /auth request/);
+    assert.match(text, /has no `--timeout`/);
+    assert.match(text, /blocks until the approval is resolved/);
+    assert.match(text, /pending-link result/);
+    assert.match(text, /persistent shell session that streams stderr and stays alive while you reply/);
+    assert.match(text, /If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow/);
+  }
+});
+
+test("onboarding describes the status lines emitted for exit 3", () => {
+  const text = read("setup/onboarding.md");
+  assert.match(text, /then the block prints its final status lines/);
+  assert.doesNotMatch(text, /then the block prints one last line/);
 });
 
 test("the announcement tells the owner what to do when an app link has no code", () => {
@@ -111,8 +168,8 @@ test("the announcement tells the owner what to do when an app link has no code",
 });
 
 test("the three owner lines and declined line are exact and have no pasted copy", () => {
-  for (const line of [DONE, CANT, COULDNT, DECLINED]) assert.equal(count(errors, line), 1, line);
-  for (const [label, sentence] of [["Done", DONE], ["Failed", CANT], ["Failed", COULDNT]]) assert.ok(errors.includes(`- **${label}**`) && errors.includes(sentence), sentence);
+  assert.equal(count(errors, DECLINED), 2, DECLINED);
+  for (const line of [DONE, CANT, COULDNT]) assert.equal(count(errors, line), 1, line);
   assert.ok(errors.includes(`**Declined approval, owner line:** “${DECLINED}”`));
   const texts = [...AUTHORED.map((path) => [path, read(path)]), ...[...SURFACES.map(([, url]) => url), ...SERVED_ONLY].map((url) => [url, served(url)])];
   for (const [path, text] of texts) {
@@ -126,7 +183,7 @@ test("the real built onboarding block sends exit 3 through the agent-side expiry
   const run = onboarding.split("**2. Run onboarding.**")[1]?.split("\n## MCP\n")[0];
   const command = [...run.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1])[0];
   assert.ok(command, "built /onboarding step 2 must contain its real shell block");
-  assert.match(onboarding, /more than 2 minutes before `expiresAt`/);
+  assert.match(onboarding, /NEXT: Before doing anything else, compare now with pending\.expiresAt from the earlier exit-8 JSON/);
   assert.ok(onboarding.includes(DECLINED));
 
   const home = join(work, "fake-cli-home");
@@ -152,8 +209,9 @@ exit 90
       },
     });
     assert.equal(result.status, 3, expiresAt);
-    assert.match(result.stdout, /ONBOARD_EXIT 3/);
-    assert.doesNotMatch(result.stdout, new RegExp(DECLINED));
+    assert.match(result.stdout, /NEXT: Before doing anything else, compare now with pending\.expiresAt from the earlier exit-8 JSON/);
+    assert.match(result.stdout, /If more than 2 minutes remain, do not run a command or create a link/);
+    assert.match(result.stdout, /If 2 minutes or less remain, it's a real expiry/);
   }
 });
 test("Courier expiry uses the same recorded-expiry decision and never reads private pending state", () => {
@@ -162,8 +220,8 @@ test("Courier expiry uses the same recorded-expiry decision and never reads priv
   const expired = section.split("**`[approval-expired]`:")[1]?.split("\n  - ")[0];
   assert.match(section, /Use `pending\.expiresAt` from this JSON/);
   const exit3 = errors.split("\n").find((line) => line.startsWith("| 3 |"));
-  assert.match(exit3, /more than 2 minutes before `expiresAt`/);
-  assert.match(exit3, /`now >= expiresAt - 2 minutes`/);
+  assert.match(exit3, /If more than 2 minutes remain before `expiresAt`/);
+  assert.match(exit3, /Create a new request only when 2 minutes or less remain before `expiresAt`/);
   assert.match(expired, /apply the shared exit-3 decline\/expiry rule/);
   assert.match(expired, /Never read `approval-pending\.json`; it contains private keys/);
 });

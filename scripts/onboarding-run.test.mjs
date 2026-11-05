@@ -46,7 +46,7 @@ test("every onboarding run in the guide is bounded; only --help and the owner's 
 });
 
 test("exit 8 with a pending link: send each new link at once, rerun, never resend, never count it as a retry", () => {
-  const pending = run.split("**Exit 8 with a `pending` object on stdout**")[1]?.split("\n- **Exit 0")[0];
+  const pending = run.split("**Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.**")[1]?.split("\n- **Exit 0")[0];
   assert.ok(pending, "the guide must handle exit 8 with a pending object");
   assert.match(pending, /`step` \(1 or 2\), `of` \(2\), `approvalUrl` \(the link\) and `expiresAt`/);
   assert.match(pending, /When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message\./);
@@ -170,8 +170,12 @@ test("the real CLI ends an expired link as exit 3 APPROVAL_REQUEST_EXPIRED, and 
     assert.equal(onboard().status, 8);
     const result = onboard();
     assert.equal(result.status, answer === "expired" ? 3 : 8, result.stderr);
-    // No pending link: the block prints the exit code, no NEXT line.
-    assert.equal(result.stdout, `ONBOARD_EXIT ${answer === "expired" ? 3 : 8}\n`);
+    if (answer === "expired") {
+      assert.match(result.stdout, /ONBOARD_EXIT 3\nNEXT: Before doing anything else, compare now with pending\.expiresAt/);
+      assert.match(result.stdout, /If more than 2 minutes remain, do not run a command or create a link/);
+    } else {
+      assert.equal(result.stdout, "ONBOARD_EXIT 8\n");
+    }
     assert.equal(JSON.parse(result.stderr.slice(result.stderr.indexOf("{"))).error.code, code);
     untouched();
   }
@@ -199,13 +203,12 @@ test("ending the turn follows the owner line in its paragraph, and the run's out
   }
 });
 
-// The block itself says what to do next (agents follow tool output more reliably than page prose): exit 0 →
-// the done line, with the CLI's JSON still shown; any exit other than 0, or 8 with a pending link → ONBOARD_EXIT.
-test("the run block prints the done line on exit 0 and only ONBOARD_EXIT on other exits, after the CLI's full stdout", () => {
+// The block itself says what to do next: exit 0 → done; exit 6 → rerun once; pending exit 8 with a link → send it; otherwise → ONBOARD_EXIT.
+test("the run block prints done on exit 0, a bounded same-block retry on exit 6, and ONBOARD_EXIT otherwise", () => {
   for (const [exit, stdout, last] of [
     [0, '{\n  "onboarded": true,\n  "profile": "default"\n}', "NEXT: onboarding is done; continue with the owner's goal."],
     [1, "", "ONBOARD_EXIT 1"],
-    [6, "", "ONBOARD_EXIT 6"],
+    [6, "", "NEXT: exit 6 is a network error; run this same block again once. If an approval request was saved, it resumes; do not create a new link. If that rerun also exits 6, follow the shared table."],
     [8, "", "ONBOARD_EXIT 8"],
     [8, '{"pending":{"step":2,"of":2}}', "ONBOARD_EXIT 8"],
   ]) {
@@ -218,6 +221,6 @@ test("the run block prints the done line on exit 0 and only ONBOARD_EXIT on othe
     assert.equal(result.status, exit, result.stderr);
     assert.equal(result.stderr, "cli stderr\n");
     assert.equal(result.stdout, `${stdout ? `${stdout}\n` : ""}${last}\n`);
-    assert.equal(result.stdout.split("\n").filter((line) => line.startsWith("NEXT:")).length, exit === 0 ? 1 : 0);
+    assert.equal(result.stdout.split("\n").filter((line) => line.startsWith("NEXT:")).length, exit === 0 || exit === 6 ? 1 : 0);
   }
 });

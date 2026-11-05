@@ -78,13 +78,15 @@ rm -f "$OUT" "$OUT.rc"
 if [ "$RC" = 0 ]; then echo "NEXT: onboarding is done; continue with the owner's goal."
 
 elif [ "$RC" = 8 ] && [ -n "$URL" ]; then echo "NEXT: send the owner this link in your reply now, on its own line, with the onboarding guide's line: $URL When the owner next writes to you, run this block again. If you already sent this exact link, don't send it again."
+elif [ "$RC" = 6 ]; then echo "NEXT: exit 6 is a network error; run this same block again once. If an approval request was saved, it resumes; do not create a new link. If that rerun also exits 6, follow the shared table."
+elif [ "$RC" = 3 ]; then echo "ONBOARD_EXIT 3"; echo "NEXT: Before doing anything else, compare now with pending.expiresAt from the earlier exit-8 JSON. If more than 2 minutes remain, do not run a command or create a link; ask exactly \"Did you decline that request? If not, I'll send you a fresh link.\" and wait. If 2 minutes or less remain, it's a real expiry: run this block again to create a fresh link. If you do not have the earlier exit-8 JSON, ask the owner the decline question and wait."
 else echo "ONBOARD_EXIT $RC"; fi
 exit "$RC"
 ```
 
-Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below and the [shared table](#exit-codes-and-owner-lines). Run the block again until it exits 0, and go by its exit code each time.
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints its final status lines. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below and the [shared table](#exit-codes-and-owner-lines). Run the block again until it exits 0, and go by its exit code each time.
 
-**Exit 8 with a `pending` object on stdout** means the owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve, then tell me." Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval. Before the first link, say this text word for word:
+**Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.** The owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve, then tell me." Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval. Before the first link, say this text word for word:
 
 > I'll set up TinyCloud so I can act for you. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days.
 
@@ -140,7 +142,7 @@ TC='<TC_BIN>'
 "$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --no-popup --expiry 30d
 ```
 
-Keep the command running, send the full short URL it prints on its own line with the ask line below, and let the owner approve. It retrieves the result automatically; no return code is needed. After an interruption, rerun the same command/profile. Do not add `--paste`, which deliberately selects the older long-URL manual flow. Its exit codes are the shared table's.
+For this link-based `auth request --grant`, use the shared table's persistent-session rule below. It has no `--timeout` and blocks until the approval is resolved; it does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply. Send the full short URL on its own line as soon as it appears, then wait for the owner and read the command's final output. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption. It retrieves the result automatically; use the shared exit table when it finishes. Do not add `--paste`, which deliberately selects the older long-URL manual flow.
 
 ## Exit codes and owner lines
 

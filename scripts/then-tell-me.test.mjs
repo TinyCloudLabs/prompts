@@ -93,12 +93,6 @@ test("the built onboarding block ends with the done line when the CLI exits 0", 
   assert.equal(result.stdout, `{"onboarded":true}\nNEXT: onboarding is done; continue with the owner's goal.\n`);
 });
 
-test("the built onboarding block prints only ONBOARD_EXIT 6; CLI network handling has no NEXT line", () => {
-  const result = runBlock(`echo '{"error":{"code":"NETWORK_ERROR"}}' >&2; exit 6`);
-  assert.equal(result.status, 6);
-  assert.equal(result.stdout, "ONBOARD_EXIT 6\n");
-  assert.doesNotMatch(result.stdout, /NEXT:|send the owner this link|this is a new link/);
-});
 
 test("the Next: rule is scoped to approval commands; invitations follow their own steps", () => {
   for (const guide of ["onboarding.md", "courier"]) {
@@ -109,7 +103,15 @@ test("the Next: rule is scoped to approval commands; invitations follow their ow
 });
 
 test("CLI exit 6 is shared in the onboarding table; Courier 0.5.2 has no exit-6 branch", () => {
-  assert.match(text("onboarding.md"), /\| 6 \| `NETWORK_ERROR`\./);
+  assert.match(text("onboarding.md"), /\| 6 \| `NETWORK_ERROR`: the network did not answer/);
   const courier = text("courier");
   assert.doesNotMatch(courier, /\*\*Exit 6|rc === "6"|rc === 6/);
+});
+test("exit 3 blocks a fresh request until the saved exit-8 expiry is checked", () => {
+  const result = runBlock(`echo '{"error":{"code":"APPROVAL_REQUEST_EXPIRED"}}' >&2; exit 3`);
+  assert.equal(result.status, 3);
+  assert.match(result.stdout, /NEXT: Before doing anything else, compare now with pending\.expiresAt from the earlier exit-8 JSON/);
+  assert.match(result.stdout, /If more than 2 minutes remain, do not run a command or create a link; ask exactly "Did you decline that request\? If not, I'll send you a fresh link\."/);
+  assert.match(result.stdout, /If 2 minutes or less remain, it's a real expiry: run this block again to create a fresh link/);
+  assert.match(result.stdout, /If you do not have the earlier exit-8 JSON, ask the owner the decline question and wait/);
 });

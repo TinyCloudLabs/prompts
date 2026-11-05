@@ -168,7 +168,7 @@ const SKILLS = [
       "SKILL.md": [
         [
           /^Need more than onboarding grants\? Ask once[^\n]*$/m,
-          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. Send the complete short URL on its own line and keep the command running; it retrieves approval automatically. Re-run the identical command after interruption. Do not add `--paste`: that explicitly selects the older manual-code flow and long link. See [AUTH.md](AUTH.md).",
+          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. This command has no `--timeout` or pending-link result and blocks until the approval is resolved; run it in a persistent shell session that streams stderr and stays alive while you reply. Send the complete short URL on its own line as soon as it appears, then wait for the owner and read the final output. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not use a one-shot call or rerun blindly after interruption. See [AUTH.md](AUTH.md).",
         ],
         [
           "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
@@ -183,7 +183,7 @@ const SKILLS = [
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
-          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). Send the actual short URL on its own line and keep the command running; no return code is needed. Re-run the identical command/profile after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
+          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). This command has no `--timeout` or pending-link result and blocks until the approval is resolved; run it in a persistent shell session that streams stderr and stays alive while you reply. Send the actual short URL on its own line as soon as it appears, then wait for the owner and read the final output; use the shared exit table when it finishes. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not use a one-shot call or rerun blindly after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
         ],
       ],
       "INSTALL.md": [
@@ -223,11 +223,11 @@ const SKILLS = [
         ],
         [
           "use courier join '<exact link>' --consent instead of creating or selecting another chat.",
-          "use courier join '<exact link>' --consent --wait 60 instead of creating or selecting another chat. Each call waits at most a minute; while the issuer hasn't finished pairing it exits 1 with [invite-pending], so run the same join again in the same turn without asking me, at most 10 times in a row.",
+          "use courier join '<exact link>' --consent --wait 60 instead of creating or selecting another chat. Each call waits at most a minute; while the issuer hasn't finished pairing it exits 1 with [invite-pending], so retry the same join without asking me, at most 10 times in a row.",
         ],
         [
           "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
-          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, in the same turn and without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.",
+          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.",
         ],
       ],
     },

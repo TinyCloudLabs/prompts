@@ -17,17 +17,19 @@ const row = (exit) => errors.split("\n").find((line) => line.startsWith(`| ${exi
 
 test("onboarding caps exit 8 without a pending link at three tries and never logs out", () => {
   assert.ok(guide.includes("\n{{std:errors}}\n"), "the onboarding guide must carry the shared table");
-  assert.match(row(8), /Or OpenKey is down: no `pending` object\./);
+  assert.match(row(8), /Exit 8 without it is not pending/);
+  assert.match(row(8), /Without a link \(OpenKey is down or did not return a pending object\)/);
   assert.match(row(8), /at most 3 times in a row; then send the “can't” failed line and stop\./);
-  assert.match(row(8), /Waiting never counts as a retry/);
+  assert.match(row(8), /This is a bounded retry, never pending/);
   assert.doesNotMatch(guide, /"\$TC" auth logout|auth logout`? \(|HTTP 400|approval-pending/, "no logout or private-file way out for an expired link");
 });
 
 test("exit 3 uses expiry time and the approved decline question, not an automatic resend", () => {
   assert.match(row(3), /APPROVAL_REQUEST_EXPIRED/);
-  assert.match(row(3), /more than 2 minutes before `expiresAt`/);
-  assert.match(row(3), /If `now >= expiresAt - 2 minutes`, it is a real expiry: start a new request/);
-  assert.match(row(3), /If you never saw the exit-8 JSON, use the decline question below/);
+  assert.match(row(3), /Before doing anything else, use `pending\.expiresAt` from the earlier exit-8 JSON and compare it with now/);
+  assert.match(row(3), /If more than 2 minutes remain before `expiresAt`, do not run a command or create a link; ask exactly/);
+  assert.match(row(3), /Create a new request only when 2 minutes or less remain before `expiresAt`/);
+  assert.match(row(3), /If you don't have the earlier exit-8 JSON, ask the decline question and wait/);
 });
 
 const helper = (code, message) => {
