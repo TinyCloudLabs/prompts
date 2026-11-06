@@ -4,7 +4,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 
 - **App:** `context`. Its key root is `xyz.tinycloud.tinyapps.context/` in the owner's `applications` space, written `<C>/` below.
 - **Profile and approval:** `tinyapp-context`, approved like any app (`SKILL.md` §4, with `<APP>` = `context` and `<Title>` = `Context`), for 30 days, covering only `<C>/`.
-- **Layout:** always the new layout. Skip `SKILL.md` §1a's first line for this app; you only need `<TC_BETA>`, its second line.
+- **Layout:** always the new layout. Skip `SKILL.md` §1a's first line for this app; use the selected `TC_BIN` from `SKILL.md` §1.
 - **Who reads it:** every agent the owner uses, and every read sends what it reads to that agent's model provider. So it holds low-sensitivity facts and preferences only (§1).
 
 ## 1. What goes in, and what never does
@@ -57,16 +57,11 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 - Never just to warm up. A request that needs nothing personal gets nothing past the key list.
 
 **How, at most once per session:**
-1. Get `<TC_BETA>` with this line (`SKILL.md` §1a's second line):
+1. Use the selected `TC_BIN` from `SKILL.md` §1; do not resolve or install another CLI.
+2. List the keys, once. The `context` check reports whether the app has a fast copy (`SKILL.md` §3's last line):
 
    ```sh
-   { [ -n "${TC_BETA_BIN:-}" ] && echo "$TC_BETA_BIN"; } || ls "$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud" 2>/dev/null || echo 'TC_BETA is unset'
-   ```
-
-2. List the keys, once. The second line says whether the app has a fast copy (`SKILL.md` §3's last line):
-
-   ```sh
-   TC_BIN='<TC_BETA>'; umask 077
+   TC_BIN='<TC_BIN>'; umask 077
    "$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.context/' --space applications --all --json --profile tinyapp-context
    "$TC_BIN" context --json --profile tinyapp-context-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
    ```
@@ -78,7 +73,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 - `"keys"` → read as above. `"keys": []` → nothing saved yet; don't mention it unless asked.
 - `PROFILE_NOT_FOUND` → the context app isn't approved on this computer. Before a first answer, carry on and say nothing. For a request that needs context, such as "remember …" or "what's my …", get its approval (`SKILL.md` §4 with `context`), then list again.
 - `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED`, or "persisted SIWE is expired" → the 30 days are over. Before a first answer: answer the request, then add one line, once per session: "Your TinyCloud context approval has ended; say "renew my context" when you want it back." For a request that needs context: `SKILL.md` §4 with `context`.
-- `TC_BETA is unset`, `SPACE_NOT_HOSTED` or `NETWORK_ERROR` → as `SKILL.md` §1a, §3 and §8 say. Don't hold up a request that doesn't need context.
+- `SPACE_NOT_HOSTED` or `NETWORK_ERROR` → follow `SKILL.md` §1a, §3 and §8. Don't hold up a request that doesn't need context.
 
 **"Continue" or "pick up where I left off":** take the `handoff/` keys from the list. If the owner named the task, use the handoff whose slug matches it; otherwise get the newest: the keys sort by date, so get the ones with the latest date and use the one with the latest `at`. Say in one line which task you're picking up, then go on from its `next`.
 
@@ -94,7 +89,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 - **Handoffs:** at most one per task, at its end, or at a real pause such as the owner stopping for the day. Only for a task of several steps; never one per step, and none for a quick answer or one record.
 
 **How:**
-1. Run `SKILL.md` §1 for `<UTC>` and `<NOW>`, and get `<TC_BETA>` as in §3.
+1. Run `SKILL.md` §1 for `<UTC>` and `<NOW>`, using its selected `TC_BIN`.
 2. Use this session's key list (§3). If you haven't listed yet, list now; that is the session's one list. Look in it for the same subject under every kind, `fact/`, `preference/`, `decision/`: another agent may have filed it under a kind you wouldn't pick. If one is there, that is the key to update, in step 4; keep its kind, and never write a second record for the same subject.
 3. **A new key**, only when no kind has the subject: write it with `SKILL.md` §6's block, with `--if-none-match '*'`. Put any catalog records it still needs (§2) first, in the same block.
 4. **A key that exists:** get it. If the value is the same, write nothing. If it changed, write the new record without `--if-none-match`, which replaces the old one.

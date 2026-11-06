@@ -3,8 +3,8 @@
 # computer, asking each new session to check the owner's TinyCloud context first (CONTEXT.md). It only
 # ever adds, finds or removes lines that end with the marker below, and never changes another line.
 #   sh session-check.sh status <client>   prints on, declined or off, then "clients: …", the agents `add` covers
-#   sh session-check.sh clients <client>  prints those agents, one per line, <client> first: the setup (step 5)
-#                                         copies the skill for each of them, so a setup in one is seen by all
+#   sh session-check.sh clients <client>  prints those agents, one per line, <client> first: setup §2 installs the skill for each
+#                                         so a setup in one agent is seen by the others
 #   sh session-check.sh add <client>      adds the line for <client> (the agent running it) and every other agent found here
 #   sh session-check.sh remove            removes the marked line from every file that has it
 #   sh session-check.sh decline           records the owner's "no" on this computer, so the setup doesn't ask again
