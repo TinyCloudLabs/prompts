@@ -2,7 +2,7 @@
 
 # Set up the TinyCloud CLI
 
-This module installs and verifies only the TinyCloud CLI and its core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. Every guide needs **@tinycloud/cli 1.6.2**: new installs and older agent-owned installs get it; an operator-selected CLI is kept, and a newer one is never downgraded. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
+This module installs and verifies the TinyCloud CLI, then attempts its optional core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. Every guide needs **@tinycloud/cli 1.6.2**: new installs and older agent-owned installs get it; an operator-selected CLI is kept, and a newer one is never downgraded. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
 
 ## For the owner
 
@@ -37,6 +37,8 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 ## Install the CLI
 
 Use the reusable platform-aware installer below. It respects process `TC_BIN` first, then a saved `TC_BIN` read by the data-only helper installed by [/agent](agent.md), then the private installation, then a CLI on PATH at `1.6.2` or newer. An operator selection is kept, never silently replaced; one older than `1.6.2` prints `TC_OLDER`. A `TC_BIN`, exported or saved, that points inside `~/.local/share/tinycloud/cli` (on Windows `%USERPROFILE%\.local\share\tinycloud\cli`) is the agent's own private copy, not an operator selection: it is upgraded like the private install and selected as `node_modules/.bin/tinycloud`. A private or PATH CLI older than `1.6.2` is not reused: the installer upgrades its own copy in `~/.local/share/tinycloud/cli` and leaves a PATH CLI untouched. A newer CLI is never downgraded. It never installs into npm's global prefix. When /agent's helper is installed, the installer also saves its own selection in `~/.config/tinycloud/agent.env`, the one saved CLI location every skill reads; it never rewrites an operator's `TC_BIN`.
+
+**Codex sandbox:** If Codex's default sandbox blocks the CLI install because it cannot access the network or write outside the workspace, rerun the same CLI installation shell call once using the Codex tool's escalation arguments: `sandbox_permissions: "require_escalated"`, justification `Install the TinyCloud CLI and core skill`, and `yield_time_ms: 30000`. If escalation is unavailable or that attempt fails, stop and report the installation error. Do not ask the owner to restart Codex or rerun `/cli`.
 
 Download both installers in one shell call, then run them in **one separate shell call**: the CLI installer, a best-effort core-skill install, and, if the caller named one, its action skill. A failed core-skill install reports `TC_SKILL_STATUS unavailable` but does not block use of the selected CLI; action-skill failures remain errors. One download call and one run call keep the number of permission prompts low in clients that ask before each network call. Do not retype or shorten an installer's implementation, pipe a download into a shell, or use PowerShell's `Invoke-Expression`.
 

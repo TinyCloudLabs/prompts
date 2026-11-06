@@ -6,7 +6,6 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 TinyCloud keeps your records available across agents.
 
-
 **Paste into your agent:**
 
 > Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.
@@ -28,7 +27,6 @@ After an interruption, rerun the same command with the same profile to resume th
 {{std:relay}}
 
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
-
 
 Pick the route for where you run:
 
