@@ -272,7 +272,6 @@ test("tc-apps sends an agent with no onboarded profile through /onboarding befor
   assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
 });
 
-
 test("onboarding keeps optional-skill continuation guidance", () => {
   const onboarding = readFileSync(join(root, "setup/onboarding.md"), "utf8");
   assert.match(onboarding, /If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI/);
