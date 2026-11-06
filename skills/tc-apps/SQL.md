@@ -17,7 +17,7 @@ Use the same literal `<TC_BIN>` and `<STATE>` as `SKILL.md`. Copy `<INDEX_PROFIL
 Run the installed `app-context.mjs` with `--sql --write`:
 
 ```sh
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --sql --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --sql --write; break; fi; done
 ```
 
 - `ready`: copy its profile as `<INDEX_PROFILE>`. No approval is needed for the read/write access already granted. If `indexPresent` is true, continue with the existing index. If false, repeat the helper with `--sql --write --schema` before §2.

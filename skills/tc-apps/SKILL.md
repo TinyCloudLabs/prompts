@@ -197,7 +197,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 For a generic app in the new layout, resolve `app-context.mjs` from the installed skill and run it once per request. Add `--write` for creating or changing records, and `--delete` only if the requested operation deletes a key. Add `--remove-entry` only for §9's going back, which deletes the app's discovery entry. Omit all three for a read-only request, including a temporary delegated read:
 
 ```sh
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --write; break; fi; done
 ```
 
 The helper reads official CLI context and status, checks live primary and additional grants, and verifies access with an actual catalog listing. It creates no profile, approval or record.

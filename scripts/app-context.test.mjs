@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { appContext, appPermissions, missingPermissions } from "../skills/tc-apps/app-context.mjs";
 
@@ -69,13 +72,16 @@ test("an onboarded default profile is the context profile used by the read guide
   assert.doesNotMatch(guide, /--profile tinyapp-context\b/);
 });
 
-test("the context key list uses the host selected by the helper", () => {
+test("the context key list uses profile, host, and space selected by the helper", () => {
   const w = world([profile("default")], { selected: "default" });
   const context = appContext("/cli", "context", { env: {}, run: w.run });
   const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  assert.equal(context.profile, "default");
   assert.equal(context.host, host);
-  assert.match(guide, /and its `host` as `<CONTEXT_HOST>`/);
-  assert.match(guide, /--host '<CONTEXT_HOST>' kv list --prefix 'xyz\.tinycloud\.tinyapps\.context\/' --space applications/);
+  assert.equal(context.spaceId, space);
+  assert.match(guide, /its `profile` as `<CONTEXT_PROFILE>`, its `host` as `<CONTEXT_HOST>` and its `spaceId` as `<CONTEXT_SPACE>`/);
+  assert.match(guide, /--profile '<CONTEXT_PROFILE>' --host '<CONTEXT_HOST>' kv list --prefix 'xyz\.tinycloud\.tinyapps\.context\/' --space '<CONTEXT_SPACE>'/);
+  assert.doesNotMatch(guide, /--space applications\b/);
 });
 
 test("context write approval asks only for its data root and exact discovery entry", () => {
@@ -125,12 +131,38 @@ test("the SQL helper reports index presence separately from session state", () =
   assert.match(sqlGuide, /If the block still fails, or `SKILL\.md` §3 showed the index's session `"expired"`, mark the kind as behind/);
 });
 
-test("app-context helper commands search Claude's active plugin skill before user skill installs", () => {
+test("app-context helper commands search the plugin, user skill installs, and setup download copy", () => {
   for (const path of ["SKILL.md", "CONTEXT.md", "SQL.md", "TINY-APPS.md"]) {
     const guide = readFileSync(new URL(`../skills/tc-apps/${path}`, import.meta.url), "utf8");
     for (const line of guide.split("\n").filter((value) => value.includes('"$d/app-context.mjs"'))) {
-      assert.match(line, /for d in "\$\{CLAUDE_SKILL_DIR:-\}" "\$\{CLAUDE_CONFIG_DIR:-\$HOME\/\.claude\}\/skills\/tc-apps" "\$HOME\/\.agents\/skills\/tc-apps"/, path);
+      assert.match(line, /for d in "\$\{CLAUDE_SKILL_DIR:-\}" "\$\{CLAUDE_CONFIG_DIR:-\$HOME\/\.claude\}\/skills\/tc-apps" "\$HOME\/\.agents\/skills\/tc-apps" "\$HOME\/\.local\/share\/tc-apps\/skill"; do if \[ -n "\$d" \]/, path);
     }
+  }
+});
+
+test("the context helper resolves plugin-only and download-only skill copies", () => {
+  const root = mkdtempSync(join(tmpdir(), "tc-app-context-paths-"));
+  try {
+    const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+    const command = guide.split("\n").find((line) => line.includes('"$d/app-context.mjs"')).trim();
+    const home = join(root, "home");
+    const plugin = join(root, "plugin");
+    const download = join(home, ".local/share/tc-apps/skill");
+    const writeHelper = (dir, result) => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "app-context.mjs"), `console.log(${JSON.stringify(result)});`);
+    };
+    mkdirSync(home, { recursive: true });
+    writeHelper(plugin, "plugin-only");
+    writeHelper(download, "download-only");
+    const run = (skillDir) => execFileSync("sh", ["-c", command], {
+      encoding: "utf8",
+      env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: join(home, ".claude"), CLAUDE_SKILL_DIR: skillDir },
+    }).trim();
+    assert.equal(run(plugin), "plugin-only");
+    assert.equal(run(""), "download-only");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

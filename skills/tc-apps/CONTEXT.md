@@ -57,11 +57,11 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 - Never just to warm up. A request that needs nothing personal gets nothing past the key list.
 
 **How, at most once per session:**
-1. Run `SKILL.md` §3's app-context check for `context` with the selected `TC_BIN`. When it returns `ready`, use its `profile` as `<CONTEXT_PROFILE>` and its `host` as `<CONTEXT_HOST>`. If the request needs context and the status is not `ready`, follow its §3/§4 instructions and rerun the check. A request that doesn't need context continues without a new approval.
+1. Run `SKILL.md` §3's app-context check for `context` with the selected `TC_BIN`. When it returns `ready`, use its `profile` as `<CONTEXT_PROFILE>`, its `host` as `<CONTEXT_HOST>` and its `spaceId` as `<CONTEXT_SPACE>`. If the request needs context and the status is not `ready`, follow its §3/§4 instructions and rerun the check. A request that doesn't need context continues without a new approval.
 2. Check whether the fast copy is available, using the same helper:
 
    ```sh
-   for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' context --sql; break; fi; done
+   for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' context --sql; break; fi; done
    ```
 
    If it returns `ready` with `indexPresent: true`, use its `profile` as `<CONTEXT_SQL_PROFILE>`; otherwise treat the fast copy as unavailable. This check is informational; don't request another approval for it.
@@ -69,7 +69,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 
    ```sh
    TC_BIN='<TC_BIN>'; umask 077
-   "$TC_BIN" --profile '<CONTEXT_PROFILE>' --host '<CONTEXT_HOST>' kv list --prefix 'xyz.tinycloud.tinyapps.context/' --space applications --all --json
+   "$TC_BIN" --profile '<CONTEXT_PROFILE>' --host '<CONTEXT_HOST>' kv list --prefix 'xyz.tinycloud.tinyapps.context/' --space '<CONTEXT_SPACE>' --all --json
    ```
 
 4. Get only the records the request needs, at most about 20, with `SKILL.md` §5's block for several records and `--profile '<CONTEXT_PROFILE>'`. The subject is in the key, so pick by key; a preference about how to work or reply, such as `preference/reply-length`, fits most requests. Never get every record, and never paste the key list into your reply.
