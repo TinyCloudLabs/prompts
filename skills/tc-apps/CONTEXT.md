@@ -5,7 +5,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 - **App:** `context`. Its key root is `xyz.tinycloud.tinyapps.context/` in the owner's `applications` space, written `<C>/` below.
 - **Profile and approval:** use the profile returned by `SKILL.md` §3's app-context check; it may reuse the selected onboarding profile or use `tinyapp-context` when scoped sign-in is needed. A scoped approval grants only `<C>/` and this app's exact discovery entry, `xyz.tinycloud.tinyapps.catalog/context/entry`, for 30 days.
 - **Layout:** always the new layout. Skip `SKILL.md` §1a's first line for this app; use the selected `TC_BIN` from `SKILL.md` §1.
-- **Who reads it:** every agent the owner uses, and every read sends what it reads to that agent's model provider. So it holds low-sensitivity facts and preferences only (§1).
+- **Who reads it:** every agent the owner uses, and any agent that reads the owner's context sends it to the company that runs its AI model. So it holds low-sensitivity facts and preferences only (§1).
 
 ## 1. What goes in, and what never does
 

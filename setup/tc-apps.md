@@ -87,7 +87,7 @@ foreach ($Target in ($Targets | Sort-Object -Unique)) {
 Remove-Item -Recurse -Force $D
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.4.0 <folder>` (or a newer skill) for each target. The installer verifies every file before replacing a skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.4.1 <folder>` (or a newer skill) for each target. The installer verifies every file before replacing a skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
@@ -96,7 +96,7 @@ If something goes wrong:
 - **Claude Code (or your client) denies a step or asks to confirm it:** show the owner the step and what it does, then ask them to reply naming that step, as in [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). Run it again only once they agree. Don't edit settings or run it another way.
 - **A command, download or checksum check fails:** stop and report the error. Don't retry with other options, in another folder or from another source.
 
-Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.0` (or a newer version) for every target.
+Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.1` (or a newer version) for every target.
 
 
 ## 3. Carry on with the skill
