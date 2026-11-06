@@ -86,6 +86,7 @@ sh "$HOME/.local/share/tinycloud/install-cli.sh" &&
 if node "$HOME/.local/share/tinycloud/install.js" cli --agent CLIENT; then echo "TC_SKILL_STATUS installed"; else echo "TC_SKILL_STATUS unavailable"; fi &&
 node "$HOME/.local/share/tinycloud/install.js" ACTION --agent CLIENT
 
+```
 This POSIX entry point downloads and runs the same `/install-cli.mjs` implementation; it has no separate CLI version or installation policy. The installer prints `SKILL_INSTALLED <name> <version> <folder>` for each successful skill. `TC_SKILL_STATUS installed`, `reused` or `unavailable` records the core-skill result separately; the calling guide skips its own action-skill install only when its skill was installed here.
 
 `TC_SELECTED {"bin":"…","version":"…","source":"…"}` identifies the selected executable (for the private install, `node_modules/.bin/tinycloud`); retain that absolute path as `TC_BIN` when returning to the caller. `TC_OLDER <version> <path> …` means the operator selected a CLI outside the private install that is older than `1.6.2`: don't replace it, and return to the calling guide, which says what to do; without a calling guide, tell the owner in one line that it is older than the required `1.6.2`. The downloaded Node installer accepts `--resolve` to print only an existing selected path (exit 1 means absent; exit 2 means invalid/unsafe), without installing, upgrading or changing PATH.

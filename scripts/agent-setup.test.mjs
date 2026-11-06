@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { marked } from "marked";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -279,6 +280,12 @@ test("the cross-agent payoff is a separate owner-visible line on connect and onb
   }
   const onboarding = readFileSync(join(root, "setup/onboarding.md"), "utf8");
   assert.match(onboarding, /If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI/);
+});
+
+test("the POSIX installer note renders as prose after its command block", () => {
+  const rendered = marked.parse(readFileSync(join(root, "_site", "cli"), "utf8"));
+  const note = rendered.match(/<p>This POSIX entry point[\s\S]*?<\/p>/)?.[0];
+  assert.ok(note, "the explanatory note must not remain inside the installer code block");
 });
 
 test("a failed optional core-skill install is reported without blocking CLI onboarding", () => {
