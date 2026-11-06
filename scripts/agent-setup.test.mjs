@@ -278,7 +278,7 @@ test("onboarding keeps optional-skill continuation guidance", () => {
   assert.match(onboarding, /If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI/);
 });
 
-test("served setup pages keep fences balanced and CLI shell blocks valid", () => {
+test("served setup pages keep fences balanced and every shell block valid", () => {
   const pages = ["cli", "onboarding.md", "setup", "agent", "apps", "connect.md", "chat", "feed", "publish", "share", "secrets", "courier", "openkey"];
   const markdown = new Marked(gfmHeadingId());
   const shellCheck = spawnSync("sh", ["-n"], { input: "", encoding: "utf8" });
@@ -286,19 +286,22 @@ test("served setup pages keep fences balanced and CLI shell blocks valid", () =>
 
   for (const page of pages) {
     const source = readFileSync(join(root, "_site", page), "utf8");
+    const tokens = markdown.lexer(source);
+    if (shellAvailable) {
+      for (const token of tokens.filter((item) => item.type === "code" && /^(bash|sh|shell)$/i.test(item.lang ?? ""))) {
+        // Guide placeholders such as <skill> are substituted by agents before execution.
+        const shell = token.text.replace(/<[A-Za-z][A-Za-z0-9_-]*>/g, "placeholder");
+        const result = spawnSync("sh", ["-n"], { input: shell, encoding: "utf8" });
+        assert.equal(result.status, 0, `${page}: invalid ${token.lang} block\n${result.stderr}\n${token.text}`);
+      }
+    }
     const fences = source.match(/^ {0,3}(?:`{3,}|~{3,})/gm) ?? [];
     assert.equal(fences.length % 2, 0, `${page}: unbalanced Markdown code fences`);
-    const tokens = markdown.lexer(source);
     if (page === "cli") {
       assert.ok(
         tokens.some((token) => token.type === "paragraph" && token.text.includes("This POSIX entry point downloads and runs")),
         "the CLI installer note must render as prose outside its shell block",
       );
-      if (!shellAvailable) continue;
-      for (const token of tokens.filter((item) => item.type === "code" && /^(bash|sh|shell)$/i.test(item.lang ?? ""))) {
-        const result = spawnSync("sh", ["-n"], { input: token.text, encoding: "utf8" });
-        assert.equal(result.status, 0, `${page}: invalid ${token.lang} block\n${result.stderr}`);
-      }
     }
   }
 });
