@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { appContext, appPermissions, missingPermissions } from "../skills/tc-apps/app-context.mjs";
 
@@ -55,6 +56,28 @@ test("context reuses the onboarding profile when no dedicated context profile ex
   assert.deepEqual(w.writes, []);
   assert.equal(w.reads[0].name, "owner");
 });
+test("an onboarded default profile is the context profile used by the read guide", () => {
+  const w = world([profile("default")], { selected: "default" });
+  const context = appContext("/cli", "context", { env: {}, run: w.run });
+  const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  assert.equal(context.status, "ready");
+  assert.equal(context.profile, "default");
+  assert.deepEqual(w.writes, []);
+  assert.equal(w.reads[0].name, "default");
+  assert.match(guide, /When it returns `ready`, use its `profile` as `<CONTEXT_PROFILE>`/);
+  assert.match(guide, /--profile '<CONTEXT_PROFILE>'/);
+  assert.doesNotMatch(guide, /--profile tinyapp-context\b/);
+});
+
+test("context write approval asks only for its data root and exact discovery entry", () => {
+  assert.deepEqual(appPermissions("context", { write: true }), [
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.context/", actions: ["get", "list", "put"] },
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/context/entry", actions: ["get", "put"] },
+  ]);
+  const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  assert.match(guide, /scoped approval grants only `<C>\/` and this app's exact discovery entry/);
+});
+
 
 test("a write lists every app's discovery entry, so the agent reuses an app instead of naming a second one", () => {
   const w = world([profile()], { catalog: { keys: ["xyz.tinycloud.tinyapps.catalog/gene-keys/entry", "xyz.tinycloud.tinyapps.catalog/todos/entry"], truncated: false, nextCursor: null } });
