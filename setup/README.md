@@ -63,7 +63,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 - [/onboarding](onboarding.md): the one setup. Signs you in and gives the starting grant. Personal records reuse it; the other abilities each ask for their own approval too.
 - [/agent](agent.md): installs the one skill for Secrets, publish/share or Courier, after /onboarding.
-- [/cli](tinycloud.md): installs the CLI and core skill into a private prefix. Does not grant access.
+- [/cli](tinycloud.md): installs the CLI and attempts the optional core skill. Does not grant access.
 - [/openkey](openkey.md): installs the standalone OpenKey CLI, for workflows that need it. No page here uses it. Nothing to approve.
 
 ## Skills
