@@ -13,7 +13,7 @@ The generic-store scenarios below use an explicitly chosen custom fitness app, n
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.11 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.6.2` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected one stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
+- **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.3.13 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.6.2` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected one stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` or `~/.agents/skills`, which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.
@@ -149,6 +149,33 @@ This test proves that the agent offers a fast copy when useful, reuses existing 
 - The owner never asks for the index or learns the word.
 - No approval for already-covered SQL access; at most one approval for the missing actions, and no pasted code.
 - KV and SQL counts match for every kind afterwards.
+
+## Follow-up test: two agents, one owner (`xa-<A>-<B>-<placement>`)
+
+This test proves that a second agent finds the first agent's app and writes the same kind with the same field names, and that neither agent asks the owner whether the app is new (TC-2431). Follow the scorecard PROTOCOL (Auto-Sign default, identity listing at creation, HOME isolation, guards).
+
+| # | Who | Prompt or action | Expected |
+|---|---|---|---|
+| X1 | A = Claude Code (auto mode), fresh HOME, new owner | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Make me a Gene Keys app and save my Life's Work as Gene Key 3, gift Innovation, then read it back to me." | §1a may print `ask`; the request makes an app, so the agent uses `new` with no question. Each new kind's `fields` meanings state the value form with an example. |
+| X2 | QA, owner read | `kv list xyz.tinycloud.tinyapps.catalog/`, `kv list xyz.tinycloud.tinyapps.<app>/`, `kv get` of `<ID>/catalog`, every `<ID>/catalog/<kind>` and the record | Save A's slug, kind, `fields` keys and `v`. |
+| X3 | B = Codex ("Ask for approval"), new session | "Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Add my Evolution to my Gene Keys: Gene Key 50, gift Harmony, then read it back to me." Two variants: **B-same** (same HOME: shared private CLI, `default` profile, skill in `~/.agents/skills`) and **B-other** (new fresh HOME, same owner, onboards with the same OpenKey account). | §3's `appEntries` lists A's app; B reuses its slug and kind. |
+| X4 | QA, owner read | The same reads as X2 | See pass. |
+| X5 | optional reverse pair | A = Codex, B = Claude Code | The same pass. |
+
+**Pass (all):**
+- Exactly one discovery entry for the app; B created no second slug.
+- B's record key is under A's `<ID>/<kind>/…`. B wrote no new kind record; extending A's kind under rule 3 with "(added <date>)" is allowed.
+- `keys(B.data)` ⊆ `keys(A.kind.fields)`, spelled identically (for example `sphere`, `gene_key`, `gift`), and B's values follow the forms in A's field meanings.
+- `B.v` equals the kind's `v`, and `B.by` is `codex`.
+- `kv list <ID>/<kind>/` shows both records.
+- B's transcript shows a `kv get <ID>/catalog/<kind>` before its `kv put`.
+- Neither agent asks "is this new" or "is this your first record". B's §1a prints `new` (A's entry exists) or `ask` followed by `new` without a question.
+- B's reply quotes values read back with `kv get`.
+- No Claude Code "Read outside the working directories" dialog: the skill is read with the shell, in parts.
+
+**Targets:** B-same 0 approvals; B-other 2 approvals (onboarding) and 0 more for the app.
+
+**OpenKey link records budget** (counted as in `cleanup-W1.md`, "Records (links)"): A fresh 2 (onboarding sign-in, applications grant and account discovery); A's app 0; B-same 0, B-other 2; B's writes 0. Cell total: 2 same computer (cap 3 with one TC-2346 blip retry), 4 separate computer (cap 6). Both B variants off one A: 4 (cap 6). With the reverse pair: 8 (cap 10).
 
 ## Known rough edges
 

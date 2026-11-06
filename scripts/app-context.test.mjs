@@ -37,9 +37,24 @@ const world = (profiles, { selected = "owner", failure, contextSpace, catalog = 
 test("onboarding access is reused without a new profile or approval, after a real read boundary", () => {
   const w = world([profile()]);
   const context = appContext("/cli", "notes", { env: {}, run: w.run, write: true });
-  assert.deepEqual(context, { status: "ready", profile: "owner", ownerDid: owner, host, spaceId: space, catalogKeys: [] });
+  assert.deepEqual(context, { status: "ready", profile: "owner", ownerDid: owner, host, spaceId: space, catalogKeys: [], appEntries: [] });
   assert.deepEqual(w.writes, []);
   assert.equal(w.reads[0].name, "owner");
+});
+
+test("a write lists every app's discovery entry, so the agent reuses an app instead of naming a second one", () => {
+  const w = world([profile()], { catalog: { keys: ["xyz.tinycloud.tinyapps.catalog/gene-keys/entry", "xyz.tinycloud.tinyapps.catalog/todos/entry"], truncated: false, nextCursor: null } });
+  const context = appContext("/cli", "genekeys", { env: {}, run: w.run, write: true });
+  assert.deepEqual(context.appEntries, ["gene-keys", "todos"]);
+  const prefixes = w.reads.map((r) => r.args[r.args.indexOf("--prefix") + 1]);
+  assert.deepEqual(prefixes, ["xyz.tinycloud.tinyapps.genekeys/catalog/", "xyz.tinycloud.tinyapps.catalog/"]);
+  assert.deepEqual(w.writes, []);
+  const read = world([profile()]);
+  const readOnly = appContext("/cli", "genekeys", { env: {}, run: read.run });
+  assert.equal("appEntries" in readOnly, false);
+  assert.equal(read.reads.length, 1);
+  const partial = world([profile()], { catalog: { keys: [], truncated: true, nextCursor: "c" } });
+  assert.throws(() => appContext("/cli", "genekeys", { env: {}, run: partial.run, write: true }), /incomplete/);
 });
 
 test("a fresh key-only profile is sent to onboarding first, keeping the scoped sign-in details", () => {

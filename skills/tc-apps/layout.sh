@@ -1,13 +1,9 @@
 #!/bin/sh
-# Prints which layout a generic tiny app uses on this computer, then exits 0. It only reads. The checks run in this
-# order, the same rule the hosted MCP's move uses:
-#   1. a migration receipt here says "verified": true for this app                    -> new
-#   2. the app's discovery entry exists in the owner's `applications` space            -> new
-#   3. the old place (`default`, xyz.tinycloud.agent-data/) holds the app's catalog    -> legacy
-#   4. otherwise                                                                        -> new
-# When check 2 or 3 can't be made it prints, instead of guessing:
-#   ask          this computer's sign-in can't read there (none, expired, or no grant): ask the owner
-#   check-failed the read failed for another reason (for example the network): write nothing, try again later
+# Prints which layout a generic tiny app uses on this computer, then exits 0. It only reads.
+#   new          a verified move exists here (migration receipt), or the old place holds no records for the app
+#   legacy       the old place (`default`, xyz.tinycloud.agent-data/) holds records for the app and no verified move exists
+#   ask          the old place can't be listed with this computer's earlier sign-in (none, or expired). Never a question to the owner: see SKILL.md §1a
+#   check-failed the listing failed for another reason (for example the network): write nothing, try again later
 # Exit codes: 0 after printing one word, 2 for a bad app name, 3 when jq is missing (nothing is printed; install jq).
 # Usage: sh layout.sh <app>
 # It runs no sign-in and creates no profile or grant. A receipt counts only when it says "verified": true for this app.
