@@ -184,8 +184,10 @@ test("/courier names the two-call skill install, served unchanged, for the skill
     assert.match(step, /This step is required/, surface);
     assert.match(step, /Only if your client is none of those three, read SKILL\.md and start\.md directly instead/, surface);
   }
-  // The /cli step this one points at uses the same download.
-  assert.ok(readFileSync(join(root, "setup/tinycloud.md"), "utf8").includes(download));
+  // The /cli step also downloads both the CLI installer and shared skill installer.
+  const cliSetup = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  assert.match(cliSetup, /install-cli\.mjs/);
+  assert.match(cliSetup, /skills\/install\.js/);
 });
 
 test("every onboard-first route says the owner's request is the go-ahead, as written and as served", () => {

@@ -4,6 +4,9 @@
 
 Give any AI agent this page, and it sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do. Then it carries on with what you asked for.
 
+TinyCloud keeps your records available across agents.
+
+
 **Paste into your agent:**
 
 > Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.
@@ -26,7 +29,6 @@ After an interruption, rerun the same command with the same profile to resume th
 
 The person you are talking to is the **owner**. Onboarding sets up three things so you can act for them: a TinyCloud profile for them on this computer, their sign-in with OpenKey, and a starting grant. Keep their original request; after onboarding, continue it in this conversation without asking for another link.
 
-**What/when:** TinyCloud is the owner's encrypted storage for records, files, and secrets; secrets are encrypted before storage. Use it when something should outlast a conversation or work across agents. Shell agents use the CLI; chat apps use hosted MCP.
 
 Pick the route for where you run:
 
@@ -47,7 +49,7 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and its `tinycloud-cli` skill in one download call and one run call. If a guide sent you here, give the CLI setup that guide's action skill too (`apps` for /apps, `courier` for /courier, `chat` for /chat), so the same run call installs it. Replace `<TC_BIN>` in each shell block with the selected absolute executable path; separate tool calls need not share shell variables.
+**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and attempts the optional `tinycloud-cli` skill in one download call and one run call. If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI; the command does not depend on the skill. If a guide sent you here, give the CLI setup that guide's action skill too (`apps` for /apps, `courier` for /courier, `chat` for /chat), so the same run call installs it. Replace `<TC_BIN>` in each shell block with the selected absolute executable path; separate tool calls need not share shell variables.
 
 ```sh
 TC='<TC_BIN>'
