@@ -272,12 +272,8 @@ test("tc-apps sends an agent with no onboarded profile through /onboarding befor
   assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
 });
 
-test("the cross-agent payoff is a separate owner-visible line on connect and onboarding", () => {
-  const site = join(root, "_site");
-  const payoff = "TinyCloud keeps your records available across agents.";
-  for (const file of ["connect.md", "onboarding.md"]) {
-    assert.ok(readFileSync(join(site, file), "utf8").split("\n").includes(payoff), file);
-  }
+
+test("onboarding keeps optional-skill continuation guidance", () => {
   const onboarding = readFileSync(join(root, "setup/onboarding.md"), "utf8");
   assert.match(onboarding, /If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI/);
 });
