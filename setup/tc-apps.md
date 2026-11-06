@@ -2,15 +2,15 @@
 
 # Personal records in TinyCloud (`tc-apps`)
 
-Your agent keeps your records, like meals, weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Each app has its own folder. Existing onboarding access is reused; an approval is requested only when the task needs access you have not already granted.
+Your agent keeps your records, like meals, weight, workouts, goals or todos, in your own TinyCloud storage, organised into apps it creates and extends as you go. Each app has its own approval. It can also keep optional low-sensitivity context—facts, preferences, decisions and handoffs—so later sessions can pick up where you left off.
 
 ## For the owner
 
-- **What it does:** reuses the TinyCloud CLI from onboarding and installs the `tc-apps` skill only if needed, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
+- **What it does:** reuses the TinyCloud CLI from onboarding and installs the `tc-apps` skill for the supported agents found on this computer, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
-  - **Codex:** before you paste, type `/permissions` and choose "Ask for approval", then approve each step it asks for.
-- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat your ordinary read/write grants. Otherwise it asks only for missing access and sends the actual OpenKey link. The older narrow catalog fallback uses a manual sign-in code in chat, but its access link completes automatically. The agent runs the commands and finishes the request; you never need a separate terminal.
+  - **Codex:** approve the CLI and skill installation when Codex requests it. If its sandbox blocks a step, follow the shared CLI guide's blocked-install instructions.
+- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat ordinary read/write grants. Otherwise it asks only for missing access and sends the OpenKey link. For app approval links, use the line "Open this link and approve, then tell me." The agent runs commands and finishes your request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
@@ -44,27 +44,50 @@ Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use
 
 **CLI rule (stable `1.6.2`): after this step, run skill §1's block (see §3 below) before any other TinyCloud command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from skill §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.2`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: skill §1 prints `CLI_OLDER`; follow the shared CLI setup once, even if it already ran in this conversation, and rerun skill §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
-## 2. Install only the skill
+## 2. Install the skill for each agent
 
-If the installed `tc-apps` skill is version `0.3.13` or newer and its helpers are present, skip installation and read it in §3. Otherwise use the site's existing checksum-verifying skill installer. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
+Install the current `tc-apps` skill for this client and every other supported agent already configured on this computer. This also puts `CONTEXT.md` where the optional session-check line can read it. Use the official checksum-verifying installer, which keeps the selected CLI unchanged. Replace `<CLIENT>` with `claude-code`, `codex` or `opencode`; other agents use `codex`.
 
 On macOS/Linux or an agent's Bash tool on Windows:
 
 ```sh
-umask 077
-D=$(mktemp -d) && curl -fsSL https://agents.tinycloud.xyz/skills/install.js -o "$D/install.cjs" && node "$D/install.cjs" apps --agent '<CLIENT>'
+CLIENT='<CLIENT>'; umask 077
+D=$(mktemp -d) || exit 1
+curl -fsSL https://agents.tinycloud.xyz/skills/install.js -o "$D/install.cjs" || { rm -rf "$D"; exit 1; }
+node "$D/install.cjs" apps --agent "$CLIENT" || { rm -rf "$D"; exit 1; }
+case "$CLIENT" in claude-code) SKILL_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" ;; *) SKILL_DIR="$HOME/.agents/skills/tc-apps" ;; esac
+TARGETS=$(sh "$SKILL_DIR/session-check.sh" clients "$CLIENT") || { echo 'Could not list configured agents' >&2; rm -rf "$D"; exit 1; }
+[ -n "$TARGETS" ] || { echo 'Could not list configured agents' >&2; rm -rf "$D"; exit 1; }
+for target in $TARGETS; do
+  [ "$target" = "$CLIENT" ] && continue
+  node "$D/install.cjs" apps --agent "$target" || { rm -rf "$D"; exit 1; }
+done
+rm -rf "$D"
 ```
 
 On Windows PowerShell:
 
 ```powershell
+$ErrorActionPreference = 'Stop'
+$Client = '<CLIENT>'
 $D = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $D | Out-Null
 Invoke-WebRequest https://agents.tinycloud.xyz/skills/install.js -OutFile (Join-Path $D 'install.cjs')
-node (Join-Path $D 'install.cjs') apps --agent '<CLIENT>'
+if ($env:CLAUDE_CONFIG_DIR) { $ClaudeDir = $env:CLAUDE_CONFIG_DIR } else { $ClaudeDir = Join-Path $HOME '.claude' }
+if ($env:CODEX_HOME) { $CodexDir = $env:CODEX_HOME } else { $CodexDir = Join-Path $HOME '.codex' }
+$OpenCodeDir = Join-Path $HOME '.config/opencode'
+$Targets = @($Client)
+if (Test-Path $ClaudeDir) { $Targets += 'claude-code' }
+if (Test-Path $CodexDir) { $Targets += 'codex' }
+if (Test-Path $OpenCodeDir) { $Targets += 'opencode' }
+foreach ($Target in ($Targets | Sort-Object -Unique)) {
+  node (Join-Path $D 'install.cjs') apps --agent $Target
+  if ($LASTEXITCODE -ne 0) { Remove-Item -Recurse -Force $D; throw "Skill installation failed for $Target" }
+}
+Remove-Item -Recurse -Force $D
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.3.13 <folder>` (or a newer skill), then remove only the temporary download directory created by this step. The installer verifies every file before replacing the skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.4.1 <folder>` (or a newer skill) for each target. The installer verifies every file before replacing a skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
@@ -73,33 +96,67 @@ If something goes wrong:
 - **Claude Code (or your client) denies a step or asks to confirm it:** show the owner the step and what it does, then ask them to reply naming that step, as in [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). Run it again only once they agree. Don't edit settings or run it another way.
 - **A command, download or checksum check fails:** stop and report the error. Don't retry with other options, in another folder or from another source.
 
-If installation was needed, continue only after the installer has printed `SKILL_INSTALLED` successfully.
+Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.1` (or a newer version) for every target.
+
 
 ## 3. Carry on with the skill
 
-Read the installed skill with these two shell calls, in order; together they are the whole file. Use the shell, never your client's file-read tool: the skill folder is outside the project, and Claude Code asks the owner before its file-read tool opens a file there, while a shell read goes ahead. Two parts keep each output short enough to show in full. If your client still saves an output to a file, read that saved file, not the skill.
+Read the installed skill with three shell calls in order; together they are the whole file. Use the shell, never your client's file-read tool: the skill folder is outside the project, and Claude Code asks the owner before its file-read tool opens a file there, while a shell read goes ahead. Three parts keep each output short enough to show in full. If your client still saves an output to a file, read that saved file, not the skill.
 
-Claude Code:
+Claude Code uses its TinyCloud plugin path when set; otherwise it reads its user installation:
 
 ```sh
-sed '/^## 4\. Request only missing access$/,$d' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"
+if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "${CLAUDE_SKILL_DIR}/SKILL.md"; else sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"; fi
 ```
 
 ```sh
-sed -n '/^## 4\. Request only missing access$/,$p' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"
+if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "${CLAUDE_SKILL_DIR}/SKILL.md" | sed '$d'; else sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md" | sed '$d'; fi
+```
+
+```sh
+if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed -n '/^## 4\. Request only missing access$/,$p' "${CLAUDE_SKILL_DIR}/SKILL.md"; else sed -n '/^## 4\. Request only missing access$/,$p' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"; fi
 ```
 
 Codex and OpenCode:
 
 ```sh
-sed '/^## 4\. Request only missing access$/,$d' "$HOME/.agents/skills/tc-apps/SKILL.md"
+sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "$HOME/.agents/skills/tc-apps/SKILL.md"
+```
+
+```sh
+sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "$HOME/.agents/skills/tc-apps/SKILL.md" | sed '$d'
 ```
 
 ```sh
 sed -n '/^## 4\. Request only missing access$/,$p' "$HOME/.agents/skills/tc-apps/SKILL.md"
 ```
 
-Read the installed skill directly for this request, even if the client has not refreshed its skill list. Follow it now from §1. No restart is needed. In a future conversation that has not discovered the skill, the owner can paste the setup link again; read the existing installed skill and carry on.
+Your client may not list the new skill until it restarts; you don't need it to.
+
+Follow the skill now for the owner's request, from its §1. When you've finished it, end your last message with §4's question.
+
+**OpenCode only:** OpenCode loads skills when it starts, so new conversations in this window won't know the skill yet. Claude Code and Codex pick it up by themselves. When you've finished the request, add one line to your last message: "Restart OpenCode once, so new conversations can use your TinyCloud apps."
+
+## 4. One question: check context in every session
+
+Ask this once, at the end of your last message, after the owner's request is done; don't hold up the request for it. First run the check, with your client as `<client>` (`claude-code`, `codex` or `opencode`):
+
+```sh
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -n "$d" ] && [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" status '<client>'; break; fi; done
+```
+
+- `on` or `declined` → don't ask. Don't ask either if this conversation's context key list (`CONTEXT.md` §3) has `preference/session-check`.
+- `off` → end your last message with this question, naming the agents on its `clients:` line:
+
+  > One question: should new sessions of <Codex and Claude Code> on this computer check your TinyCloud context first, so they know what you've told any of your agents? Yes adds one line to their instructions, which you can remove any time.
+
+When the owner answers:
+- **Yes** → run the same block with `add '<client>'` in place of `status '<client>'`. It adds one line, ending with `<!-- tinycloud-context -->`, at the end of each agent's instructions file, and changes no other line; it prints each file it changed. Never edit those files yourself.
+  - **Codex:** the files are outside the workspace, so run it with `sandbox_permissions: "require_escalated"` and the justification "Add the TinyCloud context line to your agents' instructions".
+  - It prints `could not change`, or your client blocks the step → don't run it another way. Give the owner the command for their own terminal: `for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" add '<client>'; break; fi; done`.
+  - Then, if the context app isn't approved on this computer yet (`CONTEXT.md` §3's list prints `PROFILE_NOT_FOUND`), get its approval: skill §4 with `context` and `Context`. Tell the owner in one line which files changed.
+- **No** → run the same block with `decline` in place of `status '<client>'`. If the context app is approved on this computer, also save `preference/session-check`, "No session check", as `CONTEXT.md` §4 says, without a line to the owner. Don't ask again.
+- Anything else → don't ask again in this conversation.
 
 <a id="if-claude-code-still-blocks-it"></a>
 
@@ -154,4 +211,12 @@ for p in $("$B" profile list 2>/dev/null | grep -o 'tinyapp-[a-z0-9-]*'); do "$B
 
 `PROFILE_NOT_FOUND` means that profile is already absent. If `meal-grant.json` is gone, the grant still ends after 7 days, as does a replaced grant. Per-app approvals remain valid on TinyCloud until they expire; clearing a local session is not revocation. The `default` sign-in stays because other tools use it.
 
-If the owner asks to uninstall too, the agent removes this skill's install, state and client skill folder. The owner's records stay in TinyCloud.
+To stop new sessions checking your TinyCloud context, run this before you delete the folders below. It removes only the lines that end with `<!-- tinycloud-context -->`, from `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` (or `AGENTS.override.md`) and `~/.config/opencode/AGENTS.md`, and changes nothing else. You can also delete that line yourself.
+
+```sh
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" remove; break; fi; done
+```
+
+To remove the rest, delete any older `~/.local/share/tc-apps` copy, `~/.local/state/tc-apps`, and each skill copy: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` for Claude Code and `~/.agents/skills/tc-apps` for Codex and OpenCode. The setup copies it for every agent it finds on this computer, so delete both folders if both exist. If Claude Code has the skill from the TinyCloud plugin, run `/plugin uninstall tinycloud@tinycloudlabs` there too. Your records stay in your TinyCloud.
+
+To delete context records, ask an agent: "Forget my coffee order", or "Clear my TinyCloud context". Deleting a record removes it from your TinyCloud, so agents can't get it there again. An earlier copy stays in TinyCloud's storage, and an agent that already read it may have kept its own copy, so don't put anything in context you'd need permanently erased.

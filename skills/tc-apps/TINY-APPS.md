@@ -16,6 +16,7 @@ A domain is owned by a catalog app when one of its words matches the request. If
 1. A catalog app owns the domain: that app is the target. Set the app up if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
 2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §1a to §9). Each new-layout app has its own folder in `applications`, `xyz.tinycloud.tinyapps.<slug>/`. Reuse onboarding access; request only missing permissions. An app with earlier records in `default` stays in that layout (`LEGACY.md`) until the owner requests and verifies a move. Never ask the owner whether an app had earlier records: when §1a prints `ask`, follow its rule there.
 3. The request is ambiguous between two catalog apps: ask one question that names both, then follow rule 1 for the answer.
+4. Something to remember about the owner, a question about what they told an agent before, or "continue" / "pick up where I left off": the context app (`CONTEXT.md`), unless a catalog app owns the domain (rule 1) or it is sensitive (`CONTEXT.md` §1).
 
 Never write a catalog app's data to the generic store, and never write generic records into a catalog app.
 
@@ -24,7 +25,7 @@ Never write a catalog app's data to the generic store, and never write generic r
 Run `SKILL.md` §1 first and use its one selected CLI. **Check onboarding access before the scoped setup below:**
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' healthlog --catalog --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' healthlog --catalog --write; break; fi; done
 ```
 
 Use `recipes` instead of `healthlog` for Recipes; omit `--write` for a read-only request. A `ready` result means the existing profile already has onboarding's access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` as `<CATALOG_PROFILE>`, `<CATALOG_HOST>`, `<CATALOG_SPACE>` and `<OWNER_DID>`. Do **not** run another sign-in or owner-grant helper.
@@ -113,7 +114,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 3. **The owner's approval (agent-run, the sign-in code in chat).** Print the approval message:
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
 ```
 
    Copy only the text between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE` into your reply once, exactly as printed. The `STATE:` line is for you. Then start the grant script yourself in a live interactive tool session (PTY), with stdin available across replies:

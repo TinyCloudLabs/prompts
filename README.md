@@ -25,6 +25,8 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/skills/index.json` | Every skill's name, short name, version, description, source, changed files, and files with sha256 checksums | generated |
 | `/skills/install.js` | The installer the guides run | [`scripts/install-skill.js`](scripts/install-skill.js) |
 
+The context app in `/apps` lets agents save and reuse the owner's low-sensitivity facts, preferences, decisions and handoffs.
+
 The earlier URLs, the repository paths such as `/setup/tc-apps.md`, `/apps/tinychat/setup.md` and `/skills/tc-apps/SKILL.md`, redirect to these, and so does each page's URL with a trailing slash (`/apps/` → `/apps`) and each Markdown guide's URL with `.md` added (`/apps.md` → `/apps`), which agents often try first. The site also generates `/` (for people), `/llms.txt`, `/llms-full.txt`, the sitemap and `/.well-known/agent-skills/index.json`. This README isn't published; `/README.md` redirects to `/setup`.
 
 Guides link to each other and to skill files by relative repository path; the build rewrites those links to the public URLs. The build then fails if any link in a served Markdown file, relative or to this site, doesn't reach a file the site serves.

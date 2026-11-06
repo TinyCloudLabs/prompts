@@ -4,11 +4,11 @@
 
 Give your AI agent abilities that keep your data in your own TinyCloud space. Agents that can install and run the TinyCloud CLI use it; others that support remote MCP connect through /connect. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.
 
-**New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). It works in any agent: you sign in or create an account with OpenKey, approve two OpenKey screens, and your agent carries on with your request.
+**New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). Follow its current OpenKey approval steps; your agent carries on with your request.
 
 The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
-**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI, signs the owner in and gives the starting grant, then sends you to the page below for the request. Personal records reuse that grant; Home feed, Meetings, publish/share, Secrets and Courier each ask for their own approval the first time.
+**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI, signs the owner in and grants the starting access, then sends you to the page below for the request. Personal records reuse that access; Home feed, Meetings, publish/share, Secrets, Courier and the context app ask only when their task needs new access.
 
 ## Personal records: [/apps](tc-apps.md)
 

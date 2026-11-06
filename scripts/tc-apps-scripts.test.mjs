@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
@@ -103,7 +103,6 @@ if (args[0] === "profile" && args[1] === "show") {
 });
 
 
-import { readdirSync } from "node:fs";
 // ---- migrate.sh: owner-device copy of one generic tiny app from `default` to its own `applications` root ----
 // A stand-in CLI keeps both spaces in one JSON file under the test home, records every call, and can be told to
 // misbehave (changed read-back, partial failure, late edits on the source). Its `status` and `context` describe one
@@ -482,20 +481,20 @@ test("going back on an app-scoped profile: the helper requests only the catalog 
   const perm = (path, actions) => ({ service: "tinycloud.kv", space: APPS_SPACE, path, actions: actions.map((a) => `tinycloud.kv/${a}`) });
   const scoped = { name: "tinyapp-fitness", ownerDid: OWNER_DID, host: "https://node.test", authenticated: true, delegations: [],
     session: { present: true, expired: false, expiresAt: "2099-01-01T00:00:00Z", permissions: [
-      perm(`${NEW("fitness")}/`, ["get", "list", "put", "del"]), perm("xyz.tinycloud.tinyapps.catalog/", ["get", "list"]), perm("xyz.tinycloud.tinyapps.catalog/fitness/", ["put"]),
+      perm(`${NEW("fitness")}/`, ["get", "list", "put", "del"]), perm("xyz.tinycloud.tinyapps.catalog/fitness/entry", ["get", "put"]),
     ] } };
   const setStatus = () => control(h, { status: { activeProfile: "tinyapp-fitness", profiles: [scoped] } });
   const helper = () => JSON.parse(run(["node", join(skill, "app-context.mjs"), h.bin, "fitness", "--remove-entry"], { HOME: h.dir }).stdout);
   const entryCmd = (verb) => run([h.bin, "--profile", "tinyapp-fitness", "--host", "https://node.test", "kv", verb, ENTRY("fitness"), "--space", APPS_SPACE, "--json"], { HOME: h.dir });
   setStatus();
-  // Without the app's catalog del the delete is refused, and the helper names exactly that permission for §4.
+  // Without the app's exact entry delete the operation is refused, and the helper names only that permission.
   assert.equal(entryCmd("delete").status, 5);
   const before = helper();
   assert.equal(before.status, "grant-required");
   assert.equal(before.profile, "tinyapp-fitness");
-  assert.deepEqual(before.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/fitness/", actions: ["del"], space: APPS_SPACE }]);
+  assert.deepEqual(before.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/fitness/entry", actions: ["del"], space: APPS_SPACE }]);
   // §4 grants exactly that.
-  scoped.session.permissions.push(perm("xyz.tinycloud.tinyapps.catalog/fitness/", ["del"]));
+  scoped.session.permissions.push(perm("xyz.tinycloud.tinyapps.catalog/fitness/entry", ["del"]));
   setStatus();
   assert.equal(helper().status, "ready");
   // The entry first: the receipt still switches this computer, so a failure after this point never strands it.
@@ -714,4 +713,197 @@ test("migrate.sh says plainly that a key contains a tab and changes nothing", ()
   }
   assert.equal(cliCalls(h).some((c) => c.argv[1] === "put"), false);
   assert.deepEqual(readdirSync(h.state), []);
+});
+
+// The session check (setup §4, CONTEXT.md §6): one marked line in each agent's global instructions file.
+const sessionCheck = join(skill, "session-check.sh");
+const MARK = "<!-- tinycloud-context -->";
+const sc = (h, args, extra = {}) => run(["sh", sessionCheck, ...args], { HOME: h.dir, TC_APPS_STATE: h.state, ...extra });
+const withSkill = (h, dir = ".agents/skills/tc-apps") => {
+  mkdirSync(join(h.dir, dir), { recursive: true });
+  writeFileSync(join(h.dir, dir, "CONTEXT.md"), "# context\n");
+  return join(h.dir, dir);
+};
+const lineFor = (skillDir) => `Before your first answer in a session, check my TinyCloud context: follow ${skillDir}/CONTEXT.md (tc-apps skill, context app). Save new facts I tell you there. ${MARK}`;
+
+test("session-check.sh add puts one marked line in each agent's instructions file, keeps every other byte, and remove takes only that line out", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".codex"));
+  const claude = join(h.dir, ".claude/CLAUDE.md");
+  const codex = join(h.dir, ".codex/AGENTS.md");
+  writeFileSync(claude, "# Mine\n\nkeep this line\n");
+  writeFileSync(codex, "no newline at the end");
+  const added = sc(h, ["add", "codex"]);
+  assert.equal(added.status, 0, added.stderr + added.stdout);
+  assert.deepEqual(added.stdout.trim().split("\n").sort(), [`added: ${claude}`, `added: ${codex}`].sort());
+  assert.equal(readFileSync(claude, "utf8"), `# Mine\n\nkeep this line\n${lineFor(installed)}\n`);
+  assert.equal(readFileSync(codex, "utf8"), `no newline at the end\n${lineFor(installed)}\n`);
+  assert.equal(existsSync(join(h.dir, ".config/opencode")), false, "OpenCode isn't on this computer: nothing is created for it");
+  const again = sc(h, ["add", "codex"]);
+  assert.equal(again.status, 0);
+  assert.match(again.stdout, /already there/);
+  assert.equal(readFileSync(claude, "utf8").split(MARK).length, 2, "one line, however often add runs");
+  assert.equal(sc(h, ["status", "codex"]).stdout, "on\nclients: codex claude-code\n");
+  const removed = sc(h, ["remove"]);
+  assert.equal(removed.status, 0, removed.stderr);
+  assert.equal(readFileSync(claude, "utf8"), "# Mine\n\nkeep this line\n");
+  assert.equal(readFileSync(codex, "utf8"), "no newline at the end\n");
+  assert.equal(sc(h, ["status", "codex"]).stdout.split("\n")[0], "off");
+});
+test("session-check.sh remove preserves owner text that mentions the marker mid-line", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  const file = join(h.dir, ".claude/CLAUDE.md");
+  const ownerText = "Owner note: this marker <!-- tinycloud-context --> is only an example.\n";
+  writeFileSync(file, `${ownerText}${lineFor(installed)}\n`);
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(readFileSync(file, "utf8"), ownerText);
+});
+
+test("session-check.sh status and add ignore marker text that does not end its line", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  const file = join(h.dir, ".claude/CLAUDE.md");
+  const ownerText = "Owner note: <!-- tinycloud-context --> is only an example.\n";
+  writeFileSync(file, ownerText);
+  assert.equal(sc(h, ["status", "claude-code"]).stdout, "off\nclients: claude-code\n");
+  const added = sc(h, ["add", "claude-code"]);
+  assert.equal(added.status, 0, added.stderr + added.stdout);
+  assert.equal(added.stdout.trim(), `added: ${file}`);
+  assert.equal(readFileSync(file, "utf8"), `${ownerText}${lineFor(installed)}\n`);
+});
+
+
+test("session-check.sh names each agent's own skill copy if it has one, and creates the running agent's file", () => {
+  const h = fresh();
+  const agents = withSkill(h);
+  const own = withSkill(h, ".claude/skills/tc-apps");
+  const added = sc(h, ["add", "claude-code"]);
+  assert.equal(added.status, 0, added.stderr);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(own)}\n`);
+  assert.equal(existsSync(join(h.dir, ".codex")), false);
+  mkdirSync(join(h.dir, ".codex"));
+  assert.equal(sc(h, ["add", "claude-code"]).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.md"), "utf8"), `${lineFor(agents)}\n`);
+});
+
+test("session-check.sh uses Codex's AGENTS.override.md when it exists, and OpenCode's fallback to ~/.claude/CLAUDE.md", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".codex"));
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".config/opencode"), { recursive: true });
+  writeFileSync(join(h.dir, ".codex/AGENTS.override.md"), "override\n");
+  writeFileSync(join(h.dir, ".claude/CLAUDE.md"), "claude\n");
+  const added = sc(h, ["add", "opencode"]);
+  assert.equal(added.status, 0, added.stderr);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.override.md"), "utf8"), `override\n${lineFor(installed)}\n`);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `claude\n${lineFor(installed)}\n`);
+  assert.equal(existsSync(join(h.dir, ".codex/AGENTS.md")), false, "a new AGENTS.md would be shadowed by the override");
+  assert.equal(existsSync(join(h.dir, ".config/opencode/AGENTS.md")), false, "a new AGENTS.md would stop OpenCode reading ~/.claude/CLAUDE.md");
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.override.md"), "utf8"), "override\n");
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), "claude\n");
+});
+
+test("session-check.sh remove keeps a linked instructions file linked, with its mode", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, "dotfiles"));
+  mkdirSync(join(h.dir, ".claude"));
+  const target = join(h.dir, "dotfiles/CLAUDE.md");
+  writeFileSync(target, "linked\n", { mode: 0o600 });
+  chmodSync(target, 0o600);
+  symlinkSync(target, join(h.dir, ".claude/CLAUDE.md"));
+  assert.equal(sc(h, ["add", "claude-code"]).status, 0);
+  assert.match(readFileSync(target, "utf8"), /tinycloud-context/);
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(lstatSync(join(h.dir, ".claude/CLAUDE.md")).isSymbolicLink(), true);
+  assert.equal(readFileSync(target, "utf8"), "linked\n");
+  assert.equal(statSync(target).mode & 0o777, 0o600);
+});
+
+test("session-check.sh reports a file it can't change, still changes the others, and exits 1", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".codex"));
+  chmodSync(join(h.dir, ".codex"), 0o500);
+  try {
+    const added = sc(h, ["add", "claude-code"]);
+    assert.equal(added.status, 1);
+    assert.match(added.stdout, new RegExp(`could not change: ${join(h.dir, ".codex/AGENTS.md")}`));
+    assert.match(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), /tinycloud-context/);
+  } finally {
+    chmodSync(join(h.dir, ".codex"), 0o700);
+  }
+});
+
+test("session-check.sh decline is remembered until add, and bad usage changes nothing", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  assert.equal(sc(h, ["status", "claude-code"]).stdout.split("\n")[0], "off");
+  assert.equal(sc(h, ["decline"]).status, 0);
+  assert.equal(sc(h, ["status", "claude-code"]).stdout.split("\n")[0], "declined");
+  assert.equal(sc(h, ["add", "claude-code"]).status, 0);
+  assert.equal(sc(h, ["status", "claude-code"]).stdout.split("\n")[0], "on");
+  assert.equal(existsSync(join(h.state, "session-check")), false);
+  for (const args of [[], ["add"], ["add", "cursor"], ["status"], ["wipe"]]) assert.equal(sc(h, args).status, 2, args.join(" "));
+});
+
+test("CONTEXT.md and session-check.sh have no line that Hermes' skills guard blocks", () => {
+  const dumpEnv = /printenv|(?<![A-Za-z0-9_])env\s*\|(?!\|)(?!\s*[{(])/;
+  const curlShell = /curl\s+[^|\s][^\n]*\|\s*(?:sudo\s+(?:-\S+\s+)*)?(?:ba|z|da|k|c|tc|fi)?sh\b/;
+  for (const file of ["CONTEXT.md", "session-check.sh", "TINY-APPS.md", "QUICKSTART.md"]) {
+    const lines = readFileSync(join(skill, file), "utf8").split("\n");
+    assert.deepEqual(lines.flatMap((line, i) => (dumpEnv.test(line) || curlShell.test(line) ? [`${file}:${i + 1}: ${line}`] : [])), []);
+  }
+});
+
+
+
+test("session-check.sh clients lists the running agent first, then each agent found, as status's clients line does", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, ".config/opencode"), { recursive: true });
+  assert.equal(sc(h, ["clients", "codex"]).stdout, "codex\nopencode\n");
+  assert.equal(sc(h, ["status", "codex"]).stdout.split("\n")[1], "clients: codex opencode");
+  const config = join(h.dir, "elsewhere");
+  mkdirSync(config);
+  assert.equal(sc(h, ["clients", "opencode"], { CLAUDE_CONFIG_DIR: config }).stdout, "opencode\nclaude-code\n");
+  for (const args of [["clients"], ["clients", "cursor"]]) assert.equal(sc(h, args).status, 2, args.join(" "));
+});
+
+test("session-check.sh names a set CLAUDE_SKILL_DIR's CONTEXT.md in Claude Code's line, and skips it when empty", () => {
+  const h = fresh();
+  const agents = withSkill(h);
+  const plugin = withSkill(h, "plugin/skills/tc-apps");
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".codex"));
+  assert.equal(sc(h, ["add", "codex"], { CLAUDE_SKILL_DIR: plugin }).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(plugin)}\n`);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.md"), "utf8"), `${lineFor(agents)}\n`, "Codex keeps its own copy");
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(sc(h, ["add", "claude-code"], { CLAUDE_SKILL_DIR: "" }).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(agents)}\n`);
+});
+
+// Two agents once filed the same coffee order as fact/coffee-order and preference/coffee-order.
+test("CONTEXT.md files a coffee order as a preference, a birthday or home city as a fact, and updates a subject under any kind", () => {
+  const context = readFileSync(join(skill, "CONTEXT.md"), "utf8");
+  const boundary = context.split("\n").find((l) => l.startsWith("- **Fact or preference.**"));
+  assert.ok(boundary, "CONTEXT.md §2 defines fact and preference");
+  assert.ok(boundary.includes("coffee order (`preference/coffee-order`)"), boundary);
+  assert.ok(boundary.includes("birthday (`fact/birthday`)") && boundary.includes("home city (`fact/home-city`)"), boundary);
+  const write = context.split("## 4. Write")[1].split("## 5.")[0];
+  assert.match(write, /same subject under every kind/);
+  assert.match(write, /never write a second record for the same subject/);
+  const runbook = readFileSync(join(root, "forward-tests-tc-apps.md"), "utf8").split("## Follow-up test: context across agents")[1];
+  assert.match(runbook, /\| A \|[^\n]*writes `preference\/coffee-order`/);
+  assert.match(runbook, /\| B \|[^\n]*gets `preference\/coffee-order`/);
 });
