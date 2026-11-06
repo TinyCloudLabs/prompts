@@ -85,7 +85,6 @@ In the next call, with `CLIENT` replaced, and `ACTION` replaced by the caller's 
 sh "$HOME/.local/share/tinycloud/install-cli.sh" &&
 if node "$HOME/.local/share/tinycloud/install.js" cli --agent CLIENT; then echo "TC_SKILL_STATUS installed"; else echo "TC_SKILL_STATUS unavailable"; fi &&
 node "$HOME/.local/share/tinycloud/install.js" ACTION --agent CLIENT
-
 ```
 This POSIX entry point downloads and runs the same `/install-cli.mjs` implementation; it has no separate CLI version or installation policy. The installer prints `SKILL_INSTALLED <name> <version> <folder>` for each successful skill. `TC_SKILL_STATUS installed`, `reused` or `unavailable` records the core-skill result separately; the calling guide skips its own action-skill install only when its skill was installed here.
 
