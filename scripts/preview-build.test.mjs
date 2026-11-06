@@ -91,14 +91,22 @@ test("a production build serves the repository's skills byte for byte, pointing 
   }
 });
 
-test("the served /cli keeps its POSIX blocks fenced and syntactically valid", () => {
-  for (const site of [production, preview]) {
+test("the served /cli keeps its POSIX blocks fenced and syntactically valid", (t) => {
+  const sites = [production, preview].map((site) => {
     const blocks = marked.lexer(readFileSync(join(site, "cli"), "utf8")).filter((token) => token.type === "code");
     assert.equal(blocks.length, 13, `${site}/cli code blocks`);
     const posix = blocks.filter((token) => token.lang === "sh");
     assert.equal(posix.length, 5, `${site}/cli POSIX blocks`);
+    return { site, posix };
+  });
+
+  for (const { site, posix } of sites) {
     for (const [index, block] of posix.entries()) {
       const result = spawnSync("sh", ["-n"], { input: block.text, encoding: "utf8" });
+      if (result.error?.code === "ENOENT") {
+        t.skip("sh is unavailable; code-block boundaries were checked");
+        return;
+      }
       assert.equal(result.status, 0, `${site}/cli POSIX block ${index + 1}: ${result.stderr}`);
     }
   }
