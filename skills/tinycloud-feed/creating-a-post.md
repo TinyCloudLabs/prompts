@@ -82,7 +82,7 @@ A card is one JSON object. `tinycloud feed publish` checks these fields:
 | `needsResponse` | `true` when the owner should answer, otherwise `false`. |
 | `title` | Heading. |
 | `body` | Card text. |
-| `choices` | Optional, with `needsResponse: true`: `[{"id": "yes", "label": "Yes"}]`. Each becomes an option in the answer form; the owner can also type a reply. A choice has only `id` and `label`; other fields are dropped. Keep each `label` to the choice itself: don't add "(Recommended)" or similar. In a typed ask (`payload.sitrep.record`), mark the recommended choice with `recommend` set to its option id. |
+| `choices` | Optional, with `needsResponse: true`: `[{"id": "yes", "label": "Yes"}]`. Each becomes an option in the answer form; the owner can also type a reply. A choice has only `id` and `label`; other fields are dropped. Keep each `label` to the choice itself: don't add "(Recommended)" or similar. To recommend one, say so in `body`. |
 | `urgency` | Number; higher sorts first. Equal urgencies list the oldest `createdAt` first. |
 | `createdAt` | ISO 8601 UTC time, such as `2026-11-03T09:00:00Z`. |
 | `payload` | Optional object for how Home shows the card, below. |
@@ -94,6 +94,8 @@ A card is one JSON object. `tinycloud feed publish` checks these fields:
 - `link`: also `payload.url`, an `https://` page that Home shows as "Open link".
 
 Any card can add `payload.source`, `{"label": "...", "url": "https://..."}`, shown as its source line.
+
+Don't add any other `payload` field, such as `payload.sitrep`. Home reads `payload.sitrep` as a typed record with its own schema; a card whose `payload.sitrep` it can't read shows as unsupported, never as a question to answer.
 
 A question with choices:
 
