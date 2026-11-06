@@ -185,7 +185,7 @@ This test proves that what the owner tells one agent reaches the next one on the
 
 | # | Client | Prompt | Expected |
 |---|---|---|---|
-| A | Codex | the setup link, then "Remember that my coffee order is a flat white." | Step 5 copies the skill into `~/.agents/skills` and `~/.claude/skills`, each checked `OK`. One approval, for `xyz.tinycloud.tinyapps.context/` only. It writes `preference/coffee-order` (`by` `codex`), says so in one line, and ends with the session-check question. |
+| A | Codex | the setup link, then "Remember that my coffee order is a flat white." | Step 5 copies the skill into `~/.agents/skills` and `~/.claude/skills`, each checked `OK`. One approval, for `xyz.tinycloud.tinyapps.context/` and the exact discovery entry `xyz.tinycloud.tinyapps.catalog/context/entry`; no catalog-wide permission. It writes `preference/coffee-order` (`by` `codex`), says so in one line, and ends with the session-check question. |
 | – | – | "Yes." | `session-check.sh add codex` (one escalation) adds the marked line to `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`, and nothing else in either file. |
 | B | Claude Code, new conversation | "What's my coffee order?" | No install. It lists the context keys once, gets `preference/coffee-order`, and answers "flat white". |
 | B2 | Claude Code, new conversation, after A in a fresh home and account where the owner answered "No" | "What's my coffee order?" | Claude Code still has `tc-apps` from `~/.claude/skills`, loads it for the question, and answers "flat white". |

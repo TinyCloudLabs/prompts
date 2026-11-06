@@ -25,7 +25,7 @@ Never write a catalog app's data to the generic store, and never write generic r
 Run `SKILL.md` §1 first and use its one selected CLI. **Check onboarding access before the scoped setup below:**
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' healthlog --catalog --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' healthlog --catalog --write; break; fi; done
 ```
 
 Use `recipes` instead of `healthlog` for Recipes; omit `--write` for a read-only request. A `ready` result means the existing profile already has onboarding's access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` as `<CATALOG_PROFILE>`, `<CATALOG_HOST>`, `<CATALOG_SPACE>` and `<OWNER_DID>`. Do **not** run another sign-in or owner-grant helper.

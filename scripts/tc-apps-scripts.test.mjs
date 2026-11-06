@@ -763,6 +763,20 @@ test("session-check.sh remove preserves owner text that mentions the marker mid-
   assert.equal(readFileSync(file, "utf8"), ownerText);
 });
 
+test("session-check.sh status and add ignore marker text that does not end its line", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  const file = join(h.dir, ".claude/CLAUDE.md");
+  const ownerText = "Owner note: <!-- tinycloud-context --> is only an example.\n";
+  writeFileSync(file, ownerText);
+  assert.equal(sc(h, ["status", "claude-code"]).stdout, "off\nclients: claude-code\n");
+  const added = sc(h, ["add", "claude-code"]);
+  assert.equal(added.status, 0, added.stderr + added.stdout);
+  assert.equal(added.stdout.trim(), `added: ${file}`);
+  assert.equal(readFileSync(file, "utf8"), `${ownerText}${lineFor(installed)}\n`);
+});
+
 
 test("session-check.sh names each agent's own skill copy if it has one, and creates the running agent's file", () => {
   const h = fresh();

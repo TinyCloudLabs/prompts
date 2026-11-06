@@ -54,7 +54,7 @@ clients() {
   done
   return 0
 }
-has_mark() { [ -f "$1" ] && grep -qF "$MARK" "$1"; }
+has_mark() { [ -f "$1" ] && awk -v mark="$MARK" '{ sub(/\r$/, ""); if (length($0) >= length(mark) && substr($0, length($0) - length(mark) + 1) == mark) found = 1 } END { exit !found }' "$1"; }
 
 cmd=${1:-}
 case "$cmd" in

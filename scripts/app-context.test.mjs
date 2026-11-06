@@ -69,6 +69,15 @@ test("an onboarded default profile is the context profile used by the read guide
   assert.doesNotMatch(guide, /--profile tinyapp-context\b/);
 });
 
+test("the context key list uses the host selected by the helper", () => {
+  const w = world([profile("default")], { selected: "default" });
+  const context = appContext("/cli", "context", { env: {}, run: w.run });
+  const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  assert.equal(context.host, host);
+  assert.match(guide, /and its `host` as `<CONTEXT_HOST>`/);
+  assert.match(guide, /--host '<CONTEXT_HOST>' kv list --prefix 'xyz\.tinycloud\.tinyapps\.context\/' --space applications/);
+});
+
 test("context write approval asks only for its data root and exact discovery entry", () => {
   assert.deepEqual(appPermissions("context", { write: true }), [
     { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.context/", actions: ["get", "list", "put"] },
@@ -76,6 +85,53 @@ test("context write approval asks only for its data root and exact discovery ent
   ]);
   const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
   assert.match(guide, /scoped approval grants only `<C>\/` and this app's exact discovery entry/);
+});
+
+test("a context-scoped write succeeds without catalog-wide discovery access", () => {
+  const permissions = [
+    cap("xyz.tinycloud.tinyapps.context/", ["get", "list", "put"]),
+    cap("xyz.tinycloud.tinyapps.catalog/context/entry", ["get", "put"]),
+  ];
+  const w = world([profile("tinyapp-context", permissions)], { selected: "tinyapp-context" });
+  const run = (cli, args, options) => {
+    const prefix = args[args.indexOf("--prefix") + 1];
+    if (args.includes("list") && prefix === "xyz.tinycloud.tinyapps.catalog/") {
+      return { status: 1, stdout: "", stderr: JSON.stringify({ error: { code: "PERMISSION_DENIED" } }) };
+    }
+    return w.run(cli, args, options);
+  };
+  const result = appContext("/cli", "context", { env: {}, run, write: true });
+  assert.equal(result.status, "ready");
+  assert.equal("appEntries" in result, false);
+  assert.deepEqual(w.reads.map(({ args }) => args[args.indexOf("--prefix") + 1]), [
+    "xyz.tinycloud.tinyapps.context/catalog/",
+  ]);
+});
+
+test("the SQL helper reports index presence separately from session state", () => {
+  const permissions = [cap("xyz.tinycloud.tinyapps.context/index", ["read"], "tinycloud.sql")];
+  for (const [rows, expected] of [[[["records"]], true], [[], false]]) {
+    const w = world([profile("default", permissions)], { selected: "default" });
+    const run = (cli, args, options) => args.includes("query")
+      ? { status: 0, stdout: JSON.stringify({ rows }), stderr: "" }
+      : w.run(cli, args, options);
+    const result = appContext("/cli", "context", { env: {}, run, sql: true });
+    assert.equal(result.status, "ready");
+    assert.equal(result.indexPresent, expected);
+  }
+  const contextGuide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  const sqlGuide = readFileSync(new URL("../skills/tc-apps/SQL.md", import.meta.url), "utf8");
+  assert.match(contextGuide, /returned `ready` with `indexPresent: true`/);
+  assert.match(sqlGuide, /If the block still fails, or `SKILL\.md` §3 showed the index's session `"expired"`, mark the kind as behind/);
+});
+
+test("app-context helper commands search Claude's active plugin skill before user skill installs", () => {
+  for (const path of ["SKILL.md", "CONTEXT.md", "SQL.md", "TINY-APPS.md"]) {
+    const guide = readFileSync(new URL(`../skills/tc-apps/${path}`, import.meta.url), "utf8");
+    for (const line of guide.split("\n").filter((value) => value.includes('"$d/app-context.mjs"'))) {
+      assert.match(line, /for d in "\$\{CLAUDE_SKILL_DIR:-\}" "\$\{CLAUDE_CONFIG_DIR:-\$HOME\/\.claude\}\/skills\/tc-apps" "\$HOME\/\.agents\/skills\/tc-apps"/, path);
+    }
+  }
 });
 
 
