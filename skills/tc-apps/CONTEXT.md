@@ -11,8 +11,8 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 
 - **Save only what the owner said, or approved when you asked.** Never a guess, an inference, or something you noticed about them.
 - **Never secrets,** in context or anywhere else: passwords, API keys, tokens, recovery codes, private keys. They belong in TinyCloud Secrets.
-- **A pasted secret.** If the owner pastes a password, key or token into the chat, don't save it anywhere and never repeat it back, not even in part. Tell them in one or two lines that it is now in this chat's history, so they should rotate it, and add the new one to TinyCloud Secrets: with the `tc-secrets` skill's add link if that skill is set up here, otherwise through <https://agents.tinycloud.xyz/secrets>.
-- **Sensitive things go to their own app, not here:** health data, money and account or card numbers, government or ID numbers, an exact home address, and private details about other people. If the owner asks to keep one of these in context, say in one short line why not ("Every agent you use reads your context, and each read goes to that agent's model provider"), and offer the right place, with its own approval:
+- **A pasted secret.** If the owner pastes a password, key or token into the chat, don't save it anywhere and never repeat it back, not even in part. Tell them in one or two lines that it is now in this chat's history, so they should replace it with a new one, and add the new one to TinyCloud Secrets: with the `tc-secrets` skill's add link if that skill is set up here, otherwise through <https://agents.tinycloud.xyz/secrets>.
+- **Sensitive things go to their own app, not here:** health data, money and account or card numbers, government or ID numbers, an exact home address, and private details about other people. If the owner asks to keep one of these in context, say in one short line why not ("Any agent that reads your context sends it to the company that runs its AI model."), and offer the right place, with its own approval:
   - meals, calories and body weight → Health Log (`TINY-APPS.md`); other health records → their own app (`SKILL.md` §2);
   - an account, card or ID number → TinyCloud Secrets, as for a secret;
   - money, an address, details about another person → their own app (`SKILL.md` §2).
@@ -72,7 +72,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
    "$TC_BIN" --profile '<CONTEXT_PROFILE>' --host '<CONTEXT_HOST>' kv list --prefix 'xyz.tinycloud.tinyapps.context/' --space '<CONTEXT_SPACE>' --all --json
    ```
 
-4. Get only the records the request needs, at most about 20, with `SKILL.md` §5's block for several records and `--profile '<CONTEXT_PROFILE>'`. The subject is in the key, so pick by key; a preference about how to work or reply, such as `preference/reply-length`, fits most requests. Never get every record, and never paste the key list into your reply.
+4. Get only the records the request needs, up to about 20, with `SKILL.md` §5's block for several records and `--profile '<CONTEXT_PROFILE>'`. The subject is in the key, so pick by key; a preference about how to work or reply, such as `preference/reply-length`, fits most requests. Never get every record, and never paste the key list into your reply.
 5. Later in the same session, get one more record only when a new request needs it. Don't list again.
 
 **What the list says:**
@@ -108,8 +108,8 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 
 When the owner asks you to forget something, delete that record with `SKILL.md` §6's `kv delete`, and `SQL.md` §3 if there's a fast copy. Tell them in one line that it's deleted. The first time in a conversation, add what deleting does today, in these words:
 
-<!-- For maintainers: deletion facts as of 2026-10-27 (TinyCloud's node keeps the earlier write under a delete tombstone). When history collapse (TC-1470) ships, change this quote, the setup guide's Undo and QUICKSTART.md together. -->
-> Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until old versions can be fully erased, so don't put anything in context you'd need erased.
+<!-- For maintainers: deletion facts as of 2026-10-27 (TinyCloud's node keeps the earlier write under a delete tombstone). When old versions can be fully erased, update this quote, the setup guide's Undo and QUICKSTART.md together. -->
+> Deleting a record removes it from your TinyCloud, so agents can't get it there again. An earlier copy stays in TinyCloud's storage, and an agent that already read it may have kept its own copy, so don't put anything in context you'd need permanently erased.
 
 "Forget everything" or "clear my context": list, tell the owner how many records there are, ask once, then delete each record. Keep the catalog records: they hold nothing about the owner.
 

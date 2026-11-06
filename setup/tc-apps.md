@@ -10,7 +10,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
   - **Codex:** approve the CLI and skill installation when Codex requests it. If its sandbox blocks a step, follow the shared CLI guide's blocked-install instructions.
-- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat ordinary read/write grants. Otherwise it asks only for missing access and sends the OpenKey link. The older scoped catalog fallback may also ask you to complete sign-in; for app approval links, use the line "Open this link and approve, then tell me." The agent runs commands and finishes your request; you never need a separate terminal.
+- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat ordinary read/write grants. Otherwise it asks only for missing access and sends the OpenKey link. For app approval links, use the line "Open this link and approve, then tell me." The agent runs commands and finishes your request; you never need a separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
@@ -148,7 +148,7 @@ for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-
 - `on` or `declined` → don't ask. Don't ask either if this conversation's context key list (`CONTEXT.md` §3) has `preference/session-check`.
 - `off` → end your last message with this question, naming the agents on its `clients:` line:
 
-  > One question: should new sessions of <Codex and Claude Code> on this computer check your TinyCloud context first, so they know what you've told any of your agents? Yes adds one marked line to their instructions; Undo removes it.
+  > One question: should new sessions of <Codex and Claude Code> on this computer check your TinyCloud context first, so they know what you've told any of your agents? Yes adds one line to their instructions, which you can remove any time.
 
 When the owner answers:
 - **Yes** → run the same block with `add '<client>'` in place of `status '<client>'`. It adds one line, ending with `<!-- tinycloud-context -->`, at the end of each agent's instructions file, and changes no other line; it prints each file it changed. Never edit those files yourself.
@@ -219,4 +219,4 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 
 To remove the rest, delete any older `~/.local/share/tc-apps` copy, `~/.local/state/tc-apps`, and each skill copy: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps` for Claude Code and `~/.agents/skills/tc-apps` for Codex and OpenCode. The setup copies it for every agent it finds on this computer, so delete both folders if both exist. If Claude Code has the skill from the TinyCloud plugin, run `/plugin uninstall tinycloud@tinycloudlabs` there too. Your records stay in your TinyCloud.
 
-To delete context records, ask an agent: "Forget my coffee order", or "Clear my TinyCloud context". Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until old versions can be fully erased, so don't put anything in context you'd need erased.
+To delete context records, ask an agent: "Forget my coffee order", or "Clear my TinyCloud context". Deleting a record removes it from your TinyCloud, so agents can't get it there again. An earlier copy stays in TinyCloud's storage, and an agent that already read it may have kept its own copy, so don't put anything in context you'd need permanently erased.
