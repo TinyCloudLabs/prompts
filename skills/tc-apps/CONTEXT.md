@@ -109,7 +109,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 When the owner asks you to forget something, delete that record with `SKILL.md` §6's `kv delete`, and `SQL.md` §3 if there's a fast copy. Tell them in one line that it's deleted. The first time in a conversation, add what deleting does today, in these words:
 
 <!-- For maintainers: deletion facts as of 2026-10-27 (TinyCloud's node keeps the earlier write under a delete tombstone). When history collapse (TC-1470) ships, change this quote, the setup guide's Undo and QUICKSTART.md together. -->
-> Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until history collapse ships, so don't put anything in context you'd need erased.
+> Deleting a record removes it from your TinyCloud and from every agent's view. TinyCloud's storage still keeps the old version until old versions can be fully erased, so don't put anything in context you'd need erased.
 
 "Forget everything" or "clear my context": list, tell the owner how many records there are, ask once, then delete each record. Keep the catalog records: they hold nothing about the owner.
 
