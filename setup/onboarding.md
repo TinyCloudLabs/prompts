@@ -4,8 +4,6 @@
 
 Give any AI agent this page, and it sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do. Then it carries on with what you asked for.
 
-TinyCloud keeps your records available across agents.
-
 **Paste into your agent:**
 
 > Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.
