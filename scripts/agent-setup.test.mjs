@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { marked } from "marked";
+import { Marked, marked } from "marked";
+import { gfmHeadingId } from "marked-gfm-heading-id";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -193,6 +194,36 @@ test("tc-apps onboards generic apps first and keeps Health Log on its dedicated 
 });
 
 
+test("served setup pages keep fences balanced and CLI shell blocks valid", () => {
+  const pages = ["cli", "onboarding.md", "setup", "agent", "apps", "connect.md", "chat", "feed", "publish", "share", "secrets", "courier", "openkey"];
+  const markdown = new Marked(gfmHeadingId());
+  const shellCheck = spawnSync("sh", ["-n"], { input: "", encoding: "utf8" });
+  const shellAvailable = shellCheck.error?.code !== "ENOENT";
+
+  for (const page of pages) {
+    const source = readFileSync(join(root, "_site", page), "utf8");
+    const fences = source.match(/^ {0,3}(?:`{3,}|~{3,})/gm) ?? [];
+    assert.equal(fences.length % 2, 0, `${page}: unbalanced Markdown code fences`);
+    const tokens = markdown.lexer(source);
+    if (page === "cli") {
+      assert.ok(
+        tokens.some((token) => token.type === "paragraph" && token.text.includes("This POSIX entry point downloads and runs")),
+        "the CLI installer note must render as prose outside its shell block",
+      );
+      if (!shellAvailable) continue;
+      for (const token of tokens.filter((item) => item.type === "code" && /^(bash|sh|shell)$/i.test(item.lang ?? ""))) {
+        const result = spawnSync("sh", ["-n"], { input: token.text, encoding: "utf8" });
+        assert.equal(result.status, 0, `${page}: invalid ${token.lang} block\n${result.stderr}`);
+      }
+    }
+  }
+});
+
+test("the POSIX installer note renders as prose after its command block", () => {
+  const rendered = marked.parse(readFileSync(join(root, "_site", "cli"), "utf8"));
+  const note = rendered.match(/<p>This POSIX entry point[\s\S]*?<\/p>/)?.[0];
+  assert.ok(note, "the explanatory note must not remain inside the installer code block");
+});
 
 test("a full storage sends the owner to the storage page from tc-apps and tc-publish", () => {
   const site = join(root, "_site");
