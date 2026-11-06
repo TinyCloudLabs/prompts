@@ -86,7 +86,7 @@ const OPENKEY = "https://openkey.example.invalid";
 const LINKS_API = "https://links.example.invalid";
 const sandbox = (answer) => {
   const dir = mkdtempSync(join(base, `onboard-${answer}-`));
-  // The run block requires the tinycloud-cli skill before it runs the CLI.
+  // These approval-flow cases keep the optional core skill present; separate coverage verifies absence.
   mkdirSync(join(dir, ".agents/skills/tinycloud-cli"), { recursive: true });
   writeFileSync(join(dir, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
   const forbidden = join(dir, "forbidden");

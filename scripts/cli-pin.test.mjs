@@ -64,7 +64,7 @@ case "$*" in
   onboard) echo '{"onboarded": true}' ;;
 esac
 `, { mode: 0o700 });
-  // /onboarding requires the tinycloud-cli skill before it runs the CLI.
+  // Keep the optional core skill present for this CLI-selection matrix; onboarding does not require it.
   mkdirSync(join(home, ".agents/skills/tinycloud-cli"), { recursive: true });
   writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
   const env = { PATH: process.env.PATH, HOME: home };
@@ -272,9 +272,8 @@ test("/cli and every CLI_OLDER note say upgrading needs no asking and never `tin
   }
 });
 
-test("every SKILL_MISSING note says installing the skill needs no asking, as written and as served", () => {
+test("the required Courier skill's SKILL_MISSING note says installation needs no asking, as written and as served", () => {
   for (const [file, line] of [
-    ["setup/onboarding.md", "Installing the TinyCloud skill."], ["_site/onboarding.md", "Installing the TinyCloud skill."],
     ["setup/courier.md", "Installing the Courier skill."], ["_site/courier", "Installing the Courier skill."],
   ]) {
     const notes = readFileSync(join(root, file), "utf8").split("\n").filter((l) => /^(- \*\*)?`SKILL_MISSING/.test(l));

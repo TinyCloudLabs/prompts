@@ -10,6 +10,7 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
 import { CLI_VERSION } from "./install-cli.mjs";
+import { marked } from "marked";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SITE = "https://agents.tinycloud.xyz";
@@ -87,6 +88,27 @@ test("a production build serves the repository's skills byte for byte, pointing 
     assert.deepEqual(skill.changed, sources.filter(([, body]) => expanded(body) !== body.toString("utf8")).map(([file]) => file.path).sort(), short);
     assert.ok(skill.changed.includes("SKILL.md"), short);
     for (const [file, body] of sources) assert.ok(readFileSync(join(production, file.url)).equals(Buffer.from(expanded(body))), file.url);
+  }
+});
+
+test("the served /cli keeps its POSIX blocks fenced and syntactically valid", (t) => {
+  const sites = [production, preview].map((site) => {
+    const blocks = marked.lexer(readFileSync(join(site, "cli"), "utf8")).filter((token) => token.type === "code");
+    assert.equal(blocks.length, 13, `${site}/cli code blocks`);
+    const posix = blocks.filter((token) => token.lang === "sh");
+    assert.equal(posix.length, 5, `${site}/cli POSIX blocks`);
+    return { site, posix };
+  });
+
+  for (const { site, posix } of sites) {
+    for (const [index, block] of posix.entries()) {
+      const result = spawnSync("sh", ["-n"], { input: block.text, encoding: "utf8" });
+      if (result.error?.code === "ENOENT") {
+        t.skip("sh is unavailable; code-block boundaries were checked");
+        return;
+      }
+      assert.equal(result.status, 0, `${site}/cli POSIX block ${index + 1}: ${result.stderr}`);
+    }
   }
 });
 

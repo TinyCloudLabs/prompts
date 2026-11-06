@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { marked } from "marked";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -269,6 +270,41 @@ test("tc-apps sends an agent with no onboarded profile through /onboarding befor
   }
   const scoped = catalog.split("\n### Scoped setup without onboarding\n")[1].trim().split("\n")[0];
   assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
+});
+
+test("the cross-agent payoff is a separate owner-visible line on connect and onboarding", () => {
+  const site = join(root, "_site");
+  const payoff = "TinyCloud keeps your records available across agents.";
+  for (const file of ["connect.md", "onboarding.md"]) {
+    assert.ok(readFileSync(join(site, file), "utf8").split("\n").includes(payoff), file);
+  }
+  const onboarding = readFileSync(join(root, "setup/onboarding.md"), "utf8");
+  assert.match(onboarding, /If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI/);
+});
+
+test("the POSIX installer note renders as prose after its command block", () => {
+  const rendered = marked.parse(readFileSync(join(root, "_site", "cli"), "utf8"));
+  const note = rendered.match(/<p>This POSIX entry point[\s\S]*?<\/p>/)?.[0];
+  assert.ok(note, "the explanatory note must not remain inside the installer code block");
+});
+
+test("a failed optional core-skill install is reported without blocking CLI onboarding", () => {
+  const dir = home();
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const cli = join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud");
+  mkdirSync(dirname(cli), { recursive: true });
+  executable(cli, 'case "$*" in "--version") echo 1.6.2 ;; "onboard --help") echo help ;; esac');
+  const installer = join(dir, ".local/share/tinycloud/install.js");
+  mkdirSync(dirname(installer), { recursive: true });
+  writeFileSync(installer, "process.exit(23);\n");
+  const guide = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
+  const result = shell(`${block(guide, "### Optional standalone install")}\n"$TC_BIN" onboard --help >/dev/null && echo ONBOARD_READY`, {
+    HOME: dir, CLIENT: "codex", TC_BIN: cli, PATH: `${bin}:${process.env.PATH}`,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /TC_SKILL_STATUS unavailable/);
+  assert.match(result.stdout, /ONBOARD_READY/);
 });
 
 test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {

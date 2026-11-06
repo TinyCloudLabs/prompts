@@ -2,7 +2,7 @@
 
 # Set up a TinyCloud action for your agent
 
-Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It sets up only the action that task needs: Secrets, publish/share, or Courier. Setup installs the pinned CLI (or uses an operator-provided `TC_BIN`), its core skill and one action skill. Follow [/onboarding](onboarding.md) first if TinyCloud isn't set up yet. Each of these actions then asks for its own approval: the owner approves one OpenKey link. Secrets and publish/share also need the code OpenKey shows, pasted back to the agent; Courier needs none.
+Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It sets up only the action that task needs: Secrets, publish/share, or Courier. Setup installs the pinned CLI (or uses an operator-provided `TC_BIN`), attempts the optional core skill, and installs one action skill. Follow [/onboarding](onboarding.md) first if TinyCloud isn't set up yet. Each of these actions then asks for its own approval: the owner approves one OpenKey link. Secrets and publish/share also need the code OpenKey shows, pasted back to the agent; Courier needs none.
 
 ## For the agent
 
