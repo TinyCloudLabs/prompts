@@ -1,6 +1,6 @@
-// The first block that needs a required skill stops with SKILL_MISSING, before any
-// CLI call, unless the skill is installed where install.js puts it for some client:
-// tinycloud-cli for /onboarding's step 2, courier for /courier's CLI check.
+// Courier's CLI check requires its skill; onboarding can run without tinycloud-cli.
+// A required-skill guard stops before any CLI call when that skill is not installed.
+// install.js defines the supported client folders.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -60,22 +60,14 @@ esac
 }
 const callsOf = (run) => (existsSync(run.calls) ? readFileSync(run.calls, "utf8") : "");
 
-// The two guarded blocks, run as their guides say.
+const onboardingBlock = sh(onboardingGuide, "**2. Run onboarding.**");
+const runOnboarding = (run, env) => exec("sh", ["-c", onboardingBlock.replaceAll("<TC_BIN>", run.tc)], { cwd: run.cwd, env });
+const onboardingRan = (run, result) => {
+  assert.equal(callsOf(run), "--version\nonboard --timeout 1s\n");
+  assert.equal(result.stdout, '{"onboarded": true}\nNEXT: onboarding is done; continue with the owner\'s goal.\n');
+  assert.equal(result.stderr, "");
+};
 const guarded = {
-  onboarding: {
-    skill: "tinycloud-cli",
-    short: "cli",
-    message: missing("tinycloud-cli", "Install the core skill", "cli"),
-    block: sh(onboardingGuide, "**2. Run onboarding.**"),
-    // <TC_BIN> is replaced by the selected CLI.
-    run: (run, env) => exec("sh", ["-c", guarded.onboarding.block.replaceAll("<TC_BIN>", run.tc)], { cwd: run.cwd, env }),
-    // A foreground run: the result is on stdout.
-    ran: (run, result) => {
-      assert.equal(callsOf(run), "--version\nonboard --timeout 1s\n");
-      assert.equal(result.stdout, '{"onboarded": true}\nNEXT: onboarding is done; continue with the owner\'s goal.\n');
-      assert.equal(result.stderr, "");
-    },
-  },
   courier: {
     skill: "courier",
     short: "courier",
@@ -107,6 +99,13 @@ before(async () => {
 after(() => {
   server.close();
   rmSync(work, { recursive: true, force: true });
+});
+
+test("/onboarding runs with the selected CLI when the optional core skill is absent", async () => {
+  const run = fresh();
+  const result = await runOnboarding(run, envFor(run));
+  assert.equal(result.code, 0, result.stderr);
+  onboardingRan(run, result);
 });
 
 for (const [page, guard] of Object.entries(guarded)) {
