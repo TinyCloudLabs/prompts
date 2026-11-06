@@ -56,7 +56,9 @@ D=$(mktemp -d) || exit 1
 curl -fsSL https://agents.tinycloud.xyz/skills/install.js -o "$D/install.cjs" || { rm -rf "$D"; exit 1; }
 node "$D/install.cjs" apps --agent "$CLIENT" || { rm -rf "$D"; exit 1; }
 case "$CLIENT" in claude-code) SKILL_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" ;; *) SKILL_DIR="$HOME/.agents/skills/tc-apps" ;; esac
-for target in $(sh "$SKILL_DIR/session-check.sh" clients "$CLIENT"); do
+TARGETS=$(sh "$SKILL_DIR/session-check.sh" clients "$CLIENT") || { echo 'Could not list configured agents' >&2; rm -rf "$D"; exit 1; }
+[ -n "$TARGETS" ] || { echo 'Could not list configured agents' >&2; rm -rf "$D"; exit 1; }
+for target in $TARGETS; do
   [ "$target" = "$CLIENT" ] && continue
   node "$D/install.cjs" apps --agent "$target" || { rm -rf "$D"; exit 1; }
 done
