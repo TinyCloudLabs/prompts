@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Connect an agent to the owner's TinyCloud Home feed once, post cards there with `tinycloud feed publish`, and read the owner's answers.
 metadata:
-  version: "0.2.1"
+  version: "0.2.2"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -89,7 +89,7 @@ A card is one JSON object. `tinycloud feed publish` checks these fields:
 | `needsResponse` | `true` when the owner should answer, otherwise `false`. |
 | `title` | Heading. |
 | `body` | Card text. |
-| `choices` | Optional, with `needsResponse: true`: `[{"id": "yes", "label": "Yes"}]`. Each becomes an option in the answer form; the owner can also type a reply. |
+| `choices` | Optional, with `needsResponse: true`: `[{"id": "yes", "label": "Yes"}]`. Each becomes an option in the answer form; the owner can also type a reply. A choice has only `id` and `label`; other fields are dropped. Keep each `label` to the choice itself: don't add "(Recommended)" or similar. In a typed ask (`payload.sitrep.record`), mark the recommended choice with `recommend` set to its option id. |
 | `urgency` | Number; higher sorts first. Equal urgencies list the oldest `createdAt` first. |
 | `createdAt` | ISO 8601 UTC time, such as `2026-11-03T09:00:00Z`. |
 | `payload` | Optional object for how Home shows the card, below. |
