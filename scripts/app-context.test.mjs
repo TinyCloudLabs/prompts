@@ -70,6 +70,18 @@ test("a write lists every app's discovery entry, so the agent reuses an app inst
   const partial = world([profile()], { catalog: { keys: [], truncated: true, nextCursor: "c" } });
   assert.throws(() => appContext("/cli", "genekeys", { env: {}, run: partial.run, write: true }), /incomplete/);
 });
+test("a scoped app write skips catalog-wide discovery without requesting broader access", () => {
+  const p = profile("owner", [
+    cap("xyz.tinycloud.tinyapps.notes/", ["get", "list", "put"]),
+    cap("xyz.tinycloud.tinyapps.catalog/notes/entry", ["get", "put"]),
+  ]);
+  const w = world([p]);
+  const context = appContext("/cli", "notes", { env: {}, run: w.run, write: true });
+  assert.equal(context.status, "ready");
+  assert.equal("appEntries" in context, false);
+  const prefixes = w.reads.map((r) => r.args[r.args.indexOf("--prefix") + 1]);
+  assert.deepEqual(prefixes, ["xyz.tinycloud.tinyapps.notes/catalog/"]);
+});
 
 test("a fresh key-only profile is sent to onboarding first, keeping the scoped sign-in details", () => {
   const p = profile("fresh", []);

@@ -153,7 +153,9 @@ export function appContext(cli, app, { write = false, remove = false, sql = fals
     };
     const catalogKeys = list(prefix);
     if (catalog || !write) return { status: "ready", ...selected, catalogKeys };
-    // Before creating an app, the agent reuses an existing one: the names of every app with a discovery entry.
+    const discovery = [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/", actions: ["get", "list"] }];
+    if (missingPermissions(profile, context.spaceId, discovery).length) return { status: "ready", ...selected, catalogKeys };
+    // Reuse known apps only when this profile already has catalog-wide read access.
     const appEntries = [...new Set(list("xyz.tinycloud.tinyapps.catalog/").map((key) => key.split("/")[1]).filter(Boolean))].sort();
     return { status: "ready", ...selected, catalogKeys, appEntries };
   }

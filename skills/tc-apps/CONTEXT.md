@@ -100,7 +100,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 3. **A new key**, only when no kind has the subject: write it with `SKILL.md` §6's block, with `--if-none-match '*'`. Put any catalog records it still needs (§2) first, in the same block.
 4. **A key that exists:** get it. If the value is the same, write nothing. If it changed, write the new record without `--if-none-match`, which replaces the old one.
 5. **Write rarely.** Storage counts every write, and overwrites and deletes don't free space today. One write per new fact; never rewrite a record only to change its `at`.
-6. If the list's second line showed the fast copy (`present` or `expired`), follow `SQL.md` §3 afterwards, as for any app.
+6. If §3 step 2 returned `ready` with `indexPresent: true`, follow `SQL.md` §3 afterwards, as for any app.
 
 **Tell the owner** in one short line, only for a new fact or preference they told you: "Saved to your TinyCloud context: coffee order, flat white." Say nothing for an update, a decision or a handoff.
 
