@@ -389,7 +389,7 @@ for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/ski
 6. The receipt holds counts and a digest, no keys. Another computer switches by itself once its sign-in can read the discovery entry (§1a). If it can't, §1a prints `ask` or `check-failed` there, and the owner can ask its agent in chat to install that receipt in `<STATE>/migration/` before using the app.
 
 **Going back** is the owner's decision, requested in chat. Stop writing the app, and explain that records written in `applications` since the move exist only there. Copying them to the old place is a separate step the owner approves: create-only, each record read back before the old place is used again. Then, in this order:
-1. Run §3's helper with `--remove-entry`. It reports `del` on `xyz.tinycloud.tinyapps.catalog/<APP>/` as missing when the selected profile can't delete the entry, for example an app-scoped `tinyapp-<APP>` profile; §4 then requests exactly that, and nothing broader.
+1. Run §3's helper with `--remove-entry`. It reports `del` on `xyz.tinycloud.tinyapps.catalog/<APP>/entry` as missing when the selected profile can't delete the entry, for example an app-scoped `tinyapp-<APP>` profile; §4 then requests exactly that, and nothing broader.
 2. Delete the app's discovery entry, then read it back:
 
 ```sh

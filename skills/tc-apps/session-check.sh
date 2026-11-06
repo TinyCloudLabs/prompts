@@ -96,7 +96,7 @@ case "$cmd" in
     for f in "$CLAUDE_DIR/CLAUDE.md" "$HOME/.claude/CLAUDE.md" "$CODEX_DIR/AGENTS.override.md" "$CODEX_DIR/AGENTS.md" "$OPENCODE_DIR/AGENTS.md"; do
       has_mark "$f" || continue
       # Rewrite in place, so a linked file stays linked and keeps its mode; every other byte is kept.
-      if node -e 'const fs = require("fs"); const [f, m] = process.argv.slice(1); const s = fs.readFileSync(f, "utf8"); fs.writeFileSync(f, s.split(/(?<=\n)/).filter((l) => !l.includes(m)).join(""));' "$f" "$MARK"; then
+      if node -e 'const fs = require("fs"); const [f, m] = process.argv.slice(1); const s = fs.readFileSync(f, "utf8"); fs.writeFileSync(f, s.split(/(?<=\n)/).filter((l) => !l.replace(/\r?\n$/, "").endsWith(m)).join(""));' "$f" "$MARK"; then
         echo "removed: $f"
       else
         echo "could not change: $f"

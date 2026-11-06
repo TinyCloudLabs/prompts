@@ -34,10 +34,24 @@ const world = (profiles, { selected = "owner", failure, contextSpace, catalog = 
   return { run, writes, reads };
 };
 
-test("onboarding access is reused without a new profile or approval, after a real read boundary", () => {
+test("a new app write never requests catalog-wide access for other apps", () => {
+  const permissions = appPermissions("notes", { write: true });
+  assert.deepEqual(permissions, [
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.notes/", actions: ["get", "list", "put"] },
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/notes/entry", actions: ["get", "put"] },
+  ]);
+});
+
+test("context reuses the onboarding profile when no dedicated context profile exists", () => {
   const w = world([profile()]);
-  const context = appContext("/cli", "notes", { env: {}, run: w.run, write: true });
-  assert.deepEqual(context, { status: "ready", profile: "owner", ownerDid: owner, host, spaceId: space, catalogKeys: [], appEntries: [] });
+  const context = appContext("/cli", "context", { env: {}, run: w.run });
+  assert.equal(context.status, "ready");
+  assert.equal(context.profile, "owner");
+  const writeWorld = world([profile()]);
+  const notes = appContext("/cli", "notes", { env: {}, run: writeWorld.run, write: true });
+  assert.deepEqual(notes, { status: "ready", profile: "owner", ownerDid: owner, host, spaceId: space, catalogKeys: [], appEntries: [] });
+  assert.deepEqual(writeWorld.writes, []);
+  assert.equal(writeWorld.reads[0].name, "owner");
   assert.deepEqual(w.writes, []);
   assert.equal(w.reads[0].name, "owner");
 });
@@ -172,18 +186,18 @@ test("an existing app profile for the same owner and host can be reused", () => 
   assert.deepEqual(w.writes, []);
 });
 
-test("going back on an app-scoped profile reports only the app's catalog del as missing", () => {
-  const scoped = profile("tinyapp-notes", [cap("xyz.tinycloud.tinyapps.notes/"), cap("xyz.tinycloud.tinyapps.catalog/", ["get", "list"]), cap("xyz.tinycloud.tinyapps.catalog/notes/", ["put"])]);
+test("going back on an app-scoped profile reports only the app's exact discovery-entry delete as missing", () => {
+  const scoped = profile("tinyapp-notes", [cap("xyz.tinycloud.tinyapps.notes/"), cap("xyz.tinycloud.tinyapps.catalog/notes/entry", ["get", "put"])]);
   const w = world([scoped], { selected: "tinyapp-notes" });
   assert.equal(appContext("/cli", "notes", { env: {}, run: w.run, write: true, remove: true }).status, "ready", "--delete alone never asks for the catalog");
   const back = appContext("/cli", "notes", { env: {}, run: w.run, removeEntry: true });
   assert.equal(back.status, "grant-required");
   assert.equal(back.profile, "tinyapp-notes");
-  assert.deepEqual(back.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/notes/", actions: ["del"], space }]);
-  scoped.session.permissions.push(cap("xyz.tinycloud.tinyapps.catalog/notes/", ["del"]));
+  assert.deepEqual(back.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/notes/entry", actions: ["del"], space }]);
+  scoped.session.permissions.push(cap("xyz.tinycloud.tinyapps.catalog/notes/entry", ["del"]));
   assert.equal(appContext("/cli", "notes", { env: {}, run: w.run, removeEntry: true }).status, "ready");
   // Another app's catalog del does not count.
-  assert.deepEqual(missingPermissions(profile("o", [cap("xyz.tinycloud.tinyapps.catalog/notebook/", ["del"])]), space, appPermissions("notes", { removeEntry: true }), now).map((entry) => entry.path), ["xyz.tinycloud.tinyapps.notes/", "xyz.tinycloud.tinyapps.catalog/notes/"]);
+  assert.deepEqual(missingPermissions(profile("o", [cap("xyz.tinycloud.tinyapps.catalog/notebook/entry", ["del"])]), space, appPermissions("notes", { removeEntry: true }), now).map((entry) => entry.path), ["xyz.tinycloud.tinyapps.notes/", "xyz.tinycloud.tinyapps.catalog/notes/entry"]);
   assert.deepEqual(w.writes, []);
 });
 

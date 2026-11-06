@@ -51,10 +51,11 @@ export function appPermissions(app, { write = false, remove = false, sql = false
   const actions = ["get", "list", ...(write ? ["put"] : []), ...(remove ? ["del"] : [])];
   return [
     { service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.${app}/`, actions },
-    ...(write ? [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/", actions: ["get", "list"] }] : []),
-    ...(write ? [{ service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.catalog/${app}/`, actions: ["put"] }] : []),
-    // Going back from a move (SKILL.md §9) deletes this app's discovery entry, and nothing else in the catalog.
-    ...(removeEntry ? [{ service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.catalog/${app}/`, actions: ["del"] }] : []),
+    ...(write || removeEntry ? [{
+      service: "tinycloud.kv",
+      path: `xyz.tinycloud.tinyapps.catalog/${app}/entry`,
+      actions: [...(write ? ["get", "put"] : []), ...(removeEntry ? ["del"] : [])],
+    }] : []),
   ];
 }
 

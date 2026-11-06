@@ -481,20 +481,20 @@ test("going back on an app-scoped profile: the helper requests only the catalog 
   const perm = (path, actions) => ({ service: "tinycloud.kv", space: APPS_SPACE, path, actions: actions.map((a) => `tinycloud.kv/${a}`) });
   const scoped = { name: "tinyapp-fitness", ownerDid: OWNER_DID, host: "https://node.test", authenticated: true, delegations: [],
     session: { present: true, expired: false, expiresAt: "2099-01-01T00:00:00Z", permissions: [
-      perm(`${NEW("fitness")}/`, ["get", "list", "put", "del"]), perm("xyz.tinycloud.tinyapps.catalog/", ["get", "list"]), perm("xyz.tinycloud.tinyapps.catalog/fitness/", ["put"]),
+      perm(`${NEW("fitness")}/`, ["get", "list", "put", "del"]), perm("xyz.tinycloud.tinyapps.catalog/fitness/entry", ["get", "put"]),
     ] } };
   const setStatus = () => control(h, { status: { activeProfile: "tinyapp-fitness", profiles: [scoped] } });
   const helper = () => JSON.parse(run(["node", join(skill, "app-context.mjs"), h.bin, "fitness", "--remove-entry"], { HOME: h.dir }).stdout);
   const entryCmd = (verb) => run([h.bin, "--profile", "tinyapp-fitness", "--host", "https://node.test", "kv", verb, ENTRY("fitness"), "--space", APPS_SPACE, "--json"], { HOME: h.dir });
   setStatus();
-  // Without the app's catalog del the delete is refused, and the helper names exactly that permission for §4.
+  // Without the app's exact entry delete the operation is refused, and the helper names only that permission.
   assert.equal(entryCmd("delete").status, 5);
   const before = helper();
   assert.equal(before.status, "grant-required");
   assert.equal(before.profile, "tinyapp-fitness");
-  assert.deepEqual(before.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/fitness/", actions: ["del"], space: APPS_SPACE }]);
+  assert.deepEqual(before.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/fitness/entry", actions: ["del"], space: APPS_SPACE }]);
   // §4 grants exactly that.
-  scoped.session.permissions.push(perm("xyz.tinycloud.tinyapps.catalog/fitness/", ["del"]));
+  scoped.session.permissions.push(perm("xyz.tinycloud.tinyapps.catalog/fitness/entry", ["del"]));
   setStatus();
   assert.equal(helper().status, "ready");
   // The entry first: the receipt still switches this computer, so a failure after this point never strands it.
@@ -752,6 +752,17 @@ test("session-check.sh add puts one marked line in each agent's instructions fil
   assert.equal(readFileSync(codex, "utf8"), "no newline at the end\n");
   assert.equal(sc(h, ["status", "codex"]).stdout.split("\n")[0], "off");
 });
+test("session-check.sh remove preserves owner text that mentions the marker mid-line", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  const file = join(h.dir, ".claude/CLAUDE.md");
+  const ownerText = "Owner note: this marker <!-- tinycloud-context --> is only an example.\n";
+  writeFileSync(file, `${ownerText}${lineFor(installed)}\n`);
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(readFileSync(file, "utf8"), ownerText);
+});
+
 
 test("session-check.sh names each agent's own skill copy if it has one, and creates the running agent's file", () => {
   const h = fresh();

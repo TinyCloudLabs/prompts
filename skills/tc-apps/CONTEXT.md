@@ -3,7 +3,7 @@
 Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read blocks and the errors. The context app keeps what the owner told an agent, so the next agent they use, in any client, can carry on without being told again: facts about them, how they like things done, decisions made in a task, and a short handoff at the end of a task.
 
 - **App:** `context`. Its key root is `xyz.tinycloud.tinyapps.context/` in the owner's `applications` space, written `<C>/` below.
-- **Profile and approval:** `tinyapp-context`, approved like any app (`SKILL.md` §4, with `<APP>` = `context` and `<Title>` = `Context`), for 30 days, covering only `<C>/`.
+- **Profile and approval:** use the profile returned by `SKILL.md` §3's app-context check; it may reuse the selected onboarding profile or use `tinyapp-context` when scoped sign-in is needed. A scoped approval grants only `<C>/` and this app's exact discovery entry, `xyz.tinycloud.tinyapps.catalog/context/entry`, for 30 days.
 - **Layout:** always the new layout. Skip `SKILL.md` §1a's first line for this app; use the selected `TC_BIN` from `SKILL.md` §1.
 - **Who reads it:** every agent the owner uses, and every read sends what it reads to that agent's model provider. So it holds low-sensitivity facts and preferences only (§1).
 
@@ -57,17 +57,23 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 - Never just to warm up. A request that needs nothing personal gets nothing past the key list.
 
 **How, at most once per session:**
-1. Use the selected `TC_BIN` from `SKILL.md` §1; do not resolve or install another CLI.
-2. List the keys, once. The `context` check reports whether the app has a fast copy (`SKILL.md` §3's last line):
+1. Run `SKILL.md` §3's app-context check for `context` with the selected `TC_BIN`. When it returns `ready`, use its `profile` as `<CONTEXT_PROFILE>`. If the request needs context and the status is not `ready`, follow its §3/§4 instructions and rerun the check. A request that doesn't need context continues without a new approval.
+2. Check whether the fast copy is available, using the same helper:
+
+   ```sh
+   for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' context --sql; break; fi; done
+   ```
+
+   If it returns `ready` with `indexPresent: true`, use its `profile` as `<CONTEXT_SQL_PROFILE>`; otherwise treat the fast copy as unavailable. This check is informational; don't request another approval for it.
+3. List the keys, once:
 
    ```sh
    TC_BIN='<TC_BIN>'; umask 077
-   "$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.context/' --space applications --all --json --profile tinyapp-context
-   "$TC_BIN" context --json --profile tinyapp-context-sql 2>&1 | grep -oE '"state": "[a-z]+"|PROFILE_NOT_FOUND'
+   "$TC_BIN" kv list --prefix 'xyz.tinycloud.tinyapps.context/' --space applications --all --json --profile '<CONTEXT_PROFILE>'
    ```
 
-3. Get only the records the request needs, at most about 20, with `SKILL.md` §5's block for several records and `--profile tinyapp-context`. The subject is in the key, so pick by key; a preference about how to work or reply, such as `preference/reply-length`, fits most requests. Never get every record, and never paste the key list into your reply.
-4. Later in the same session, get one more record only when a new request needs it. Don't list again.
+4. Get only the records the request needs, at most about 20, with `SKILL.md` §5's block for several records and `--profile '<CONTEXT_PROFILE>'`. The subject is in the key, so pick by key; a preference about how to work or reply, such as `preference/reply-length`, fits most requests. Never get every record, and never paste the key list into your reply.
+5. Later in the same session, get one more record only when a new request needs it. Don't list again.
 
 **What the list says:**
 - `"keys"` → read as above. `"keys": []` → nothing saved yet; don't mention it unless asked.
