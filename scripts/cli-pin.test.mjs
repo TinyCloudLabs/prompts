@@ -64,7 +64,7 @@ case "$*" in
   onboard) echo '{"onboarded": true}' ;;
 esac
 `, { mode: 0o700 });
-  // /onboarding requires the tinycloud-cli skill before it runs the CLI.
+  // Keep the optional core skill present for this CLI-selection matrix; onboarding does not require it.
   mkdirSync(join(home, ".agents/skills/tinycloud-cli"), { recursive: true });
   writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "skill");
   const env = { PATH: process.env.PATH, HOME: home };
