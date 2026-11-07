@@ -778,3 +778,11 @@ test("Courier skill instructions retain the production invitation viewer origin"
     assert.doesNotMatch(text, /COURIER_LINK_ORIGIN=https:\/\/preview-tc1544-step1\.courier-ae3\.pages\.dev/);
   }
 });
+
+test("/connect's coding route sends context requests to /apps", () => {
+  const markdown = readFileSync(join(root, "_site", "connect.md"), "utf8");
+  const coding = markdown.split("\n## Agents that can run the CLI (preferred)\n")[1].split("\n## ChatGPT\n")[0];
+  const context = coding.split("\n").filter((line) => line.startsWith("**Context:**"));
+  assert.equal(context.length, 1);
+  assert.ok(context[0].includes("](https://agents.tinycloud.xyz/apps)"), context[0]);
+});

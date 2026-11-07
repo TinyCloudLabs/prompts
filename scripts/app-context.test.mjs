@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { appContext, appPermissions, missingPermissions } from "../skills/tc-apps/app-context.mjs";
 
@@ -34,13 +38,134 @@ const world = (profiles, { selected = "owner", failure, contextSpace, catalog = 
   return { run, writes, reads };
 };
 
-test("onboarding access is reused without a new profile or approval, after a real read boundary", () => {
+test("a new app write never requests catalog-wide access for other apps", () => {
+  const permissions = appPermissions("notes", { write: true });
+  assert.deepEqual(permissions, [
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.notes/", actions: ["get", "list", "put"] },
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/notes/entry", actions: ["get", "put"] },
+  ]);
+});
+
+test("context reuses the onboarding profile when no dedicated context profile exists", () => {
   const w = world([profile()]);
-  const context = appContext("/cli", "notes", { env: {}, run: w.run, write: true });
-  assert.deepEqual(context, { status: "ready", profile: "owner", ownerDid: owner, host, spaceId: space, catalogKeys: [], appEntries: [] });
+  const context = appContext("/cli", "context", { env: {}, run: w.run });
+  assert.equal(context.status, "ready");
+  assert.equal(context.profile, "owner");
+  const writeWorld = world([profile()]);
+  const notes = appContext("/cli", "notes", { env: {}, run: writeWorld.run, write: true });
+  assert.deepEqual(notes, { status: "ready", profile: "owner", ownerDid: owner, host, spaceId: space, catalogKeys: [], appEntries: [] });
+  assert.deepEqual(writeWorld.writes, []);
+  assert.equal(writeWorld.reads[0].name, "owner");
   assert.deepEqual(w.writes, []);
   assert.equal(w.reads[0].name, "owner");
 });
+test("an onboarded default profile is the context profile used by the read guide", () => {
+  const w = world([profile("default")], { selected: "default" });
+  const context = appContext("/cli", "context", { env: {}, run: w.run });
+  const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  assert.equal(context.status, "ready");
+  assert.equal(context.profile, "default");
+  assert.deepEqual(w.writes, []);
+  assert.equal(w.reads[0].name, "default");
+  assert.match(guide, /When it returns `ready`, use its `profile` as `<CONTEXT_PROFILE>`/);
+  assert.match(guide, /--profile '<CONTEXT_PROFILE>'/);
+  assert.doesNotMatch(guide, /--profile tinyapp-context\b/);
+});
+
+test("the context key list uses profile, host, and space selected by the helper", () => {
+  const w = world([profile("default")], { selected: "default" });
+  const context = appContext("/cli", "context", { env: {}, run: w.run });
+  const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  assert.equal(context.profile, "default");
+  assert.equal(context.host, host);
+  assert.equal(context.spaceId, space);
+  assert.match(guide, /its `profile` as `<CONTEXT_PROFILE>`, its `host` as `<CONTEXT_HOST>` and its `spaceId` as `<CONTEXT_SPACE>`/);
+  assert.match(guide, /--profile '<CONTEXT_PROFILE>' --host '<CONTEXT_HOST>' kv list --prefix 'xyz\.tinycloud\.tinyapps\.context\/' --space '<CONTEXT_SPACE>'/);
+  assert.doesNotMatch(guide, /--space applications\b/);
+});
+
+test("context write approval asks only for its data root and exact discovery entry", () => {
+  assert.deepEqual(appPermissions("context", { write: true }), [
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.context/", actions: ["get", "list", "put"] },
+    { service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/context/entry", actions: ["get", "put"] },
+  ]);
+  const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  assert.match(guide, /scoped approval grants only `<C>\/` and this app's exact discovery entry/);
+});
+
+test("a context-scoped write succeeds without catalog-wide discovery access", () => {
+  const permissions = [
+    cap("xyz.tinycloud.tinyapps.context/", ["get", "list", "put"]),
+    cap("xyz.tinycloud.tinyapps.catalog/context/entry", ["get", "put"]),
+  ];
+  const w = world([profile("tinyapp-context", permissions)], { selected: "tinyapp-context" });
+  const run = (cli, args, options) => {
+    const prefix = args[args.indexOf("--prefix") + 1];
+    if (args.includes("list") && prefix === "xyz.tinycloud.tinyapps.catalog/") {
+      return { status: 1, stdout: "", stderr: JSON.stringify({ error: { code: "PERMISSION_DENIED" } }) };
+    }
+    return w.run(cli, args, options);
+  };
+  const result = appContext("/cli", "context", { env: {}, run, write: true });
+  assert.equal(result.status, "ready");
+  assert.equal("appEntries" in result, false);
+  assert.deepEqual(w.reads.map(({ args }) => args[args.indexOf("--prefix") + 1]), [
+    "xyz.tinycloud.tinyapps.context/catalog/",
+  ]);
+});
+
+test("the SQL helper reports index presence separately from session state", () => {
+  const permissions = [cap("xyz.tinycloud.tinyapps.context/index", ["read"], "tinycloud.sql")];
+  for (const [rows, expected] of [[[["records"]], true], [[], false]]) {
+    const w = world([profile("default", permissions)], { selected: "default" });
+    const run = (cli, args, options) => args.includes("query")
+      ? { status: 0, stdout: JSON.stringify({ rows }), stderr: "" }
+      : w.run(cli, args, options);
+    const result = appContext("/cli", "context", { env: {}, run, sql: true });
+    assert.equal(result.status, "ready");
+    assert.equal(result.indexPresent, expected);
+  }
+  const contextGuide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+  const sqlGuide = readFileSync(new URL("../skills/tc-apps/SQL.md", import.meta.url), "utf8");
+  assert.match(contextGuide, /returned `ready` with `indexPresent: true`/);
+  assert.match(sqlGuide, /If the block still fails, or `SKILL\.md` §3 showed the index's session `"expired"`, mark the kind as behind/);
+});
+
+test("app-context helper commands search the plugin, user skill installs, and setup download copy", () => {
+  for (const path of ["SKILL.md", "CONTEXT.md", "SQL.md", "TINY-APPS.md"]) {
+    const guide = readFileSync(new URL(`../skills/tc-apps/${path}`, import.meta.url), "utf8");
+    for (const line of guide.split("\n").filter((value) => value.includes('"$d/app-context.mjs"'))) {
+      assert.match(line, /for d in "\$\{CLAUDE_SKILL_DIR:-\}" "\$\{CLAUDE_CONFIG_DIR:-\$HOME\/\.claude\}\/skills\/tc-apps" "\$HOME\/\.agents\/skills\/tc-apps" "\$HOME\/\.local\/share\/tc-apps\/skill"; do if \[ -n "\$d" \]/, path);
+    }
+  }
+});
+
+test("the context helper resolves plugin-only and download-only skill copies", () => {
+  const root = mkdtempSync(join(tmpdir(), "tc-app-context-paths-"));
+  try {
+    const guide = readFileSync(new URL("../skills/tc-apps/CONTEXT.md", import.meta.url), "utf8");
+    const command = guide.split("\n").find((line) => line.includes('"$d/app-context.mjs"')).trim();
+    const home = join(root, "home");
+    const plugin = join(root, "plugin");
+    const download = join(home, ".local/share/tc-apps/skill");
+    const writeHelper = (dir, result) => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "app-context.mjs"), `console.log(${JSON.stringify(result)});`);
+    };
+    mkdirSync(home, { recursive: true });
+    writeHelper(plugin, "plugin-only");
+    writeHelper(download, "download-only");
+    const run = (skillDir) => execFileSync("sh", ["-c", command], {
+      encoding: "utf8",
+      env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: join(home, ".claude"), CLAUDE_SKILL_DIR: skillDir },
+    }).trim();
+    assert.equal(run(plugin), "plugin-only");
+    assert.equal(run(""), "download-only");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 
 test("a write lists every app's discovery entry, so the agent reuses an app instead of naming a second one", () => {
   const w = world([profile()], { catalog: { keys: ["xyz.tinycloud.tinyapps.catalog/gene-keys/entry", "xyz.tinycloud.tinyapps.catalog/todos/entry"], truncated: false, nextCursor: null } });
@@ -55,6 +180,18 @@ test("a write lists every app's discovery entry, so the agent reuses an app inst
   assert.equal(read.reads.length, 1);
   const partial = world([profile()], { catalog: { keys: [], truncated: true, nextCursor: "c" } });
   assert.throws(() => appContext("/cli", "genekeys", { env: {}, run: partial.run, write: true }), /incomplete/);
+});
+test("a scoped app write skips catalog-wide discovery without requesting broader access", () => {
+  const p = profile("owner", [
+    cap("xyz.tinycloud.tinyapps.notes/", ["get", "list", "put"]),
+    cap("xyz.tinycloud.tinyapps.catalog/notes/entry", ["get", "put"]),
+  ]);
+  const w = world([p]);
+  const context = appContext("/cli", "notes", { env: {}, run: w.run, write: true });
+  assert.equal(context.status, "ready");
+  assert.equal("appEntries" in context, false);
+  const prefixes = w.reads.map((r) => r.args[r.args.indexOf("--prefix") + 1]);
+  assert.deepEqual(prefixes, ["xyz.tinycloud.tinyapps.notes/catalog/"]);
 });
 
 test("a fresh key-only profile is sent to onboarding first, keeping the scoped sign-in details", () => {
@@ -172,18 +309,18 @@ test("an existing app profile for the same owner and host can be reused", () => 
   assert.deepEqual(w.writes, []);
 });
 
-test("going back on an app-scoped profile reports only the app's catalog del as missing", () => {
-  const scoped = profile("tinyapp-notes", [cap("xyz.tinycloud.tinyapps.notes/"), cap("xyz.tinycloud.tinyapps.catalog/", ["get", "list"]), cap("xyz.tinycloud.tinyapps.catalog/notes/", ["put"])]);
+test("going back on an app-scoped profile reports only the app's exact discovery-entry delete as missing", () => {
+  const scoped = profile("tinyapp-notes", [cap("xyz.tinycloud.tinyapps.notes/"), cap("xyz.tinycloud.tinyapps.catalog/notes/entry", ["get", "put"])]);
   const w = world([scoped], { selected: "tinyapp-notes" });
   assert.equal(appContext("/cli", "notes", { env: {}, run: w.run, write: true, remove: true }).status, "ready", "--delete alone never asks for the catalog");
   const back = appContext("/cli", "notes", { env: {}, run: w.run, removeEntry: true });
   assert.equal(back.status, "grant-required");
   assert.equal(back.profile, "tinyapp-notes");
-  assert.deepEqual(back.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/notes/", actions: ["del"], space }]);
-  scoped.session.permissions.push(cap("xyz.tinycloud.tinyapps.catalog/notes/", ["del"]));
+  assert.deepEqual(back.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/notes/entry", actions: ["del"], space }]);
+  scoped.session.permissions.push(cap("xyz.tinycloud.tinyapps.catalog/notes/entry", ["del"]));
   assert.equal(appContext("/cli", "notes", { env: {}, run: w.run, removeEntry: true }).status, "ready");
   // Another app's catalog del does not count.
-  assert.deepEqual(missingPermissions(profile("o", [cap("xyz.tinycloud.tinyapps.catalog/notebook/", ["del"])]), space, appPermissions("notes", { removeEntry: true }), now).map((entry) => entry.path), ["xyz.tinycloud.tinyapps.notes/", "xyz.tinycloud.tinyapps.catalog/notes/"]);
+  assert.deepEqual(missingPermissions(profile("o", [cap("xyz.tinycloud.tinyapps.catalog/notebook/entry", ["del"])]), space, appPermissions("notes", { removeEntry: true }), now).map((entry) => entry.path), ["xyz.tinycloud.tinyapps.notes/", "xyz.tinycloud.tinyapps.catalog/notes/entry"]);
   assert.deepEqual(w.writes, []);
 });
 

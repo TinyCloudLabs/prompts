@@ -51,10 +51,11 @@ export function appPermissions(app, { write = false, remove = false, sql = false
   const actions = ["get", "list", ...(write ? ["put"] : []), ...(remove ? ["del"] : [])];
   return [
     { service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.${app}/`, actions },
-    ...(write ? [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/", actions: ["get", "list"] }] : []),
-    ...(write ? [{ service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.catalog/${app}/`, actions: ["put"] }] : []),
-    // Going back from a move (SKILL.md §9) deletes this app's discovery entry, and nothing else in the catalog.
-    ...(removeEntry ? [{ service: "tinycloud.kv", path: `xyz.tinycloud.tinyapps.catalog/${app}/`, actions: ["del"] }] : []),
+    ...(write || removeEntry ? [{
+      service: "tinycloud.kv",
+      path: `xyz.tinycloud.tinyapps.catalog/${app}/entry`,
+      actions: [...(write ? ["get", "put"] : []), ...(removeEntry ? ["del"] : [])],
+    }] : []),
   ];
 }
 
@@ -152,7 +153,9 @@ export function appContext(cli, app, { write = false, remove = false, sql = fals
     };
     const catalogKeys = list(prefix);
     if (catalog || !write) return { status: "ready", ...selected, catalogKeys };
-    // Before creating an app, the agent reuses an existing one: the names of every app with a discovery entry.
+    const discovery = [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/", actions: ["get", "list"] }];
+    if (missingPermissions(profile, context.spaceId, discovery).length) return { status: "ready", ...selected, catalogKeys };
+    // Reuse known apps only when this profile already has catalog-wide read access.
     const appEntries = [...new Set(list("xyz.tinycloud.tinyapps.catalog/").map((key) => key.split("/")[1]).filter(Boolean))].sort();
     return { status: "ready", ...selected, catalogKeys, appEntries };
   }

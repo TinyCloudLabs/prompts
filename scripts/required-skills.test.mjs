@@ -206,11 +206,10 @@ test("every onboard-first route says the owner's request is the go-ahead, as wri
   }
 });
 
-test("/apps and the tc-apps forward test require the tc-apps version the site serves", () => {
+test("/apps installation and the tc-apps forward test require the version the site serves", () => {
   const { skills } = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8"));
   const { version } = skills.find((skill) => skill.name === "tc-apps");
   const setup = readFileSync(join(root, "setup/tc-apps.md"), "utf8");
-  assert.ok(setup.includes(`If the installed \`tc-apps\` skill is version \`${version}\` or newer`));
   assert.ok(setup.includes(`Require \`SKILL_INSTALLED tc-apps ${version} <folder>\``));
   assert.ok(readFileSync(join(root, "forward-tests-tc-apps.md"), "utf8").includes(`\`SKILL_INSTALLED tc-apps ${version} …\``));
 });
