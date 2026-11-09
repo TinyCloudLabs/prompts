@@ -44,6 +44,8 @@ Download both installers in one shell call, then run them in **one separate shel
 
 Before the run call, check the core skill as described in [Install the core skill](#install-the-core-skill), and the action skill as its calling guide says. If the core skill already matches, record `TC_SKILL_STATUS reused` and leave its install line out; leave out the action-skill lines if the caller named none or its skill already matches.
 
+If your client blocks the download or asks the owner to confirm it, show the owner the step and this reply to send, then wait: "Go ahead: download the TinyCloud CLI installer from agents.tinycloud.xyz." Run it again once they agree. Don't run a different install.
+
 **PowerShell (Windows):**
 
 ```powershell
