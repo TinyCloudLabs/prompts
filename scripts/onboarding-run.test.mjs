@@ -195,8 +195,11 @@ test("ending the turn follows the owner line in its paragraph, and the run's out
     const paragraphs = step.split("\n\n").filter((paragraph) => paragraph.includes(OWNER_LINE));
     assert.equal(paragraphs.length, 1, file);
     assert.ok(paragraphs[0].includes(`followed by: ${OWNER_LINE} ${SAME_TURN}`), file);
-    // Sam's approved wording (02:41:54Z via Holden): no owner line asks the owner to say they're done.
-    assert.doesNotMatch(text, /tell me when you're done|says they're done/, file);
+    // Sam's approved wording (02:41:54Z via Holden): no owner line asks the owner to say they're done, except the one
+    // line he approved later on card ask/guides-no-paste-lines (2026-11-09T08:02:59Z) for "Asking for more later".
+    const APPROVED_ASK_MORE = `"Open this link and approve; tell me when you're done."`;
+    assert.equal(text.split(APPROVED_ASK_MORE).length - 1, 1, `${file}: the approved asking-for-more line appears exactly once`);
+    assert.doesNotMatch(text.replace(APPROVED_ASK_MORE, ""), /tell me when you're done|says they're done/, file);
     const block = step.indexOf('exit "$RC"\n```');
     assert.ok(block > 0, file);
     assert.ok(step.slice(block).split("\n\n")[1].startsWith(NO_FILTER), `${file}: the no-filter line follows the block`);
