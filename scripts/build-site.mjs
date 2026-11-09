@@ -86,13 +86,15 @@ function expandStd(text, file) {
 // this repository's skills spell it out with the production URL, rewritten on a
 // preview like every other; released skills get it at build time. The build
 // fails without it. The html pages' rendered HTML, which owners see, leaves it out.
-const banner = (path, base = SITE) =>
-  `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${base}/${path}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
+const banner = (path, base = SITE, browserFetch = false) => browserFetch
+  ? `> **Agents: read this page in full, not summarized.** If your fetch tool returned a summary, open the raw page at ${base}/${path} and follow that text.\n\n`
+  : `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${base}/${path}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
 const frontMatter = (text) => text.match(/^---\n[\s\S]*?\n---\n\n*/)?.[0] ?? "";
-const opensWithBanner = (text, path) => text.slice(frontMatter(text).length).startsWith(banner(path, BASE));
+const opensWithBanner = (text, path, browserFetch) => text.slice(frontMatter(text).length).startsWith(banner(path, BASE, browserFetch));
 
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
+// `browserFetch` gives hosted chat clients a raw-page link instead of a curl command.
 // `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
   { url: "onboarding", src: "setup/onboarding.md", html: true, redirectFrom: ["owner", "owner.md", "setup/owner.md"] },
@@ -102,6 +104,7 @@ const PAGES = [
   { url: "connect", src: "setup/connect.md", html: true },
   ...["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes", "cli"].map((client) => ({
     url: `connect/${client}`, src: `setup/connect/${client}.md`, html: true,
+    browserFetch: ["chatgpt", "claude", "gemini", "grok", "muse", "perplexity"].includes(client),
   })),
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "feed", src: "skills/tinycloud-feed/creating-a-post.md" },
@@ -576,12 +579,12 @@ for (const s of skills) {
   write(`skills/${s.short}.md`, s.text);
 }
 const unbannered = [
-  ...pages.map((p) => [p.html ? `${p.url}.md` : p.url, p.text]),
+  ...pages.map((p) => [p.html ? `${p.url}.md` : p.url, p.text, p.browserFetch]),
   ...skills.flatMap((s) => [
     [`skills/${s.short}.md`, s.text],
     [`skills/${s.short}.md`, s.files.find((f) => f.path === "SKILL.md").body.toString("utf8")],
   ]),
-].filter(([path, text]) => !opensWithBanner(text, path));
+].filter(([path, text, browserFetch]) => !opensWithBanner(text, path, browserFetch));
 if (unbannered.length) throw new Error(`guides and skills that don't open with the read-raw line for their own URL:\n  ${unbannered.map(([path]) => path).join("\n  ")}`);
 const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
 const siteLine = `const SITE = "${SITE}";`;
@@ -905,7 +908,7 @@ ${style}
 </head>
 <body>
   <main>
-${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE).length))}
+${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE, p.browserFetch).length))}
   </main>
 </body>
 </html>

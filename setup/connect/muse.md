@@ -1,4 +1,4 @@
-> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/connect/muse.md` and follow that text. Summaries drop the shell blocks you must run.
+> **Agents: read this page in full, not summarized.** If your fetch tool returned a summary, open the raw page at https://agents.tinycloud.xyz/connect/muse.md and follow that text.
 
 # Connect Meta Muse to TinyCloud
 

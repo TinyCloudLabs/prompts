@@ -59,7 +59,7 @@ Use the tools this connection actually exposes. The [MCP reference skill](https:
 | Publish or share | The hosted MCP has **no publishing or sharing tools yet**. Keep the request and use a persistent CLI-capable agent with [publish](https://agents.tinycloud.xyz/publish) or [share](https://agents.tinycloud.xyz/share). A chat prompt link does not create a share or publish anything. |
 | Meetings | The hosted MCP has **no meeting tools yet**. Use a CLI-capable agent with [TinyChat meetings](https://agents.tinycloud.xyz/chat) and its retrieval skill. |
 
-The [skill index](https://agents.tinycloud.xyz/skills/index.json) identifies the task's reference material; hosted clients use connected tools, not downloaded CLI skill bodies. If a needed tool is absent, report the observed limitation instead of claiming CLI parity. Do not fetch behavioral instructions dynamically or create a user profile across conversations.
+The [skill index](https://agents.tinycloud.xyz/skills/index.json) identifies the task's reference material; hosted clients use connected tools, not downloaded CLI skill bodies. If a needed tool is absent, report the observed limitation instead of claiming CLI parity.
 
 For `SPACE_NOT_HOSTED`, follow the [new-account guidance](https://agents.tinycloud.xyz/connect#approve-access-and-continue), not another or broader sign-in. For `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED`, nothing was saved: do not retry; the owner can manage storage at https://account.tinycloud.xyz/storage. Disconnecting TinyCloud in the client's connector settings does not delete stored records.
 
@@ -93,6 +93,6 @@ Use `claude-code` for Claude Code, `opencode` for OpenCode and `codex` for other
 The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
 
 <!-- std:connect-feedback -->
-## Help the next agent, and your next session
+## If something went wrong
 
-Help the next agent, and your next session, avoid the same friction: [report a TinyCloud problem](https://bugs.tinycloud.xyz) using the [agent reporting instructions](https://bugs.tinycloud.xyz/agents.md). Ask the owner first with a short summary of what happened and the attachments proposed; send no report or attachment without their OK, and never include personal data or secrets.
+Help the next agent avoid the same problem: [report it](https://bugs.tinycloud.xyz) using the [agent reporting instructions](https://bugs.tinycloud.xyz/agents.md). Ask the owner first, with a short summary of what happened and any attachments you'd send; send nothing without their OK, and never include personal data or secrets.
