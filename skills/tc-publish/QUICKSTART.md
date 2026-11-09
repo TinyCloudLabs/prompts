@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.2`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: it needs `1.0.0-beta.18` or newer (TC-540 device login and `enable share`, TC-577 file names with spaces); betas before 17 print `STALE`. Beta.17 passes the probe but can't publish file names with spaces, so the skill also reads the version.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.2`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: an older CLI that fails it prints `STALE`.
 
 ## 0. Operator setup (once, not run by the agent)
 
@@ -13,14 +13,14 @@ export TC_HOME=<profile store for this agent>
 export TC_PUBLISH_STATE=<state dir for this agent>       # optional; default $HOME/.local/state/tc-publish
 ```
 
-Install this `tc-publish` directory into the agent's skill path (`~/.agents/skills/tc-publish/` for Codex and OpenCode, `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-publish/` for Claude Code). The `tinycloud-cli` core skill is separate. Preserve operator-set `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE`; the agent never changes or unsets them. Set `TC_PUBLISH_STATE` (and `TC_HOME`) per agent when several agents share one machine and `$HOME`, so their state files and waiters can't collide. `command -v tc` is not reliable — it can resolve to `/usr/sbin/tc`.
+Install this `tc-publish` directory into the agent's skill path (`~/.agents/skills/tc-publish/` for Codex and OpenCode, `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-publish/` for Claude Code). The `tinycloud-cli` core skill is separate. Preserve operator-set `TC_BIN`, `TC_HOME`, `TC_OWNER_EMAIL` and `TC_PUBLISH_STATE`; the agent never changes or unsets them. Set `TC_PUBLISH_STATE` (and `TC_HOME`) per agent when several agents share one machine and `$HOME`, so their state files and sign-ins can't collide. `command -v tc` is not reliable — it can resolve to `/usr/sbin/tc`.
 
 ## Why every block starts with a preamble
 
 Codex runs every command in a fresh shell, and other harnesses may too, so variables and the umask don't survive between calls. Every agent block in `SKILL.md` starts with:
 
 ```sh
-umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"; LOG="$STATE/enable-share.log"
+umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 ```
@@ -29,30 +29,20 @@ That rebuilds the state paths, keeps the state directory at 0700, repairs any re
 
 ## Walkthrough
 
-1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: `enable share` must offer `--replace-session` and `auth login` must offer `--expiry`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
+1. **Check the CLI** (`SKILL.md` §1). Feature probes, not version strings: `onboard` must exist and `auth login` must offer `--expiry`. `CLI_OK` → continue; `STALE` → stop and tell the owner. Never install anything.
 2. **Check the profile and session** (§2, first block). `SESSION: present` means consent already exists — go straight to publishing. Return to consent only when a publish fails with `AUTH_REQUIRED`, and only once: `STORAGE_QUOTA_EXCEEDED` and `UPLOAD_FAILED` are never consent problems. `init` runs only when the profile doesn't exist (`PROFILE_NOT_FOUND`); any other failure stops the flow. Never `profile delete`.
-3. **Sign-in** (§2). The first time, you approve one sign-in in OpenKey and paste its code back to your agent; it lasts up to 30 days. If pasting a code doesn't work for you, the device sign-in is the fallback, used only after you reply "Use the other sign-in". The device sign-in: the agent writes a small waiter script into `$STATE` and starts it so it outlives the tool call and the turn — as the harness's supervised background process if there is one, otherwise detached with `setsid nohup … < /dev/null &`. In a **separate** command it checks that the waiter is alive and the `Approve on your phone:` line is in `$LOG`; only then does it send the approval message, word for word from the template. `enable share` has no `--expiry`; it requests 30 days and the owner can choose shorter on the consent page. For a shorter request, the waiter script takes the lifetime as a second argument and runs `auth login --device --manifest builtin:share-publishing --expiry <1m–30d>`.
+3. **Sign-in** (§2). The first time, you approve one OpenKey link; nothing to send back. It lasts up to 30 days. The agent writes the permission list to `$STATE/share-publishing.json` and starts `auth login --method openkey --manifest … --expiry 30d` in the background, because it keeps running until you approve and a foreground tool call would be stopped by the client's time limit (2 minutes in Claude Code). It reads the link from `$STATE/login.err`, sends it with one line, and when you say you're done reads `$STATE/login.out` for `"authenticated": true`.
 4. **Ask, then publish** (§3). Before every publish the agent asks: "Anyone with the link can open it. Make a link?" It publishes only after a yes; on a no, nothing is published and the file stays on the computer. The block publishes with `--to anyone` and `--json`, records the share id, and saves the link to `$STATE/last-url` with `share show <id> --reveal-link`, so the link never prints. A failed publish prints `PUBLISH_FAILED: <code>` and leaves no link file. Run EXACTLY the block; do not write your own `share publish` command.
 5. **Verify** (§4). Receive the link and compare SHA-256 with the source → `VERIFIED` or `MISMATCH (reason)`.
 6. **Deliver, report, clean up** (§6). Hand the link to the owner in the reply with the expiry, and nowhere else; report with the template (the link can be revoked any time before it expires), then delete the state files.
 
-## What the owner sees on their phone
+## What the owner sees
 
-At `openkey.so/device`: the requested capabilities — a capability-list read (required), KV get/put on `xyz.tinycloud.share/shares/`, and KV get/metadata/put/list on `shares/` — plus the lifetime, the Share and Node origins, and the warning "Only approve if you started this on your own device". The agent's message answers that warning: approve only if you asked the agent for this just now.
+The link opens OpenKey's approval page on any device, phone included. It lists the requested capabilities — a capability-list read (required), KV get/put on `xyz.tinycloud.share/shares/`, and KV get/metadata/put/list on `shares/` and `artifacts/` — and the lifetime. The owner signs in with a passkey and presses **Approve**; no code is shown or needed. Unticking `xyz.tinycloud.share/shares/` breaks links.
 
-The owner taps "Sign in and review delegation", signs in with a passkey, picks their key, ticks "I started this request myself, on a device I control", leaves every item ticked, and presses **Approve**. The page says "Authenticated" and the CLI saves the scoped session. Unticking `xyz.tinycloud.share/shares/` breaks links.
+## Keeping the sign-in running
 
-## Keeping the waiter alive
-
-In the second forward-test round, a plain `( … ) &` waiter was killed when the command finished (Codex) and between turns (SWE-2 on OMP). The owner's approval then landed with nobody waiting and was lost. A supervised process (OMP) or a `setsid nohup` detached process survived in both harnesses. The liveness check exists so the agent never sends a code that nobody is waiting for: `WAITER_GONE` without `TC_EXIT=` means the waiter died, and the agent fixes the launch instead of sending the code. `setsid` isn't available on macOS; use the harness's supervised process there.
-
-## Consent is rate-limited
-
-OpenKey allows 5 device sign-in starts per 10 minutes per network, shared by every agent on that network. Over the limit, the CLI reports `DEVICE_AUTH_RATE_LIMITED` (CLI `1.0.0-beta.18` and earlier report `DEVICE_AUTH_FAILED` with "rate_limited" in the message). The agent waits at least 10 minutes and tries once more — never in a loop. Every start counts, including relaunches after expiry or a dead waiter, so the agent never starts a new request while a code is outstanding.
-
-## Turn boundaries
-
-An agent may promise a follow-up ("I'll let you know when it's approved") only if its harness wakes it when the waiter exits — OMP supervised processes do. In a reply-only channel (Codex, SWE-2 and similar), sending the approval message ends the turn and nothing watches on the agent's behalf, so the message ends with "When you've approved, reply here and I'll finish setting up." On the owner's next message the agent runs the poll and status blocks and reports. If the waiter died in between, the agent says the approval was lost, fixes the launch, and sends a new link and code within the rate limit.
+`auth login` collects the approval itself: it checks OpenKey every 2 seconds until the owner approves. OpenKey keeps an approval for 10 minutes and a link for about 1 hour. If the command was stopped (a tool timeout, a restart), running it again the same way resumes the same pending link, so the agent never sends a second link for one request. If the link expires first (`APPROVAL_REQUEST_EXPIRED`), the agent follows the shared rule for an expired request, then runs it again and sends the new link.
 
 ## Links are long — never retype them
 
@@ -67,8 +57,8 @@ A link is about 2.6 KB. An agent that prints a link in pieces and reassembles it
 - Always pass `--expires`: 24h unless the owner says otherwise. `SESSION_LIFETIME_EXCEEDED` with "exceeds session expiry": the share would outlive the login → use a shorter `--expires`, never a longer one; under 1 h of session left → the owner starts ONE new login. With "must be at least 60 seconds from now" → use the smallest allowed value, never beyond the session end minus 1 h.
 - `share list --json` is sender history with fields `shareId`, `target`, `expiresAt` and `revoked`; there is no `id` field. Link ids are CIDs (`bafkr4…`). Filter out revoked and expired records before calling anything active.
 - Sharing with an email address, a domain or a DID isn't available yet.
-- Sign-in: the first time, you approve one sign-in in OpenKey and paste its code back to your agent. It covers links, for up to 30 days.
-- File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`); the link shows the stored name. CLI `1.0.0-beta.17` can't publish such names (TC-577): spaces give a misleading `PERMISSION_DENIED`, other unusual names may give `INVALID_ARGUMENT`. The agent tells the owner to upgrade instead of re-running consent or renaming the file.
+- Sign-in: the first time, you approve one OpenKey link; nothing to send back. It covers links, for up to 30 days.
+- File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`); the link shows the stored name.
 - Links can be revoked: `share revoke <shareId>` stops the link opening (`SHARE_REVOKED`); `share show <id>` then reports `"revoked": true`. Copies already downloaded can't be recalled.
 
 ## Rendering
@@ -79,13 +69,13 @@ A link is about 2.6 KB. An agent that prints a link in pieces and reassembles it
 
 ## Errors
 
-Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text. Branch on `code`, not the exit status — exits 4, 5 and 6 each cover several errors (for example exit 4 is `EXPIRED`, `NOT_FOUND` or `UNAVAILABLE`; exit 6 is `OPENKEY_UNREACHABLE` or `REGISTRY_REJECTED`). `UNAVAILABLE` means nothing was shared: with "not available in this release" that kind of share isn't available yet; otherwise the registry or network was unreachable, so report it and try again later, never in a loop. `REGISTRY_REJECTED` won't improve on retry — report it. The full table, with actions, is in `SKILL.md`.
+Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text. Branch on `code`, not the exit status — exits 4, 5 and 6 each cover several errors (for example exit 4 is `EXPIRED`, `NOT_FOUND` or `UNAVAILABLE`; exit 6 is `REGISTRY_REJECTED` or a network error). `UNAVAILABLE` means nothing was shared: with "not available in this release" that kind of share isn't available yet; otherwise the registry or network was unreachable, so report it and try again later, never in a loop. `REGISTRY_REJECTED` won't improve on retry — report it. The full table, with actions, is in `SKILL.md`.
 
 ## Never
 
-- Never put a full share URL, fragment, approval code or session material anywhere but the CLI's output, a 0600 file in `$STATE`, the one delivery read, and the one owner message — not notes, memory, summaries, files, commits, group chats or other tools.
+- Never put a full share URL, fragment or session material anywhere but the CLI's output, a 0600 file in `$STATE`, the one delivery read, and the one owner message — not notes, memory, summaries, files, commits, group chats or other tools.
 - Never retype, reassemble, or chunk a link.
 - Never report a publish without verification.
 - Never publish without asking "Anyone with the link can open it. Make a link?" and getting a yes, and never pass `email:`, `domain:` or `did:`.
-- Never run `profile delete`, add `--replace-session` unprompted, run two waiters at once, start a new consent request while a code is outstanding, retry a rate-limited request in a loop, or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
+- Never run `profile delete`, add `--replace-session` unprompted, run two sign-ins at once, or change `TC_BIN`/`TC_HOME`/`TC_PUBLISH_STATE`.
 - Never publish HTML that fails the self-contained check unless the owner, told what will break, explicitly says to publish anyway.
