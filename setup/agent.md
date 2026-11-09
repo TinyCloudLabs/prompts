@@ -2,7 +2,7 @@
 
 # Set up a TinyCloud action for your agent
 
-Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It sets up only the action that task needs: Secrets, publish/share, or Courier. Setup installs the pinned CLI (or uses an operator-provided `TC_BIN`), attempts the optional core skill, and installs one action skill. Follow [/onboarding](onboarding.md) first if TinyCloud isn't set up yet. Each of these actions then asks for its own approval: the owner approves one OpenKey link. Secrets and publish/share also need the code OpenKey shows, pasted back to the agent; Courier needs none.
+Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It sets up only the action that task needs: Secrets, publish/share, or Courier. Setup installs the pinned CLI (or uses an operator-provided `TC_BIN`), attempts the optional core skill, and installs one action skill. Follow [/onboarding](onboarding.md) first if TinyCloud isn't set up yet. Each of these actions then asks for its own approval: the owner approves one OpenKey link. For Secrets and publish/share there's nothing to send back; Courier setup still asks for the code OpenKey shows.
 
 ## For the agent
 
@@ -16,7 +16,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### What is and isn't secret
 
-- **Fine to share:** the code OpenKey shows after you approve (a short code works once and expires after 5 minutes), and a permission slip (a delegation or a grant file): it names who may use it, and only that authenticated holder can use it.
+- **Fine to share:** an OpenKey approval link; the code OpenKey shows, where a step still asks for one (Courier setup; a short code works once and expires after 5 minutes); and a permission slip (a delegation or a grant file): it names who may use it, and only that authenticated holder can use it.
 - **Keep private:** private keys, session keys and the profile folder (`~/.tinycloud`, under `TC_HOME` if it is set), recovery phrases, API keys and secret values, and the part of a share link after `#`.
 - **Approve only a request you started or recognise.** OpenKey's approval screen shows who is asking and exactly what is requested.
 
