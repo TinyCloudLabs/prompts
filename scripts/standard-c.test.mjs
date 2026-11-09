@@ -233,7 +233,7 @@ const EXIT_EXCEPTIONS = {
   "setup/onboarding.md": "the guide's exit-8 pending-link instructions; shared block owns error decisions",
   "setup/courier.md": "Courier has its own exits: 0, 8, 2 and 1 with [code], including `[approval-expired]`",
   "skills/tc-apps/SKILL.md": "data commands: kv put --if-none-match exits 5 KV_ALREADY_EXISTS; layout.sh exits 3 when jq is missing",
-  "skills/tc-publish/SKILL.md": "publish sign-in (device: 3 DEVICE_AUTH_EXPIRED, 5 DEVICE_AUTH_DENIED/SCOPE_REJECTED/BINDING_MISMATCH) and share commands (3 AUTH_REQUIRED session, 5 PERMISSION_DENIED scope)",
+  "skills/tc-publish/SKILL.md": "the publish sign-in's exit 3 and 8 handling, and share commands (3 AUTH_REQUIRED session, 5 PERMISSION_DENIED scope)",
   "skills/tc-secrets/SKILL.md": "secrets sign-in (3 APPROVAL_*_EXPIRED, 8 APPROVAL_*_UNAVAILABLE), reads (3 AUTH_REQUIRED, 5 PERMISSION_DENIED) and secrets wait (8 still missing)",
 };
 const EXIT_MENTION = /\b[Ee]xit(?:s|ed| code| status)?:?\s*`?[358]\b|\(exit [358]\)|TC_EXIT: [358]|\| *`?[358]`? *\||\bexits? [358]\b|exit-[358]\b|\brc `?[358]\b/;
@@ -259,10 +259,7 @@ const DONE_WORDING = /tell me when you(?:'|’)re done|tell me you(?:'|’)re do
 const CODE_WORDING = /sends? back the code|sends? (?:me )?(?:back )?the short code|paste (?:it|the code|its code) back|send it back to me here|paste the code here/i;
 const WORDING_EXCEPTIONS = {
   "setup/onboarding.md": "the owner's approved instruction to tell the agent when they have approved",
-  "setup/publish.md": "publish sign-in (auth login --paste)",
-  "setup/share.md": "publish sign-in (auth login --paste)",
-  "skills/tc-publish/SKILL.md": "publish sign-in (auth login --paste), and its device fallback's background waiter, which may not wake the agent",
-  "skills/tc-publish/QUICKSTART.md": "publish sign-in (auth login --paste)",
+  "skills/tc-publish/SKILL.md": "publish sign-in: the owner tells the agent when they have approved the link",
   "apps/tinychat/setup.md": "TinyChat's pack (authorize, then login --code)",
   "skills/tc-secrets/SKILL.md": "Secrets owner message asks the owner to say they are done after approving; no code",
   "skills/tc-apps/LEGACY-SQL.md": "older SQL index sign-in (auth login --paste) asks the owner to paste the code",

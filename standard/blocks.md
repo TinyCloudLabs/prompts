@@ -28,7 +28,7 @@
 **Exceptions: commands with other codes.**
 
 - `auth login --paste` and `auth request --grant --paste` (the older apps fallbacks): exit 3 `PASTE_CODE_MISSING` is the expected first stop, with the link printed and no code yet, not an expired link. These flows still ask the owner for the code OpenKey shows after they approve. It works once, for 5 minutes; a used or expired code ends as exit 1, “Delegation code not found or expired”.
-- `auth login --device` (publish's fallback and the older apps sign-in): 3 is `DEVICE_AUTH_EXPIRED` and 5 is `DEVICE_AUTH_DENIED`, as above. Each new run counts toward OpenKey's limit of 5 device sign-ins per 10 minutes; over it, exit 1 `DEVICE_AUTH_RATE_LIMITED`.
+- `auth login --device` (the older apps sign-in): 3 is `DEVICE_AUTH_EXPIRED` and 5 is `DEVICE_AUTH_DENIED`, as above. Each new run counts toward OpenKey's limit of 5 device sign-ins per 10 minutes; over it, exit 1 `DEVICE_AUTH_RATE_LIMITED`.
 - Data commands (`kv`, `sql`, `share`, `secrets get`, `feed`): exit 3 is `AUTH_REQUIRED`, a missing or expired session, so sign in again as the guide says; there is no link to resend. Exit 5 is `PERMISSION_DENIED` or `KV_ALREADY_EXISTS`, not the owner declining. Branch on the code.
 - `secrets wait`: exit 8 means a named secret was still missing when the wait ended.
 - Courier (`tinycloud courier …`): Courier 0.5.2 exits only 0, 1, 2 or 8; exit 6 is not a Courier code. Codes are command-specific; follow the Courier guide. For `init --request`, exit 0 may still create and print an approval link; follow every stderr `Next:` line by the shared relay rule, regardless of the exit code. For `init --wait`, exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.
