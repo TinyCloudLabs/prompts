@@ -33,7 +33,7 @@ const tcOlder = (bin) => `TC_OLDER ${OLDER} ${bin} is older than the pinned ${CL
 const blocks = [
   { name: "tc-apps SKILL.md §1", file: "skills/tc-apps/SKILL.md", heading: "## 1. Read the paths and the time", stops: true },
   { name: "tc-secrets SKILL.md §1", file: "skills/tc-secrets/SKILL.md", heading: "## 1. Check the CLI", stops: false, probes: "secrets get --help\nauth login --help\nsecrets wait --help\nsecrets request --help\n", ok: "CLI_OK" },
-  { name: "tc-publish SKILL.md §1", file: "skills/tc-publish/SKILL.md", heading: "## 1. Check the CLI", stops: false, probes: "enable share --help\nauth login --help\n", ok: "CLI_OK" },
+  { name: "tc-publish SKILL.md §1", file: "skills/tc-publish/SKILL.md", heading: "## 1. Check the CLI", stops: false, probes: "onboard --help\nauth login --help\n", ok: "CLI_OK" },
   { name: "tinycloud-feed SKILL.md §1", file: "skills/tinycloud-feed/SKILL.md", heading: "## 1. Check the CLI", stops: true },
   { name: "/feed §1", file: "skills/tinycloud-feed/creating-a-post.md", heading: "## 1. Check the CLI", stops: true },
   { name: "/onboarding step 2", file: "setup/onboarding.md", heading: "**2. Run onboarding.**", stops: true, onboarding: true },
