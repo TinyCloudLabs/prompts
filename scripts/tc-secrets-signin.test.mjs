@@ -42,6 +42,7 @@ echo '{"authenticated":true,"profile":"api-keys","scoped":true,"declined":[],"ex
   return { home, state, env };
 };
 const sh = (step, env, shell = "bash") => spawnSync(shell, ["-c", block(step)], { encoding: "utf8", env, timeout: 20000 }).stdout.trim();
+const rc = (w) => (existsSync(join(w.state, "login.rc")) ? readFileSync(join(w.state, "login.rc"), "utf8").trim() : "");
 const until = async (check) => {
   for (let i = 0; i < 100; i++) {
     if (check()) return;
@@ -75,14 +76,14 @@ for (const shell of ["bash", "sh"]) test(`§3c detaches the sign-in and returns 
   assert.equal(first, "APPROVAL_READY new");
   assert.equal(readFileSync(join(w.state, "approve.url"), "utf8"), LINK, "the link is the whole second line, fragment included");
   assert.equal(sh("3d", w.env, shell), "APPROVAL_READY same");
-  assert.ok(!existsSync(join(w.state, "login.rc")), "the CLI is still running");
+  assert.equal(rc(w), "", "the CLI is still running: no exit status yet");
   const args = readFileSync(join(w.home, "args"), "utf8");
   assert.match(args, /auth login --method openkey --manifest \S+manifest\.json --owner \S+ --expiry 30d --no-popup/);
   assert.doesNotMatch(args, /--paste/);
   assert.equal(readFileSync(join(w.home, "stdin"), "utf8"), "", "stdin is /dev/null");
   assert.equal(sh("3c", w.env, shell), "LOGIN_ALREADY_RUNNING — run §3d");
   writeFileSync(join(w.home, "approved"), "");
-  await until(() => existsSync(join(w.state, "login.rc")) && readFileSync(join(w.state, "login.rc"), "utf8").trim() === "0");
+  await until(() => rc(w) === "0");
   assert.equal(sh("3d", w.env, shell), "SIGNED_IN expires 2026-12-01T00:00:00.000Z declined []");
   for (const file of ["login.out", "login.err", "login.rc", "login.pid", "approve.url"]) assert.ok(!existsSync(join(w.state, file)), file);
 });
@@ -126,7 +127,7 @@ test("§3d and §3c treat a PID that is gone, or is no longer the sign-in, as st
   assert.equal(sh("3c", w.env), "LOGIN_STARTED");
   other.kill();
   writeFileSync(join(w.home, "approved"), "");
-  await until(() => existsSync(join(w.state, "login.rc")));
+  await until(() => rc(w) !== "");
 });
 
 test("§3d reports CLI errors by code, with the CLI's message", () => {
@@ -159,7 +160,7 @@ test("the sign-in survives its tool call's process group being killed; the exit 
     await until(() => !["STARTING", "LOGIN_STOPPED"].includes(first = sh("3d", w.env, shell)));
     assert.equal(first, "APPROVAL_READY new", shell);
     writeFileSync(join(w.home, "approved"), "");
-    await until(() => existsSync(join(w.state, "login.rc")) && readFileSync(join(w.state, "login.rc"), "utf8").trim() === "0");
+    await until(() => rc(w) === "0");
     assert.equal(sh("3d", w.env, shell), "SIGNED_IN expires 2026-12-01T00:00:00.000Z declined []", shell);
   }
 });
@@ -173,4 +174,10 @@ test("§3d reads the result of a sign-in that ended without writing its exit sta
   writeFileSync(join(w.state, "login.pid"), "999999999\n");
   writeFileSync(join(w.state, "login.err"), '{"error":{"code":"APPROVAL_REQUEST_UNAVAILABLE","message":"OpenKey is down."}}\n');
   assert.equal(sh("3d", w.env), "LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE OpenKey is down.");
+});
+
+// Live run (Claude Code): a command whose `sh -c` script contains rm is denied by the built-in removal check
+// ("This shell -c script runs rm and could not be checked"). The §3c start block must contain no rm at all.
+test("the §3c start block has no rm, so Claude Code's removal check lets it run", () => {
+  assert.doesNotMatch(block("3c"), /\brm\b/);
 });

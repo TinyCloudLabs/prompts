@@ -360,10 +360,10 @@ STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; c
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 P=$(cat "$STATE/login.pid" 2>/dev/null)
-if [ -n "$P" ] && [ ! -e "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -F -- 'auth login' | grep -qF -- "--manifest $STATE/manifest.json"; then echo "LOGIN_ALREADY_RUNNING — run §3d"
+if [ -n "$P" ] && [ ! -s "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -F -- 'auth login' | grep -qF -- "--manifest $STATE/manifest.json"; then echo "LOGIN_ALREADY_RUNNING — run §3d"
 elif [ ! -s "$STATE/manifest.json" ]; then echo "NO_MANIFEST — run §3b first"
 else
-  rm -f "$STATE/login.out" "$STATE/login.err" "$STATE/login.rc"
+  : > "$STATE/login.out"; : > "$STATE/login.err"; : > "$STATE/login.rc"
   : > "$STATE/login.pid"
   S=; command -v setsid > /dev/null 2>&1 && S=setsid
   ( trap '' HUP
