@@ -346,7 +346,7 @@ PY
 - `BAD_INPUT <why>` → fix `TC_OWNER_DID` or the secret names and run this block again.
 - `REQUEST_MISMATCH <why>` → don't start the sign-in. Report what the check said.
 
-**3c. Start the sign-in.** The sign-in keeps running until the owner approves, which takes longer than a tool call may run. So this block starts it detached, in the background, with stdin closed and its output in files in `$STATE` that §3d reads, and returns at once with `LOGIN_STARTED`. Run it as its own tool call, exactly as written. Never add `sleep`, `wait` or a read of the files to it. The CLI prints the approval link, then collects the approval from OpenKey by itself as soon as the owner approves. There is no code.
+**3c. Start the sign-in.** The sign-in keeps running until the owner approves, which takes longer than a tool call may run. So this block starts it detached, in the background (in its own session when `setsid` exists), with stdin closed and its output in files in `$STATE` that §3d reads, and returns with `LOGIN_STARTED` as soon as the detached `sh` has recorded its PID in `login.pid` (a moment). That `sh` also writes the CLI's exit status to `login.rc`, so both survive the end of the tool call. Run it as its own tool call, exactly as written. Never add `sleep`, `wait` or a read of the files to it. The CLI prints the approval link, then collects the approval from OpenKey by itself as soon as the owner approves. There is no code.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077
@@ -367,11 +367,11 @@ else
   : > "$STATE/login.pid"
   S=; command -v setsid > /dev/null 2>&1 && S=setsid
   ( trap '' HUP
-    $S env -u TC_PRIVATE_KEY "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" \
-      --owner "$TC_OWNER_DID" --expiry 30d --no-popup < /dev/null > "$STATE/login.out" 2> "$STATE/login.err" &
-    echo $! > "$STATE/login.pid"
-    wait $!; echo $? > "$STATE/login.rc"
+    exec $S sh -c 'echo $$ > "$0.pid"; trap "kill \$c" TERM; env -u TC_PRIVATE_KEY "$@" < /dev/null > "$0.out" 2> "$0.err" & c=$!; wait $c; echo $? > "$0.rc"' \
+      "$STATE/login" "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" \
+      --owner "$TC_OWNER_DID" --expiry 30d --no-popup
   ) < /dev/null > /dev/null 2>&1 &
+  i=0; while [ ! -s "$STATE/login.pid" ] && [ "$i" -lt 30 ]; do sleep 0.1; i=$((i + 1)); done   # the detached sh has started in its own session once it has recorded its PID
   echo LOGIN_STARTED
 fi
 ```
@@ -397,23 +397,27 @@ def clean(keep_url):
         try: os.remove(os.path.join(st, n))
         except OSError: pass
 err, rc, pid = read("login.err"), read("login.rc").strip(), read("login.pid").strip()
-if rc:
-    try: r = json.loads(read("login.out") or "{}")
-    except ValueError: r = {}
-    dec, i, last = json.JSONDecoder(), 0, {}
-    while (m := re.compile(r"\{").search(err, i)):
-        try: o, i = dec.raw_decode(err, m.start()); last = o if isinstance(o, dict) and "error" in o else last
-        except ValueError: i = m.start() + 1
-    e = last.get("error") or {}
-    clean(rc not in ("0", "3"))   # a resumed request keeps its link, so it isn't sent twice
-    if rc == "0" and isinstance(r, dict) and r.get("authenticated") is True:
-        sys.exit(print("SIGNED_IN expires", r.get("expiresAt"), "declined", json.dumps(r.get("declined", []))))
-    sys.exit(print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", e.get("message") or "")[:200]))
-if pid == "" and os.path.exists(os.path.join(st, "login.pid")): sys.exit(print("STARTING"))
+if not rc and pid == "" and os.path.exists(os.path.join(st, "login.pid")): sys.exit(print("STARTING"))
 def is_login(p):
     try: return p.isdigit() and all(s in subprocess.run(["ps", "-p", p, "-o", "args="], capture_output=True, text=True).stdout for s in ("auth login", f"--manifest {st}/manifest.json"))
     except OSError: return False
-if not is_login(pid): sys.exit(print("LOGIN_STOPPED"))
+running = is_login(pid)
+try: r = json.loads(read("login.out") or "{}")
+except ValueError: r = {}
+if not isinstance(r, dict): r = {}
+dec, i, last = json.JSONDecoder(), 0, {}
+while (m := re.compile(r"\{").search(err, i)):
+    try: o, i = dec.raw_decode(err, m.start()); last = o if isinstance(o, dict) and "error" in o else last
+    except ValueError: i = m.start() + 1
+e = last.get("error") or {}
+# A sign-in that ended without writing its exit status still left its result in the files.
+if not rc and not running: rc = "0" if r.get("authenticated") is True else "?" if e.get("code") else ""
+if rc:
+    clean(rc not in ("0", "3"))   # a resumed request keeps its link, so it isn't sent twice
+    if rc == "0" and r.get("authenticated") is True:
+        sys.exit(print("SIGNED_IN expires", r.get("expiresAt"), "declined", json.dumps(r.get("declined", []))))
+    sys.exit(print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", e.get("message") or "")[:200]))
+if not running: sys.exit(print("LOGIN_STOPPED"))
 # The link is a line that holds nothing but the URL. Only complete (newline-ended) lines count.
 links = {l.strip() for l in err.split("\n")[:-1] if re.fullmatch(r"\s*https://\S+\s*", l)}
 if not links: sys.exit(print("STARTING"))
@@ -434,7 +438,7 @@ PY
 - `SIGNED_IN` with a non-empty `declined` → something wasn't granted. Tell the owner which names stay unreadable and why:
   - an item they unticked;
   - or, if the declined entry is the decrypt permission and everything was ticked, an OpenKey deployment too old to grant agent decryption.
-- `LOGIN_STOPPED` → the sign-in stopped without a result (a restart, or its process was ended). Run §3c again. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again. The same goes for `LOGIN_FAILED exit-143`, a sign-in that was ended. If §3d prints `LOGIN_STOPPED` (or `exit-143`) twice in a row, stop: tell the operator this shell can't keep a background process running.
+- `LOGIN_STOPPED` → the sign-in stopped without a result (a restart, or its process was ended). First run §2: if every name is `READY`, the sign-in had already completed; go on. Otherwise run §3c again. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again. The same goes for `LOGIN_FAILED exit-143`, a sign-in that was ended. If §3d prints `LOGIN_STOPPED` (or `exit-143`) twice in a row, stop: tell the operator this shell can't keep a background process running.
 - `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired before it was approved (the CLI's own message). Use the shared exit-3 rule below: this flow has no earlier exit-8 JSON, so ask the decline question and wait. When the owner says they didn't decline or wants a new link, run §3c again, then this block, and send only the new link: "Open this link and approve; tell me when you're done."
 - `LOGIN_FAILED APPROVAL_RESULT_EXPIRED` → the owner approved, but the sign-in wasn't running to collect it within 10 minutes. Run §3c again, then this block, and send only the new link: "Open this link and approve; tell me when you're done."
 - `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE`, `APPROVAL_ACK_PENDING` or `APPROVAL_RESULT_ACKNOWLEDGED` (exit 8) → OpenKey is unavailable for now, or the approval is saved and still being acknowledged. Wait a minute, then run §3c again, at most three times in a row; it resumes the same link, so don't send it again. §3d prints the CLI's message after the code. If it still fails, stop and report it; don't retry. Never edit or delete the CLI's files yourself.

@@ -41,7 +41,7 @@ echo '{"authenticated":true,"profile":"api-keys","scoped":true,"declined":[],"ex
   const env = { PATH: process.env.PATH, HOME: home, TC_BIN: cli, TC_OWNER_DID: OWNER, TC_SECRETS_STATE: state };
   return { home, state, env };
 };
-const sh = (step, env) => spawnSync("bash", ["-c", block(step)], { encoding: "utf8", env, timeout: 20000 }).stdout.trim();
+const sh = (step, env, shell = "bash") => spawnSync(shell, ["-c", block(step)], { encoding: "utf8", env, timeout: 20000 }).stdout.trim();
 const until = async (check) => {
   for (let i = 0; i < 100; i++) {
     if (check()) return;
@@ -64,26 +64,26 @@ test("§3b writes and checks the manifest before any sign-in", () => {
   assert.ok(!existsSync(join(w.home, "args")), "§3b never starts the CLI");
 });
 
-test("§3c detaches the sign-in and returns at once, without a code; §3d sends the link once, then reads the result", async () => {
+for (const shell of ["bash", "sh"]) test(`§3c detaches the sign-in and returns at once, without a code; §3d sends the link once, then reads the result (${shell})`, async () => {
   const w = fresh();
-  sh("3b", w.env);
+  sh("3b", w.env, shell);
   const started = Date.now();
-  assert.equal(sh("3c", w.env), "LOGIN_STARTED");
+  assert.equal(sh("3c", w.env, shell), "LOGIN_STARTED");
   assert.ok(Date.now() - started < 1500, `§3c took ${Date.now() - started} ms`);
   let first;
-  await until(() => !["STARTING", "LOGIN_STOPPED"].includes(first = sh("3d", w.env)));
+  await until(() => !["STARTING", "LOGIN_STOPPED"].includes(first = sh("3d", w.env, shell)));
   assert.equal(first, "APPROVAL_READY new");
   assert.equal(readFileSync(join(w.state, "approve.url"), "utf8"), LINK, "the link is the whole second line, fragment included");
-  assert.equal(sh("3d", w.env), "APPROVAL_READY same");
+  assert.equal(sh("3d", w.env, shell), "APPROVAL_READY same");
   assert.ok(!existsSync(join(w.state, "login.rc")), "the CLI is still running");
   const args = readFileSync(join(w.home, "args"), "utf8");
   assert.match(args, /auth login --method openkey --manifest \S+manifest\.json --owner \S+ --expiry 30d --no-popup/);
   assert.doesNotMatch(args, /--paste/);
   assert.equal(readFileSync(join(w.home, "stdin"), "utf8"), "", "stdin is /dev/null");
-  assert.equal(sh("3c", w.env), "LOGIN_ALREADY_RUNNING — run §3d");
+  assert.equal(sh("3c", w.env, shell), "LOGIN_ALREADY_RUNNING — run §3d");
   writeFileSync(join(w.home, "approved"), "");
   await until(() => existsSync(join(w.state, "login.rc")) && readFileSync(join(w.state, "login.rc"), "utf8").trim() === "0");
-  assert.equal(sh("3d", w.env), "SIGNED_IN expires 2026-12-01T00:00:00.000Z declined []");
+  assert.equal(sh("3d", w.env, shell), "SIGNED_IN expires 2026-12-01T00:00:00.000Z declined []");
   for (const file of ["login.out", "login.err", "login.rc", "login.pid", "approve.url"]) assert.ok(!existsSync(join(w.state, file)), file);
 });
 
@@ -142,4 +142,35 @@ test("§3d reports CLI errors by code, with the CLI's message", () => {
   writeFileSync(join(w.state, "login.err"), `${BANNER}\n${LINK}\n\n${JSON.stringify({ error: { code: "APPROVAL_REQUEST_UNAVAILABLE", message } })}\n`);
   assert.equal(sh("3d", w.env), `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE ${message}`);
   assert.equal(readFileSync(join(w.state, "approve.url"), "utf8"), LINK, "a resumable request keeps its link, so it is not sent twice");
+});
+
+test("the sign-in survives its tool call's process group being killed; the exit status is written inside the detached session", async (ctx) => {
+  if (spawnSync("sh", ["-c", "command -v setsid"]).status !== 0) return ctx.skip("no setsid");
+  for (const shell of ["bash", "sh"]) {
+    const w = fresh();
+    sh("3b", w.env, shell);
+    const start = spawn(shell, ["-c", block("3c")], { env: w.env, detached: true, stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    start.stdout.on("data", (d) => (out += d));
+    await new Promise((r) => start.on("close", r));
+    assert.equal(out.trim(), "LOGIN_STARTED", shell);
+    try { process.kill(-start.pid, "SIGKILL"); } catch {}   // a harness ending the tool call's process group
+    let first;
+    await until(() => !["STARTING", "LOGIN_STOPPED"].includes(first = sh("3d", w.env, shell)));
+    assert.equal(first, "APPROVAL_READY new", shell);
+    writeFileSync(join(w.home, "approved"), "");
+    await until(() => existsSync(join(w.state, "login.rc")) && readFileSync(join(w.state, "login.rc"), "utf8").trim() === "0");
+    assert.equal(sh("3d", w.env, shell), "SIGNED_IN expires 2026-12-01T00:00:00.000Z declined []", shell);
+  }
+});
+
+test("§3d reads the result of a sign-in that ended without writing its exit status", () => {
+  const w = fresh();
+  writeFileSync(join(w.state, "login.pid"), "999999999\n");
+  writeFileSync(join(w.state, "login.err"), `${BANNER}\n${LINK}\n\n`);
+  writeFileSync(join(w.state, "login.out"), '{"authenticated":true,"declined":[],"expiresAt":"2026-12-01T00:00:00.000Z"}\n');
+  assert.equal(sh("3d", w.env), "SIGNED_IN expires 2026-12-01T00:00:00.000Z declined []");
+  writeFileSync(join(w.state, "login.pid"), "999999999\n");
+  writeFileSync(join(w.state, "login.err"), '{"error":{"code":"APPROVAL_REQUEST_UNAVAILABLE","message":"OpenKey is down."}}\n');
+  assert.equal(sh("3d", w.env), "LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE OpenKey is down.");
 });
