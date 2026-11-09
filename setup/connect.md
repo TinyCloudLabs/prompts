@@ -24,6 +24,8 @@ Those guides are the authority for prerequisites, installation, permissions, sig
 
 Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Grok Bot](#grok-bot), [WhatsApp / Instinct](#whatsapp-and-instinct), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other MCP clients](#other-mcp-clients).
 
+Client-specific guides: [ChatGPT](connect/chatgpt.md), [Claude](connect/claude.md), [Cursor](connect/cursor.md), [Gemini](connect/gemini.md), [Grok](connect/grok.md), [Meta Muse](connect/muse.md), [Perplexity](connect/perplexity.md), [OpenClaw](connect/openclaw.md), [Hermes](connect/hermes.md), and [TinyCloud CLI](connect/cli.md). Each keeps the original request, explains the runtime's task and skill route, and distinguishes documented setup from observed success.
+
 **What we have tested, as of 3 November 2026.** ChatGPT, Claude, Grok, Perplexity, Gemini and Meta Muse each document custom remote MCP connectors, and Grok Bot can add an MCP server by URL. Our own checks so far:
 
 | App | What we have seen with TinyCloud |
@@ -94,7 +96,7 @@ Send an approval URL complete, on its own line. If the in-app browser loses the 
 
 Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
 
-1. On Perplexity, open **Account settings → Connectors**, click **+ Custom connector**, and select **Remote**.
+1. On Perplexity, open **Plugins → Add custom → Add MCP connector → Remote**. If your UI instead shows **Customize → Connectors**, add the custom remote connector there.
 2. Enter **Name:** TinyCloud; **MCP Server URL:** `https://mcp.tinycloud.xyz/mcp`; **Authentication:** OAuth; **Transport:** Streamable HTTP. No client ID or secret is needed: TinyCloud registers the client itself.
 3. Check the acknowledgement box and click **Add**. Then click the TinyCloud connector card, sign in with OpenKey, and enable it.
 4. Make your original request, then follow [Approve access and continue](#approve-access-and-continue) below.

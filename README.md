@@ -12,6 +12,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
 | `/feed` | Creating a post in TinyCloud Home (`tinycloud-feed`) | [`skills/tinycloud-feed/creating-a-post.md`](skills/tinycloud-feed/creating-a-post.md) |
 | `/connect` | One link for any agent: CLI-capable agents go to `/onboarding`, remote MCP clients (for example ChatGPT, Claude, Grok, Grok Bot, Perplexity, Gemini, Meta Muse) get connector steps and what we have tested with each. HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); after [`/onboarding`](setup/onboarding.md), agents follow the guide for their request: [`/apps`](setup/tc-apps.md), [`/secrets`](setup/secrets.md), [`/publish`](setup/publish.md), [`/chat`](apps/tinychat/setup.md) or [`/courier`](setup/courier.md) |
+| `/connect/<client>` | Client-specific HTML/Markdown guides for `chatgpt`, `claude`, `cursor`, `gemini`, `grok`, `muse`, `perplexity`, `openclaw`, `hermes` and `cli`; each has a real `.md` alternate | [`setup/connect/`](setup/connect/) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
 | `/share` | Share an artifact (`tc-publish`): a link anyone with it can open, made only after the owner says yes; set an expiry, revoke | [`setup/share.md`](setup/share.md) |
@@ -43,7 +44,9 @@ The build generates `connect.html` and `connect.md` from the same entry-page tex
 
 `functions/connect.js` returns HTML for ordinary requests, including `Accept: */*`. An explicit, nonzero `text/markdown` preference at least as high as HTML returns Markdown at the **same `/connect` URL**, with `Vary: Accept`. It respects HTML wildcard preferences and never infers the client from User-Agent. `/connect.md` is also available as a machine-readable alternate; owners do not need to choose it.
 
-The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Cloudflare email obfuscation can mistake `package@version` for an email address and rewrite guide text for readers that do not run JavaScript. This opt-out affects `/connect` only; neither `/apps` nor zone-wide settings are changed. Verify the production HTML bytes, not just the `pages.dev` preview.
+`functions/connect/<client>.js` applies the same negotiation to each of the ten client guides. Their source pages expand `connect-hosted` or `connect-cli` and `connect-feedback` from `standard/blocks.md`: hosted tools and runtime limits, task-specific skill discovery, and consent-first sanitized feedback. They distinguish custom configuration from an official listing or a prompt link. No authenticated client success is inferred from source documentation, generated routes or a preview.
+
+The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Cloudflare email obfuscation can mistake `package@version` for an email address and rewrite guide text for readers that do not run JavaScript. This applies to negotiated HTML guides, including `/connect/<client>`; neither `/apps` nor zone-wide settings are changed. Verify production HTML bytes after publication, not just the `pages.dev` preview.
 
 ## Skills
 
