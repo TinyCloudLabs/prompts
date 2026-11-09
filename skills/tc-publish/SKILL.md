@@ -121,7 +121,7 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 
 The block writes the sign-in's permission list to `$STATE/share-publishing.json` (links only: the capability read OpenKey requires and the three share folders in `default`; no decryption, which links don't use) and starts `auth login`. `auth login` prints an OpenKey link on stderr, then keeps running, checking OpenKey every 2 seconds, until the owner approves. It never returns a pending result (it has no `--timeout`): it ends only with the approval or with an error. No code is involved; never ask the owner for one.
 
-**Start it detached, every time.** `auth login` waits for the owner's approval, which can take many minutes, so never run it as a foreground tool call: a tool time limit (2 minutes in Claude Code) would stop it. A plain `( … ) &` job is killed when the command or turn ends, and an approval that lands with nobody waiting is lost. So this block starts it detached (`setsid`, when the system has it), with stdin closed, its output in `$STATE/login.out` and `$STATE/login.err`, its process id in `$STATE/login.pid` and its exit code in `$STATE/login.rc` (both written by the detached process itself, so they survive the end of this call), and returns at once with `LOGIN_STARTED`. Run it as its own tool call, exactly as written. Never add `sleep`, `wait` or a read of the files to it.
+**Start it detached, every time.** `auth login` waits for the owner's approval, which can take many minutes, so never run it as a foreground tool call: a tool time limit (2 minutes in Claude Code) would stop it. A plain `( … ) &` job is killed when the command or turn ends, and an approval that lands with nobody waiting is lost. So this block starts it detached (`setsid`, when the system has it), with stdin closed, its output in `$STATE/login.out` and `$STATE/login.err`, its process id in `$STATE/login.pid` and its exit code in `$STATE/login.rc` (an empty file means not written yet; both written by the detached process itself, so they survive the end of this call), and returns at once with `LOGIN_STARTED`. Run it as its own tool call, exactly as written. Never add `sleep`, `wait` or a read of the files to it. It deletes nothing (it truncates the files instead): a command that mixes `rm` with `sh -c` can't be checked by Claude Code's removal check and is refused.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
@@ -149,10 +149,9 @@ JSON
 chmod 600 "$STATE/share-publishing.json"
 
 P=$(cat "$STATE/login.pid" 2>/dev/null)
-if [ -n "$P" ] && [ ! -e "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -F -- 'auth login' | grep -qF -- "--manifest $STATE/share-publishing.json"; then echo "LOGIN_ALREADY_RUNNING — run the check"
+if [ -n "$P" ] && [ ! -s "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -F -- 'auth login' | grep -qF -- "--manifest $STATE/share-publishing.json"; then echo "LOGIN_ALREADY_RUNNING — run the check"
 else
-  rm -f "$STATE/login.out" "$STATE/login.err" "$STATE/login.rc"
-  : > "$STATE/login.pid"
+  : > "$STATE/login.out"; : > "$STATE/login.err"; : > "$STATE/login.rc"; : > "$STATE/login.pid"
   S=; command -v setsid > /dev/null 2>&1 && S=setsid
   export STATE
   $S sh -c 'trap "" HUP; echo $$ > "$STATE/login.pid"

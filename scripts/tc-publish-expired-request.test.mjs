@@ -60,6 +60,26 @@ test("the sign-in blocks exist", () => {
   assert.ok(starter && reader);
 });
 
+// Claude Code refuses a command it can't check for removals: "This shell -c script runs rm and could not be checked" (live run).
+test("the start block has no rm, so Claude Code's removal check lets its sh -c run", () => {
+  assert.match(starter, /sh -c /);
+  assert.doesNotMatch(starter, /(^|[^A-Za-z0-9_-])(rm|unlink|rmdir)([^A-Za-z0-9_-]|$)/m);
+});
+
+test("a second start after a finished sign-in empties the old files instead of reading them", async () => {
+  const w = fresh();
+  writeFileSync(join(w.state, "login.out"), JSON.stringify({ authenticated: true, declined: [] }));
+  writeFileSync(join(w.state, "login.err"), `${BANNER}\nstale\n`);
+  writeFileSync(join(w.state, "login.rc"), "0\n");
+  assert.equal(run(starter, w), "LOGIN_STARTED");
+  assert.equal(readFileSync(join(w.state, "login.rc"), "utf8"), "");
+  assert.ok(!readFileSync(join(w.state, "login.err"), "utf8").includes("stale"));
+  assert.notEqual(run(reader, w), "SIGNED_IN");
+  writeFileSync(join(w.home, "approved"), "");
+  await until(() => readFileSync(join(w.state, "login.rc"), "utf8").trim() !== "");
+  assert.equal(run(reader, w), "SIGNED_IN");
+});
+
 for (const shell of SHELLS) test(`the start block detaches the sign-in and returns at once, with no code; the check sends the link once, then the result (${shell})`, async () => {
   const w = fresh();
   const run = (script, w) => runIn(shell, script, w);
@@ -71,14 +91,14 @@ for (const shell of SHELLS) test(`the start block detaches the sign-in and retur
   assert.equal(first, "LOGIN_RUNNING\nAPPROVE_LINK new");
   assert.equal(readFileSync(join(w.state, "approve.url"), "utf8"), LINK, "the link is the whole second line, fragment included");
   assert.equal(run(reader, w), "LOGIN_RUNNING\nAPPROVE_LINK same");
-  assert.ok(!existsSync(join(w.state, "login.rc")), "the CLI is still running");
+  assert.equal(readFileSync(join(w.state, "login.rc"), "utf8"), "", "the CLI is still running: no exit code yet");
   const args = readFileSync(join(w.home, "args"), "utf8");
   assert.match(args, /--profile publisher auth login --method openkey --no-popup --manifest \S+share-publishing\.json --expiry 30d/);
   assert.doesNotMatch(args, /--paste/);
   assert.equal(readFileSync(join(w.home, "stdin"), "utf8"), "", "stdin is /dev/null");
   assert.equal(run(starter, w), "LOGIN_ALREADY_RUNNING — run the check");
   writeFileSync(join(w.home, "approved"), "");
-  await until(() => existsSync(join(w.state, "login.rc")) && readFileSync(join(w.state, "login.rc"), "utf8").trim() === "0");
+  await until(() => readFileSync(join(w.state, "login.rc"), "utf8").trim() === "0");
   assert.equal(run(reader, w), "SIGNED_IN");
   for (const file of ["login.out", "login.err", "login.rc", "login.pid", "approve.url"]) assert.ok(!existsSync(join(w.state, file)), file);
 });
@@ -156,7 +176,7 @@ test("a harness that kills the start block's process group does not lose the sig
   await new Promise((r) => block.on("exit", r));
   assert.equal(run(reader, w), "LOGIN_RUNNING\nAPPROVE_LINK same", "the sign-in outlives the block's process group");
   writeFileSync(join(w.home, "approved"), "");
-  await until(() => existsSync(join(w.state, "login.rc")));
+  await until(() => readFileSync(join(w.state, "login.rc"), "utf8").trim() !== "");
   assert.equal(run(reader, w), "SIGNED_IN");
 });
 
