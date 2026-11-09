@@ -180,7 +180,7 @@ const SKILLS = [
         ],
         [
           "Shares live in the owner's `default` space, so publish from a dedicated profile with one paste sign-in. Send the owner the link and pass their code to the CLI exactly as sent:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d\n```",
-          "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background (or an interactive session) with stdout and stderr going to files, never as a foreground tool call: it waits for the owner. Send the owner the `https://openkey.so/a/…` link it prints on its own line on stderr; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
+          "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background (or an interactive session) with stdout and stderr going to files, never as a foreground tool call: it waits for the owner. Send the owner the complete `https://openkey.so/a/…` link exactly as printed on its own line on stderr, including everything after `#`; never retype or shorten it; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
         ],
       ],
       "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.2 <2.0.0"']],
@@ -195,7 +195,7 @@ const SKILLS = [
         ],
         [
           "LOGIN=(tinycloud --profile agent-secrets auth login --method openkey --paste --manifest agent-secrets.json\n  --owner did:pkh:eip155:1:0xOWNER_ADDRESS --expiry 7d)\n\"${LOGIN[@]}\" < /dev/null   # exits 3 with PASTE_CODE_MISSING; its stderr names the approval URL\n# Send the owner that URL. After they approve and send back the code:\nprintf '%s\\n' \"$CODE\" | \"${LOGIN[@]}\"\n",
-          "LOGIN=(tinycloud --profile agent-secrets auth login --method openkey --no-popup --manifest agent-secrets.json\n  --owner did:pkh:eip155:1:0xOWNER_ADDRESS --expiry 7d)\n\"${LOGIN[@]}\" > login.out 2> login.err < /dev/null &   # in the background: it waits for the owner\n# Send the owner the https://openkey.so/a/… link from login.err (on its own line). It exits 0 once they approve.\n",
+          "LOGIN=(tinycloud --profile agent-secrets auth login --method openkey --no-popup --manifest agent-secrets.json\n  --owner did:pkh:eip155:1:0xOWNER_ADDRESS --expiry 7d)\n\"${LOGIN[@]}\" > login.out 2> login.err < /dev/null &   # in the background: it waits for the owner\n# Send the owner the complete https://openkey.so/a/… link from login.err exactly as printed (on its own line, including everything after `#`; never retype or shorten it). It exits 0 once they approve.\n",
         ],
         [
           "- The approval URL depends only on the profile's session key and the request, so the same command run again accepts the owner's code from stdin. Write the code followed by a newline; a final line without one is also accepted. Nothing is saved until a code verifies.",
@@ -215,7 +215,7 @@ const SKILLS = [
         ],
         [
           "approve again with `tinycloud auth request --grant --paste`, then remove the old CID.",
-          "approve again with `tinycloud auth request --grant --no-popup` (in the background; send the owner its short link), then remove the old CID.",
+          "approve again with `tinycloud auth request --grant --no-popup` (in the background; send the owner the complete link exactly as printed, including everything after `#`), then remove the old CID.",
         ],
       ],
       "REFERENCE.md": [
@@ -225,7 +225,7 @@ const SKILLS = [
         ],
         [
           "`tinycloud auth request --manifest FILE --grant --paste` adds another space to the onboarding profile: send the owner the link and pass their code to the CLI exactly as sent (",
-          "`tinycloud auth request --manifest FILE --grant --no-popup` adds another space to the onboarding profile: run it in the background, send the owner the short link it prints on stderr, and it saves the grant itself (",
+          "`tinycloud auth request --manifest FILE --grant --no-popup` adds another space to the onboarding profile: run it in the background, send the owner the complete link it prints on stderr exactly as printed, including everything after `#`, and it saves the grant itself (",
         ],
         [
           "through a scoped OpenKey paste login with a manifest",
@@ -233,11 +233,11 @@ const SKILLS = [
         ],
         [
           "tinycloud --profile agent auth login --method openkey --paste --manifest agent.json --owner did:pkh:eip155:1:0xOWNER < /dev/null\n# exits 3 (PASTE_CODE_MISSING) and names the approval URL; the owner approves and returns a code\nprintf '%s\\n' \"$CODE\" | tinycloud --profile agent auth login --method openkey --paste --manifest agent.json --owner did:pkh:eip155:1:0xOWNER\n",
-          "tinycloud --profile agent auth login --method openkey --no-popup --manifest agent.json --owner did:pkh:eip155:1:0xOWNER > login.out 2> login.err < /dev/null &\n# in the background: send the owner the https://openkey.so/a/… link from login.err (on its own line); it exits 0 once they approve\n",
+          "tinycloud --profile agent auth login --method openkey --no-popup --manifest agent.json --owner did:pkh:eip155:1:0xOWNER > login.out 2> login.err < /dev/null &\n# in the background: send the owner the complete https://openkey.so/a/… link from login.err exactly as printed (including everything after `#`; never retype or shorten it); it exits 0 once they approve\n",
         ],
         [
           "`tinycloud init --name publisher --key-only`, then `tinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d`.",
-          "`tinycloud init --name publisher --key-only`, then, in the background, `tinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d` with the four-entry manifest in [SKILL.md](SKILL.md); send the owner its short link.",
+          "`tinycloud init --name publisher --key-only`, then, in the background, `tinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d` with the four-entry manifest in [SKILL.md](SKILL.md); send the owner the complete link it prints exactly as printed, including everything after `#`.",
         ],
       ],
       "INSTALL.md": [
