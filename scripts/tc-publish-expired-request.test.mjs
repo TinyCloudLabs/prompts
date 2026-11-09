@@ -39,7 +39,9 @@ echo '{"authenticated":true,"declined":[]}'
   chmodSync(cli, 0o755);
   return { home, state, env: { PATH: process.env.PATH, HOME: home, TC_BIN: cli, TC_PUBLISH_STATE: state } };
 };
-const run = (script, w) => spawnSync("bash", ["-c", script], { encoding: "utf8", env: w.env, timeout: 20000 }).stdout.trim();
+const SHELLS = ["sh", "bash"];   // sh is dash on Debian: nothing in the blocks may need bash
+const runIn = (shell, script, w) => spawnSync(shell, ["-c", script], { encoding: "utf8", env: w.env, timeout: 20000 }).stdout.trim();
+const run = (script, w) => runIn("sh", script, w);
 const until = async (check) => {
   for (let i = 0; i < 100; i++) {
     if (check()) return;
@@ -58,8 +60,9 @@ test("the sign-in blocks exist", () => {
   assert.ok(starter && reader);
 });
 
-test("the start block detaches the sign-in and returns at once, with no code; the check sends the link once, then the result", async () => {
+for (const shell of SHELLS) test(`the start block detaches the sign-in and returns at once, with no code; the check sends the link once, then the result (${shell})`, async () => {
   const w = fresh();
+  const run = (script, w) => runIn(shell, script, w);
   const started = Date.now();
   assert.equal(run(starter, w), "LOGIN_STARTED");
   assert.ok(Date.now() - started < 1500, `the start block took ${Date.now() - started} ms`);
@@ -142,4 +145,32 @@ test("the check reports CLI errors by code with the CLI's message and the link r
   writeFileSync(join(w.state, "login.rc"), "143\n");
   writeFileSync(join(w.state, "login.err"), `${BANNER}\n${LINK}\n\n`);
   assert.equal(run(reader, w), "LOGIN_FAILED exit-143");
+});
+
+test("a harness that kills the start block's process group does not lose the sign-in: the owner's approval is still read as SIGNED_IN", async (t) => {
+  if (spawnSync("sh", ["-c", "command -v setsid"]).status !== 0) return t.skip("no setsid on this system");
+  const w = fresh();
+  const block = spawn("sh", ["-c", `${starter}\nsleep 30`], { detached: true, stdio: "ignore", env: w.env });
+  await until(() => run(reader, w) === "LOGIN_RUNNING\nAPPROVE_LINK new");
+  try { process.kill(-block.pid, "SIGKILL"); } catch {}
+  await new Promise((r) => block.on("exit", r));
+  assert.equal(run(reader, w), "LOGIN_RUNNING\nAPPROVE_LINK same", "the sign-in outlives the block's process group");
+  writeFileSync(join(w.home, "approved"), "");
+  await until(() => existsSync(join(w.state, "login.rc")));
+  assert.equal(run(reader, w), "SIGNED_IN");
+});
+
+test("the check reads the result even when the exit code was never written, but not while the sign-in is still running", async () => {
+  const w = fresh();
+  writeFileSync(join(w.state, "login.pid"), "999999999\n");
+  writeFileSync(join(w.state, "login.err"), `${BANNER}\n${LINK}\n\n`);
+  writeFileSync(join(w.state, "login.out"), JSON.stringify({ authenticated: true, declined: [] }));
+  writeFileSync(join(w.state, "approve.url"), LINK);
+  assert.equal(run(reader, w), "SIGNED_IN");
+  for (const file of ["login.out", "login.err", "login.pid", "approve.url"]) assert.ok(!existsSync(join(w.state, file)), file);
+  const live = sleeper(w);
+  writeFileSync(join(w.state, "login.out"), JSON.stringify({ authenticated: true, declined: [] }));
+  assert.equal(run(reader, w), "LOGIN_RUNNING\nNO_LINK_YET", "the exit code is still to come");
+  live.child.kill();
+  await live.exited;
 });
