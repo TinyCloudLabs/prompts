@@ -27,7 +27,7 @@
 
 **Exceptions: commands with other codes.**
 
-- `auth login --paste` and `auth request --grant --paste` (the Secrets and publish sign-ins, and the older apps fallbacks): exit 3 `PASTE_CODE_MISSING` is the expected first stop, with the link printed and no code yet, not an expired link. These flows still ask the owner for the code OpenKey shows after they approve. It works once, for 5 minutes; a used or expired code ends as exit 1, “Delegation code not found or expired”.
+- `auth login --paste` and `auth request --grant --paste` (the older apps fallbacks): exit 3 `PASTE_CODE_MISSING` is the expected first stop, with the link printed and no code yet, not an expired link. These flows still ask the owner for the code OpenKey shows after they approve. It works once, for 5 minutes; a used or expired code ends as exit 1, “Delegation code not found or expired”.
 - `auth login --device` (publish's fallback and the older apps sign-in): 3 is `DEVICE_AUTH_EXPIRED` and 5 is `DEVICE_AUTH_DENIED`, as above. Each new run counts toward OpenKey's limit of 5 device sign-ins per 10 minutes; over it, exit 1 `DEVICE_AUTH_RATE_LIMITED`.
 - Data commands (`kv`, `sql`, `share`, `secrets get`, `feed`): exit 3 is `AUTH_REQUIRED`, a missing or expired session, so sign in again as the guide says; there is no link to resend. Exit 5 is `PERMISSION_DENIED` or `KV_ALREADY_EXISTS`, not the owner declining. Branch on the code.
 - `secrets wait`: exit 8 means a named secret was still missing when the wait ended.

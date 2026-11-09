@@ -360,13 +360,14 @@ STATE="${TC_SECRETS_STATE:-$HOME/.local/state/tc-secrets}"; mkdir -p "$STATE"; c
 PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 
 P=$(cat "$STATE/login.pid" 2>/dev/null)
-if [ -n "$P" ] && [ ! -e "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -q 'auth login'; then echo "LOGIN_ALREADY_RUNNING — run §3d"
+if [ -n "$P" ] && [ ! -e "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -F -- 'auth login' | grep -qF -- "--manifest $STATE/manifest.json"; then echo "LOGIN_ALREADY_RUNNING — run §3d"
 elif [ ! -s "$STATE/manifest.json" ]; then echo "NO_MANIFEST — run §3b first"
 else
   rm -f "$STATE/login.out" "$STATE/login.err" "$STATE/login.rc"
   : > "$STATE/login.pid"
+  S=; command -v setsid > /dev/null 2>&1 && S=setsid
   ( trap '' HUP
-    env -u TC_PRIVATE_KEY "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" \
+    $S env -u TC_PRIVATE_KEY "$TC_BIN" --profile "$PROFILE" auth login --method openkey --manifest "$STATE/manifest.json" \
       --owner "$TC_OWNER_DID" --expiry 30d --no-popup < /dev/null > "$STATE/login.out" 2> "$STATE/login.err" &
     echo $! > "$STATE/login.pid"
     wait $!; echo $? > "$STATE/login.rc"
@@ -391,8 +392,8 @@ st = sys.argv[1]
 def read(n):
     try: return open(os.path.join(st, n), errors="replace").read()
     except OSError: return ""
-def clean():
-    for n in ("login.out", "login.err", "login.rc", "login.pid", "approve.url"):
+def clean(keep_url):
+    for n in ("login.out", "login.err", "login.rc", "login.pid") + (() if keep_url else ("approve.url",)):
         try: os.remove(os.path.join(st, n))
         except OSError: pass
 err, rc, pid = read("login.err"), read("login.rc").strip(), read("login.pid").strip()
@@ -404,13 +405,13 @@ if rc:
         try: o, i = dec.raw_decode(err, m.start()); last = o if isinstance(o, dict) and "error" in o else last
         except ValueError: i = m.start() + 1
     e = last.get("error") or {}
-    clean()
+    clean(rc not in ("0", "3"))   # a resumed request keeps its link, so it isn't sent twice
     if rc == "0" and isinstance(r, dict) and r.get("authenticated") is True:
         sys.exit(print("SIGNED_IN expires", r.get("expiresAt"), "declined", json.dumps(r.get("declined", []))))
     sys.exit(print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", e.get("message") or "")[:200]))
 if pid == "" and os.path.exists(os.path.join(st, "login.pid")): sys.exit(print("STARTING"))
 def is_login(p):
-    try: return p.isdigit() and "auth login" in subprocess.run(["ps", "-p", p, "-o", "args="], capture_output=True, text=True).stdout
+    try: return p.isdigit() and all(s in subprocess.run(["ps", "-p", p, "-o", "args="], capture_output=True, text=True).stdout for s in ("auth login", f"--manifest {st}/manifest.json"))
     except OSError: return False
 if not is_login(pid): sys.exit(print("LOGIN_STOPPED"))
 # The link is a line that holds nothing but the URL. Only complete (newline-ended) lines count.
@@ -433,10 +434,10 @@ PY
 - `SIGNED_IN` with a non-empty `declined` → something wasn't granted. Tell the owner which names stay unreadable and why:
   - an item they unticked;
   - or, if the declined entry is the decrypt permission and everything was ticked, an OpenKey deployment too old to grant agent decryption.
-- `LOGIN_STOPPED` → the sign-in stopped without a result (a restart, or its process was ended). Run §3c again. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again.
-- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired (after about an hour) before the owner approved, or the owner declined. Use the shared exit-3 rule below: this flow has no earlier exit-8 JSON, so ask the decline question and wait. When the owner says they didn't decline or wants a new link, run §3c again, then this block, and send only the new link: "Open this link and approve; tell me when you're done."
+- `LOGIN_STOPPED` → the sign-in stopped without a result (a restart, or its process was ended). Run §3c again. It resumes the same link, so §3d then prints `APPROVAL_READY same`: don't send it again. The same goes for `LOGIN_FAILED exit-143`, a sign-in that was ended. If §3d prints `LOGIN_STOPPED` (or `exit-143`) twice in a row, stop: tell the operator this shell can't keep a background process running.
+- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED` → the link expired before it was approved (the CLI's own message). Use the shared exit-3 rule below: this flow has no earlier exit-8 JSON, so ask the decline question and wait. When the owner says they didn't decline or wants a new link, run §3c again, then this block, and send only the new link: "Open this link and approve; tell me when you're done."
 - `LOGIN_FAILED APPROVAL_RESULT_EXPIRED` → the owner approved, but the sign-in wasn't running to collect it within 10 minutes. Run §3c again, then this block, and send only the new link: "Open this link and approve; tell me when you're done."
-- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE` or `APPROVAL_RESULT_UNAVAILABLE` → OpenKey is unavailable for now. Wait a minute, then run §3c again, at most three times in a row; it resumes the same link, so don't send it again. §3d prints the CLI's message after the code. If it still fails, stop and report it; don't retry. Never edit or delete the CLI's files yourself.
+- `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE`, `APPROVAL_ACK_PENDING` or `APPROVAL_RESULT_ACKNOWLEDGED` (exit 8) → OpenKey is unavailable for now, or the approval is saved and still being acknowledged. Wait a minute, then run §3c again, at most three times in a row; it resumes the same link, so don't send it again. §3d prints the CLI's message after the code. If it still fails, stop and report it; don't retry. Never edit or delete the CLI's files yourself.
 - `LOGIN_FAILED <other code>` → the CLI refused or failed. Handle `<code>` with §5; for example, `SESSION_IN_USE` means ask the owner.
 - `REQUEST_MISMATCH <why>` → the block stopped the sign-in. Don't send a link; tell the owner what the check reported.
 
@@ -544,9 +545,9 @@ Branch on `code`, never on the exit status alone: exit 8 means "still pending" o
 | `INVALID_SECRET_NAME`, `TOO_MANY_SECRET_NAMES` | The name isn't `UPPER_SNAKE`, or more than 10 names | Fix the names |
 | `SESSION_IN_USE` | A new request would narrow or shorten the live session | Ask the owner. Never add `--replace-session` on your own |
 | `INVALID_LOGIN_SCOPE` | The request has no secrets, or mixes spaces | Rebuild the manifest with §3b |
-| `APPROVAL_REQUEST_EXPIRED` (exit 3) | The approval link expired unapproved, or the owner declined | §3d: the shared exit-3 rule, then §3c again and send only the new link |
+| `APPROVAL_REQUEST_EXPIRED` (exit 3) | The approval link expired before it was approved | §3d: the shared exit-3 rule, then §3c again and send only the new link |
 | `APPROVAL_RESULT_EXPIRED` (exit 3) | An approval wasn't collected in time | §3c again; send only the new link |
-| `APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` (exit 8) | OpenKey is unavailable for now | Wait a minute, then §3c again, at most three times in a row; it resumes the same link. If it still fails, stop and report it. Never edit or delete the CLI's files yourself |
+| `APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE`, `APPROVAL_ACK_PENDING`, `APPROVAL_RESULT_ACKNOWLEDGED` (exit 8) | OpenKey is unavailable for now, or the approval is saved and still being acknowledged | Wait a minute, then §3c again, at most three times in a row; it resumes the same link. If it still fails, stop and report it. Never edit or delete the CLI's files yourself |
 | `DEVICE_AUTH_UNSUPPORTED_SCOPE` | Device login can't grant secrets | Use §3, never `--device` |
 
 ## 6. Lifecycle

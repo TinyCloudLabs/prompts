@@ -90,7 +90,7 @@ test("§3c detaches the sign-in and returns at once, without a code; §3d sends 
 test("§3d refuses any printed link that is not a sealed openkey.so/a/ link, and stops the sign-in", async () => {
   for (const url of ["https://openkey.so/delegate?did=did:key:z6Mk&permissions=e30", "https://openkey.so/a/abc123", "https://openkey.so.evil.example/a/abc#k"]) {
     const w = fresh();
-    const sleeper = spawn("bash", ["-c", "sleep 30; :", "fake", "auth", "login"], { stdio: "ignore" });
+    const sleeper = spawn("bash", ["-c", "sleep 30; :", "fake", "auth", "login", "--manifest", `${w.state}/manifest.json`], { stdio: "ignore" });
     writeFileSync(join(w.state, "login.pid"), `${sleeper.pid}\n`);
     writeFileSync(join(w.state, "login.err"), `${BANNER}\n${url}\n\n`);
     const exited = new Promise((r) => sleeper.on("exit", r));
@@ -102,7 +102,7 @@ test("§3d refuses any printed link that is not a sealed openkey.so/a/ link, and
 
 test("§3d waits for the link's line to be complete, and refuses two different links", async () => {
   const w = fresh();
-  const sleeper = spawn("bash", ["-c", "sleep 30; :", "fake", "auth", "login"], { stdio: "ignore" });
+  const sleeper = spawn("bash", ["-c", "sleep 30; :", "fake", "auth", "login", "--manifest", `${w.state}/manifest.json`], { stdio: "ignore" });
   writeFileSync(join(w.state, "login.pid"), `${sleeper.pid}\n`);
   writeFileSync(join(w.state, "login.err"), `${BANNER}\n${LINK.slice(0, 40)}`);
   assert.equal(sh("3d", w.env), "STARTING", "a half-written link is never accepted");
@@ -133,9 +133,13 @@ test("§3d reports CLI errors by code, with the CLI's message", () => {
   const w = fresh();
   writeFileSync(join(w.state, "login.rc"), "3\n");
   writeFileSync(join(w.state, "login.err"), `${BANNER}\n${LINK}\n\n{"error":{"code":"APPROVAL_REQUEST_EXPIRED","message":"This approval request expired before it was approved. Start a new request."}}\n`);
+  writeFileSync(join(w.state, "approve.url"), LINK);
   assert.equal(sh("3d", w.env), "LOGIN_FAILED APPROVAL_REQUEST_EXPIRED This approval request expired before it was approved. Start a new request.");
+  assert.ok(!existsSync(join(w.state, "approve.url")), "an expired request's link is dropped");
   const message = "OpenKey could not discover this request (HTTP 503). Retry the command to resume.";
+  writeFileSync(join(w.state, "approve.url"), LINK);
   writeFileSync(join(w.state, "login.rc"), "8\n");
   writeFileSync(join(w.state, "login.err"), `${BANNER}\n${LINK}\n\n${JSON.stringify({ error: { code: "APPROVAL_REQUEST_UNAVAILABLE", message } })}\n`);
   assert.equal(sh("3d", w.env), `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE ${message}`);
+  assert.equal(readFileSync(join(w.state, "approve.url"), "utf8"), LINK, "a resumable request keeps its link, so it is not sent twice");
 });
