@@ -40,7 +40,7 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 - Everything after `#` in any share URL is a credential (`#tc1=…`).
 - A full share URL may appear only in: the CLI command's own output; a 0600 file inside the 0700 `$STATE` directory; the tool output of the single read used to deliver it (the harness's own storage of that output is allowed); and one message to the owner in their 1:1 channel.
 - **Never retype, reassemble, or chunk a link.** Links are about 2.6 KB; a hand-copied link corrupts. If the owner's channel is a command, pipe the link from the state file into it (§6) so it never passes through your output. If the only channel is your reply, read the file once in a single tool call and copy it verbatim.
-- The OpenKey approval link may appear in `$STATE/login.err`, in your tool output while you read it to compose the one owner message, and in that message — nowhere else.
+- The OpenKey approval link may appear in `$STATE/login.err` and `$STATE/approve.url`, in your tool output while you read it to compose the one owner message, and in that message — nowhere else.
 - Never put a link in notes, memory, the journal, summaries, other files, commits, group chats or other tools.
 - If a request comes from a group chat, send the link to the owner privately and say so in the group.
 
@@ -119,9 +119,9 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 
 **The sign-in.** Run it when there is no live session. It is one approval; later runs reuse the saved session, up to 30 days. The approval is tied to this profile's key, which the check above creates (`init --name "$PROFILE" --key-only`; say nothing to the owner about it), so use the same `--profile "$PROFILE"` in every call.
 
-The block writes the sign-in's permission list to `$STATE/share-publishing.json` (links only: the capability read OpenKey requires and the three share folders in `default`; no decryption, which links don't use) and starts `auth login`. `auth login` prints an OpenKey link on stderr, then keeps running, checking OpenKey every 2 seconds, until the owner approves. No code is involved; never ask the owner for one.
+The block writes the sign-in's permission list to `$STATE/share-publishing.json` (links only: the capability read OpenKey requires and the three share folders in `default`; no decryption, which links don't use) and starts `auth login`. `auth login` prints an OpenKey link on stderr, then keeps running, checking OpenKey every 2 seconds, until the owner approves. It never returns a pending result (it has no `--timeout`): it ends only with the approval or with an error. No code is involved; never ask the owner for one.
 
-**Run it in the background, every time.** `auth login` waits for the owner's approval, which can take many minutes, so never run it as a foreground tool call: a tool time limit (2 minutes in Claude Code) would stop it. Start it as a background process (your client's own, if it has one; then leave out the final `&`) or in an interactive session. Its output goes to `$STATE/login.out` and `$STATE/login.err`, which you read with the check block below.
+**Start it detached, every time.** `auth login` waits for the owner's approval, which can take many minutes, so never run it as a foreground tool call: a tool time limit (2 minutes in Claude Code) would stop it. A plain `( … ) &` job is killed when the command or turn ends, and an approval that lands with nobody waiting is lost. So this block starts it detached (`setsid`, when the system has it), with stdin closed, its output in `$STATE/login.out` and `$STATE/login.err`, its process id in `$STATE/login.pid` and its exit code in `$STATE/login.rc`, and returns at once with `LOGIN_STARTED`. Run it as its own tool call, exactly as written. Never add `sleep`, `wait` or a read of the files to it.
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
@@ -147,48 +147,89 @@ cat > "$STATE/share-publishing.json" <<'JSON'
 }
 JSON
 chmod 600 "$STATE/share-publishing.json"
-"$TC_BIN" --profile "$PROFILE" auth login --method openkey --no-popup --manifest "$STATE/share-publishing.json" --expiry 30d > "$STATE/login.out" 2> "$STATE/login.err" < /dev/null &
+
+P=$(cat "$STATE/login.pid" 2>/dev/null)
+if [ -n "$P" ] && [ ! -e "$STATE/login.rc" ] && ps -p "$P" -o args= 2>/dev/null | grep -F -- 'auth login' | grep -qF -- "--manifest $STATE/share-publishing.json"; then echo "LOGIN_ALREADY_RUNNING — run the check"
+else
+  rm -f "$STATE/login.out" "$STATE/login.err" "$STATE/login.rc"
+  : > "$STATE/login.pid"
+  S=; command -v setsid > /dev/null 2>&1 && S=setsid
+  ( trap '' HUP
+    $S "$TC_BIN" --profile "$PROFILE" auth login --method openkey --no-popup --manifest "$STATE/share-publishing.json" --expiry 30d < /dev/null > "$STATE/login.out" 2> "$STATE/login.err" &
+    echo $! > "$STATE/login.pid"
+    wait $!; echo $? > "$STATE/login.rc"
+  ) < /dev/null > /dev/null 2>&1 &
+  echo LOGIN_STARTED
+fi
 ```
 
-Then, in a separate tool call, read where the sign-in is:
+- `LOGIN_STARTED` → run the check below a few seconds later.
+- `LOGIN_ALREADY_RUNNING` → a sign-in from an earlier start is still running; this changes nothing. Run the check.
+
+Then, in a separate tool call, read where the sign-in is. It counts the sign-in as running only while the process in `login.pid` is still the `auth login` command with this manifest. The CLI prints `Approve this request in OpenKey (open the complete link):` and then the link on the next line, alone; the block accepts a link only as a complete line of its own, exactly as printed, and only if it is `https://openkey.so/a/<request id>#…`. It prints `LOGIN_RUNNING` or `LOGIN_STOPPED` and then a result line:
 
 ```sh
 { set +x; } 2>/dev/null; set +e; umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
-python3 - "$STATE/login.out" "$STATE/login.err" <<'PY'
-import json, re, sys
-def read(path):
-    try: return open(path, errors="replace").read()
+python3 - "$STATE" <<'PY'
+import json, os, re, signal, subprocess, sys
+st = sys.argv[1]
+def read(n):
+    try: return open(os.path.join(st, n), errors="replace").read()
     except OSError: return ""
-out, err = read(sys.argv[1]), read(sys.argv[2])
-try: result = json.loads(out)
-except ValueError: result = {}
-if isinstance(result, dict) and result.get("authenticated") is True:
-    for d in result.get("declined") or []: print("NOT_GRANTED", json.dumps(d))
-    sys.exit(print("SIGNED_IN"))
-dec, i, last = json.JSONDecoder(), 0, {}
-while (m := re.compile(r"\{").search(err, i)):
-    try: o, i = dec.raw_decode(err, m.start()); last = o if isinstance(o, dict) and "error" in o else last
-    except ValueError: i = m.start() + 1
-if last:
-    e = last["error"] if isinstance(last["error"], dict) else {}
-    sys.exit(print("LOGIN_FAILED", e.get("code") or "?", re.sub(r"https://\S+", "<link>", e.get("message") or "")[:200]))
-links = re.findall(r"^[ \t]*(https://\S+)[ \t\r]*$", err, re.M)
-print("APPROVE_LINK", links[-1]) if links else print("NO_LINK_YET")
+def forget(keep_url):
+    for n in ("login.out", "login.err", "login.rc", "login.pid") + (() if keep_url else ("approve.url",)):
+        try: os.remove(os.path.join(st, n))
+        except OSError: pass
+err, rc, pid = read("login.err"), read("login.rc").strip(), read("login.pid").strip()
+if rc:
+    try: result = json.loads(read("login.out") or "{}")
+    except ValueError: result = {}
+    dec, i, last = json.JSONDecoder(), 0, {}
+    while (m := re.compile(r"\{").search(err, i)):
+        try: o, i = dec.raw_decode(err, m.start()); last = o if isinstance(o, dict) and "error" in o else last
+        except ValueError: i = m.start() + 1
+    e = last["error"] if isinstance(last.get("error"), dict) else {}
+    forget(rc not in ("0", "3"))   # a resumable request keeps its link, so it isn't sent twice
+    if rc == "0" and isinstance(result, dict) and result.get("authenticated") is True:
+        for d in result.get("declined") or []: print("NOT_GRANTED", json.dumps(d))
+        sys.exit(print("SIGNED_IN"))
+    sys.exit(print("LOGIN_FAILED", e.get("code") or f"exit-{rc}", re.sub(r"https://\S+", "<link>", e.get("message") or "")[:200]))
+def is_login(p):
+    try: return p.isdigit() and all(s in subprocess.run(["ps", "-p", p, "-o", "args="], capture_output=True, text=True).stdout for s in ("auth login", f"--manifest {st}/share-publishing.json"))
+    except OSError: return False
+starting = pid == "" and os.path.exists(os.path.join(st, "login.pid"))
+running = starting or is_login(pid)
+print("LOGIN_RUNNING" if running else "LOGIN_STOPPED")
+# The link is a line that holds nothing but the URL. Only complete (newline-ended) lines count.
+links = {l.strip() for l in err.split("\n")[:-1] if re.fullmatch(r"\s*https://\S+\s*", l)}
+if not links: sys.exit(print("NO_LINK_YET"))
+url = links.pop() if len(links) == 1 else ""
+if not re.fullmatch(r"https://openkey\.so/a/[A-Za-z0-9_-]+#\S+", url):
+    if running and pid.isdigit(): os.kill(int(pid), signal.SIGTERM)
+    sys.exit(print("REQUEST_MISMATCH", "more than one link" if links else "not an OpenKey approval link", "- sign-in stopped"))
+if read("approve.url") == url: sys.exit(print("APPROVE_LINK same"))
+with open(os.path.join(st, "approve.url"), "w") as f: f.write(url)
+print("APPROVE_LINK new")
 PY
 ```
 
-- `APPROVE_LINK <link>` → send the owner this one line with that exact link (never retype or shorten it). If you already sent this link, don't send it again.
+- `APPROVE_LINK new` → read `$STATE/approve.url` once and send the owner this one line with that exact link (never retype or shorten it):
 
   > Open this link and approve; tell me when you're done: <link>
 
-- `NO_LINK_YET` → the command hasn't printed its link yet: run the check again in a few seconds.
+- `APPROVE_LINK same` → the link is the one you already sent. Don't send it again.
+- `NO_LINK_YET` → the command hasn't printed its link yet. With `LOGIN_RUNNING`, run the check again in a few seconds, for about 30 seconds in all. If there is still no link then, or the status is `LOGIN_STOPPED` with no link, print the first lines of the CLI's output with links replaced, report them, and don't retry in a loop: `sed -E 's#https://[^[:space:]]+#<link>#g' "$STATE/login.err" | head -3`.
+- `LOGIN_STOPPED` with a link → the sign-in stopped without a result (a restart, or its process was ended). Run the sign-in block again; 1.6.2 resumes the same pending request, so the check then prints `APPROVE_LINK same`: don't send it again. The same goes for `LOGIN_FAILED exit-143`, a sign-in that was ended. If the check prints `LOGIN_STOPPED` (or `exit-143`) twice in a row, stop: tell the operator this shell can't keep a background process running.
 - `SIGNED_IN` → go to §3. A `NOT_GRANTED <entry>` line means the owner left that permission out: tell them which. Without `xyz.tinycloud.share/shares/`, links fail.
+- `REQUEST_MISMATCH <why>` → the block stopped the sign-in. Don't send a link; tell the owner what the check reported.
 
 When the owner says they're done, run the check again:
 
 - `SIGNED_IN` → go to §3.
-- `APPROVE_LINK` again → the approval hasn't arrived yet. If the sign-in command is still running, run the check again in a few seconds; if it still shows the link, ask the owner whether they pressed Approve on that link. If the command stopped (a tool timeout, a restart), start the sign-in block again the same way: it resumes the same pending link. Don't resend a link you already sent.
-- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED`, `APPROVAL_REQUEST_NOT_FOUND` or `APPROVAL_RESULT_NOT_FOUND` (exit 3) → the link expired before it was approved (about 1 hour), or the approval wasn't collected within 10 minutes. Follow the shared exit-3 rule in "Exit codes and owner lines" below; when it has you create a new request, run the sign-in block again and send the new link with the same line.
+- `LOGIN_RUNNING` with `APPROVE_LINK same` → the approval hasn't arrived yet; OpenKey hands it over within seconds. Run the check again in a few seconds; if it still shows the link a minute later, ask the owner once whether they pressed Approve on that link.
+- `LOGIN_STOPPED` → run the sign-in block again (it resumes the same pending link), then the check. Don't resend a link you already sent.
+- `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED`, `APPROVAL_REQUEST_NOT_FOUND` or `APPROVAL_RESULT_NOT_FOUND` (exit 3) → the link expired before it was approved (about 1 hour), or the approval wasn't collected within 10 minutes. Follow the shared exit-3 rule in "Exit codes and owner lines" below. This sign-in never returns a pending result, so there is no earlier exit-8 JSON: ask the decline question first and wait. When the rule has you create a new request, run the sign-in block again and send the new link with the same line.
+- `LOGIN_FAILED NETWORK_ERROR` (exit 6) → run the sign-in block again once; it resumes the same request. If it also exits 6, stop and report the code.
 - `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` or `APPROVAL_ACK_PENDING` (exit 8) → OpenKey couldn't be reached for a moment. Wait a minute and start the sign-in block again, at most three times in a row; it resumes the same request. Don't resend a link you already sent. The check prints the CLI's message after the code. If it still fails, stop and report the code; don't retry. Never edit or delete the CLI's files yourself.
 - `LOGIN_FAILED APPROVAL_RESULT_ACKNOWLEDGED` (exit 8) → the sign-in may already be saved: run the session check at the top of §2 again.
 - `LOGIN_FAILED SESSION_IN_USE` → ask the owner; never add `--replace-session` on your own.
@@ -377,7 +418,8 @@ umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
-      "$STATE/context.json" "$STATE/context.err" "$STATE/share-publishing.json" "$STATE/login.out" "$STATE/login.err"
+      "$STATE/context.json" "$STATE/context.err" "$STATE/share-publishing.json" "$STATE/login.out" "$STATE/login.err" \
+      "$STATE/login.pid" "$STATE/login.rc" "$STATE/approve.url"
 ```
 
 ## Exit codes and owner lines
