@@ -12,6 +12,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
 | `/feed` | Creating a post in TinyCloud Home (`tinycloud-feed`) | [`skills/tinycloud-feed/creating-a-post.md`](skills/tinycloud-feed/creating-a-post.md) |
 | `/connect` | One link for any agent: CLI-capable agents go to `/onboarding`, remote MCP clients (for example ChatGPT, Claude, Grok, Grok Bot, Perplexity, Gemini, Meta Muse) get connector steps and what we have tested with each. HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); after [`/onboarding`](setup/onboarding.md), agents follow the guide for their request: [`/apps`](setup/tc-apps.md), [`/secrets`](setup/secrets.md), [`/publish`](setup/publish.md), [`/chat`](apps/tinychat/setup.md) or [`/courier`](setup/courier.md) |
+| `/connect/<client>` | Client-specific HTML/Markdown guides for `chatgpt`, `claude`, `cursor`, `gemini`, `grok`, `muse`, `perplexity`, `openclaw`, `hermes` and `cli`; each has a real `.md` alternate | [`setup/connect/`](setup/connect/) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
 | `/publish` | Publish and share (`tc-publish`): owner setup | [`setup/publish.md`](setup/publish.md) |
 | `/share` | Share an artifact (`tc-publish`): a link anyone with it can open, made only after the owner says yes; set an expiry, revoke | [`setup/share.md`](setup/share.md) |
@@ -43,7 +44,21 @@ The build generates `connect.html` and `connect.md` from the same entry-page tex
 
 `functions/connect.js` returns HTML for ordinary requests, including `Accept: */*`. An explicit, nonzero `text/markdown` preference at least as high as HTML returns Markdown at the **same `/connect` URL**, with `Vary: Accept`. It respects HTML wildcard preferences and never infers the client from User-Agent. `/connect.md` is also available as a machine-readable alternate; owners do not need to choose it.
 
-The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Cloudflare email obfuscation can mistake `package@version` for an email address and rewrite guide text for readers that do not run JavaScript. This opt-out affects `/connect` only; neither `/apps` nor zone-wide settings are changed. Verify the production HTML bytes, not just the `pages.dev` preview.
+`functions/connect/<client>.js` applies the same negotiation to each of the ten client guides. Their source pages expand `connect-hosted` or `connect-cli` and `connect-feedback` from `standard/blocks.md`: hosted tools and runtime limits, task-specific skill discovery, and consent-first sanitized feedback. The root setup-only recipe follows the connected tools' live rules and schemas; CLI layout detection and migration are not hosted-tool instructions. They distinguish custom configuration from an official listing or a prompt link. No authenticated client success is inferred from source documentation, generated routes or a preview.
+
+### Staged connector cutover wording (not served)
+
+This README is excluded from the generated site. The following approved wording is staged for the future connector update only; do not include it in setup pages until that update is deployed through its separately authorized release. The current connector still supports older-layout personal apps and the dedicated legacy-record move. Version changes and API removals belong in the connector's own release notes, not in current setup guidance.
+
+**Future owner warning:**
+
+After the next update to the hosted TinyCloud connector, its personal-app tools stop showing or changing apps saved in the older layout (in your `default` space under `xyz.tinycloud.agent-data/`). Those records aren't moved or deleted. If you create an app with the same name, it's a new, separate app, and the CLI uses the new one from then on. To keep using the older records, follow the CLI Apps guide before you create a replacement; the connector can't move them.
+
+**Future agent-facing storage-settings note:**
+
+Setup checks the account's storage settings. If the account has only an older (version 1) storage record, setup stops with `unsupported-format`: report that error; don't reconnect, switch servers or ask for broader access. An account with no storage settings uses normal new-account setup on the default or configured server. Published storage settings decide which server each space uses.
+
+The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Cloudflare email obfuscation can mistake `package@version` for an email address and rewrite guide text for readers that do not run JavaScript. This applies to negotiated HTML guides, including `/connect/<client>`; neither `/apps` nor zone-wide settings are changed. Verify production HTML bytes after publication, not just the `pages.dev` preview.
 
 ## Skills
 
@@ -77,6 +92,8 @@ The front page's first card, "Set up TinyCloud", and `llms.txt`'s first ability 
 `/owner` redirects (301) to `/onboarding`; its undo section is `/onboarding#undo`.
 
 Fetch tools such as Claude Code's WebFetch can hand the agent a summary that keeps a page's first lines and drops its shell blocks. So every served Markdown guide and skill opens with one line, above its title (a skill: right after its front matter): "Agents: read this file raw, not summarized", with `curl -fsSL` and the page's own Markdown URL (`/onboarding.md` and `/connect.md` for the html pages, `/skills/<short>.md` for a skill). The guides and this repository's skills spell it out; released skills get it at build time; previews point it at the preview; the build fails without it. The rendered HTML of `/onboarding` and `/connect`, which owners see, leaves it out.
+
+The six hosted-client guides (`chatgpt`, `claude`, `gemini`, `grok`, `perplexity`, `muse`) instead open with "Agents: read this page in full, not summarized" and a raw-page URL: those runtimes need no shell. Their page entries set `browserFetch`; the build validates that banner and removes it from owner-facing HTML. The four CLI-route guides retain the curl banner.
 
 Exit codes and owner lines are written once in `standard/blocks.md`, in the `<!-- std:errors -->` block. Guides and skills use `{{std:errors}}` on its own line; the build expands it with the other standard blocks and lists changed skill files in `/skills/index.json`. The block has one CLI approval-error table, three standard owner lines plus the approved decline question, and command-specific exceptions (including legacy `--paste` sign-ins, data commands, `secrets wait`, Courier, TinyChat and helper scripts). `node --test scripts/standard-c.test.mjs` checks the built surfaces, exit rules, code lifetime, Courier `[no-space]` cases and owner wording.
 

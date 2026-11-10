@@ -8,6 +8,7 @@ import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
+import { marked } from "marked";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
@@ -55,18 +56,23 @@ const CANT = "I can't set up `<what>` right now. Please ask me again later.";
 const COULDNT = "I couldn't set up `<what>` this time. Tell me if you'd like me to try again.";
 const DECLINED = "Did you decline that request? If not, I'll send you a fresh link.";
 
-test("the shared table is expanded once into every guide and skill that carries its marker", () => {
-  for (const [source, url] of SURFACES) {
-    assert.equal(count(read(source), "\n{{std:errors}}\n"), 1, source);
-    assert.equal(count(served(url), errors), 1, url);
+test("readers receive one complete approval-exit table in every Markdown and HTML guide", () => {
+  const expectedExits = ["0", "3", "6", "8", "5", "Anything else"];
+  for (const url of new Set([...SURFACES.map(([, path]) => path), ...SERVED_ONLY])) {
+    const text = served(url);
+    const tables = url.endsWith(".html")
+      ? [...text.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/g)].map(([, table]) =>
+        [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g)].map(([, row]) =>
+          [...row.matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/g)]
+            .map(([, cell]) => cell.replace(/<[^>]+>/g, "").trim())))
+      : marked.lexer(text).filter((token) => token.type === "table")
+        .map((table) => [table.header, ...table.rows].map((row) => row.map((cell) => cell.text)));
+    const approvalTables = tables.filter((rows) => rows[0]?.[0] === "Exit");
+    assert.equal(approvalTables.length, 1, `${url}: missing or duplicate approval-exit table`);
+    const rows = approvalTables[0];
+    assert.deepEqual(rows.slice(1).map(([exit]) => exit), expectedExits, `${url}: missing or duplicate exit outcome`);
+    assert.ok(rows.every((row) => row.length === 3), `${url}: exit, meaning and action must remain separate columns`);
   }
-  for (const url of SERVED_ONLY) {
-    const table = served(url);
-    assert.equal(count(table, url === "onboarding.html" ? "<th>Exit</th>" : "| Exit | Means | Do |"), 1, url);
-  }
-  const leftover = AUTHORED.filter((path) => !SURFACES.some(([source]) => source === path) && read(path).includes("{{std:errors}}"));
-  assert.deepEqual(leftover, []);
-  for (const url of [...SURFACES.map(([, url]) => url), ...SERVED_ONLY, "llms-full.txt"]) assert.doesNotMatch(served(url), /\{\{/, url);
 });
 
 test("the CLI 1.6.3 table matches the approval exits, including one-line error reporting", () => {

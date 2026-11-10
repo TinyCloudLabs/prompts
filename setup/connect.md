@@ -24,6 +24,8 @@ Those guides are the authority for prerequisites, installation, permissions, sig
 
 Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Grok Bot](#grok-bot), [WhatsApp / Instinct](#whatsapp-and-instinct), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other MCP clients](#other-mcp-clients).
 
+Client-specific guides: [ChatGPT](connect/chatgpt.md), [Claude](connect/claude.md), [Cursor](connect/cursor.md), [Gemini](connect/gemini.md), [Grok](connect/grok.md), [Meta Muse](connect/muse.md), [Perplexity](connect/perplexity.md), [OpenClaw](connect/openclaw.md), [Hermes](connect/hermes.md), and [TinyCloud CLI](connect/cli.md). Each keeps the original request, explains the runtime's task and skill route, and distinguishes documented setup from observed success.
+
 **What we have tested, as of 3 November 2026.** ChatGPT, Claude, Grok, Perplexity, Gemini and Meta Muse each document custom remote MCP connectors, and Grok Bot can add an MCP server by URL. Our own checks so far:
 
 | App | What we have seen with TinyCloud |
@@ -94,7 +96,7 @@ Send an approval URL complete, on its own line. If the in-app browser loses the 
 
 Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
 
-1. On Perplexity, open **Account settings → Connectors**, click **+ Custom connector**, and select **Remote**.
+1. On Perplexity, open **Plugins → Add custom → Add MCP connector → Remote**. If your UI instead shows **Customize → Connectors**, add the custom remote connector there.
 2. Enter **Name:** TinyCloud; **MCP Server URL:** `https://mcp.tinycloud.xyz/mcp`; **Authentication:** OAuth; **Transport:** Streamable HTTP. No client ID or secret is needed: TinyCloud registers the client itself.
 3. Check the acknowledgement box and click **Add**. Then click the TinyCloud connector card, sign in with OpenKey, and enable it.
 4. Make your original request, then follow [Approve access and continue](#approve-access-and-continue) below.
@@ -150,4 +152,4 @@ To disconnect a chat app, remove or disconnect TinyCloud in that app's plugin or
 
 This record recipe is for chat apps. Use the connected tools rather than CLI or skill-command references.
 
-If the owner only asked for setup or named no record, save one default record without asking, after sign-in is approved (skill §4) and not before: app `todos`, kind `todo`, key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, value `{"v":1,"at":"<UTC>","data":{"title":"Try my personal apps"},"by":<client>}`, where `<UTC>` is the clock's time from `date -u +%FT%TZ` (skill §1; run it again if it is more than 5 minutes old), never an estimate. If the `todos` app or its `todo` kind doesn't exist yet, write their catalog records first (skill §2 rule 2): `xyz.tinycloud.agent-data/catalog/todos` = `{"app":"todos","title":"Todos","about":"Things to do.","created":"<TODAY>","by":<client>}` and `xyz.tinycloud.agent-data/catalog/todos/todo` = `{"app":"todos","kind":"todo","about":"One record per thing to do.","shape":"item","states":["open","done"],"v":1,"fields":{"title":"text: what to do"}}`. Write commands are in skill §6. Get that key and its done twin `xyz.tinycloud.agent-data/todos/todo/done/try-my-personal-apps` first (skill §5), and skip saving if either exists, so a todo the owner already ticked off isn't saved again. Afterwards tell the owner the key, that “What’s on my todo list?” shows it, and that you'll delete it on request (the skill's `kv delete`, §6).
+For setup only, call `tinycloud_apps_context` with `app: "todos"` after the required sign-in and approvals. Follow its returned hosted rules and the live tool schemas: check the default todo and its done twin. If the owner has older TinyCloud app records, or says they do, don't create a same-name replacement; use the CLI Apps guide first. Create missing app/kind/discovery records only as those rules direct, and save “Try my personal apps” only if neither todo exists. Use the layout, keys, value fields and clock returned by the connected tools, not hard-coded CLI examples or shell commands. Read the saved record back before reporting success. CLI legacy-layout and migration instructions are not hosted-tool instructions.
