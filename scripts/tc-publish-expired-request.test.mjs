@@ -7,7 +7,7 @@ import { after, test } from "node:test";
 
 // TC-2238: tc-publish's sign-in (§2) is one `auth login --method openkey --no-popup` run, started detached with its
 // output, process id and exit code in files; a separate check block reads them. Both blocks run here as written,
-// against a stand-in CLI that prints CLI 1.6.3's approval banner (the link on its own line after
+// against a stand-in CLI that prints CLI 1.6.4's approval banner (the link on its own line after
 // "Approve this request in OpenKey (open the complete link):") and then waits for the owner.
 const base = mkdtempSync(join("/var/tmp", "TC-2238-publish."));
 after(() => rmSync(base, { recursive: true, force: true }));
