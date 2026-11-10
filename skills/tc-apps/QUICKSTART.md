@@ -7,7 +7,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-Claude Code, Codex and OpenCode need Node.js 20 or later with npm. Reuse the CLI selected during onboarding, `1.6.4`: new installs and older agent-owned installs get it; an operator-selected older CLI stops setup with a one-line notice. There is no separate app CLI or beta installation.
+Claude Code, Codex and OpenCode need Node.js 20 or later with npm. Reuse the CLI selected during onboarding, `1.6.5`: new installs and older agent-owned installs get it; an operator-selected older CLI stops setup with a one-line notice. There is no separate app CLI or beta installation.
 
 Never share private keys or session files. Approval links also contain request material: send the complete link only to the approving owner, never to a URL shortener. See [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 

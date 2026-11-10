@@ -191,7 +191,7 @@ test("the real built onboarding block sends exit 3 through the agent-side expiry
   writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "installed");
   const cli = join(work, "fake-tinycloud");
   writeFileSync(cli, `#!/bin/sh
-if [ "$*" = "--version" ]; then echo 1.6.4; exit 0; fi
+if [ "$*" = "--version" ]; then echo 1.6.5; exit 0; fi
 if [ "$*" = "onboard --timeout 1s" ]; then
   printf '%s\\n' "$PENDING_JSON"
   exit 3
