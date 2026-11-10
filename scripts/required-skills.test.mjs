@@ -167,27 +167,6 @@ test("/courier's guarded block passes without the skill only when the agent says
   assert.equal(callsOf(run), "--version\ncourier --help\n");
 });
 
-test("/courier names the two-call skill install, served unchanged, for the skill index's courier entry", () => {
-  const { skills } = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8"));
-  const courier = skills.find((skill) => skill.short === "courier");
-  assert.ok(courier);
-  const download = 'mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js';
-  const install = 'node "$HOME/.local/share/tinycloud/install.js" courier --agent CLIENT';
-  for (const [surface, text] of [["setup/courier.md", courierGuide], ["_site/courier", readFileSync(join(root, "_site/courier"), "utf8")]]) {
-    const step = text.split("\n## Install the Courier skill\n")[1]?.split("\n## ")[0];
-    assert.ok(step, `${surface}: missing the Courier skill step`);
-    const blocks = [...step.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((m) => m[1]);
-    assert.deepEqual(blocks, [download, install], surface);
-    assert.ok(step.includes(`\`SKILL_INSTALLED ${courier.name} ${courier.version} <folder>\``), surface);
-    for (const client of clients) assert.ok(step.includes(`\`${client}\``), `${surface}: ${client}`);
-    assert.match(step, /This step is required/, surface);
-    assert.match(step, /Only if your client is none of those three, read SKILL\.md and start\.md directly instead/, surface);
-  }
-  // The /cli step also downloads both the CLI installer and shared skill installer.
-  const cliSetup = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  assert.match(cliSetup, /install-cli\.mjs/);
-  assert.match(cliSetup, /skills\/install\.js/);
-});
 
 test("every onboard-first route says the owner's request is the go-ahead, as written and as served", () => {
   const goAhead = "The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner.";

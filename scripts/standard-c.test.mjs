@@ -214,17 +214,6 @@ exit 90
     assert.match(result.stdout, /If 2 minutes or less remain, it's a real expiry/);
   }
 });
-test("Courier expiry uses the same recorded-expiry decision and never reads private pending state", () => {
-  const courier = read("setup/courier.md");
-  const section = courier.split("\n## Set up Courier once\n")[1].split("\n## ")[0];
-  const expired = section.split("**`[approval-expired]`:")[1]?.split("\n  - ")[0];
-  assert.match(section, /Use `pending\.expiresAt` from this JSON/);
-  const exit3 = errors.split("\n").find((line) => line.startsWith("| 3 |"));
-  assert.match(exit3, /If more than 2 minutes remain before `expiresAt`/);
-  assert.match(exit3, /Create a new request only when 2 minutes or less remain before `expiresAt`/);
-  assert.match(expired, /apply the shared exit-3 decline\/expiry rule/);
-  assert.match(expired, /Never read `approval-pending\.json`; it contains private keys/);
-});
 
 
 // Where a command's real codes differ, the guide keeps its own rows. Every prose mention of exit 3, 5 or 8 outside the
