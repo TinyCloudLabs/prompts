@@ -8,7 +8,7 @@ For agents. Home reads each connected agent's cards from two SQL databases in th
 
 ## 1. Check the CLI
 
-**CLI rule (stable `1.6.3`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.3`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
+**CLI rule (stable `1.6.4`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.4`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
 The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
 
@@ -19,8 +19,8 @@ O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=proces
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || { echo 'TC_NOT_FOUND: set up the CLI at https://agents.tinycloud.xyz/cli, then rerun this block'; exit 1; }
 V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
-if printf '%s\n' "$V" | awk -F. -v p=1.6.3 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
-  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.3; keeping this operator-selected CLI"
+if printf '%s\n' "$V" | awk -F. -v p=1.6.4 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.4; keeping this operator-selected CLI"
   else echo "CLI_OLDER $V $B: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
   exit 1
 fi
@@ -28,7 +28,7 @@ fi
 
 - `TC_NOT_FOUND` → follow that shared guide and return here.
 - `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
-- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.3`, and stop.
+- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.4`, and stop.
 
 ## 2. Choose a token and a label
 

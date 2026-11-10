@@ -2,12 +2,12 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.3`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature checks decide: a CLI without `secrets request` and `secrets wait` is `STALE`.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.4`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature checks decide: a CLI without `secrets request` and `secrets wait` is `STALE`.
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.6.3).
+# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.6.4).
 export TC_BIN='<selected absolute executable path>'
 "$TC_BIN" --profile api-keys auth caps   # once per existing profile after an upgrade
 export TC_OWNER_DID=did:pkh:eip155:1:<owner address>    # the account that owns the secrets

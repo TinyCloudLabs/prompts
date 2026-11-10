@@ -2,12 +2,12 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.3`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: an older CLI that fails it prints `STALE`.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.4`: new installs and older agent-owned installs get it from https://agents.tinycloud.xyz/cli. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: an older CLI that fails it prints `STALE`.
 
 ## 0. Operator setup (once, not run by the agent)
 
 ```sh
-# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.6.3).
+# Reuse the selected CLI from https://agents.tinycloud.xyz/cli (new installs pin 1.6.4).
 export TC_BIN='<selected absolute executable path>'
 export TC_HOME=<profile store for this agent>
 export TC_PUBLISH_STATE=<state dir for this agent>       # optional; default $HOME/.local/state/tc-publish
