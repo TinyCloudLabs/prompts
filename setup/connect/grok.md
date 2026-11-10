@@ -18,4 +18,6 @@ If Grok Bot has a persistent terminal that can install and run the CLI, fetch [o
 
 {{std:connect-hosted}}
 
+{{std:connect-cutover}}
+
 {{std:connect-feedback}}

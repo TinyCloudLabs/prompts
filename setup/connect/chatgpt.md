@@ -15,4 +15,6 @@ Use a custom remote MCP plugin in ChatGPT with OpenKey OAuth. This is not an off
 
 {{std:connect-hosted}}
 
+{{std:connect-cutover}}
+
 {{std:connect-feedback}}

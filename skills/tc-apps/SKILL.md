@@ -98,9 +98,9 @@ Do this first for every app you are about to read or write, once per conversatio
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/layout.sh" ]; then sh "$d/layout.sh" '<APP>'; break; fi; done
 ```
 
-It checks, in this order, and stops at the first that applies; the hosted TinyCloud MCP's move uses the same rule:
+The CLI checks, in this order, and stops at the first that applies:
 1. A receipt on this computer, `<STATE>/migration/<APP>.receipt.json`, says `"verified": true` for this app → `new`.
-2. The app's discovery entry, `xyz.tinycloud.tinyapps.catalog/<APP>/entry`, exists in the owner's `applications` space → `new`. It is read with the profile, host and space that §3's `app-context.mjs` selects for the app. An app moved by the hosted MCP has this entry and no receipt here.
+2. The app's discovery entry, `xyz.tinycloud.tinyapps.catalog/<APP>/entry`, exists in the owner's `applications` space → `new`. It is read with the profile, host and space that §3's `app-context.mjs` selects for the app. An entry created on another computer need not have a receipt here; it selects the new layout but does not prove that older records were copied.
 3. The old catalog in `default` has the app's record, `xyz.tinycloud.agent-data/catalog/<APP>` → `legacy`.
 4. Otherwise → `new`.
 
@@ -124,7 +124,7 @@ printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":
 - `check-failed` → the old place could not be checked, for example because of the network. If a sandbox blocked the read, request the client's network approval and rerun that same read once. If it still fails, report it and write nothing.
 - `jq is needed` (exit 3) → report the missing host prerequisite and write nothing. `migrate.sh` also needs `jq`.
 
-Only a verified receipt or the app's discovery entry switches an app: never switch because you moved, or think you moved, records yourself, and never write a legacy app's discovery entry yourself; only the move (§9, or the hosted MCP's) writes it.
+Only a verified receipt or the app's discovery entry switches the selected layout: never switch because you moved, or think you moved, records yourself. For a CLI move of a legacy app, never write its discovery entry yourself; follow §9, which writes it only after the copy is verified. Connector behavior is separate; the [planned connector update](https://agents.tinycloud.xyz/connect#planned-connector-update-not-deployed) is not deployed.
 
 ## 2. How the records are organised
 

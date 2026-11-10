@@ -15,4 +15,6 @@ An Enterprise administrator may need to permit custom connectors. Follow [Perple
 
 {{std:connect-hosted}}
 
+{{std:connect-cutover}}
+
 {{std:connect-feedback}}

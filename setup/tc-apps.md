@@ -170,7 +170,7 @@ What you approve, and how to undo it, in one place for owners: https://agents.ti
 
 ## Moving records from an earlier version
 
-Earlier versions kept all apps together in `default`. They keep working until you ask your agent to "move my <app> records". Pause other writers while it moves. The agent reuses existing access or requests only missing permissions, shows a dry-run plan, and copies and compares records before switching. Any mismatch leaves the originals untouched.
+**CLI route:** earlier versions kept all apps together in `default`. They keep working through the CLI's legacy route until you ask your agent to "move my <app> records". Pause other writers while it moves. The agent reuses existing access or requests only missing permissions, shows a dry-run plan, and copies and compares records before switching. Any mismatch leaves the originals untouched. This CLI procedure is separate from the [planned connector update (not deployed)](https://agents.tinycloud.xyz/connect#planned-connector-update-not-deployed); it is not a promise that updating the connector moves older records.
 
 For the agent: follow `SKILL.md` §9. Run `migrate.sh` yourself, with `--dry-run` first, then without it only after the owner accepts the plan in chat. The script needs `jq` and the same CLI selected above. It never deletes the old records. The discovery entry it writes switches the app on every computer that can read it, and the verified receipt in `<STATE>/migration/` switches this computer (`SKILL.md` §1a); an agent on another computer that can't read the entry can install that receipt at the owner's request. A move doesn't import old meal records into Health Log.
 

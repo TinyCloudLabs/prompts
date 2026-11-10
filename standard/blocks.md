@@ -45,7 +45,7 @@ Keep the owner's original request in this conversation. A setup link alone means
 
 1. Once TinyCloud tools are available, call `tinycloud_connect`. If it returns `approvalUrl`, show that actual complete link on its own line: "Open this link, check what it asks for, and approve. Then tell me to continue." Wait for the owner, then call `tinycloud_connect` again until it reports `connected`.
 2. If another tool returns `authority_required` with `approval.url`, show that returned link with the same line, wait, then resume the same call unchanged. Never invent an authorization URL or approve on the owner's behalf. A saved connector or "Connected" card is not proof of authorized data access.
-3. Continue the original task through the available tools and their returned instructions. For setup only, use the connected personal-app tools to finish setup. Read back any saved record before saying it was saved. A tool list or successful sign-in alone proves neither a read nor a write.
+3. Continue the original task through the available tools and their returned instructions. For setup only, follow the [connected-tool record recipe](https://agents.tinycloud.xyz/connect#setup-only-requests-in-chat-apps). Read back any saved record before saying it was saved. A tool list or successful sign-in alone proves neither a read nor a write.
 
 ## Choose tools and instructions for the task
 
@@ -54,7 +54,7 @@ Use the tools this connection actually exposes. The [MCP reference skill](https:
 | Original request | Hosted route and relevant guide |
 | --- | --- |
 | Read or write KV data | Inspect the available `tinycloud_kv_list`, `tinycloud_kv_get` and `tinycloud_kv_put` schemas; use the exact non-secrets space and path authorized for the task. The [MCP skill](https://agents.tinycloud.xyz/skills/mcp.md) covers scoped reads, pagination and conditional writes. Read before replacing data; do not broaden scope or overwrite a concurrent change. |
-| Personal records or apps | Use `tinycloud_apps_context`, then the returned read/write instructions. [Apps](https://agents.tinycloud.xyz/apps) and the [apps skill](https://agents.tinycloud.xyz/skills/apps.md) explain the record conventions; their shell installation steps are for CLI-capable agents, not this chat. |
+| Personal records or apps | Use `tinycloud_apps_context`, then its returned rules and the live tool schemas. [Apps](https://agents.tinycloud.xyz/apps) and the [apps skill](https://agents.tinycloud.xyz/skills/apps.md) describe the CLI workflow; their layout detection, `LEGACY.md`, migration and shell installation steps are not hosted-tool instructions. |
 | A named secret | Use `tinycloud_secrets_get` only for the owner's requested task and follow its approval instructions. [Secrets](https://agents.tinycloud.xyz/secrets) is the CLI workflow; the [MCP skill](https://agents.tinycloud.xyz/skills/mcp.md) distinguishes hosted access. Never display the value or put it in prompts, memory or reports. The client may retain tool results; do not promise that a secret never reaches the host. |
 | Publish or share | The hosted MCP has **no publishing or sharing tools yet**. Keep the request and use a persistent CLI-capable agent with [publish](https://agents.tinycloud.xyz/publish) or [share](https://agents.tinycloud.xyz/share). A chat prompt link does not create a share or publish anything. |
 | Meetings | The hosted MCP has **no meeting tools yet**. Use a CLI-capable agent with [TinyChat meetings](https://agents.tinycloud.xyz/chat) and its retrieval skill. |
@@ -62,6 +62,21 @@ Use the tools this connection actually exposes. The [MCP reference skill](https:
 The [skill index](https://agents.tinycloud.xyz/skills/index.json) identifies the task's reference material; hosted clients use connected tools, not downloaded CLI skill bodies. If a needed tool is absent, report the observed limitation instead of claiming CLI parity.
 
 For `SPACE_NOT_HOSTED`, follow the [new-account guidance](https://agents.tinycloud.xyz/connect#approve-access-and-continue), not another or broader sign-in. For `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED`, nothing was saved: do not retry; the owner can manage storage at https://account.tinycloud.xyz/storage. Disconnecting TinyCloud in the client's connector settings does not delete stored records.
+
+<!-- std:connect-cutover -->
+## Planned connector update (not deployed)
+
+**Draft release note:** the hosted connector currently runs `0.10.0-beta.6`. The planned `0.10.0-beta.16` update includes the personal-app changes introduced in `beta.12`; it is not deployed. The current connector still supports older-layout apps and the dedicated legacy-record move. The following warning and storage-settings note describe the planned update only.
+
+**For the owner, after that update:**
+
+After the next update to the hosted TinyCloud connector, its personal-app tools stop showing or changing apps saved in the older layout (in your `default` space under `xyz.tinycloud.agent-data/`). Those records aren't moved or deleted. If you create an app with the same name, it's a new, separate app, and the CLI uses the new one from then on. To keep using the older records, follow the CLI Apps guide before you create a replacement; the connector can't move them.
+
+**For agents, after that update only:**
+
+Setup checks the account's storage settings. If the account has only an older (version 1) storage record, setup stops with `unsupported-format`: report that error; don't reconnect, switch servers or ask for broader access. An account with no storage settings uses normal new-account setup on the default or configured server. Published storage settings decide which server each space uses.
+
+The planned personal-app contract uses `applications` keys under `xyz.tinycloud.tinyapps.<app>/` and discovery entries under `xyz.tinycloud.tinyapps.catalog/`; older-prefix grants do not cover these folders. Request only missing task access. The target schemas remove `tinycloud_apps_move` / `tinycloud.apps.move`, `query.layout`, and context `legacy`, `catalog` and `apps[].layout`; they reject `xyz.tinycloud.agent-data/` keys and require write values to omit server-owned `by`. Within-app `ops.move` in `tinycloud_apps_write` remains supported. The CLI's legacy access and owner-requested verified migration remain separate workflows.
 
 <!-- std:connect-cli -->
 ## CLI route: continue with the right skill
@@ -90,7 +105,7 @@ node "$HOME/.local/share/tinycloud/install.js" apps --agent codex
 
 Use `claude-code` for Claude Code, `opencode` for OpenCode and `codex` for other runtimes. The latter installs into `~/.agents/skills`; use the runtime-specific discovery instructions on this page. Read the installed `SKILL.md` and its task-relevant references before acting. Do not install every skill or switch to local stdio MCP merely to complete CLI onboarding.
 
-The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
+The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one. See the [planned connector update](https://agents.tinycloud.xyz/connect#planned-connector-update-not-deployed) for future-only changes, not current connector instructions.
 
 <!-- std:connect-feedback -->
 ## If something went wrong

@@ -17,4 +17,6 @@ For Team/Enterprise, the workspace owner may first need **Organization settings 
 
 {{std:connect-hosted}}
 
+{{std:connect-cutover}}
+
 {{std:connect-feedback}}
