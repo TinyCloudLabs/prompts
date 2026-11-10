@@ -21,7 +21,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 - **What it does:** you connect your agent to your TinyCloud Home feed once; it then posts the cards you asked for there, and reads your answers.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/feed with curl and follow it, including running its installer. Post the updates I ask for to my TinyCloud Home feed.`
-- **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your Home feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), `1.6.2`.
+- **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your Home feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), `1.6.3`.
 - **Undo:** ask your agent to disconnect it: that revokes the agent's grant, and can also remove its cards from Home ([§8 of the page](https://agents.tinycloud.xyz/feed#8-disconnect)).
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)

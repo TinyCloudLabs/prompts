@@ -159,7 +159,7 @@ if (op === "list") {
   const key = pos[2];
   if (ctl.getError && ctl.getError.key === key) fail(ctl.getError.code, ctl.getError.status, ctl.getError.message);
   if (!allowed("get", key)) fail("PERMISSION_DENIED", 5);
-  // The real CLI 1.6.2 turns the node's KV_NOT_FOUND into this exact error.
+  // The real CLI 1.6.3 turns the node's KV_NOT_FOUND into this exact error.
   if (!(key in s)) fail("NOT_FOUND", 4, 'Key "' + key + '" not found');
   const value = space === "applications" && ctl.corruptRead && ctl.corruptRead[key] !== undefined ? ctl.corruptRead[key] : s[key];
   if (opts["--raw"]) process.stdout.write(value); else console.log(JSON.stringify({ key, data: value }));
@@ -526,7 +526,7 @@ test("layout.sh (e): when the entry can't be read for want of a sign-in or grant
 test("layout.sh (f): when the entry check fails for another reason it says check-failed, never legacy or new", () => {
   const cases = [
     { getError: { key: ENTRY("fitness"), code: "NETWORK_ERROR", status: 6 } },
-    // CLI 1.6.2 with the node unreachable.
+    // CLI 1.6.3 with the node unreachable.
     { getError: { key: ENTRY("fitness"), code: "ERROR", status: 1, message: "Failed to fetch node info at https://node.test." } },
     { getError: { key: ENTRY("fitness"), code: "SPACE_NOT_HOSTED", status: 1 } },
     // Exit 4 that is not the CLI's translation of KV_NOT_FOUND for this key.
