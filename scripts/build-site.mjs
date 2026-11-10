@@ -150,10 +150,12 @@ const RESOLVER = [
   '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
-// Courier's setup section is published inside its skill as well as this guide.
-const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
-  .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
-if (!courierSetup) throw new Error("Courier guide is missing executable remote setup.");
+// The guide owns the handoff and approval procedures embedded in its skill.
+const courierGuide = readFileSync(join(ROOT, "setup/courier.md"), "utf8");
+const courierHandoff = courierGuide.split("\n## Agent handoff contract\n")[1]?.split("\n## ")[0];
+const courierSetup = courierGuide.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+if (!courierHandoff || !courierSetup) throw new Error("Courier guide is missing its handoff or executable remote setup.");
+const COURIER_HANDOFF = `## Agent handoff contract\n${expandStd(courierHandoff.trim(), "setup/courier.md")}`;
 const COURIER_SETUP = `## Set up Courier once\n${expandStd(courierSetup.trim(), "setup/courier.md")}`;
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
@@ -165,9 +167,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.6.2",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.2.tgz",
-    integrity: "sha512-MuHaMQ6Qwl3VWZaoKWmmfaVKndsGmLcr8zYFOSpdvj8Kua6ln8sick5zk00Sw/MJ1AoNC8AAViU79Cm2LFD+qw==",
+    version: "1.6.5",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.5.tgz",
+    integrity: "sha512-9g1zTOHBJgFP2neUHH4m9WajiJchCrk65MYgC9vKy2zBMsej0EeUsATv3S+cHaXVavpSdHFPKddbXgn2vIm7gg==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -182,14 +184,14 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.2`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.5`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
         [
           "Shares live in the owner's `default` space, so publish from a dedicated profile with one paste sign-in. Send the owner the link and pass their code to the CLI exactly as sent:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d\n```",
           "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background (or an interactive session) with stdout and stderr going to files, never as a foreground tool call: it waits for the owner. Send the owner the complete `https://openkey.so/a/…` link exactly as printed on its own line on stderr, including everything after `#`; never retype or shorten it; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.2 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.5 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -273,7 +275,7 @@ const SKILLS = [
         ],
         [
           /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
-          "Courier uses its own COURIER_HOME and one restricted Courier approval; do not create a second TinyCloud CLI profile. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
+          COURIER_HANDOFF + "\n\nCourier uses its own COURIER_HOME and one restricted Courier approval; no general TinyCloud onboarding or CLI profile is required. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Complete the handoff prerequisite gates before the executable remote setup below.\n\n" + COURIER_SETUP,
         ],
       ],
       "start.md": [
@@ -363,7 +365,7 @@ if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
 }
 
 // Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
-// package's version (`@tinycloud/cli 1.6.2`, `@tinycloud/cli@1.6.2`) names the pin. Markdown is served as
+// package's version (`@tinycloud/cli 1.6.5`, `@tinycloud/cli@1.6.5`) names the pin. Markdown is served as
 // written, so each spells the pin out and must spell the installer's. Text may instead write {{CLI_VERSION}},
 // which render() fills in from install-cli.mjs (as /cli's blocked-install line and fallback commands do).
 const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));
@@ -482,7 +484,7 @@ async function loadSkill(skill) {
       if (path !== "start.md") return [path, body];
       changed.add(path);
       const prompt = body.toString("utf8").replace(/\bcourier (?=start|init|join|invite|read|send)/g, '"$TC" courier ');
-      return [path, Buffer.from(`${prompt.trimEnd()}\n\n${COURIER_SETUP}\n`)];
+      return [path, Buffer.from(`${COURIER_HANDOFF}\n\n${prompt.trimEnd()}\n\n${COURIER_SETUP}\n`)];
     });
   }
   if (skill.short === "courier") {

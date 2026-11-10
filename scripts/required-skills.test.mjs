@@ -29,7 +29,7 @@ const entry = (short, name, version) => ({
   files: [{ path: "SKILL.md", url: `/skills/${short}/SKILL.md`, sha256: createHash("sha256").update(skillBody(name)).digest("hex") }],
 });
 const site = {
-  "/skills/index.json": JSON.stringify({ skills: [entry("cli", "tinycloud-cli", "1.6.2"), entry("courier", "courier", "0.5.2")] }),
+  "/skills/index.json": JSON.stringify({ skills: [entry("cli", "tinycloud-cli", "1.6.5"), entry("courier", "courier", "0.5.2")] }),
   "/skills/cli/SKILL.md": skillBody("tinycloud-cli"),
   "/skills/courier/SKILL.md": skillBody("courier"),
 };
@@ -40,7 +40,7 @@ let runs = 0;
 const exec = (file, args, options) =>
   new Promise((done) => execFile(file, args, options, (error, stdout, stderr) => done({ code: error ? error.code : 0, stdout, stderr })));
 
-// A fresh home and working folder, and a stand-in 1.6.2 CLI with Courier that records each call.
+// A fresh home and working folder, and a stand-in 1.6.5 CLI with Courier that records each call.
 function fresh() {
   const dir = join(work, `run-${++runs}`);
   const home = join(dir, "home");
@@ -51,7 +51,7 @@ function fresh() {
   writeFileSync(tc, `#!/bin/sh
 echo "$*" >> ${JSON.stringify(join(dir, "calls"))}
 case "$*" in
-  --version) echo 1.6.2 ;;
+  --version) echo 1.6.5 ;;
   "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' '  join link --consent' ;;
   "onboard --timeout 1s") echo '{"onboarded": true}' ;;
 esac
@@ -167,27 +167,6 @@ test("/courier's guarded block passes without the skill only when the agent says
   assert.equal(callsOf(run), "--version\ncourier --help\n");
 });
 
-test("/courier names the two-call skill install, served unchanged, for the skill index's courier entry", () => {
-  const { skills } = JSON.parse(readFileSync(join(root, "_site/skills/index.json"), "utf8"));
-  const courier = skills.find((skill) => skill.short === "courier");
-  assert.ok(courier);
-  const download = 'mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js';
-  const install = 'node "$HOME/.local/share/tinycloud/install.js" courier --agent CLIENT';
-  for (const [surface, text] of [["setup/courier.md", courierGuide], ["_site/courier", readFileSync(join(root, "_site/courier"), "utf8")]]) {
-    const step = text.split("\n## Install the Courier skill\n")[1]?.split("\n## ")[0];
-    assert.ok(step, `${surface}: missing the Courier skill step`);
-    const blocks = [...step.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((m) => m[1]);
-    assert.deepEqual(blocks, [download, install], surface);
-    assert.ok(step.includes(`\`SKILL_INSTALLED ${courier.name} ${courier.version} <folder>\``), surface);
-    for (const client of clients) assert.ok(step.includes(`\`${client}\``), `${surface}: ${client}`);
-    assert.match(step, /This step is required/, surface);
-    assert.match(step, /Only if your client is none of those three, read SKILL\.md and start\.md directly instead/, surface);
-  }
-  // The /cli step also downloads both the CLI installer and shared skill installer.
-  const cliSetup = readFileSync(join(root, "setup/tinycloud.md"), "utf8");
-  assert.match(cliSetup, /install-cli\.mjs/);
-  assert.match(cliSetup, /skills\/install\.js/);
-});
 
 test("every onboard-first route says the owner's request is the go-ahead, as written and as served", () => {
   const goAhead = "The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner.";

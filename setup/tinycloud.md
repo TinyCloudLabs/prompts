@@ -2,11 +2,11 @@
 
 # Set up the TinyCloud CLI
 
-This module installs and verifies the TinyCloud CLI, then attempts its optional core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. Every guide needs **@tinycloud/cli 1.6.2**: new installs and older agent-owned installs get it; an operator-selected CLI is kept, and a newer one is never downgraded. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
+This module installs and verifies the TinyCloud CLI, then attempts its optional core skill, `tinycloud-cli`. The preferred command is `tinycloud`; `tc` is also available when no unrelated command owns that name. On Linux, leave the system traffic-control `tc` alone. Every guide needs **@tinycloud/cli 1.6.5**: new installs and older agent-owned installs get it; an operator-selected CLI is kept, and a newer one is never downgraded. App hosts, spaces, profiles, permissions and behavior belong in the calling guide.
 
 ## For the owner
 
-- **What it does:** installs `1.6.2` into `~/.local/share/tinycloud/cli`, or upgrades an older copy there, unless you selected a CLI with `TC_BIN` (kept as is) or a newer one is present; then it attempts the optional `tinycloud-cli` skill. Windows gets non-overwriting launchers in `%USERPROFILE%\.local\bin` when names are free, and a safe append to your user PATH. Unix links free names only when `~/.local/bin` is already on PATH. Unrelated commands are left alone.
+- **What it does:** installs `1.6.5` into `~/.local/share/tinycloud/cli`, or upgrades an older copy there, unless you selected a CLI with `TC_BIN` (kept as is) or a newer one is present; then it attempts the optional `tinycloud-cli` skill. Windows gets non-overwriting launchers in `%USERPROFILE%\.local\bin` when names are free, and a safe append to your user PATH. Unix links free names only when `~/.local/bin` is already on PATH. Unrelated commands are left alone.
 - **Paste into an agent that can run shell commands:** `Fetch https://agents.tinycloud.xyz/cli with curl and follow it, including running its installer. Set up the TinyCloud CLI.` `/chat`, `/apps`, `/publish`, `/secrets` and `/courier` use this shared selection instead of installing an app-specific CLI.
 - **If your agent app blocks the install:** your agent sends you one line naming the npm package and the folder. Reply "Go ahead: install the TinyCloud CLI" and it installs it once more; if that fails too, it stops and tells you.
 - **You approve:** nothing. It doesn't sign in or request any access.
@@ -36,7 +36,7 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 ## Install the CLI
 
-Use the reusable platform-aware installer below. It respects process `TC_BIN` first, then a saved `TC_BIN` read by the data-only helper installed by [/agent](agent.md), then the private installation, then a CLI on PATH at `1.6.2` or newer. An operator selection is kept, never silently replaced; one older than `1.6.2` prints `TC_OLDER`. A `TC_BIN`, exported or saved, that points inside `~/.local/share/tinycloud/cli` (on Windows `%USERPROFILE%\.local\share\tinycloud\cli`) is the agent's own private copy, not an operator selection: it is upgraded like the private install and selected as `node_modules/.bin/tinycloud`. A private or PATH CLI older than `1.6.2` is not reused: the installer upgrades its own copy in `~/.local/share/tinycloud/cli` and leaves a PATH CLI untouched. A newer CLI is never downgraded. It never installs into npm's global prefix. When /agent's helper is installed, the installer also saves its own selection in `~/.config/tinycloud/agent.env`, the one saved CLI location every skill reads; it never rewrites an operator's `TC_BIN`.
+Use the reusable platform-aware installer below. It respects process `TC_BIN` first, then a saved `TC_BIN` read by the data-only helper installed by [/agent](agent.md), then the private installation, then a CLI on PATH at `1.6.5` or newer. An operator selection is kept, never silently replaced; one older than `1.6.5` prints `TC_OLDER`. A `TC_BIN`, exported or saved, that points inside `~/.local/share/tinycloud/cli` (on Windows `%USERPROFILE%\.local\share\tinycloud\cli`) is the agent's own private copy, not an operator selection: it is upgraded like the private install and selected as `node_modules/.bin/tinycloud`. A private or PATH CLI older than `1.6.5` is not reused: the installer upgrades its own copy in `~/.local/share/tinycloud/cli` and leaves a PATH CLI untouched. A newer CLI is never downgraded. It never installs into npm's global prefix. When /agent's helper is installed, the installer also saves its own selection in `~/.config/tinycloud/agent.env`, the one saved CLI location every skill reads; it never rewrites an operator's `TC_BIN`.
 
 **Codex sandbox:** If Codex's default sandbox blocks the CLI install because it cannot access the network or write outside the workspace, rerun the same CLI installation shell call once using the Codex tool's escalation arguments: `sandbox_permissions: "require_escalated"`, justification `Install the TinyCloud CLI and core skill`, and `yield_time_ms: 30000`. If escalation is unavailable or that attempt fails, stop and report the installation error. Do not ask the owner to restart Codex or rerun `/cli`.
 
@@ -90,7 +90,7 @@ node "$HOME/.local/share/tinycloud/install.js" ACTION --agent CLIENT
 ```
 This POSIX entry point downloads and runs the same `/install-cli.mjs` implementation; it has no separate CLI version or installation policy. The installer prints `SKILL_INSTALLED <name> <version> <folder>` for each successful skill. `TC_SKILL_STATUS installed`, `reused` or `unavailable` records the core-skill result separately; the calling guide skips its own action-skill install only when its skill was installed here.
 
-`TC_SELECTED {"bin":"…","version":"…","source":"…"}` identifies the selected executable (for the private install, `node_modules/.bin/tinycloud`); retain that absolute path as `TC_BIN` when returning to the caller. `TC_OLDER <version> <path> …` means the operator selected a CLI outside the private install that is older than `1.6.2`: don't replace it, and return to the calling guide, which says what to do; without a calling guide, tell the owner in one line that it is older than the required `1.6.2`. The downloaded Node installer accepts `--resolve` to print only an existing selected path (exit 1 means absent; exit 2 means invalid/unsafe), without installing, upgrading or changing PATH.
+`TC_SELECTED {"bin":"…","version":"…","source":"…"}` identifies the selected executable (for the private install, `node_modules/.bin/tinycloud`); retain that absolute path as `TC_BIN` when returning to the caller. `TC_OLDER <version> <path> …` means the operator selected a CLI outside the private install that is older than `1.6.5`: don't replace it, and return to the calling guide, which says what to do; without a calling guide, tell the owner in one line that it is older than the required `1.6.5`. The downloaded Node installer accepts `--resolve` to print only an existing selected path (exit 1 means absent; exit 2 means invalid/unsafe), without installing, upgrading or changing PATH.
 
 For each command name:
 
@@ -193,7 +193,7 @@ Mention command-name conflicts to the owner in one line. A failed core-skill ins
 
 ## Install the core skill
 
-Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse files matching the `cli` entry, version `1.6.2`, in `https://agents.tinycloud.xyz/skills/index.json`. Do not overwrite unrelated or locally modified files. An older managed `tc-cli` skill has a different name: retire that obsolete folder only after checking it is an unmodified TinyCloud-installed skill, so both versions are not loaded.
+Inspect an existing `tinycloud-cli/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/tinycloud-cli/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinycloud-cli/SKILL.md` for Claude Code. Reuse files matching the `cli` entry, version `1.6.5`, in `https://agents.tinycloud.xyz/skills/index.json`. Do not overwrite unrelated or locally modified files. An older managed `tc-cli` skill has a different name: retire that obsolete folder only after checking it is an unmodified TinyCloud-installed skill, so both versions are not loaded.
 
 This step is optional: it helps agents discover the CLI's commands but is not required to use the selected CLI.
 
@@ -211,7 +211,7 @@ else
 fi
 ```
 
-The installer downloads `tinycloud-cli` from `@tinycloud/cli@1.6.2` with this site's pinned resolver overlay and checks every file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection, then the private installation before global npm. It replaces only `tinycloud-cli` and prints `SKILL_INSTALLED tinycloud-cli 1.6.2 <folder>` on success.
+The installer downloads `tinycloud-cli` from `@tinycloud/cli@1.6.5` with this site's pinned resolver overlay and checks every file against `/skills/index.json`. Its shell blocks read process `TC_BIN` first, then the data-only `agent.env` selection, then the private installation before global npm. It replaces only `tinycloud-cli` and prints `SKILL_INSTALLED tinycloud-cli 1.6.5 <folder>` on success.
 
 In native PowerShell, report failure without stopping the selected CLI:
 
@@ -228,7 +228,7 @@ These commands target the named CLI package and named skill. Preserve unrelated 
 
 When `TC_SKILL_STATUS` is unavailable, tell the owner the CLI is ready but the skill could not be installed or verified; never claim the skill is installed. The `/onboarding` caller must continue onboarding with the selected CLI.
 
-Verify that the selected absolute path reports `1.6.2` or the newer/operator-selected version reported by `TC_SELECTED`. If `tinycloud` was `TC_READY` or `TC_LINKED`, verify `tinycloud --version` after refreshing PATH or restarting the terminal. Check `tinycloud-cli/SKILL.md` only when `TC_SKILL_STATUS` is `installed` or `reused`; if status is unavailable, the CLI remains usable but do not claim the skill is installed. Do not sign in, choose a profile or host, or request permissions here.
+Verify that the selected absolute path reports `1.6.5` or the newer/operator-selected version reported by `TC_SELECTED`. If `tinycloud` was `TC_READY` or `TC_LINKED`, verify `tinycloud --version` after refreshing PATH or restarting the terminal. Check `tinycloud-cli/SKILL.md` only when `TC_SKILL_STATUS` is `installed` or `reused`; if status is unavailable, the CLI remains usable but do not claim the skill is installed. Do not sign in, choose a profile or host, or request permissions here.
 
 Return to the exact recorded app-guide heading and continue the original task in the same conversation. Do not ask the owner to restart the flow or paste another prompt.
 

@@ -22,7 +22,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### 1. CLI
 
-Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. New installs and older agent-owned installs in `~/.local/share/tinycloud/cli` use `@tinycloud/cli@1.6.2`; an operator-selected CLI is kept. Preserve the operator's `TC_BIN`; a missing or broken selected binary stops setup instead of being replaced. If the setup printed `TC_OLDER` (an operator-selected CLI older than `1.6.2`): for Courier, tell the owner in one line that it is older than the required `1.6.2`, and stop; Secrets and publish/share continue, and their skill's §1 feature check decides. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it, giving them this reply to send: "Go ahead: download the TinyCloud CLI installer from agents.tinycloud.xyz." Do not switch installation methods. Do not sign in yet.
+Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. New installs and older agent-owned installs in `~/.local/share/tinycloud/cli` use `@tinycloud/cli@1.6.5`; an operator-selected CLI is kept. Preserve the operator's `TC_BIN`; a missing or broken selected binary stops setup instead of being replaced. If the setup printed `TC_OLDER` (an operator-selected CLI older than `1.6.5`): for Courier, tell the owner in one line that it is older than the required `1.6.5`, and stop; Secrets and publish/share continue, and their skill's §1 feature check decides. Do not change a conflicting `tc` or use sudo/global install. If your client denies installation/persistence, stop and ask the owner to allow it, giving them this reply to send: "Go ahead: download the TinyCloud CLI installer from agents.tinycloud.xyz." Do not switch installation methods. Do not sign in yet.
 
 Give the CLI setup the selected action (`secrets`, `publish` or `courier`) as its action skill, so its one run call installs that skill too and step 3 is already done.
 
@@ -177,7 +177,11 @@ for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md" "$HOME/.a
 ```
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then sed '/^## Set up Courier once$/,$d' "$f"; break; fi; done
+```
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then sed -n '/^## Set up Courier once$/,$p' "$f"; break; fi; done
 ```
 
 Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed.

@@ -1,25 +1,29 @@
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/courier` and follow that text. Summaries drop the shell blocks you must run.
 
-# Try Courier with your agent
+# Courier: one link for your agent
 
-Give your agent one task and one prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Try Courier for me.`
+Give any agent this same link: **https://agents.tinycloud.xyz/courier**.
+If it needs a prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Set up Courier for my requested workflow.`
 
-Courier connects agents in a shared session. You choose another agent you control, or anyone holding your invitation link. Your agent keeps the selected session throughout.
+The agent does the discovery, installation, setup, verification and recovery. You approve permissions and choose who it connects to; you do not find source files, construct commands, share keys or keep a chat open for ordinary background work.
+
+**Readiness is specific.** A successful invitation is not working automation. The current published CLI does not contain the reviewed reliability candidate's capabilities. An agent must report that release/runtime blocker, not claim that new instructions alone made background operation work.
 
 ## For the agent
 
 {{std:read-raw}}
 
-{{std:relay}}
+Retain the owner's original task, requested operating mode and exact incoming invitation. A bare link means start this procedure, not explain it back to the owner or present a feature menu. If the owner requested automatic/background handoff, do not substitute a conversational demo.
 
-Route by capability, not by client name:
+Route by observed capability, not client name. CLI-capable agents use the steps below. Without shell/process execution, inspect the actual available tools: the hosted TinyCloud MCP currently has no Courier tools. Missing Courier tools is `blocked/tooling`, not a reason to request unrelated connector permissions.
 
-- If you can install and run the TinyCloud CLI, use that preferred route. Run the pre-onboarding selection check below first, then start at [TinyCloud onboarding](https://agents.tinycloud.xyz/onboarding); it signs the owner in once and returns you to this request.
-- Otherwise, if you support remote MCP, connect through [/connect](https://agents.tinycloud.xyz/connect) to `https://mcp.tinycloud.xyz/mcp`. The hosted MCP currently has no Courier tools, so it cannot invite or join through Courier.
+## Before installation or approval
 
-## Before onboarding
+Use Node.js 20 or later. Inspect existing Courier skill files **before** calling any installer. Compare the complete installed file set and hashes with the `courier` entry in `https://agents.tinycloud.xyz/skills/index.json`; reuse an exact match. A modified or unrecognized existing skill is `blocked/skill-conflict`: preserve it and describe the specific conflict. The installer replaces whole folders; it does not protect local edits for you.
 
-Use Node.js 20 or later. Run this in the same shell before opening onboarding. Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. A saved path inside the shared private install is the agent's own copy: onboarding's CLI setup upgrades it, so this check leaves it to onboarding. Carry any exported selection into onboarding; if the runtime cannot preserve it between steps, rerun this check in the shell that runs each onboarding CLI command. Any other selected path that is missing or older than CLI `1.6.2` (a prerelease of `1.6.2` is older) stops here; do not switch binaries. A newer CLI passes. With no selection, continue to onboarding, which installs the default CLI.
+Run the selection check below. Then use [CLI setup](tinycloud.md) only for the missing executable, with no action-skill argument; install/reuse Courier through this page's separate skill step after the preservation check. Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
+
+Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. A saved path inside the managed private install belongs to that installer and may be upgraded there. Preserve any other operator-selected path. A missing or incompatible selection blocks setup rather than silently switching binaries. Carry the selected executable into every later call.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -33,19 +37,19 @@ fi
 if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
   TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
-  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.2 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.2 or newer; binary left unchanged" >&2; exit 1; fi
+  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.5 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.5 or newer; binary left unchanged" >&2; exit 1; fi
 fi
 ```
 
-Keep the owner's original request and any incoming invitation URL exactly as supplied. Reuse the existing TinyCloud CLI sign-in from `/onboarding`; do not create another TinyCloud CLI profile for Courier. Codes and delegations are fine in chat; secrets are not. Never ask for an owner key, use hidden code files or owner-run `tc auth grant`, or ask the owner to construct grant JSON.
+Keep the owner's original request and any incoming invitation URL exactly as supplied. Never ask for an owner key, hidden approval files, owner-run commands or hand-constructed grant JSON. Send approval and invitation URLs exactly as printed, only to their intended recipient.
 
-**One extra Courier approval:** CLI `1.6.2` and Courier `0.5.2` keep Courier's own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from the TinyCloud CLI profile. That supported setup needs one Courier approval; it is not shared-profile support. Reuse a ready Courier setup. If setup is missing, complete [Set up Courier once](#set-up-courier-once) and resume the same request.
+**One Courier approval when needed:** Courier keeps its own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from any TinyCloud CLI profile. Reuse a ready setup and preserve its identity. For background work, finish the read-only readiness gates below before requesting a fresh grant.
 
 ## Install the Courier skill
 
-After onboarding, install or reuse the Courier action skill `courier` `0.5.2`. This step is required: the skill is how you run Courier. Inspect an existing `courier/SKILL.md` before replacing it. The usual path is `$HOME/.agents/skills/courier/SKILL.md` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Reuse files matching the `courier` entry, version `0.5.2`, in `https://agents.tinycloud.xyz/skills/index.json`; do not overwrite a modified skill.
+Install or reuse the Courier action skill; the current public manifest pins that **skill** to `0.5.2`. This is not proof of the executable's internal Courier version or reliability capabilities. The usual location is `$HOME/.agents/skills/courier/SKILL.md` for Codex/OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Apply the complete-file preservation check above before installation.
 
-If the CLI setup's run call printed `SKILL_INSTALLED courier` in this conversation, this step is done: read the skill as below. Otherwise, if the skill is missing or is a replaceable mismatch, download the skill installer, then run it, as two separate shell calls. Skip the download if [the CLI setup](tinycloud.md#install-the-core-skill) already saved `$HOME/.local/share/tinycloud/install.js` in this conversation. `CLIENT` is `claude-code`, `codex` or `opencode`, as there.
+If the skill is missing, download and run the existing installer in separate calls below. Do not reinstall an exact match or overwrite a mismatch. Skip a download already completed in this run. `CLIENT` is `claude-code`, `codex` or `opencode`, as in [CLI setup](tinycloud.md).
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
@@ -59,7 +63,7 @@ It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 
 
 ## Check the installed CLI
 
-After onboarding, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks the pinned release `1.6.2` or newer and required subcommands. Without a selection, it uses the installed CLI. A selected binary older than `1.6.2` (a prerelease of `1.6.2` is older) stops this flow; report its path and version. A newer CLI passes.
+After installation, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks CLI `1.6.5` or newer and the basic conversational subcommands. These are not background-readiness checks.
 
 Run this in the same shell as the later commands:
 
@@ -78,7 +82,7 @@ TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 [ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"
 [ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
-if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.2 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.2 or newer; binary left unchanged" >&2; exit 1; fi
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.5 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.5 or newer; binary left unchanged" >&2; exit 1; fi
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
 for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac
@@ -87,6 +91,24 @@ export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 ```
 
 `SKILL_MISSING courier` means the required skill isn't installed: install it as in [Install the Courier skill](#install-the-courier-skill), then rerun the block. Installing the skill is part of the owner's request: don't ask first; at most one short line ("Installing the Courier skill."). The other checks are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
+
+## Agent handoff contract
+
+Do these checks yourself; keep engineering evidence in a private durable receipt, not a task list for the owner.
+
+1. **Recover before creating.** Read the runtime's existing authorized handoff/ledger store. Retain executable/home locators, public owner/agent/peer identities, session, invitation ID, pending approval expiry, exact message/request IDs, original deadlines, pause/quota state, last verified stage and unknown effects. Never read keys or private pending-approval files. Preserve incoming invitations until they can be resumed.
+2. **Discover the actual runtime.** Inspect local help, supported read-only status and official public documentation for event delivery, durable admission, permission, capacity, completion/consumption and supervisor ownership. Do not assume OpenBot, Grok, Claude or another client has interchangeable APIs. Do not ask the owner for source exports, Docker privileges or SSH/private-file transfers.
+3. **Gate requested automation before authority changes.** Inspect the selected Courier help. If it advertises `capabilities`, execute `"$TC" courier capabilities --json` and compare its schemas, features and build provenance with the reviewed adapter. Require exact message/self/task reads, caller-planned message IDs, identity-bound routing, strict options and signed renewal/installation support; a protected same-owner service also requires `authenticated-admission-context-v1`. Otherwise record `blocked/release-capability` and stop before fresh approval, pairing or service changes. CLI `1.6.5` currently has no `capabilities` command. Do not try unknown flags, treat a package version as proof, or install an unreleased worktree as an official update.
+4. **Do not manufacture an adapter.** Background operation also needs an existing supported event/permission/capacity/admission/consumption contract and an authorized supervisor independent of the chat. A missing contract is `blocked/runtime-adapter` (or its exact permission/capacity/consumption stage). The runtime maintainer owns it. A notification, foreground shell, webhook success or fixture is not native consumption. Do not install a notify-only/UI/Mac fallback for requested automation.
+5. **Request only real decisions.** After prerequisites exist, follow the incoming invitation/setup flow below. Send the printed approval URL privately, immediately, then collect the same request with bounded `init --wait` calls. A supported process-completion event can resume the agent; do not require an extra owner message when the runtime can already continue. If a tool cannot stay alive or deliver a continuation, persist pending state and report that limitation instead of promising an automatic return. Denial is not expiry; never generate a replacement approval loop.
+6. **Prove the requested mode.** Verify an owner-authorized substantive request and correlated reply in the exact authenticated session. Only that exchange earns `messaging-ready`. `autonomous-ready` additionally requires service-owned durable admission, processing and real caller consumption after the initiating turn ends, observed restart/cold-start catch-up, and verified renewal ownership/expiry recovery while preserving pauses, quotas and deadlines. A successful pairing, empty inbox, wake or result publication is insufficient. Activation/restart/migration and live source work remain separately gated.
+7. **Leave a resumable receipt.** Record requested/observed mode, safe identity/build/skill references, evidence for each lifecycle stage, independent authority expiries, next authorized event/check, exact blocker and responsible maintainer. Keep bearer URLs only in private state. On reentry recheck bindings and resume the same IDs; reconcile an unknown effect rather than repeat it. Use documented bounded retries within the original deadline, never reset a pause or budget.
+
+Ordinary work uses the installed skill's authority rules. With reliability capabilities, read exact event IDs even if transport receipts already advanced; persist a planned message ID before sending and reconcile it with exact self-read after a lost acknowledgement. Never use full-history polling as a reliability fallback. Track owner approval renewal separately from designated peer maintenance and runtime/data permissions. Preserve the same identity, peer, scope and installation receipts; one renewed permission does not renew the others.
+
+Tell the owner only the result and any actual decision: “Messaging is unverified; background setup is blocked at <stage>. I saved the evidence for the <maintainer>. No files or permissions are needed from you now.” Use `messaging-ready` only when observed. Do not call the workflow automatic while any required gate is unproved.
+
+For an explicitly requested conversational-only journey, continue below; retain that mode in the receipt. For a blocked background request, stop without silently changing the goal.
 
 ## Incoming invitation takes priority
 
@@ -141,15 +163,15 @@ mkdir -p -m 700 "$COURIER_HOME"
   node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).openkeyUrl + "\n")' "$COURIER_HOME/request.json"
 ```
 
-Send the owner that printed line exactly as printed, copied from the output: never retype, shorten or edit any part of it. Send it only to the owner, privately, in your reply, with this one line in the same message, then end your turn; run step 2 when the owner next writes to you:
+Send that exact printed line only to the owner, privately, with this line:
 
-Use the onboarding guide's owner line for its links; this line is only for the Courier approval.
+> Open this link and approve the Courier permission.
 
-> Open this link and approve the one-time Courier permission, then tell me.
+Then run step 2 as a separate bounded call. Do not delay collection solely to ask the owner to say “done”; use the runtime's supported continuation. If no continuation survives this turn, retain the pending request and say so.
 
 The owner may open it on another computer or phone; there is no code to copy back. Do not send the request's public-key or permissions JSON to the owner, reconstruct or rebuild the URL, or ask for a private key. If this step reports `[link-unavailable]`, no link was made: wait about a minute and run it again, at most twice. If it still fails, send the owner exactly "I can't set up Courier right now. Please ask me again later." and stop. If it exits 2 saying the request was already approved, run step 2 instead. If it reports `[approval-unreadable]` or `[profile-permissions]`, do as in step 2.
 
-**2. Collect the approval.** Run this on the owner's next message after you send the link, and again whenever the owner writes, as a plain foreground call with the same `TC` and `COURIER_HOME`. It returns as soon as the approval is collected, or after at most a minute while it is still pending. Nothing is used up when it starts, so a killed or interrupted call loses nothing: run it again, with no new link and no second approval.
+**2. Collect the approval.** After sending the link, run this as a separate foreground call with the same `TC` and `COURIER_HOME`. Resume on an authorized process-completion/continuation event or the owner's next message if the runtime offers no such event. It returns as soon as approval is collected, or after at most a minute while still pending. A killed or interrupted call loses nothing: resume the same request, with no new link or second approval.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -165,8 +187,8 @@ const result = read(out), url = rc === "8" ? result.pending?.approvalUrl : undef
 let shown = ""; try { shown = fs.readFileSync(home + "/shown-link", "utf8"); } catch {}
 if (rc === "0" && result.ok === true) console.log("NEXT: Courier is set up; continue.");
 else if (typeof url !== "string" || url.length === 0) console.log("COURIER_EXIT " + rc);
-else if (url === read(home + "/request.json").openkeyUrl || url === shown) console.log("NEXT: the owner already has this link; when the owner next writes to you, run this block again.");
-else { try { fs.writeFileSync(home + "/shown-link", url, { mode: 0o600 }); } catch {} console.log("NEXT: this is a new link; send it to the owner in your reply now, on its own line, with the step 1 line: " + url + " When the owner next writes to you, run this block again."); }
+else if (url === read(home + "/request.json").openkeyUrl || url === shown) console.log("NEXT: the owner already has this link; retain the pending request and resume on an authorized continuation or the next owner message.");
+else { try { fs.writeFileSync(home + "/shown-link", url, { mode: 0o600 }); } catch {} console.log("NEXT: this is a new link; send it privately now with the step 1 line: " + url + " Then resume bounded collection using the same request."); }
 ' "$OUT" "$RC" "$COURIER_HOME"
 rm -f "$OUT" "$OUT.rc"
 exit "$RC"
@@ -175,7 +197,7 @@ exit "$RC"
 Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. `COURIER_EXIT <code>` means: go by the exit code and stderr below.
 
 - **Exit 0, `"ok": true`:** Courier is set up. Send the owner the done line, "Courier is set up." Retry the original incoming invitation unchanged, or resume the original discovery command. Never substitute a new session.
-- **Exit 8 is pending only when stdout contains a JSON object with a non-empty `pending.approvalUrl`:** the approval is still pending. Use `pending.expiresAt` from this JSON. Send `pending.approvalUrl` once and wait for the owner; if you already sent this exact link, don't send it again. The block's `NEXT:` line says which: the link the owner already has (don't send it again; run this step on the owner's next message), or a different link (send it in your reply with the step 1 line, then run this step on the owner's next message). This ends by itself: once `pending.expiresAt` has passed, the next `--wait` either finishes (the owner approved just in time) or reports `[approval-expired]`; handle either as below.
+- **Exit 8 is pending only when stdout contains a JSON object with a non-empty `pending.approvalUrl`:** retain that request and `pending.expiresAt`. Send a new returned URL once, never repeat an already sent link. Resume the same bounded wait on the runtime's supported continuation; if none exists, retain pending state until an authorized wake or the owner's next message. Do not start an unbounded polling loop or promise a trigger that does not exist. After expiry the next wait either collects a just-approved result or reports `[approval-expired]`; follow its recovery below.
 - **Exit 2, `[usage]`:** no approval request is waiting to be collected. If stderr names `init --resume`, do as for `[no-space]` below. Otherwise rerun the owner's original command (the incoming invitation's `join`, or `"$TC" courier start`): if it works, Courier is set up; continue. If it reports missing setup (`setup-required`), run step 1, send its link with the step 1 line, then run this step.
 - Any other non-zero exit is an error: stderr carries `[code]`. Follow its specific case below. An unmapped code is not pending; report it and stop rather than retrying.
   - **`[approval-expired]`:** use `pending.expiresAt` from the exit-8 JSON and apply the shared exit-3 decline/expiry rule. If that rule says the request really expired, run step 1 to start a new request. If it says the link was declined or you never saw the JSON, ask the decline question from the shared table; send a fresh link only if the owner says they did not decline or want one. Never read `approval-pending.json`; it contains private keys.
