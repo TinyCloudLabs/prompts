@@ -19,6 +19,4 @@ Only after an observed authentication failure, follow the [Muse recovery instruc
 
 {{std:connect-hosted}}
 
-{{std:connect-cutover}}
-
 {{std:connect-feedback}}

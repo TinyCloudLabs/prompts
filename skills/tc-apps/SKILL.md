@@ -124,7 +124,7 @@ printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":
 - `check-failed` → the old place could not be checked, for example because of the network. If a sandbox blocked the read, request the client's network approval and rerun that same read once. If it still fails, report it and write nothing.
 - `jq is needed` (exit 3) → report the missing host prerequisite and write nothing. `migrate.sh` also needs `jq`.
 
-Only a verified receipt or the app's discovery entry switches the selected layout: never switch because you moved, or think you moved, records yourself. For a CLI move of a legacy app, never write its discovery entry yourself; follow §9, which writes it only after the copy is verified. Connector behavior is separate; the [planned connector update](https://agents.tinycloud.xyz/connect#planned-connector-update-not-deployed) is not deployed.
+Only a verified receipt or the app's discovery entry switches the selected layout: never switch because you moved, or think you moved, records yourself. For a CLI move of a legacy app, never write its discovery entry yourself; follow §9, which writes it only after the copy is verified. This CLI procedure is separate from the connector.
 
 ## 2. How the records are organised
 

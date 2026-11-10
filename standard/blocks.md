@@ -63,21 +63,6 @@ The [skill index](https://agents.tinycloud.xyz/skills/index.json) identifies the
 
 For `SPACE_NOT_HOSTED`, follow the [new-account guidance](https://agents.tinycloud.xyz/connect#approve-access-and-continue), not another or broader sign-in. For `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED`, nothing was saved: do not retry; the owner can manage storage at https://account.tinycloud.xyz/storage. Disconnecting TinyCloud in the client's connector settings does not delete stored records.
 
-<!-- std:connect-cutover -->
-## Planned connector update (not deployed)
-
-**Draft release note:** the hosted connector currently runs `0.10.0-beta.6`. The planned `0.10.0-beta.16` update includes the personal-app changes introduced in `beta.12`; it is not deployed. The current connector still supports older-layout apps and the dedicated legacy-record move. The following warning and storage-settings note describe the planned update only.
-
-**For the owner, after that update:**
-
-After the next update to the hosted TinyCloud connector, its personal-app tools stop showing or changing apps saved in the older layout (in your `default` space under `xyz.tinycloud.agent-data/`). Those records aren't moved or deleted. If you create an app with the same name, it's a new, separate app, and the CLI uses the new one from then on. To keep using the older records, follow the CLI Apps guide before you create a replacement; the connector can't move them.
-
-**For agents, after that update only:**
-
-Setup checks the account's storage settings. If the account has only an older (version 1) storage record, setup stops with `unsupported-format`: report that error; don't reconnect, switch servers or ask for broader access. An account with no storage settings uses normal new-account setup on the default or configured server. Published storage settings decide which server each space uses.
-
-The planned personal-app contract uses `applications` keys under `xyz.tinycloud.tinyapps.<app>/` and discovery entries under `xyz.tinycloud.tinyapps.catalog/`; older-prefix grants do not cover these folders. Request only missing task access. The target schemas remove `tinycloud_apps_move` / `tinycloud.apps.move`, `query.layout`, and context `legacy`, `catalog` and `apps[].layout`; they reject `xyz.tinycloud.agent-data/` keys and require write values to omit server-owned `by`. Within-app `ops.move` in `tinycloud_apps_write` remains supported. The CLI's legacy access and owner-requested verified migration remain separate workflows.
-
 <!-- std:connect-cli -->
 ## CLI route: continue with the right skill
 
@@ -105,7 +90,7 @@ node "$HOME/.local/share/tinycloud/install.js" apps --agent codex
 
 Use `claude-code` for Claude Code, `opencode` for OpenCode and `codex` for other runtimes. The latter installs into `~/.agents/skills`; use the runtime-specific discovery instructions on this page. Read the installed `SKILL.md` and its task-relevant references before acting. Do not install every skill or switch to local stdio MCP merely to complete CLI onboarding.
 
-The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one. See the [planned connector update](https://agents.tinycloud.xyz/connect#planned-connector-update-not-deployed) for future-only changes, not current connector instructions.
+The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
 
 <!-- std:connect-feedback -->
 ## If something went wrong

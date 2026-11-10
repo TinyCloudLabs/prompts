@@ -153,5 +153,3 @@ To disconnect a chat app, remove or disconnect TinyCloud in that app's plugin or
 This record recipe is for chat apps. Use the connected tools rather than CLI or skill-command references.
 
 For setup only, call `tinycloud_apps_context` with `app: "todos"` after the required sign-in and approvals. Follow its returned hosted rules and the live tool schemas: check the default todo and its done twin. If the owner has older TinyCloud app records, or says they do, don't create a same-name replacement; use the CLI Apps guide first. Create missing app/kind/discovery records only as those rules direct, and save “Try my personal apps” only if neither todo exists. Use the layout, keys, value fields and clock returned by the connected tools, not hard-coded CLI examples or shell commands. Read the saved record back before reporting success. CLI legacy-layout and migration instructions are not hosted-tool instructions.
-
-{{std:connect-cutover}}

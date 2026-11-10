@@ -44,9 +44,19 @@ The build generates `connect.html` and `connect.md` from the same entry-page tex
 
 `functions/connect.js` returns HTML for ordinary requests, including `Accept: */*`. An explicit, nonzero `text/markdown` preference at least as high as HTML returns Markdown at the **same `/connect` URL**, with `Vary: Accept`. It respects HTML wildcard preferences and never infers the client from User-Agent. `/connect.md` is also available as a machine-readable alternate; owners do not need to choose it.
 
-`functions/connect/<client>.js` applies the same negotiation to each of the ten client guides. Their source pages expand `connect-hosted` or `connect-cli` and `connect-feedback` from `standard/blocks.md`: hosted tools and runtime limits, task-specific skill discovery, and consent-first sanitized feedback. The root and six hosted guides also expand `connect-cutover`, explicitly separating current connector behavior from the planned, not-deployed update. They distinguish custom configuration from an official listing or a prompt link. No authenticated client success is inferred from source documentation, generated routes or a preview.
+`functions/connect/<client>.js` applies the same negotiation to each of the ten client guides. Their source pages expand `connect-hosted` or `connect-cli` and `connect-feedback` from `standard/blocks.md`: hosted tools and runtime limits, task-specific skill discovery, and consent-first sanitized feedback. The root setup-only recipe follows the connected tools' live rules and schemas; CLI layout detection and migration are not hosted-tool instructions. They distinguish custom configuration from an official listing or a prompt link. No authenticated client success is inferred from source documentation, generated routes or a preview.
 
-Draft release note: the connector remains on `0.10.0-beta.6`; the proposed `0.10.0-beta.16` cutover includes `beta.12`'s removal of hosted personal-app legacy access and the dedicated legacy-record move. The update is not deployed. Current setup follows returned live rules/schemas; target-only storage-settings behavior, API removals and write-value rules are labeled future-only. CLI legacy access and verified, owner-requested migration remain available independently. This draft does not authorize merge or publication.
+### Staged connector cutover wording (not served)
+
+This README is excluded from the generated site. The following approved wording is staged for the future connector update only; do not include it in setup pages until that update is deployed through its separately authorized release. The current connector still supports older-layout personal apps and the dedicated legacy-record move. Version changes and API removals belong in the connector's own release notes, not in current setup guidance.
+
+**Future owner warning:**
+
+After the next update to the hosted TinyCloud connector, its personal-app tools stop showing or changing apps saved in the older layout (in your `default` space under `xyz.tinycloud.agent-data/`). Those records aren't moved or deleted. If you create an app with the same name, it's a new, separate app, and the CLI uses the new one from then on. To keep using the older records, follow the CLI Apps guide before you create a replacement; the connector can't move them.
+
+**Future agent-facing storage-settings note:**
+
+Setup checks the account's storage settings. If the account has only an older (version 1) storage record, setup stops with `unsupported-format`: report that error; don't reconnect, switch servers or ask for broader access. An account with no storage settings uses normal new-account setup on the default or configured server. Published storage settings decide which server each space uses.
 
 The response also appends `Cache-Control: no-transform`, preserving the existing cache lifetime. Cloudflare email obfuscation can mistake `package@version` for an email address and rewrite guide text for readers that do not run JavaScript. This applies to negotiated HTML guides, including `/connect/<client>`; neither `/apps` nor zone-wide settings are changed. Verify production HTML bytes after publication, not just the `pages.dev` preview.
 

@@ -17,6 +17,4 @@ If the actual runtime is Gemini CLI with a persistent shell, use [CLI onboarding
 
 {{std:connect-hosted}}
 
-{{std:connect-cutover}}
-
 {{std:connect-feedback}}
