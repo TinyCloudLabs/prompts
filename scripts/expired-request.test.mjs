@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
-// The 1.6.2 expired-request message and the shared agent-side decline rule are checked against standard/blocks.md.
+// The 1.6.3 expired-request message and the shared agent-side decline rule are checked against standard/blocks.md.
 const base = mkdtempSync(join("/var/tmp", "TC-2323."));
 for (const key of ["HOME", "TC_HOME"]) process.env[key] = base;
 after(() => rmSync(base, { recursive: true, force: true }));

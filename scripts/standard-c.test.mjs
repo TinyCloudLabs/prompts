@@ -69,7 +69,7 @@ test("the shared table is expanded once into every guide and skill that carries 
   for (const url of [...SURFACES.map(([, url]) => url), ...SERVED_ONLY, "llms-full.txt"]) assert.doesNotMatch(served(url), /\{\{/, url);
 });
 
-test("the CLI table matches the 1.6.2 approval exits, including one-line error reporting", () => {
+test("the CLI 1.6.3 table matches the approval exits, including one-line error reporting", () => {
   const rows = errors.split("\n").filter((line) => /^\| (\d|Anything else) \|/.test(line)).map((line) => line.split(" | ").map((cell) => cell.replace(/^\| |\s\|$/g, "")));
   assert.deepEqual(rows.map(([exit]) => exit), ["0", "3", "6", "8", "5", "Anything else"]);
   const [done, expired, network, waiting, declined, other] = rows;
@@ -191,7 +191,7 @@ test("the real built onboarding block sends exit 3 through the agent-side expiry
   writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "installed");
   const cli = join(work, "fake-tinycloud");
   writeFileSync(cli, `#!/bin/sh
-if [ "$*" = "--version" ]; then echo 1.6.2; exit 0; fi
+if [ "$*" = "--version" ]; then echo 1.6.3; exit 0; fi
 if [ "$*" = "onboard --timeout 1s" ]; then
   printf '%s\\n' "$PENDING_JSON"
   exit 3
@@ -283,7 +283,7 @@ test("no stray \"tell me when you're done\" or \"send back the code\" outside th
   assert.doesNotMatch(read("skills/tc-apps/announce.sh"), DONE_WORDING);
 });
 
-// OpenKey's short code lasts 5 minutes: CLI 1.6.2's `auth login --help` ("OpenKey return codes expire after 5 minutes")
+// OpenKey's short code lasts 5 minutes: CLI 1.6.3's `auth login --help` ("OpenKey return codes expire after 5 minutes")
 // and OpenKey's apps/api/src/routes/delegation-codes.ts (CODE_TTL_MS = 5 * 60 * 1000).
 test("every claim about how long the OpenKey code lasts says 5 minutes, as the pinned CLI does", () => {
   assert.ok(readFileSync(join(root, "node_modules/@tinycloud/cli/dist/legacy-entry.js"), "utf8").includes("OpenKey return codes expire after 5 minutes"));
@@ -303,7 +303,7 @@ test("every claim about how long the OpenKey code lasts says 5 minutes, as the p
 const AUTO_SIGN_LINE = "Your TinyCloud space isn't set up yet. Please turn on \"Account bootstrap auto-sign\" in your OpenKey settings (https://openkey.so/dashboard/settings), then open this new link and approve, then tell me.";
 const STILL_SETTING_UP = "  - **`[no-space]`, and stderr says OpenKey is still setting up the space**";
 const NOT_SET_UP = "  - **`[no-space]`, and stderr says the space is not set up**";
-// Courier 0.5.2 in CLI 1.6.2 prints the [no-space] messages below.
+// Courier 0.5.2 in CLI 1.6.3 prints the [no-space] messages below.
 // then filled in with "agents" and a host.
 const bundle = readFileSync(join(root, "node_modules/@tinycloud/cli/dist/courier-entry.js"), "utf8");
 const NO_SPACE = [

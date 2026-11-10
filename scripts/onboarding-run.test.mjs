@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
 // TC-2238: /onboarding runs `onboard --timeout 1s` in the foreground; each run prints the pending link and exits, and the agent
-// sends the link and reruns when the owner next writes (js-sdk #822). The real-CLI tests run the pinned devDependency (1.6.2, with #822 and #824).
+// sends the link and reruns when the owner next writes (js-sdk #822). The real-CLI tests run the pinned devDependency (1.6.3, with #822 and #824).
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(root, "node_modules/.bin/tinycloud");
 const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");

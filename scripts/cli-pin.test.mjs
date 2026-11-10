@@ -137,7 +137,7 @@ for (const block of blocks) {
 }
 
 test("every gate's comparison: older below the pin, equal or newer passes, a prerelease of the pin is older", () => {
-  const cases = { "1.5.1": true, "1.4.99": true, "0.9.0": true, "1.5.2": true, "1.5.9": true, "1.6.0": true, "1.6.0-beta.1": true, "1.6.2-beta.2": true, "1.6.2-rc.0": true, "": true, "1.6.2": false, "1.6.3": false, "1.6.10": false, "1.7.0": false, "1.7.0-beta.1": false, "2.0.0": false, "1.6.2+build.7": false };
+  const cases = { "1.5.1": true, "1.4.99": true, "0.9.0": true, "1.5.2": true, "1.5.9": true, "1.6.0": true, "1.6.0-beta.1": true, "1.6.2-beta.2": true, "1.6.2-rc.0": true, "1.6.2": true, "1.6.3-beta.2": true, "": true, "1.6.3": false, "1.6.4": false, "1.6.10": false, "1.7.0": false, "1.7.0-beta.1": false, "2.0.0": false, "1.6.2+build.7": true };
   for (const block of blocks) {
     const compare = section(block.file, block.heading).match(/awk -F\. -v p=\S+ '[^']*'/)?.[0];
     assert.ok(compare, `${block.name}: no comparison`);
