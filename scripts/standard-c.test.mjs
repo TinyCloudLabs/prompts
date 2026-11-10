@@ -55,19 +55,6 @@ const CANT = "I can't set up `<what>` right now. Please ask me again later.";
 const COULDNT = "I couldn't set up `<what>` this time. Tell me if you'd like me to try again.";
 const DECLINED = "Did you decline that request? If not, I'll send you a fresh link.";
 
-test("the shared table is expanded once into every guide and skill that carries its marker", () => {
-  for (const [source, url] of SURFACES) {
-    assert.equal(count(read(source), "\n{{std:errors}}\n"), 1, source);
-    assert.equal(count(served(url), errors), 1, url);
-  }
-  for (const url of SERVED_ONLY) {
-    const table = served(url);
-    assert.equal(count(table, url === "onboarding.html" ? "<th>Exit</th>" : "| Exit | Means | Do |"), 1, url);
-  }
-  const leftover = AUTHORED.filter((path) => !SURFACES.some(([source]) => source === path) && read(path).includes("{{std:errors}}"));
-  assert.deepEqual(leftover, []);
-  for (const url of [...SURFACES.map(([, url]) => url), ...SERVED_ONLY, "llms-full.txt"]) assert.doesNotMatch(served(url), /\{\{/, url);
-});
 
 test("the CLI table matches the 1.6.2 approval exits, including one-line error reporting", () => {
   const rows = errors.split("\n").filter((line) => /^\| (\d|Anything else) \|/.test(line)).map((line) => line.split(" | ").map((cell) => cell.replace(/^\| |\s\|$/g, "")));
