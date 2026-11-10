@@ -95,6 +95,9 @@ test("matrix build rejects private run references and forged derived subtotals",
   assert.throws(() => prepare({ ...safe, namedSubtotal: 99 }), /subtotal/);
   assert.throws(() => prepare({ ...safe, additionalActionCounts: { ...safe.additionalActionCounts, advanced: null } }), /complete ledger/);
   assert.throws(() => prepare({ ...safe, ownerActionTotal: 2 }), /smaller than the reported action counts/);
+  const partial = matrix.projectRun(row({ pastes: null }), ledger());
+  assert.equal(partial.namedSubtotal, null);
+  assert.throws(() => prepare({ ...partial, ownerActionTotal: 2 }), /smaller than the reported action counts/);
   for (const field of ["enrollment", "utcDate", "skillVersion", "cliVersion", "runRef", "agentTurns"]) {
     const incomplete = { ...safe };
     delete incomplete[field];

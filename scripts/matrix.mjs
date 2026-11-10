@@ -3,8 +3,7 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export const NOT_MEASURED = "not measured yet";
 export const TITLE = "How many steps each TinyCloud skill asks of you";
 export const INTRO =
-  "Each row counts what you do when an agent sets up or uses a TinyCloud skill: OpenKey approvals, codes pasted, choices and codes typed. We measure a new agent, a returning agent whose access still works, and a returning agent whose access has to be renewed. Those four counts may not be everything; the total appears only when every step in the run was recorded. A blank cell says \"not measured yet\".";
-
+  "Each row counts what you do when an agent sets up or uses a TinyCloud skill: OpenKey approvals, codes pasted, choices and codes typed. We measure a new agent, a returning agent whose access still works, and a returning agent whose access has to be renewed. Those four counts may not be everything; the total appears only when every step in the run was recorded. An unmeasured cell says \"not measured yet\".";
 const OWNER_COUNTS = [
   ["approvals", "OpenKey approvals"],
   ["pastes", "Codes pasted"],
@@ -158,7 +157,8 @@ const normalizePublicRun = (run) => {
   if (run.actionLedgerComplete && Object.values(additionalActionCounts).some((value) => !Number.isInteger(value)))
     throw new Error("complete ledger needs action-kind counts");
   const additionalTotal = Object.values(additionalActionCounts).reduce((sum, value) => sum + value, 0);
-  if (run.actionLedgerComplete && namedSubtotal !== null && ownerActionTotal < namedSubtotal + additionalTotal)
+  const measuredOwnerCount = values.reduce((sum, value) => sum + (Number.isInteger(value) ? value : 0), 0);
+  if (run.actionLedgerComplete && ownerActionTotal < measuredOwnerCount + additionalTotal)
     throw new Error("complete ledger total is smaller than the reported action counts");
   if (!run.actionLedgerComplete && run.ownerActionTotal !== null) throw new Error("incomplete ledger cannot publish an owner-action total");
   if (!run.actionLedgerComplete && Object.values(additionalActionCounts).some((value) => value !== null))
