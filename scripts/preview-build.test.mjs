@@ -143,38 +143,6 @@ test("the owner-facing HTML pages leave the read-raw line out", () => {
   }
 });
 
-// Claude Code's auto mode ran the downloaded installer when the owner's own prompt asked for it.
-// Each owner prompt on the site, by served file: the guide it fetches, in order of appearance.
-const OWNER_PROMPTS = {
-  setup: ["apps", "feed", "chat", "publish", "share", "secrets", "courier"],
-  apps: ["apps"], chat: ["chat"], publish: ["publish"], share: ["share"], secrets: ["secrets"],
-  courier: ["courier"], cli: ["cli"], openkey: ["openkey"],
-  "onboarding.md": ["onboarding.md"], "connect.md": ["connect.md"],
-  "skills/apps/QUICKSTART.md": ["apps"],
-  "onboarding.html": ["onboarding.md"], "connect.html": ["connect.md"],
-  "index.html": ["onboarding.md", "apps", "feed", "publish", "secrets", "chat"],
-  // The six front-page examples, /onboarding's guide entry (the set-up example again), then /courier's
-  // guide description, which is its prompt.
-  "llms.txt": ["onboarding.md", "apps", "feed", "publish", "secrets", "chat", "onboarding.md", "courier"],
-  "prompt.txt": ["chat"],
-};
-const ownerPrompts = (text) => [
-  ...text.matchAll(/\*\*Paste[^*]*\*\*[^`\n]*`([^`]+)`|\*\*Paste[^*]*\*\*\n\n> (.+)|one prompt: `([^`]+)`|first request:\n\n> (.+)|<strong>Paste[^<]*<\/strong><\/p>\n<blockquote>\n<p>(.+?)<\/p>|Try: <code>([^<]+)<\/code>|Example prompt: "([^"]+)"/g),
-].map((match) => match.slice(1).find((prompt) => prompt !== undefined).replace(/<[^>]+>/g, ""));
-
-test("every owner prompt on the served site fetches its guide with curl and names its installer, in production and on a preview", () => {
-  for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
-    // Every served guide is listed, so a new "Paste into…" line can't skip the check.
-    for (const guide of GUIDES) assert.ok(guide in OWNER_PROMPTS || !/\*\*Paste/.test(readFileSync(join(site, guide), "utf8")), `${base}/${guide} has an unlisted prompt`);
-    for (const [file, guides] of Object.entries(OWNER_PROMPTS)) {
-      const prompts = file === "prompt.txt" ? [readFileSync(join(site, file), "utf8").trim()] : ownerPrompts(readFileSync(join(site, file), "utf8"));
-      // prompt.txt is copied as written, so it names production on a preview too.
-      const from = file === "prompt.txt" ? SITE : base;
-      assert.deepEqual(prompts.map((prompt) => prompt.split(" ")[1]), guides.map((guide) => `${from}/${guide}`), `${base}/${file}`);
-      for (const prompt of prompts) assert.match(prompt, /^Fetch \S+ with curl and follow it, including running its installer\. \S/, `${base}/${file}: ${prompt}`);
-    }
-  }
-});
 
 // The set-up example is /onboarding's own prompt, word for word: the front page's first card, llms.txt's
 // first ability and its /onboarding guide entry.

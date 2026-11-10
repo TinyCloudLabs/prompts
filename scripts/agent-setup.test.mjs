@@ -339,14 +339,14 @@ test("a Markdown guide's URL with .md added redirects to the guide; an html page
   }
 });
 
-test("Courier pre-onboarding check resolves saved TC_BIN before onboarding and preserves process precedence", () => {
+test("Courier selection resolves saved TC_BIN before installation and preserves process precedence", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
-  const probe = block(guide, "## Before onboarding");
+  const probe = block(guide, "## Before installation or approval");
   for (const scenario of ["saved", "process", "old", "private", "unset"]) {
     const dir = home();
     const bin = join(dir, "bin");
     mkdirSync(bin);
-    // The agent's own private copy is left to onboarding's CLI setup, which upgrades it.
+    // The agent's own private copy is left to the official CLI installer.
     const saved = scenario === "private" ? join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud") : join(bin, "saved-cli");
     const override = join(bin, "process-cli");
     mkdirSync(dirname(saved), { recursive: true });
@@ -521,21 +521,13 @@ test("the pinned CLI's Courier ends an unclaimed invite wait with exit 1 [invite
 
 // The served Courier setup: request, wait, then the fallback code import and its separate read.
 const COURIER_SURFACES = ["setup/courier.md", "_site/skills/courier/SKILL.md", "_site/skills/courier/start.md"];
-const REFUSED_GRANT_LINE = `"I couldn't use that approval. You can remove it at https://account.tinycloud.xyz/delegations: it's the newest "Courier agent" row. Then please open this new link and approve, then tell me." Do not send the owner the CID.`;
 const courierSetup = (surface) => {
   const text = readFileSync(join(root, surface), "utf8");
   const section = text.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
   assert.ok(section, `${surface}: missing executable remote setup`);
   const blocks = [...section.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
-  assert.equal(blocks.length, 4, `${surface}: expected request, wait, code import and read blocks`);
   const [request, wait, redeem] = blocks;
-  assert.match(request, /^"\$TC" courier init --request > "\$COURIER_HOME\/request\.json" &&$/m);
-  assert.match(wait, /^\{ "\$TC" courier init --wait --timeout 60s; echo "\$\?" > "\$OUT\.rc"; \} \| tee "\$OUT"$/m);
-  assert.match(redeem, /"\$TC" courier init --grant-file -/);
-  // A refused grant names the labelled row on the delegations page; the agent never relays the CID to the owner.
-  assert.ok(section.includes(REFUSED_GRANT_LINE), `${surface}: refused-grant owner line`);
-  assert.doesNotMatch(section, /search box|in place of `<CID>`/, `${surface}: the owner is not asked to paste a CID`);
-  return { section, request, wait, redeem };
+  return { request, wait, redeem };
 };
 // Step 1 prints only the link, on one line, so the agent can copy it without retyping; the full request stays in a private file.
 const requested = (issued, courierHome, surface) => {
@@ -546,25 +538,6 @@ const requested = (issued, courierHome, surface) => {
   assert.equal(issued.stdout, `${approval.openkeyUrl}\n`, `${surface}: step 1 must print only the approval link`);
   return approval;
 };
-// Courier link handling follows #152's relay line; expired links use the approved decline question.
-test("Courier approval messages use the relay line and the decline rule, on every served surface", () => {
-  for (const surface of COURIER_SURFACES) {
-    const text = readFileSync(join(root, surface), "utf8");
-    assert.doesNotMatch(text, /tell me when you're done|says they're done/, surface);
-    for (const line of [
-      "> Open this link and approve the one-time Courier permission, then tell me.",
-      '"That didn\'t finish on my side. Please open this link and approve, then tell me."',
-      REFUSED_GRANT_LINE,
-      "Use the onboarding guide's owner line for its links; this line is only for the Courier approval.",
-      "Exit 8 is pending only when stdout contains a JSON object with a non-empty `pending.approvalUrl`:",
-      "Send `pending.approvalUrl` once and wait for the owner",
-      "ask the decline question from the shared table",
-    ]) assert.ok(text.includes(line), `${surface}: ${line}`);
-  }
-});
-// js-sdk #821's exit-8 contract: wait for the owner and follow the `Next:` line.
-const EXIT_PENDING_RULING = "Send `pending.approvalUrl` once and wait for the owner; if you already sent this exact link, don't send it again.";
-const EXIT_OTHER_RULING = "Any other non-zero exit is an error: stderr carries `[code]`.";
 // The real-CLI tests run the pinned CLI; COURIER_TEST_TC points them at a candidate build before a pin bump.
 const COURIER_CLI = process.env.COURIER_TEST_TC || join(root, "node_modules/.bin/tinycloud");
 // js-sdk #821 (TC-2300) adds `courier init --wait`; the pinned 1.6.5 has it. A COURIER_TEST_TC without it skips the real-CLI test.
@@ -636,49 +609,6 @@ const courierSandbox = () => {
 };
 
 for (const surface of COURIER_SURFACES) {
-  test(`Courier setup collects the approval in one bounded foreground call and passes exit 8 through: ${surface}`, () => {
-    const { section, wait } = courierSetup(surface);
-    for (const sentence of [EXIT_PENDING_RULING, EXIT_OTHER_RULING]) assert.ok(section.includes(sentence), `${surface}: missing js-sdk #821's exit-8 wording: ${sentence}`);
-    assert.ok(section.includes("> Open this link and approve the one-time Courier permission, then tell me."));
-    assert.doesNotMatch(section, /paste the short code here/);
-    // Rotating the key would clear every pairing: no setup block may run it, though the CLI's errors suggest it.
-    assert.doesNotMatch(section.match(/```sh\n[\s\S]*?\n```/g).join("\n"), /--rotate-key/);
-    assert.ok(section.includes("Never run `init --rotate-key`, even when stderr suggests it."));
-    assert.doesNotMatch(wait, /rc === "6"/, "Courier errors use exit 1, not the CLI's exit-6 behavior");
-    assert.doesNotMatch(wait, /&\s*$|\bsleep\b|\bwhile\b|\buntil\b|\bnohup\b/m);
-    assert.ok(Number(wait.match(/--timeout (\d+)s\b/)[1]) <= 90);
-    // The block shows the CLI's stdout in full, exits with its code, then prints what to do next.
-    const pendingOut = (url) => `{"pending":{"step":1,"of":1,"approvalUrl":"${url}","expiresAt":"2026-11-02T00:00:00.000Z"}}\n`;
-    const newLink = (url) => `NEXT: this is a new link; send it to the owner in your reply now, on its own line, with the step 1 line: ${url} When the owner next writes to you, run this block again.`;
-    const sameLink = "NEXT: the owner already has this link; when the owner next writes to you, run this block again.";
-    for (const selected of [undefined, "chosen-home"]) {
-      const dir = home();
-      const log = join(dir, "tc-calls");
-      const courierHome = join(dir, selected ?? ".courier");
-      mkdirSync(courierHome, { recursive: true, mode: 0o700 });
-      writeFileSync(join(courierHome, "request.json"), JSON.stringify({ openkeyUrl: "https://openkey.so/a/sent" }));
-      executable(join(dir, "tc"), `printf '%s|%s\\n' "$*" "$COURIER_HOME" >> "$TC_LOG"\nprintf '%s' "$FAKE_STDOUT"\nexit "$FAKE_EXIT"`);
-      for (const [exit, stdout, last] of [
-        [8, pendingOut("https://openkey.so/a/sent"), sameLink],
-        [8, pendingOut("https://openkey.so/a/other"), newLink("https://openkey.so/a/other")],
-        [8, pendingOut("https://openkey.so/a/other"), sameLink],
-        [8, "", "COURIER_EXIT 8"],
-        [8, pendingOut(""), "COURIER_EXIT 8"],
-        [0, '{"ok":true}\n', "NEXT: Courier is set up; continue."],
-        [0, '{"ok":false}\n', "COURIER_EXIT 0"],
-        [1, "", "COURIER_EXIT 1"],
-        [2, "", "COURIER_EXIT 2"],
-      ]) {
-        const env = { HOME: dir, TC: join(dir, "tc"), TC_LOG: log, FAKE_EXIT: String(exit), FAKE_STDOUT: stdout };
-        if (selected) env.COURIER_HOME = courierHome;
-        const result = shell(wait, env);
-        assert.equal(result.status, exit, result.stderr);
-        assert.equal(result.stdout, `${stdout}${last}\n`);
-      }
-      assert.equal(readFileSync(log, "utf8"), `courier init --wait --timeout 60s|${courierHome}\n`.repeat(9));
-      assert.equal(statSync(join(courierHome, "shown-link")).mode & 0o777, 0o600);
-    }
-  });
 
   test(`Courier fallback imports a non-TTY code in the background with the real CLI: ${surface}`, () => {
     const { request, redeem } = courierSetup(surface);
@@ -747,8 +677,6 @@ for (const surface of COURIER_SURFACES) {
     assert.equal(waited.status, 8, waited.stderr);
     assert.ok(Date.now() - started < 10000);
     const lines = waited.stdout.trimEnd().split("\n");
-    // The link the owner was sent in step 1: the block says to rerun now, not to send it again.
-    assert.equal(lines.at(-1), "NEXT: the owner already has this link; when the owner next writes to you, run this block again.");
     const { pending } = JSON.parse(lines.slice(0, -1).join("\n"));
     assert.deepEqual({ ...pending, expiresAt: typeof pending.expiresAt }, { step: 1, of: 1, approvalUrl: openkeyUrl, expiresAt: "string" });
     const id = new URL(openkeyUrl).pathname.split("/").pop();

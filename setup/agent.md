@@ -177,7 +177,11 @@ for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md" "$HOME/.a
 ```
 
 ```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then cat "$f"; break; fi; done
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then sed '/^## Set up Courier once$/,$d' "$f"; break; fi; done
+```
+
+```sh
+for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then sed -n '/^## Set up Courier once$/,$p' "$f"; break; fi; done
 ```
 
 Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed.

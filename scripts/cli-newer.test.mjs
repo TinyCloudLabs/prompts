@@ -104,10 +104,10 @@ test("tc-apps skill §1 (built): older than the pin prints CLI_OLDER and stops; 
 });
 
 test("courier guide (built): both version checks refuse older than the pin and accept the pin or newer", () => {
-  const preOnboarding = gate("courier", "## Before onboarding");
+  const preOnboarding = gate("courier", "## Before installation or approval");
   const postOnboarding = gate("courier", "## Check the installed CLI");
   for (const [version, older] of Object.entries(VERSIONS)) {
-    // The pre-onboarding check looks only at an operator's TC_BIN; with none it leaves the CLI to onboarding.
+    // The pre-installation check preserves an operator's TC_BIN; the official installer owns the default.
     const c1 = setup(version, "process");
     const pre = run(preOnboarding, c1);
     if (older) {
