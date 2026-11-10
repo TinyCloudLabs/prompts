@@ -113,7 +113,7 @@ Courier inspects the complete installed skill before invoking an installer and p
 
 ## Release checklist
 
-- Update the matrix: re-run each flow, then record the new counts, the date and the versions in [`matrix/interactions.json`](matrix/interactions.json). It is not published on the site; `scripts/matrix.mjs` renders it for private use. A value is `null` until a real QA run measured it, and every number needs `measured_on` and `run_ref`.
+- Refresh `/matrix` each release from real QA runs, updating only safe projections in [`matrix/public.json`](matrix/public.json). Keep unknown counts `null`; the four named interaction counts are a subtotal, and the full owner-action total is available only from a complete action ledger. Source rows, full ledgers, guide URLs, full UTC start/end times and evidence paths stay with QA, not the public projection. Bug counts are grouped by flow and kind from Linear issue IDs/links only; never read bug-report bodies or triage endpoints, and leave unmapped counts unreported. Confirm the generated route and phone-width layout before release.
 
 ## Other files
 

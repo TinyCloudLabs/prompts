@@ -1,0 +1,14 @@
+{
+  "skills": [
+    { "alias": "apps", "source": "tc-apps" },
+    { "alias": "feed", "source": null },
+    { "alias": "publish", "source": "tc-publish" },
+    { "alias": "secrets", "source": "tc-secrets" },
+    { "alias": "cli", "source": "tc-cli" },
+    { "alias": "courier", "source": "courier" },
+    { "alias": "chat", "source": "tinychat-retrieval" },
+    { "alias": "mcp", "source": "tinycloud-delegated-secrets" }
+  ],
+  "runs": [],
+  "bugReports": []
+}

@@ -27,6 +27,7 @@ import { gunzipSync } from "node:zlib";
 import { Marked } from "marked";
 import { gfmHeadingId } from "marked-gfm-heading-id";
 import { CLI_VERSION } from "./install-cli.mjs";
+import { prepareMatrixData, renderMatrix } from "./matrix.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
@@ -767,6 +768,7 @@ const redirects = [
   ...PAGES.filter((p) => !p.html).map((p) => `/${p.url}.md /${p.url} 301`),
   ...[...new Map(PAGES.map((p) => [p.src, p.url]))].map(([src, to]) => `/${src} /${to} 301`),
   ...skills.filter((s) => s.name !== s.short).map((s) => `/skills/${s.name}/* /skills/${s.short}/:splat 301`),
+  "/matrix /matrix.html 200",
 ];
 write("_redirects", redirects.join("\n") + "\n");
 
@@ -815,7 +817,7 @@ write(
     .join("\n"),
 );
 
-const sitemapPaths = ["", ...indexed.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+const sitemapPaths = ["", ...indexed.map((p) => p.url), "matrix", "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -876,6 +878,10 @@ const style = `  <style>
     a { color: #0b57d0; }
     footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
   </style>`;
+const matrixLegacy = JSON.parse(readFileSync(join(ROOT, "matrix/interactions.json"), "utf8"));
+const matrixPublic = JSON.parse(readFileSync(join(ROOT, "matrix/public.json"), "utf8"));
+const matrixData = prepareMatrixData(skills, matrixLegacy, matrixPublic);
+write("matrix.html", renderMatrix(matrixData, style, BASE));
 // Each html page: rendered HTML at /<url>, its Markdown at /<url>.md (functions/<url>.js negotiates).
 const markdownRenderer = new Marked(gfmHeadingId());
 for (const p of pages.filter((p) => p.html)) {

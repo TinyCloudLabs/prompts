@@ -90,6 +90,21 @@ test("a production build serves the repository's skills byte for byte, pointing 
     for (const [file, body] of sources) assert.ok(readFileSync(join(production, file.url)).equals(Buffer.from(expanded(body))), file.url);
   }
 });
+test("the generated matrix route serves the current skill catalog in production and preview", () => {
+  assert.equal(existsSync(join(root, "functions/matrix.js")), false, "the old forced-404 function must not shadow the generated page");
+  for (const site of [production, preview]) {
+    const html = readFileSync(join(site, "matrix.html"), "utf8");
+    const redirects = readFileSync(join(site, "_redirects"), "utf8").split("\n");
+    const sitemap = readFileSync(join(site, "sitemap.xml"), "utf8");
+    assert.ok(redirects.includes("/matrix /matrix.html 200"), site);
+    assert.ok(sitemap.includes(`${site === production ? SITE : PREVIEW}/matrix`), site);
+    for (const alias of ["apps", "feed", "publish", "secrets", "cli", "courier", "chat", "mcp"])
+      assert.match(html, new RegExp(`<span class="alias">/${alias}<\\/span>`), `${site}: ${alias}`);
+    assert.match(html, /<span class="version">Skill 1\.6\.5<\/span>/);
+    assert.match(html, /not measured yet/);
+    assert.doesNotMatch(html, /QA run|\/var\/tmp\/|did:key:|token=/i);
+  }
+});
 
 test("the served /cli keeps its POSIX blocks fenced and syntactically valid", (t) => {
   const sites = [production, preview].map((site) => {
