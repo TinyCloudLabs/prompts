@@ -94,10 +94,19 @@ test("matrix build rejects private run references and forged derived subtotals",
   assert.throws(() => prepare({ ...safe, runRef: "/var/tmp/private.json" }), /runRef/);
   assert.throws(() => prepare({ ...safe, namedSubtotal: 99 }), /subtotal/);
   assert.throws(() => prepare({ ...safe, additionalActionCounts: { ...safe.additionalActionCounts, advanced: null } }), /complete ledger/);
+  assert.throws(() => prepare({ ...safe, ownerActionTotal: 2 }), /smaller than the reported action counts/);
+  for (const field of ["enrollment", "utcDate", "skillVersion", "cliVersion", "runRef", "agentTurns"]) {
+    const incomplete = { ...safe };
+    delete incomplete[field];
+    assert.throws(() => prepare(incomplete), /missing required fields/);
+  }
+  const missingCount = { ...safe, ownerInteractions: { ...safe.ownerInteractions } };
+  delete missingCount.ownerInteractions.approvals;
+  assert.throws(() => prepare(missingCount), /invalid fields/);
 });
 
 
-test("ordinary reuse, forced renewal, and enrollment stay distinct in the rendered matrix", () => {
+test("ordinary reuse, forced renewal, and enrollment stay distinct in owner-facing copy", () => {
   const ordinary = matrix.projectRun(row(), ledger());
   const forced = matrix.projectRun(row({ returningMode: "forcedRenewal", enrollment: "new-account" }), ledger());
   const fresh = matrix.projectRun(row({ variant: "freshAgent", returningMode: null, enrollment: "new-account" }), ledger());
@@ -105,14 +114,15 @@ test("ordinary reuse, forced renewal, and enrollment stay distinct in the render
     name: "tinycloud-cli", alias: "cli", version: "1.6.5", blurb: "CLI", guideURL: "/skills/cli/SKILL.md",
     flows: [{ id: "install", task: "Install", runs: [ordinary, forced, fresh] }],
   }] });
-  for (const label of ["Fresh agent", "Returning agent — ordinary reuse", "Returning agent — forced renewal"])
+  for (const label of ["New agent", "Returning agent, access still valid", "Returning agent, access renewed"])
     assert.ok(html.includes(`<th scope="col">${label}</th>`), label);
+  assert.match(html, /How many steps each TinyCloud skill asks of you/);
   assert.match(html, /Enrollment qualifier: existing-account/);
   assert.match(html, /Enrollment qualifier: new-account/);
   assert.match(html, /<dt>Consent navigation<\/dt><dd>1<\/dd>/);
   assert.match(html, /<dt>Advanced<\/dt><dd>1<\/dd>/);
-  assert.match(html, /<dt>Full owner-action total<\/dt><dd>3<\/dd>/);
-  assert.match(html, /<dt>Four-category subtotal<\/dt><dd>1<\/dd>/);
+  assert.match(html, /<dt>All your steps<\/dt><dd>3<\/dd>/);
+  assert.match(html, /<dt>Subtotal of the four above<\/dt><dd>1<\/dd>/);
 });
 
 test("empty and partial measurements render not measured, while an observed zero remains zero", () => {
@@ -126,10 +136,10 @@ test("empty and partial measurements render not measured, while an observed zero
       { id: "share", task: "Share", runs: [] },
     ],
   }] });
-  assert.match(html, /<dt>Four-category subtotal<\/dt><dd>0<\/dd>/);
-  assert.match(html, /<dt>Full owner-action total<\/dt><dd>0<\/dd>/);
+  assert.match(html, /<dt>Subtotal of the four above<\/dt><dd>0<\/dd>/);
+  assert.match(html, /<dt>All your steps<\/dt><dd>0<\/dd>/);
   assert.match(html, /<dt>Codes pasted<\/dt><dd>not measured yet<\/dd>/);
-  assert.match(html, /<dt>Full owner-action total<\/dt><dd>not measured yet<\/dd>/);
+  assert.match(html, /<dt>All your steps<\/dt><dd>not measured yet<\/dd>/);
   assert.match(html, /<span class="none">not measured yet<\/span>/);
 });
 
@@ -161,37 +171,43 @@ test("matrix preparation uses live skill aliases and versions, adds feed, and ne
     { skills: [{ alias: "cli", source: null }], runs: [{ skill: "tinycloud-cli", basicFlow: "missing", variant: "freshAgent" }] },
   ), /unmapped/);
 });
-test("Linear issue metadata renders linked counts by kind and missing mappings stay unreported", () => {
+test("Linear bug counts render only a count; missing mappings remain unreported", () => {
   const prepared = matrix.prepareMatrixData(
     [{ name: "tinycloud-cli", short: "cli", version: "1.6.5", desc: "Live CLI" }, { name: "tinycloud-feed", short: "feed", version: "0.2.3", desc: "Live feed" }],
-    { skills: [{ name: "tc-cli", flows: [{ id: "install", task: "Install" }, { id: "other", task: "Other" }] }] },
+    { skills: [{ name: "tc-cli", flows: [{ id: "install", task: "Install" }, { id: "other", task: "Other" }, { id: "empty", task: "Empty" }] }] },
     {
       skills: [{ alias: "cli", source: "tc-cli" }, { alias: "feed", source: null }],
       runs: [],
-      bugReports: [{ skill: "cli", basicFlow: "install", kind: "installer", source: "Linear", issueIds: ["TC-2561", "TC-2561", "TC-2592"] }],
+      bugReports: [
+        { skill: "cli", basicFlow: "install", source: "Linear", count: 2 },
+        { skill: "cli", basicFlow: "install", source: "Linear", count: 1 },
+        { skill: "cli", basicFlow: "other", source: "Linear", count: 0 },
+        { skill: "feed", basicFlow: "unapproved", source: "Linear", count: 99 },
+      ],
     },
   );
   const html = matrix.renderMatrix(prepared);
-  assert.match(html, /Bug reports by kind/);
-  assert.match(html, /installer: 2/);
-  assert.equal((html.match(/linear\.app\/tinycloud-labs\/issue\/TC-2561/g) ?? []).length, 1);
-  assert.equal((html.match(/linear\.app\/tinycloud-labs\/issue\/TC-2592/g) ?? []).length, 1);
-  assert.match(html, /Bug reports: not reported/);
-  assert.doesNotMatch(html, /Bug reports: 0/);
+  assert.equal((html.match(/Bug reports: 3/g) ?? []).length, 1);
+  assert.equal((html.match(/Bug reports: 0/g) ?? []).length, 1);
+  assert.equal((html.match(/Bug reports: not reported/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /linear\.app|TC-\d|installer|Bug reports by kind/);
 });
 
-test("bug issue metadata rejects body-like fields and invalid ticket identifiers", () => {
+test("public bug-count metadata rejects issue identifiers, bodies, and invalid counts", () => {
   const prepare = (report) => matrix.prepareMatrixData(
     [{ name: "tinycloud-cli", short: "cli", version: "1.6.5" }],
     { skills: [{ name: "tc-cli", flows: [{ id: "install", task: "Install" }] }] },
     { skills: [{ alias: "cli", source: "tc-cli" }], runs: [], bugReports: [report] },
   );
   assert.throws(() => prepare({
-    skill: "cli", basicFlow: "install", kind: "installer", source: "Linear", issueIds: ["TC-2561"], body: "private report body",
+    skill: "cli", basicFlow: "install", source: "Linear", count: 1, body: "private report body",
   }), /unknown fields/);
   assert.throws(() => prepare({
-    skill: "cli", basicFlow: "install", kind: "installer", source: "Linear", issueIds: ["TC-2561?token=secret"],
-  }), /ticket identifiers/);
+    skill: "cli", basicFlow: "install", source: "Linear", count: 1, issueIds: ["TC-2561"],
+  }), /unknown fields/);
+  assert.throws(() => prepare({
+    skill: "cli", basicFlow: "install", source: "Linear", count: -1,
+  }), /non-negative integer/);
 });
 
 

@@ -1,9 +1,9 @@
 // Projects reviewed QA rows into the public, static /matrix page.
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 export const NOT_MEASURED = "not measured yet";
-export const TITLE = "Owner actions in TinyCloud skill flows";
+export const TITLE = "How many steps each TinyCloud skill asks of you";
 export const INTRO =
-  "Measured runs separate fresh agents, returning-agent ordinary reuse and forced renewal. Enrollment is shown separately. The four named interaction counts are a subtotal, not the full owner-action total. Consent navigation and Advanced actions are separate; the full total appears only when its action ledger is complete. Missing counts are not measured.";
+  "Each row counts what you do when an agent sets up or uses a TinyCloud skill: OpenKey approvals, codes pasted, choices and codes typed. We measure a new agent, a returning agent whose access still works, and a returning agent whose access has to be renewed. Those four counts may not be everything; the total appears only when every step in the run was recorded. A blank cell says \"not measured yet\".";
 
 const OWNER_COUNTS = [
   ["approvals", "OpenKey approvals"],
@@ -42,8 +42,8 @@ const validDate = (value) => {
   return value;
 };
 const safeRunRef = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value) ? value : null;
-const BUG_REPORT_KEYS = new Set(["skill", "basicFlow", "kind", "source", "issueIds"]);
-const validIssueId = (value) => typeof value === "string" && /^TC-\d+$/.test(value);
+const BUG_REPORT_KEYS = new Set(["skill", "basicFlow", "source", "count"]);
+const validBugCount = (value) => count(value, "bug report count");
 const normalizedKind = (value) => value.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
 const publicActionKind = (value) => {
   const kind = normalizedKind(value);
@@ -115,6 +115,13 @@ const normalizePublicRun = (run) => {
   if (!run || typeof run !== "object" || Array.isArray(run)) throw new Error("public matrix run must be an object");
   const extra = Object.keys(run).filter((key) => !PUBLIC_RUN_KEYS.has(key));
   if (extra.length) throw new Error(`public matrix run contains private or unknown fields: ${extra.join(", ")}`);
+  const required = [
+    "skill", "basicFlow", "variant", "returningMode", "enrollment", "utcDate", "skillVersion", "cliVersion",
+    "runRef", "verdict", "ownerInteractions", "namedSubtotal", "actionLedgerComplete", "ownerActionTotal",
+    "additionalActionCounts", "agentTurns",
+  ];
+  const missing = required.filter((key) => !Object.hasOwn(run, key));
+  if (missing.length) throw new Error(`public matrix run is missing required fields: ${missing.join(", ")}`);
   const skill = safeLabel(run.skill, "skill");
   const basicFlow = safeLabel(run.basicFlow, "basicFlow");
   if (!skill || !basicFlow) throw new Error("public matrix run needs skill and basicFlow");
@@ -126,6 +133,11 @@ const normalizePublicRun = (run) => {
   if (run.runRef !== null && !safeRunRef(run.runRef)) throw new Error("public matrix runRef is unsafe");
   if (!run.ownerInteractions || typeof run.ownerInteractions !== "object" || Array.isArray(run.ownerInteractions))
     throw new Error("public owner interaction counts must be an object");
+  const interactionKeys = new Set(OWNER_COUNTS.map(([key]) => key));
+  const unknownCounts = Object.keys(run.ownerInteractions).filter((key) => !interactionKeys.has(key));
+  const missingCounts = [...interactionKeys].filter((key) => !Object.hasOwn(run.ownerInteractions, key));
+  if (unknownCounts.length || missingCounts.length)
+    throw new Error(`public owner interaction counts have invalid fields: ${[...unknownCounts, ...missingCounts].join(", ")}`);
 
   const ownerInteractions = Object.fromEntries(OWNER_COUNTS.map(([key]) => [key, count(run.ownerInteractions[key], key)]));
   const values = Object.values(ownerInteractions);
@@ -145,6 +157,9 @@ const normalizePublicRun = (run) => {
   if (run.actionLedgerComplete && ownerActionTotal === null) throw new Error("complete ledger needs an owner-action total");
   if (run.actionLedgerComplete && Object.values(additionalActionCounts).some((value) => !Number.isInteger(value)))
     throw new Error("complete ledger needs action-kind counts");
+  const additionalTotal = Object.values(additionalActionCounts).reduce((sum, value) => sum + value, 0);
+  if (run.actionLedgerComplete && namedSubtotal !== null && ownerActionTotal < namedSubtotal + additionalTotal)
+    throw new Error("complete ledger total is smaller than the reported action counts");
   if (!run.actionLedgerComplete && run.ownerActionTotal !== null) throw new Error("incomplete ledger cannot publish an owner-action total");
   if (!run.actionLedgerComplete && Object.values(additionalActionCounts).some((value) => value !== null))
     throw new Error("incomplete ledger cannot publish action-kind counts");
@@ -205,17 +220,12 @@ const renderRun = (run) => {
   return `<section class="measurement">
         <p class="result">${esc(run.verdict)}</p>
         <p class="qualifier">Enrollment qualifier: ${enrollment}</p>
-        <dl>${counts}<div><dt>Four-category subtotal</dt><dd>${countText(model.namedSubtotal)}</dd></div>${additional}<div><dt>Full owner-action total</dt><dd>${countText(model.ownerActionTotal)}</dd></div></dl>
+        <dl>${counts}<div><dt>Subtotal of the four above</dt><dd>${countText(model.namedSubtotal)}</dd></div>${additional}<div><dt>All your steps</dt><dd>${countText(model.ownerActionTotal)}</dd></div></dl>
         <small>${model.agentTurns === null ? NOT_MEASURED : `${model.agentTurns} agent turn${model.agentTurns === 1 ? "" : "s"}`} · ${esc(run.utcDate)} · CLI ${esc(run.cliVersion)} · skill ${esc(run.skillVersion)}${runRef}</small>
       </section>`;
 };
 const cell = (label, runs) => `<td data-label="${esc(label)}">${runs.length ? runs.map(renderRun).join("") : `<span class="none">${NOT_MEASURED}</span>`}</td>`;
-const renderBugReports = (reports) => reports == null
-  ? `<small class="bugs">Bug reports: not reported</small>`
-  : `<small class="bugs">Bug reports by kind: ${reports.map(({ kind, issueIds }) => {
-      const links = issueIds.map((id) => `<a href="https://linear.app/tinycloud-labs/issue/${id}">${esc(id)}</a>`).join(", ");
-      return `${esc(kind)}: ${issueIds.length}${links ? ` (${links})` : ""}`;
-    }).join("; ")}</small>`;
+const renderBugReports = (count) => `<small class="bugs">${count == null ? "Bug reports: not reported" : `Bug reports: ${count}`}</small>`;
 const runsFor = (flow, variant, returningMode = null) => (flow.runs ?? []).filter((run) => run.variant === variant && (variant !== "returningAgent" || run.returningMode === returningMode));
 
 export function prepareMatrixData(catalogSkills, legacyData, publicData) {
@@ -263,24 +273,18 @@ export function prepareMatrixData(catalogSkills, legacyData, publicData) {
     const extra = Object.keys(report).filter((key) => !BUG_REPORT_KEYS.has(key));
     if (extra.length) throw new Error(`bug report metadata contains unknown fields: ${extra.join(", ")}`);
     if (report.source !== "Linear") throw new Error("bug report source must be Linear");
+    const bugCount = validBugCount(report.count);
+    if (bugCount === null) throw new Error("bug report count must be an integer");
     const group = groups.find((candidate) => candidate.name === report.skill || candidate.alias === report.skill);
     const flow = group && flowForRow.get(`${group.name}\0${report.basicFlow}`);
-    if (!group || !flow) throw new Error(`unmapped bug report ${report.skill}/${report.basicFlow}`);
-    const kind = safeLabel(report.kind, "bug kind");
-    if (!kind) throw new Error("bug report kind is required");
-    if (!Array.isArray(report.issueIds) || report.issueIds.some((id) => !validIssueId(id)))
-      throw new Error("bug report ticket identifiers must be Linear TC-<number> IDs");
+    if (!group || !flow) continue;
     const key = `${group.name}\0${flow.id}`;
-    let kinds = bugReportsByFlow.get(key);
-    if (!kinds) bugReportsByFlow.set(key, kinds = new Map());
-    let issueIds = kinds.get(kind);
-    if (!issueIds) kinds.set(kind, issueIds = new Set());
-    for (const issueId of report.issueIds) issueIds.add(issueId);
+    bugReportsByFlow.set(key, (bugReportsByFlow.get(key) ?? 0) + bugCount);
   }
   for (const group of groups) {
     for (const flow of group.flows) {
-      const kinds = bugReportsByFlow.get(`${group.name}\0${flow.id}`);
-      if (kinds) flow.bugReports = [...kinds].map(([kind, issueIds]) => ({ kind, issueIds: [...issueIds].sort() }));
+      const key = `${group.name}\0${flow.id}`;
+      if (bugReportsByFlow.has(key)) flow.bugReports = bugReportsByFlow.get(key);
     }
   }
   const matched = new Set();
@@ -304,7 +308,7 @@ ${skill.flows.map((flow) => {
   const fresh = runsFor(flow, "freshAgent");
   const ordinary = runsFor(flow, "returningAgent", "ordinaryReuse");
   const forced = runsFor(flow, "returningAgent", "forcedRenewal");
-  return `        <tr><td class="sk"><a href="${esc(skill.guideURL)}">/${esc(skill.alias)}</a></td><th scope="row">${esc(flow.task)}${flow.caption ? `<small class="cap">${esc(flow.caption)}</small>` : ""}${renderBugReports(flow.bugReports)}</th>${cell("Fresh agent", fresh)}${cell("Returning agent — ordinary reuse", ordinary)}${cell("Returning agent — forced renewal", forced)}</tr>`;
+  return `        <tr><td class="sk"><a href="${esc(skill.guideURL)}">/${esc(skill.alias)}</a></td><th scope="row">${esc(flow.task)}${flow.caption ? `<small class="cap">${esc(flow.caption)}</small>` : ""}${renderBugReports(flow.bugReports)}</th>${cell("New agent", fresh)}${cell("Returning agent, access still valid", ordinary)}${cell("Returning agent, access renewed", forced)}</tr>`;
 }).join("\n")}
       </tbody>`).join("\n");
   const canonical = base ? `  <link rel="canonical" href="${esc(`${base.replace(/\/$/, "")}/matrix`)}">\n` : "";
@@ -354,7 +358,7 @@ ${canonical}${style}
     <h1>${esc(TITLE)}</h1>
     <p>${INTRO}</p>
     <table>
-      <thead><tr><th scope="col">Skill</th><th scope="col">Basic flow</th><th scope="col">Fresh agent</th><th scope="col">Returning agent — ordinary reuse</th><th scope="col">Returning agent — forced renewal</th></tr></thead>
+      <thead><tr><th scope="col">Skill</th><th scope="col">Basic flow</th><th scope="col">New agent</th><th scope="col">Returning agent, access still valid</th><th scope="col">Returning agent, access renewed</th></tr></thead>
 ${groups}
     </table>
   </main>
