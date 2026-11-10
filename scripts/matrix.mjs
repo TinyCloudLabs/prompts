@@ -225,7 +225,7 @@ const renderRun = (run) => {
       </section>`;
 };
 const cell = (label, runs) => `<td data-label="${esc(label)}">${runs.length ? runs.map(renderRun).join("") : `<span class="none">${NOT_MEASURED}</span>`}</td>`;
-const renderBugReports = (count) => `<small class="bugs">${count == null ? "Bug reports: not reported" : `Bug reports: ${count}`}</small>`;
+const renderBugReports = (count) => `<small class="bugs">${count == null ? "Bug reports: not counted yet" : `Bug reports: ${count}`}</small>`;
 const runsFor = (flow, variant, returningMode = null) => (flow.runs ?? []).filter((run) => run.variant === variant && (variant !== "returningAgent" || run.returningMode === returningMode));
 
 export function prepareMatrixData(catalogSkills, legacyData, publicData) {

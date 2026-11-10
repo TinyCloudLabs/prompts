@@ -174,7 +174,7 @@ test("matrix preparation uses live skill aliases and versions, adds feed, and ne
     { skills: [{ alias: "cli", source: null }], runs: [{ skill: "tinycloud-cli", basicFlow: "missing", variant: "freshAgent" }] },
   ), /unmapped/);
 });
-test("Linear bug counts render only a count; missing mappings remain unreported", () => {
+test("Linear bug counts render only a count; missing mappings remain uncounted yet", () => {
   const prepared = matrix.prepareMatrixData(
     [{ name: "tinycloud-cli", short: "cli", version: "1.6.5", desc: "Live CLI" }, { name: "tinycloud-feed", short: "feed", version: "0.2.3", desc: "Live feed" }],
     { skills: [{ name: "tc-cli", flows: [{ id: "install", task: "Install" }, { id: "other", task: "Other" }, { id: "empty", task: "Empty" }] }] },
@@ -192,7 +192,7 @@ test("Linear bug counts render only a count; missing mappings remain unreported"
   const html = matrix.renderMatrix(prepared);
   assert.equal((html.match(/Bug reports: 3/g) ?? []).length, 1);
   assert.equal((html.match(/Bug reports: 0/g) ?? []).length, 1);
-  assert.equal((html.match(/Bug reports: not reported/g) ?? []).length, 1);
+  assert.equal((html.match(/Bug reports: not counted yet/g) ?? []).length, 1);
   assert.doesNotMatch(html, /linear\.app|TC-\d|installer|Bug reports by kind/);
 });
 
