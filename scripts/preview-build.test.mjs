@@ -115,7 +115,7 @@ test("the served /cli keeps its POSIX blocks fenced and syntactically valid", (t
 // Fetch tools that summarize a page keep its first lines and drop its shell
 // blocks, so each served guide and skill opens with this line and its own URL.
 const rawLine = (url) => `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${url}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
-const GUIDES = ["onboarding.md", "connect.md", "setup", "agent", "apps", "chat", "feed", "publish", "share", "secrets", "courier", "cli", "openkey"];
+const GUIDES = ["onboarding.md", "connect.md", "setup", "agent", "apps", "chat", "feed", "publish", "share", "secrets", "courier", "cli", "openkey", "bugs"];
 const afterFrontMatter = (text) => text.replace(/^---\n[\s\S]*?\n---\n\n/, "");
 
 test("every served Markdown guide and every skill, opens with the read-raw line for its own URL, in production and on a preview", () => {
