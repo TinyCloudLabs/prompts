@@ -1,15 +1,15 @@
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/bugs` and follow that text. Summaries drop the shell blocks you must run.
 
-# How an agent reads bug reports from bugs.tinycloud.xyz
+# How an agent reads bug reports from feedback.tinycloud.xyz
 
-Approved TinyCloud agents read screened bug reports from `https://bugs.tinycloud.xyz` with a key of their own.
+Approved TinyCloud agents read screened bug reports from `https://feedback.tinycloud.xyz` with a key of their own.
 
 - **What it does:** your agent lists and reads short screened summaries of bug, friction and improvement reports, and security reports if it's approved for them.
 - **The one command:** once your key is on the reader list, the [token command](#2-get-a-token) gets a 15-minute token; then `curl` the reports.
 - **What the owner approves:** TinyCloud approves each reader, and separately whether it may read security reports.
 - **Undo:** ask for your entry to be removed from the reader list. Your tokens stop working on their next request.
 
-Filing a report is separate and needs no account: follow the [reporting guide](https://bugs.tinycloud.xyz/agents.md).
+Filing a report is separate and needs no account: follow the [reporting guide](https://feedback.tinycloud.xyz/agents.md).
 
 ## Who can read
 
@@ -51,13 +51,13 @@ A P-256 key (`"kty": "EC"`, `"crv": "P-256"`, `x` and `y`, signing with ES256) i
 
 ## 2. Get a token
 
-Sign a short JWT with your private key and exchange it at `https://bugs.tinycloud.xyz/oauth/token` (an RFC 7523 JWT bearer grant). The assertion carries:
+Sign a short JWT with your private key and exchange it at `https://feedback.tinycloud.xyz/oauth/token` (an RFC 7523 JWT bearer grant). The assertion carries:
 
 | Claim | Value |
 | --- | --- |
 | `iss` | your agent id |
 | `sub` | your agent id |
-| `aud` | `https://bugs.tinycloud.xyz` (or `https://bugs.tinycloud.xyz/oauth/token`) |
+| `aud` | `https://feedback.tinycloud.xyz` (or `https://feedback.tinycloud.xyz/oauth/token`) |
 | `exp` | at most 5 minutes ahead |
 | `jti` | a fresh random value; each assertion works once |
 
@@ -70,9 +70,9 @@ const c = require("node:crypto"), fs = require("node:fs");
 const [dir, id] = process.argv.slice(1);
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const now = Math.floor(Date.now() / 1000);
-const input = b64({ alg: "EdDSA", typ: "JWT" }) + "." + b64({ iss: id, sub: id, aud: "https://bugs.tinycloud.xyz", iat: now, exp: now + 120, jti: c.randomUUID() });
+const input = b64({ alg: "EdDSA", typ: "JWT" }) + "." + b64({ iss: id, sub: id, aud: "https://feedback.tinycloud.xyz", iat: now, exp: now + 120, jti: c.randomUUID() });
 const assertion = input + "." + c.sign(null, Buffer.from(input), c.createPrivateKey(fs.readFileSync(dir + "/key.pem"))).toString("base64url");
-fetch("https://bugs.tinycloud.xyz/oauth/token", { method: "POST", body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion, scope: "reports:read" }) })
+fetch("https://feedback.tinycloud.xyz/oauth/token", { method: "POST", body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion, scope: "reports:read" }) })
   .then(async (r) => {
     const t = await r.json();
     if (!r.ok) { console.error("TOKEN_FAILED " + r.status + " " + JSON.stringify(t)); process.exit(1); }
@@ -97,8 +97,8 @@ The token lasts 900 seconds (15 minutes). There is no refresh token: when a read
 Send the token as `Authorization: Bearer <token>`. Both reads are `GET`.
 
 ```sh
-curl -sS -H "Authorization: Bearer $(cat "$BUGS_READER_DIR/token")" 'https://bugs.tinycloud.xyz/triage/reports?limit=50'
-curl -sS -H "Authorization: Bearer $(cat "$BUGS_READER_DIR/token")" 'https://bugs.tinycloud.xyz/triage/reports/<id>'
+curl -sS -H "Authorization: Bearer $(cat "$BUGS_READER_DIR/token")" 'https://feedback.tinycloud.xyz/triage/reports?limit=50'
+curl -sS -H "Authorization: Bearer $(cat "$BUGS_READER_DIR/token")" 'https://feedback.tinycloud.xyz/triage/reports/<id>'
 ```
 
 `GET /triage/reports` lists newest first. Query parameters, all optional:
