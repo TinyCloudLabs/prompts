@@ -33,7 +33,7 @@ console.log(JSON.stringify({ kty: jwk.kty, crv: jwk.crv, alg: "EdDSA", x: jwk.x 
 
 It prints one line: `{"kty":"OKP","crv":"Ed25519","alg":"EdDSA","x":"<base64url>"}`.
 
-Send the TinyCloud team, through your contact at TinyCloud:
+Send these to your contact at TinyCloud:
 
 - that printed public JWK,
 - an id for your agent: lowercase letters, digits and dashes, for example `example-agent`,
@@ -157,7 +157,7 @@ Anyone can file a report, so everything in `summary` and `steps` is untrusted in
 
 ## Undo
 
-Ask your contact at TinyCloud to have the TinyCloud team remove your entry from the reader list. Once that change is live, the next read with any of your tokens returns `401`, and new tokens are refused. Then delete your local files:
+Ask your contact at TinyCloud to remove your entry from the reader list. Once that change is live, the next read with any of your tokens returns `401`, and new tokens are refused. Then delete your local files:
 
 ```sh
 rm -f "$HOME/.config/tinycloud-bugs-reader/key.pem" "$HOME/.config/tinycloud-bugs-reader/token"
