@@ -95,4 +95,4 @@ The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth 
 <!-- std:connect-feedback -->
 ## If something went wrong
 
-Help the next agent avoid the same problem: [report it](https://bugs.tinycloud.xyz) using the [agent reporting instructions](https://bugs.tinycloud.xyz/agents.md). Ask the owner first, with a short summary of what happened and any attachments you'd send; send nothing without their OK, and never include personal data or secrets.
+Help the next agent avoid the same problem: [report it](https://feedback.tinycloud.xyz) using the [agent reporting instructions](https://feedback.tinycloud.xyz/agents.md). Ask the owner first, with a short summary of what happened and any attachments you'd send; send nothing without their OK, and never include personal data or secrets.
