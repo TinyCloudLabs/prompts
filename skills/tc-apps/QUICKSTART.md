@@ -21,7 +21,7 @@ The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tiny
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 20, it stops and tells you; it doesn't install them.
 2. It reuses the CLI from shared setup, or installs (or upgrades) one private copy in `~/.local/share/tinycloud/cli`. Unrelated commands on PATH are preserved.
 3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
-4. For Health Log, it asks for that app's permission even if onboarding is complete. For other apps, it reuses existing grants where they cover the request and asks only for missing permissions.
+4. Health Log always asks for its own permission, even if you've finished onboarding. Other apps reuse access you've already approved when it covers what they need, and ask only for what's missing.
 
 No shell profile to edit, variables to set or client to restart. The agent reads the installed skill directly. In a future conversation that has not discovered it, paste the setup link again; the agent uses the installed files and carries on.
 

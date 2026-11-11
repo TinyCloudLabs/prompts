@@ -8,13 +8,13 @@ Give your AI agent abilities that keep your data in your own TinyCloud space. Ag
 
 The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
-**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI and signs the owner in. Health Log uses its own app-specific permission even after onboarding; generic personal apps reuse onboarding access when it covers the task and ask only for missing access.
+**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI and signs the owner in. Health Log always asks for its own permission, even after onboarding. Other personal apps reuse your onboarding access when it covers the task, and ask only for what's missing.
 
 ## Personal records: [/apps](tc-apps.md)
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-- **You approve:** Health Log always uses its own app-specific permission, even if onboarding is complete; installation may also need permission to create its tables. Generic personal-app access can reuse onboarding where it covers the task.
+- **You approve:** Health Log always asks for its own permission, even if you've finished onboarding; installing it may also ask for permission to create its tables. Other personal apps can reuse your onboarding access when it covers the task.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## Home feed: [/feed](https://agents.tinycloud.xyz/feed)
