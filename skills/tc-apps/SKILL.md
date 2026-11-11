@@ -11,7 +11,7 @@ metadata:
 
 **CLI rule (stable `1.6.5`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.5`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
-**Not onboarded yet? Onboard first.** When §3 or `TINY-APPS.md` §3 returns `onboard-first` (no profile on this computer has an owner or a session), fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. Then rerun that check and continue from its result. The app-scoped sign-in (§4) and the catalog's scoped setup are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
+**Not onboarded yet? Onboard first for generic apps.** When a generic app access check returns `onboard-first`, fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. Then rerun that check and continue from its result. Health Log is the exception: always use its dedicated `agent-meal` profile and app-specific permission in `TINY-APPS.md`, even when onboarding is complete.
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
 
@@ -37,7 +37,7 @@ Sections 1 to 9 below apply only to a request that no catalog app owns (`TINY-AP
 
 **For any request about the owner's data, read the catalog first:** use the two `TINY-APPS.md` shell calls above, unless you already ran them in this conversation.
 
-If a catalog app owns the domain, follow its fast path in that file: it checks the saved grant first, and no approval screen opens while the grant is live. Don't start the per-app sign-in (§3, §4 below) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
+If a catalog app owns the domain, follow its fast path in `TINY-APPS.md`. Health Log checks only its dedicated `agent-meal` grant; never use an onboarding profile for Health Log. A live app-specific grant needs no new approval. Don't start the generic per-app sign-in (§4) for that request. Don't run a `tc` from the PATH; use the `TC_BIN` that §1 prints.
 
 An app is in one of two layouts, selected by §1a. **New layout:** records live in the owner's `applications` space under `xyz.tinycloud.tinyapps.<app>/`, with an app catalog and discovery entry. §3 reuses the selected onboarding profile when its current permissions cover the task; otherwise it checks an existing app-scoped profile for the same owner and host. Request only missing access. **Legacy mode:** records stay in `default` under `xyz.tinycloud.agent-data/`, through `LEGACY.md`, until the owner requests and verifies a move (§9). Never move or delete records merely to reuse a CLI.
 
@@ -196,6 +196,7 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 
 For a generic app in the new layout, resolve `app-context.mjs` from the installed skill and run it once per request. Add `--write` for creating or changing records, and `--delete` only if the requested operation deletes a key. Add `--remove-entry` only for §9's going back, which deletes the app's discovery entry. Omit all three for a read-only request, including a temporary delegated read:
 
+
 ```sh
 for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --write; break; fi; done
 ```
@@ -204,11 +205,7 @@ The helper reads official CLI context and status, checks live primary and additi
 
 For `SPACE_NOT_HOSTED`, a new account may still be provisioning. Tell the owner, then repeat only the failed read after 5, 10, 20, 40 and 60 seconds, stopping on success. If still unavailable, report that storage is not ready and stop. Never invent an approval URL, request a broader grant, use `--replace-session`, or host a space to bypass that error.
 
-- `status: ready`: copy `profile`, `host` and `spaceId` as `<APP_PROFILE>`, `<APP_HOST>` and `<APP_SPACE>`. **Do not sign in again.** If `appEntries` is present, check it first (§2 rule 1); if omitted, do not scan other apps or request broader access. Then read this app's discovery entry, `<ID>/catalog` and every key in `catalogKeys` with §5: each catalog key is a kind record with its `fields`, the names a record of that kind uses. Do this before choosing a kind or writing. An empty catalog is not a missing grant: create the app/kind metadata and discovery entry before the first record (§2).
-- `status: grant-required`: keep the returned profile, host and owner; §4 requests only the returned `missing` permissions.
-- `status: onboard-first`: no profile on this computer has an owner or a session. Onboard first (see the top of this file), then rerun this check. Only if you cannot run onboarding, use the returned `profile` and `missing` as for `sign-in-required`.
-- `status: sign-in-required`: §4 creates/signs in the named app-scoped profile. Never replace an existing session.
-- An account/host mismatch, incomplete listing, network error or permission denial from the actual read is a failure, not a reason to switch profiles or request broader access. Report it and write nothing.
+Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval with a pasted code. It is for an owner who is not onboarded (§3). It prints a link and returns; the owner approves on OpenKey and sends you the code OpenKey shows (4b). Pasting the short code is the only way this sign-in returns, on every computer and for every agent.
 
 When creating or updating an app, read its discovery entry `xyz.tinycloud.tinyapps.catalog/<APP>/entry` with §5. If missing after a verified migration, stop rather than recreating data. Otherwise follow §2's catalog-first rule. A read-only request for a known app uses that app's own catalog: it does not require catalog-wide discovery or another grant. Keep legacy apps in their old layout.
 

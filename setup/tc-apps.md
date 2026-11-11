@@ -10,7 +10,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
   - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
   - **Codex:** approve the CLI and skill installation when Codex requests it. If its sandbox blocks a step, follow the shared CLI guide's blocked-install instructions.
-- **You approve:** nothing more when onboarding already granted the requested app access. Health Log installation additionally needs permission to create its tables if that access is missing; the agent does not repeat ordinary read/write grants. Otherwise it asks only for missing access and sends the OpenKey link. For app approval links, use the line "Open this link and approve, then tell me." The agent runs commands and finishes your request; you never need a separate terminal.
+- **You approve:** Health Log always has its own app-specific permission, even if onboarding is complete. The agent reuses only a live Health Log grant on its dedicated profile; otherwise it sends an OpenKey link for that app. Health Log table creation may need a separate schema permission. A sign-in may show a short code to paste back in chat; the app-permission link needs no code or separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
 
@@ -24,9 +24,9 @@ In Claude, to avoid approving each record-writing tool call, go to **Settings โ
 
 {{std:read-raw}}
 
-Keep the owner's original request in this conversation and carry it out with the skill; don't ask the owner to send it again. **Already onboarded? Do not install another CLI or start another sign-in.** Keep the same selected CLI, profile, host and owner. The skill checks existing grants and actual read access before asking for anything more. A first record in an existing catalog needs only the write and read-back commands in skill ยง6; creating a new app also creates its catalog entries, not another CLI installation.
+Keep the owner's original request in this conversation and carry it out with the skill; don't ask the owner to send it again. Do not repeat onboarding or install another CLI. Generic apps keep the selected profile and reuse its existing grants; Health Log is the exception: it always uses its dedicated `agent-meal` profile and app-specific permission, even when onboarding is complete.
 
-**Not onboarded yet? Onboard first.** When the skill's access check returns `onboard-first` (no profile on this computer has an owner or a session), fetch https://agents.tinycloud.xyz/onboarding raw, as above, and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. It sends you back here; rerun the check and it reuses that access. The skill's scoped sign-ins are only for an agent that cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
+**For generic apps only, onboard first when needed.** When the generic app access check returns `onboard-first` (no profile on this computer has an owner or a session), fetch https://agents.tinycloud.xyz/onboarding raw, as above, and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. It sends you back here; rerun the check and it reuses that access. Health Log follows its app-specific flow in `TINY-APPS.md` instead.
 
 What is and isn't secret: [the list on the shared setup page](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
@@ -34,7 +34,7 @@ If the owner only asked for setup or named no record, save one default record wi
 
 Keep the owner's request, and note your client: `claude-code`, `codex` or `opencode` (any other agent: `codex`).
 
-Run each block as one shell tool call. Use the same `TC_BIN`, `TC_HOME` and selected profile as onboarding. Never install globally, use `sudo`, change a conflicting `tc`, or install a second CLI for a different record layout.
+Run each block as one shell tool call. Use the same `TC_BIN` and `TC_HOME` as onboarding. Generic apps use the selected onboarding profile; Health Log always uses its dedicated `agent-meal` profile. Never install globally, use `sudo`, change a conflicting `tc`, or install a second CLI for a different record layout.
 
 ## 1. Reuse the CLI
 

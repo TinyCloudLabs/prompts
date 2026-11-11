@@ -22,48 +22,25 @@ Never write a catalog app's data to the generic store, and never write generic r
 
 ## 3. Installing a catalog app and getting approval
 
-Run `SKILL.md` §1 first and use its one selected CLI. **Check onboarding access before the scoped setup below:**
+Health Log always uses its own app-scoped profile and approval below. Do not reuse or inspect an onboarded profile to authorize Health Log, even if that profile's grant covers the app. The scoped flow checks only the existing `agent-meal` grant and requests the Health Log app grant when needed.
+
+For Recipes only, the catalog-access check may reuse existing onboarding access:
 
 ```sh
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' healthlog --catalog --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' recipes --catalog --write; break; fi; done
 ```
 
-Use `recipes` instead of `healthlog` for Recipes; omit `--write` for a read-only request. A `ready` result means the existing profile already has onboarding's access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` as `<CATALOG_PROFILE>`, `<CATALOG_HOST>`, `<CATALOG_SPACE>` and `<OWNER_DID>`. Do **not** run another sign-in or owner-grant helper.
+A `ready` result means the selected Recipes profile already has the required access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` for Recipes. An `onboard-first` result means no profile has an owner or session; follow the onboarding guide for Recipes, then rerun the check. Never use this check or its profile for Health Log.
 
-`onboard-first` means no profile on this computer has an owner or a session yet. Fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. When it reports `"onboarded": true`, rerun the check above and continue from its result. Do not start the scoped setup below instead, unless you cannot run onboarding: its CLI route is unavailable, the owner declines it, or your client blocks it.
+Health Log's account binding and access checks are handled only by the scoped `agent-meal` flow below. If the Health Log grant lacks a required schema action, request only that missing action on `agent-meal`; never repeat or broaden its read/write grant.
 
-For Health Log, bind the selected owner and applications space without replacing an earlier binding:
+### Health Log's per-app access
 
-```sh
-node --input-type=module - '<STATE>' '<OWNER_DID>' '<CATALOG_SPACE>' <<'NODE'
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-const [state, owner, space] = process.argv.slice(2);
-if (!/^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$/.test(owner) || space.toLowerCase() !== `tinycloud:${owner.slice(4)}:applications`.toLowerCase()) throw new Error("ACCOUNT_MISMATCH");
-mkdirSync(state, { recursive: true, mode: 0o700 });
-const missing = [];
-for (const [name, value] of [["owner-did.txt", owner], ["meal-space.txt", space]]) {
-  const file = join(state, name);
-  try { if (readFileSync(file, "utf8").trim().toLowerCase() !== value.toLowerCase()) throw new Error("ACCOUNT_MISMATCH"); }
-  catch (error) { if (error.code !== "ENOENT") throw error; missing.push([file, value]); }
-}
-for (const [file, value] of missing) writeFileSync(file, value + "\n", { flag: "wx", mode: 0o600 });
-NODE
-```
-
-Read the app's `knowledge/index.md` with the selected profile, host and full space. If Health Log's notes are missing, the required CLI `1.6.5` supports `"<TC_BIN>" --profile "<CATALOG_PROFILE>" --host "<CATALOG_HOST>" apps install xyz.tinycloud.sample.healthlog --json`; it installs the pinned app and refuses an incompatible existing layout. Do not install over an error or guess a recipe installer: Recipes still needs its published app to have been set up. Then read the installed notes and go directly to §4 to save the requested record and read it back.
-
-Onboarding grants ordinary SQL reads/writes, not table creation. If the pinned installer reports missing `tinycloud.sql/schema`, request **only** `tinycloud.sql:applications:xyz.tinycloud.sample.healthlog/healthlog:schema` on the same onboarded profile with `auth request --cap SPEC --grant --no-popup --expiry 30d`. This link-based command has no `--timeout` or pending-link result and blocks until the approval is resolved. Run it in a persistent shell session that streams stderr and stays alive while you reply; send the complete short URL on its own line as soon as it appears, then wait for the owner's next message and read the final output. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption. Explain that the grant creates Health Log's tables, and rerun the installer after approval. Do not replace the profile, repeat the existing KV/SQL grants, or treat a network/host/account error as missing permission.
-
-`use-scoped-catalog-flow` means the broad onboarding grant is absent, not that it should be requested. Continue below with the existing narrow app grant. Any actual read, owner or host error stops the operation; never work around it by changing accounts.
-
-### Scoped setup without onboarding
-
-The remaining flow supports an existing narrow `agent-meal` setup. Use it only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding. Its sign-in explicitly uses the legacy manual-code fallback and its longer links; the access grant uses a short link and automatic retrieval. The agent runs the commands and relays approvals. Never ask the owner to open a terminal or restart. Every data command passes the full validated applications space ID.
+This is the required flow for every Health Log request, including when the owner has completed onboarding. It uses the dedicated `agent-meal` profile and Health Log's own grant; never use the onboarded profile for Health Log. The sign-in uses the manual-code fallback only when needed; the app grant uses a short link and automatic retrieval. The agent runs the commands and relays the sign-in code in chat. Never ask the owner to open a terminal or restart. Every data command passes the full validated applications space ID.
 
 **Say the two steps first.** The owner signs in to, or creates, their OpenKey, then gives you permission for what they asked; signing in is not what gives you access. The `FIRST` message from `announce.sh` says this: copy that message into your reply exactly, character for character, once, and do not reword any line of it. If the action skill's own message already opens with this, don't repeat it. Call it "permission", not "delegation", "DID" or "capability".
 
-Check the actual existing grant, not the current preset's name. In CLI `1.6.5`, `apps-agent --write --app xyz.tinycloud.sample.healthlog` includes knowledge writes and schema access for Health Log's catalog database; older or read-only grants may not. A sufficiently scoped existing grant can run the same pinned installer on `agent-meal`. If installation authority is absent, use the published app or request only the missing installation actions with the owner's approval; do not silently widen the grant.
+Check only the existing Health Log app grant on `agent-meal`, not a broad onboarding grant. In CLI `1.6.5`, `apps-agent --write --app xyz.tinycloud.sample.healthlog` includes knowledge writes and schema access for Health Log's catalog database; older or read-only app grants may not. A sufficiently scoped `agent-meal` grant can run the pinned installer. If installation authority is absent, use the published app or request only the missing installation actions with the owner's approval; do not silently widen the grant.
 
 Run `SKILL.md` §1 first: it prints `<TC_BIN>`, `<STATE>`, `<NOW>` and `<UTC>`. Every command below starts with `TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077`, as in `SKILL.md`, and calls `"$TC_BIN"`. The agent relays each OpenKey link and only the sign-in's chat code in step 3, then imports in step 4.
 
@@ -77,13 +54,13 @@ Resolve the installed helper's absolute path once per conversation:
 for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/healthlog-context.mjs" ]; then printf '%s/healthlog-context.mjs\n' "$d"; break; fi; done
 ```
 
-Copy that path as `<HEALTHLOG_CONTEXT>`. In §4 pass the selected `<CATALOG_PROFILE>` and `<CATALOG_HOST>` to the helper. It verifies the saved owner and full applications space against official CLI metadata, then reads the page's timezone key and returns `{spaceId,day,now,utc,timeZone}` using a fresh clock. It reads no private session files. On an account failure, stop and run no SQL; never replace the saved owner to make a grant fit.
+Copy that path as `<HEALTHLOG_CONTEXT>`. In §4 use `agent-meal` as `<CATALOG_PROFILE>` and its configured host as `<CATALOG_HOST>`; never pass the onboarded profile. The helper verifies the saved owner and full applications space against official CLI metadata, then reads the page's timezone key and returns `{spaceId,day,now,utc,timeZone}` using a fresh clock. It reads no private session files. On an account failure, stop and run no SQL; never replace the saved owner to make a grant fit.
 
-0. **Check the grant (no screen).** If the agent's grant is still live, go to §4 and log the record: the sign-in and grant aren't needed. The probe is a read of the app's database. It fails with `AUTH_REQUIRED` or `PROFILE_NOT_FOUND` when there is no live grant, and with another error for anything else.
+0. **Check the app-specific grant (no screen).** The probe below checks only `agent-meal`; never check or use an onboarded profile for Health Log. If the app grant is live, continue to §4; otherwise renew it below.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile agent-meal sql query "SELECT 1" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --json 2>&1); RC=$?; if [ "$RC" = 0 ]; then echo LIVE; elif printf '%s' "$OUT" | grep -qE 'AUTH_REQUIRED|PROFILE_NOT_FOUND'; then echo RENEW; else echo CHECK_FAILED; fi;; *) echo RENEW;; esac
+case "$SPACE" in tinycloud:pkh:eip155:*:applications) OUT=$("$TC_BIN" --profile agent-meal sql query "SELECT 1" --space "$SPACE" --db xyz.tinycloud.sample.healthlog/healthlog --json 2>&1); RC=$?; if [ "$RC" = 0 ]; then echo agent-meal > "$STATE/meal-profile.txt"; echo LIVE; elif printf '%s' "$OUT" | grep -qE 'AUTH_REQUIRED|PROFILE_NOT_FOUND'; then echo RENEW; else echo CHECK_FAILED; fi;; *) echo RENEW;; esac
 ```
 
    - `LIVE` → use `agent-meal` as `<CATALOG_PROFILE>` and its official context's host as `<CATALOG_HOST>`. If Health Log is not installed, follow the pinned-installer and missing-permission rules above with that selected profile; otherwise go directly to §4.
@@ -168,7 +145,7 @@ P=$(cat '<STATE>/owner-grant-session/pid'); if ps -p "$P" -o args= | grep -q 'ow
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 : > "$STATE/meal-space.txt"
 if test -s "$STATE/meal-grant.json" && "$TC_BIN" --profile agent-meal auth import "$STATE/meal-grant.json" > /dev/null; then "$TC_BIN" --profile agent-meal context --json | jq -r '.spaceId // empty' > "$STATE/meal-space.txt"; fi
-SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null); case "$SPACE" in tinycloud:pkh:eip155:*:applications) touch "$STATE/owner-approved"; echo IMPORTED;; *) echo NO_SPACE;; esac
+SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null); case "$SPACE" in tinycloud:pkh:eip155:*:applications) touch "$STATE/owner-approved"; echo agent-meal > "$STATE/meal-profile.txt"; echo IMPORTED;; *) echo NO_SPACE;; esac
 ```
 
    The import succeeded only if the last line prints `IMPORTED`. On `NO_SPACE`: stop, tell the owner in one line, and write nothing. `owner-approved` is written only on success, so the next approval uses the same first message.
@@ -177,14 +154,14 @@ SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null); case "$SPACE" in tinycloud:pkh
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077; SPACE=$(cat "$STATE/meal-space.txt" 2>/dev/null)
-case "$SPACE" in tinycloud:pkh:eip155:*:applications) "$TC_BIN" --profile agent-meal kv get 'xyz.tinycloud.sample.healthlog/knowledge/index.md' --space "$SPACE" --json;; *) echo NO_SPACE >&2;; esac
+case "$SPACE" in tinycloud:pkh:eip155:*:applications) "$TC_BIN" --profile "$(cat "$STATE/meal-profile.txt")" kv get 'xyz.tinycloud.sample.healthlog/knowledge/index.md' --space "$SPACE" --json;; *) echo NO_SPACE >&2;; esac
 ```
 
    If the notes exist, use `agent-meal` as `<CATALOG_PROFILE>` and its context's host as `<CATALOG_HOST>`, then continue. If the notes are `NOT_FOUND`, explain that Health Log must be set up at https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.healthlog. Do not attempt schema changes with this narrow grant.
 
 6. Log the record at once (§4). Don't ask again.
 
-Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`) and its own approval marker, `recipes-owner-approved`, in place of `owner-approved`. In step 3, run the script with `recipes` in place of `healthlog`. The owner approves once per app.
+Recipes: repeat steps 2 to 4 with `--app xyz.tinycloud.sample.recipes`, using its own file names (`recipes-request.json`, `recipes-grant.json`) and its own approval marker, `recipes-owner-approved`, in place of `owner-approved`. In step 3, run the script with `recipes` in place of `healthlog`. Recipes uses its own per-app flow and does not write `meal-profile.txt`: its commands use `agent-meal`.
 
 ## 4. Logging and showing the result
 
