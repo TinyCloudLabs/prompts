@@ -30,7 +30,7 @@ For Recipes only, the catalog-access check may reuse existing onboarding access:
 for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' recipes --catalog --write; break; fi; done
 ```
 
-A `ready` result means the selected Recipes profile already has the required access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` for Recipes. An `onboard-first` result means no profile has an owner or session; follow the onboarding guide for Recipes, then rerun the check. Never use this check or its profile for Health Log.
+A `ready` result means the selected Recipes profile already has the required access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` for Recipes. An `onboard-first` result means no profile has an owner or session. For Recipes, fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. When it reports `"onboarded": true`, rerun the check above and continue from its result. Never use this check or its profile for Health Log.
 
 Health Log's account binding and access checks are handled only by the scoped `agent-meal` flow below. If the Health Log grant lacks a required schema action, request only that missing action on `agent-meal`; never repeat or broaden its read/write grant.
 
