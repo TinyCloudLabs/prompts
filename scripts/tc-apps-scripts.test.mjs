@@ -1,16 +1,18 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
 // Every home and tool home lives in one /var/tmp directory; the process environment is pointed there
 // before any file is written, and checked.
-const base = mkdtempSync(join("/var/tmp", "TC-1943."));
+// macOS /var is a symlink to /private/var; the /agent helper refuses linked paths.
+const base = realpathSync(mkdtempSync(join("/var/tmp", "TC-1943.")));
 for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) process.env[key] = base;
-assert.ok(base.startsWith("/var/tmp/TC-1943."));
-for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) assert.ok(process.env[key].startsWith("/var/tmp/TC-1943."), key);
+const underTestRoot = (path) => /^(\/private)?\/var\/tmp\/TC-1943\./.test(path);
+assert.ok(underTestRoot(base));
+for (const key of ["HOME", "TC_HOME", "COURIER_HOME", "BUN_INSTALL_CACHE_DIR"]) assert.ok(underTestRoot(process.env[key]), key);
 after(() => rmSync(base, { recursive: true, force: true }));
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -24,108 +26,10 @@ const fresh = () => {
   mkdirSync(state, { recursive: true });
   return { dir, work, state };
 };
-// A stand-in CLI: records which file name was run and its arguments, and prints a grant for `auth grant`.
-const stub = (path) => {
-  writeFileSync(path, `#!/bin/sh\necho "${path} $*" >> "$HOME/calls"\ncase " $* " in *" auth grant "*) echo '{"ok":1}' ;; esac\n`, { mode: 0o755 });
-  chmodSync(path, 0o755);
-};
 const run = (args, env) => spawnSync(args[0], args.slice(1), {
   encoding: "utf8", input: "", timeout: 20000,
   env: { PATH: process.env.PATH, ...env },
 });
-const calls = (dir) => (existsSync(join(dir, "calls")) ? readFileSync(join(dir, "calls"), "utf8").trim().split("\n") : []);
-
-const section = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 1. Read the paths and the time")[1];
-const firstBlock = section.match(/```sh\n([\s\S]*?)\n```/)[1];
-
-test("SKILL §1 names the tinycloud script, then an earlier tc script, then reports unset; TC_BIN wins", () => {
-  const first = (setup, extra = {}) => {
-    const h = fresh();
-    setup(h);
-    const out = run(["sh", "-c", firstBlock], { HOME: h.dir, ...extra });
-    assert.equal(out.status, 0, out.stderr);
-    return { line: out.stdout.split("\n")[0], h };
-  };
-  const both = first(({ work }) => { writeFileSync(join(work, "tinycloud"), ""); writeFileSync(join(work, "tc"), ""); });
-  assert.equal(both.line, join(both.h.work, "tinycloud"));
-  const old = first(({ work }) => writeFileSync(join(work, "tc"), ""));
-  assert.equal(old.line, join(old.h.work, "tc"));
-  assert.equal(first(() => {}).line, "TC_BIN is unset");
-  assert.equal(first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "/opt/own/cli" }).line, "/opt/own/cli");
-  const empty = first(({ work }) => writeFileSync(join(work, "tinycloud"), ""), { TC_BIN: "" });
-  assert.equal(empty.line, join(empty.h.work, "tinycloud"));
-});
-
-test("SKILL §1 prints TC_APPS_STATE if set, else the default state folder", () => {
-  const second = (extra = {}) => {
-    const h = fresh();
-    const out = run(["sh", "-c", firstBlock], { HOME: h.dir, ...extra });
-    assert.equal(out.status, 0, out.stderr);
-    return { line: out.stdout.split("\n")[1], h };
-  };
-  const unset = second();
-  assert.equal(unset.line, join(unset.h.dir, ".local/state/tc-apps"));
-  const empty = second({ TC_APPS_STATE: "" });
-  assert.equal(empty.line, join(empty.h.dir, ".local/state/tc-apps"));
-  assert.equal(second({ TC_APPS_STATE: "/opt/own/state" }).line, "/opt/own/state");
-});
-
-test("SKILL §1a's second line is TC_BETA_BIN if set, else the setup's beta CLI, else unset", () => {
-  const layoutSection = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 1a. Which layout does this app use?")[1];
-  const betaLine = layoutSection.match(/```sh\n([\s\S]*?)\n```/)[1].split("\n")[1];
-  const beta = (setup, extra = {}) => {
-    const h = fresh();
-    setup(h);
-    const out = run(["sh", "-c", betaLine], { HOME: h.dir, ...extra });
-    assert.equal(out.status, 0, out.stderr);
-    return { line: out.stdout.trim(), h };
-  };
-  const installed = ({ work }) => {
-    mkdirSync(join(work, "cli-beta/node_modules/.bin"), { recursive: true });
-    writeFileSync(join(work, "cli-beta/node_modules/.bin/tinycloud"), "");
-  };
-  const found = beta(installed);
-  assert.equal(found.line, join(found.h.work, "cli-beta/node_modules/.bin/tinycloud"));
-  assert.equal(beta(() => {}).line, "TC_BETA is unset");
-  assert.equal(beta(() => {}, { TC_BETA_BIN: "" }).line, "TC_BETA is unset");
-  assert.equal(beta(installed, { TC_BETA_BIN: "/opt/own/beta" }).line, "/opt/own/beta");
-});
-
-// Hermes installs a skill from its SKILL.md URL only if its skills guard passes the file. The guard
-// blocks `printenv` (dump_all_env) and a curl command piped into a shell (curl_pipe_shell), even in prose.
-test("SKILL.md has no line that Hermes' skills guard blocks: no printenv, no curl piped into a shell", () => {
-  const dumpEnv = /printenv|(?<![A-Za-z0-9_])env\s*\|(?!\|)(?!\s*[{(])/;
-  const curlShell = /curl\s+[^|\s][^\n]*\|\s*(?:sudo\s+(?:-\S+\s+)*)?(?:ba|z|da|k|c|tc|fi)?sh\b/;
-  const lines = readFileSync(join(skill, "SKILL.md"), "utf8").split("\n");
-  const flagged = lines.flatMap((line, i) => (dumpEnv.test(line) || curlShell.test(line) ? [`${i + 1}: ${line}`] : []));
-  assert.deepEqual(flagged, []);
-});
-
-for (const [name, argv, expected] of [
-  ["owner-grant.sh", ["healthlog"], ["--profile owner profile show", "--profile owner auth grant"]],
-  ["owner-undo.sh", [], ["--profile agent-data auth logout", "--profile agent-data-sql auth logout", "profile delete agent-meal"]],
-]) {
-  const scenarios = [
-    ["tinycloud script when both exist", ["tinycloud", "tc"], {}, "tinycloud"],
-    ["an earlier tc script when it is the only one", ["tc"], {}, "tc"],
-    ["TC_BIN over both", ["tinycloud", "tc"], { TC_BIN: "custom" }, "custom"],
-  ];
-  for (const [label, present, extra, used] of scenarios) {
-    test(`${name} runs the ${label}`, () => {
-      const h = fresh();
-      for (const file of [...present, "custom"]) stub(join(h.work, file));
-      writeFileSync(join(h.state, "meal-request.json"), "{}");
-      const env = { HOME: h.dir, TC_APPS_STATE: h.state };
-      if (extra.TC_BIN) env.TC_BIN = join(h.work, extra.TC_BIN);
-      const out = run(["sh", join(skill, name), ...argv], env);
-      assert.equal(out.status, 0, out.stderr + out.stdout);
-      const seen = calls(h.dir);
-      assert.deepEqual(seen.map((line) => line.split(" ")[0]), expected.map(() => join(h.work, used)));
-      expected.forEach((tail, i) => assert.ok(seen[i].endsWith(` ${tail}`) || seen[i].includes(` ${tail} `), seen[i]));
-    });
-  }
-}
-
 test("owner-grant uses an explicit owner profile when the CLI default is an unsigned agent profile", () => {
   const h = fresh();
   const cliHome = join(h.dir, ".tinycloud");
@@ -156,6 +60,9 @@ if (args[0] === "profile" && args[1] === "show") {
   state.profiles.push(name);
   state.sessions.push(name);
   fs.writeFileSync(statePath, JSON.stringify(state));
+} else if (args[0] === "context") {
+  if (!state.sessions.includes(profile)) fail("AUTH_REQUIRED", 3);
+  console.log(JSON.stringify({ ownerDid: "did:pkh:eip155:1:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }));
 } else if (args[0] === "auth" && args[1] === "grant") {
   if (!state.sessions.includes(profile)) fail("AUTH_REQUIRED", 3);
   process.stdout.write("{\"ok\":true}\n");
@@ -174,6 +81,7 @@ if (args[0] === "profile" && args[1] === "show") {
   assert.deepEqual(calls, [
     { argv: ["--profile", "owner", "profile", "show"], profile: "owner" },
     { argv: ["init", "--name", "owner", "--paste"], profile: "linear-agent" },
+    { argv: ["--profile", "owner", "context", "--json"], profile: "owner" },
     { argv: ["--profile", "owner", "auth", "grant", join(h.state, "meal-request.json")], profile: "owner" },
   ]);
   assert.equal(JSON.parse(readFileSync(join(cliHome, "config.json"), "utf8")).defaultProfile, "linear-agent");
@@ -189,64 +97,70 @@ if (args[0] === "profile" && args[1] === "show") {
     TC_BIN: cli,
   });
   assert.equal(renewal.status, 1);
-  assert.ok(renewal.stderr.includes(`"${cli}" --profile owner auth login --paste`), renewal.stderr);
+  assert.ok(renewal.stderr.includes("The agent must run owner auth login --method openkey --paste in an interactive session"), renewal.stderr);
   assert.doesNotMatch(renewal.stderr, /linear-agent/);
   assert.ok(!renewal.stderr.includes(`${cli} auth login --paste`), renewal.stderr);
 });
 
-test("the wrapper runs the CLI named in cli-path whatever its own file name is", () => {
-  const h = fresh();
-  const cli = join(h.work, "cli-target");
-  writeFileSync(cli, '#!/bin/sh\necho "CLI $*"\n', { mode: 0o755 });
-  writeFileSync(join(h.work, "cli-path"), `${cli}\n`);
-  for (const name of ["tinycloud", "tc"]) {
-    copyFileSync(join(skill, "tc-wrapper.sh"), join(h.work, name));
-    chmodSync(join(h.work, name), 0o755);
-    const out = run([join(h.work, name), "--version"], { HOME: h.dir });
-    assert.equal(out.status, 0, out.stderr);
-    assert.equal(out.stdout, "CLI --version\n");
-  }
-});
 
-import { readdirSync } from "node:fs";
 // ---- migrate.sh: owner-device copy of one generic tiny app from `default` to its own `applications` root ----
 // A stand-in CLI keeps both spaces in one JSON file under the test home, records every call, and can be told to
-// misbehave (changed read-back, partial failure, late edits on the source).
+// misbehave (changed read-back, partial failure, late edits on the source). Its `status` and `context` describe one
+// onboarded owner profile, `owner`, that can read the owner's `applications` space, as app-context.mjs expects.
 const standInCli = String.raw`#!/usr/bin/env node
 const fs = require("fs");
 const home = process.env.HOME;
 const kvPath = home + "/kv-state.json", ctlPath = home + "/control.json", putsPath = home + "/put-count";
+const OWNER = "did:pkh:eip155:1:0x" + "a".repeat(40), HOST = "https://node.test", APPS = "tinycloud:" + OWNER.slice(4) + ":applications";
 const argv = process.argv.slice(2);
 const opts = {}, pos = [];
-const withValue = new Set(["--profile", "--space", "--prefix", "--file", "--if-none-match", "--limit", "--cursor", "-o", "--output"]);
+const withValue = new Set(["--profile", "--host", "--space", "--prefix", "--file", "--if-none-match", "--limit", "--cursor", "-o", "--output"]);
 for (let i = 0; i < argv.length; i++) { const a = argv[i]; if (withValue.has(a)) opts[a] = argv[++i]; else if (a.startsWith("--")) opts[a] = true; else pos.push(a); }
 fs.appendFileSync(home + "/calls.log", JSON.stringify({ profile: opts["--profile"], argv }) + "\n");
-const fail = (code, status) => { process.stderr.write(JSON.stringify({ error: { code } }) + "\n"); process.exit(status); };
+const fail = (code, status, message) => { process.stderr.write(JSON.stringify({ error: { code, ...(message ? { message } : {}) } }, null, 2) + "\n"); process.exit(status); };
 const ctl = fs.existsSync(ctlPath) ? JSON.parse(fs.readFileSync(ctlPath, "utf8")) : {};
+const ownerProfile = { name: "owner", ownerDid: OWNER, host: HOST, authenticated: true, delegations: [],
+  session: { present: true, expired: false, expiresAt: "2099-01-01T00:00:00Z", permissions: [{ service: "tinycloud.kv", space: APPS, path: "", actions: ["tinycloud.kv/get", "tinycloud.kv/list"] }] } };
+if (pos[0] === "status") {
+  console.log(JSON.stringify(ctl.status || { activeProfile: "owner", profiles: [ownerProfile] }));
+  process.exit(0);
+}
+if (pos[0] === "context") {
+  if (ctl.contextError) fail(ctl.contextError.code, ctl.contextError.status);
+  console.log(JSON.stringify({ profile: opts["--profile"], ownerDid: OWNER, host: HOST, spaceId: APPS, session: { state: "present" } }));
+  process.exit(0);
+}
 const kv = JSON.parse(fs.readFileSync(kvPath, "utf8"));
 const save = () => fs.writeFileSync(kvPath, JSON.stringify(kv));
-const profile = opts["--profile"] || "", space = opts["--space"] || "default";
-if ((ctl.missingProfiles || []).includes(profile) || !/^(agent-data|default|tinyapp-[a-z0-9-]+)$/.test(profile)) fail("PROFILE_NOT_FOUND", 3);
+const profile = opts["--profile"] || "", space = opts["--space"] === APPS ? "applications" : opts["--space"] || "default";
+if ((ctl.missingProfiles || []).includes(profile) || !/^(agent-data|default|owner|tinyapp-[a-z0-9-]+)$/.test(profile)) fail("PROFILE_NOT_FOUND", 3);
 const slug = (profile.match(/^tinyapp-(.*)$/) || [])[1];
 const allowed = (op, key) => {
+  if (profile === "owner") return space === "applications" && (op === "get" || op === "list");
   if (!slug) return space === "default";
   if (space !== "applications") return false;
   const own = "xyz.tinycloud.tinyapps." + slug + "/", cat = "xyz.tinycloud.tinyapps.catalog/";
   if (key.startsWith(own)) return true;
   if (op === "get" || op === "list") return key.startsWith(cat);
-  return op === "put" && key.startsWith(cat + slug + "/");
+  if (op === "put") return key.startsWith(cat + slug + "/");
+  // An app profile deletes in the catalog only with a granted del there, as listed by status.
+  const granted = ((ctl.status?.profiles || []).find((p) => p.name === profile)?.session?.permissions || []);
+  return op === "del" && key.startsWith(cat + slug + "/") && granted.some((p) => p.space === APPS && key.startsWith(p.path) && p.actions.includes("tinycloud.kv/del"));
 };
 if (pos[0] !== "kv") fail("USAGE_ERROR", 2);
 const op = pos[1], s = kv[space] || (kv[space] = {});
 if (op === "list") {
   const prefix = opts["--prefix"] || "";
   if (!allowed("list", prefix)) fail("PERMISSION_DENIED", 5);
+  if (ctl.failList) fail(ctl.failList, 7);
   const keys = Object.keys(s).filter((k) => k.startsWith(prefix)).sort();
   console.log(JSON.stringify({ keys, count: keys.length, prefix }));
 } else if (op === "get") {
   const key = pos[2];
+  if (ctl.getError && ctl.getError.key === key) fail(ctl.getError.code, ctl.getError.status, ctl.getError.message);
   if (!allowed("get", key)) fail("PERMISSION_DENIED", 5);
-  if (!(key in s)) fail("NOT_FOUND", 4);
+  // The real CLI 1.6.5 turns the node's KV_NOT_FOUND into this exact error.
+  if (!(key in s)) fail("NOT_FOUND", 4, 'Key "' + key + '" not found');
   const value = space === "applications" && ctl.corruptRead && ctl.corruptRead[key] !== undefined ? ctl.corruptRead[key] : s[key];
   if (opts["--raw"]) process.stdout.write(value); else console.log(JSON.stringify({ key, data: value }));
 } else if (op === "put") {
@@ -261,9 +175,11 @@ if (op === "list") {
   save();
   console.log(JSON.stringify({ key, written: true }));
 } else if (op === "delete") {
-  delete s[pos[2]];
+  const key = pos[2];
+  if (!allowed("del", key)) fail("PERMISSION_DENIED", 5);
+  delete s[key];
   save();
-  console.log(JSON.stringify({ key: pos[2], deleted: true }));
+  console.log(JSON.stringify({ key, deleted: true }));
 } else fail("USAGE_ERROR", 2);
 `;
 
@@ -296,7 +212,7 @@ const world = (applications = {}) => {
 const store = (h) => JSON.parse(readFileSync(join(h.dir, "kv-state.json"), "utf8"));
 const control = (h, c) => writeFileSync(join(h.dir, "control.json"), JSON.stringify(c));
 const cliCalls = (h) => (existsSync(join(h.dir, "calls.log")) ? readFileSync(join(h.dir, "calls.log"), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []);
-const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
+const runMigrate = (h, args, env = {}) => run(["sh", migrate, ...args], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
 const receiptPath = (h, slug) => join(h.state, "migration", `${slug}.receipt.json`);
 const newKeys = (h, slug) => Object.keys(store(h).applications).filter((k) => k.startsWith(`${NEW(slug)}/`)).sort();
 const notSwitched = (h, out) => {
@@ -469,47 +385,79 @@ test("migrate.sh has one write command, it creates only, and it has no delete co
   assert.equal(/\bkv (delete|del)\b|delegation revoke|\bsql\b/.test(text), false);
 });
 
-// ---- layout.sh: an app with old records and no verified move stays in the old layout ----
+// ---- layout.sh: receipt, then the discovery entry in `applications`, then the old catalog ----
 const layout = join(skill, "layout.sh");
 const runLayout = (h, slug, env = {}) => run(["sh", layout, slug], { HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state, ...env });
 const writeReceipt = (h, slug, receipt) => {
   mkdirSync(join(h.state, "migration"), { recursive: true });
   writeFileSync(receiptPath(h, slug), JSON.stringify(receipt));
 };
+const OWNER_DID = `did:pkh:eip155:1:0x${"a".repeat(40)}`;
+const APPS_SPACE = `tinycloud:${OWNER_DID.slice(4)}:applications`;
+const ENTRY = (slug) => `xyz.tinycloud.tinyapps.catalog/${slug}/entry`;
+const entryJson = (slug, title) => JSON.stringify({ v: 1, app: slug, id: NEW(slug), title });
+const op = (c) => {
+  const i = c.argv.findIndex((a) => ["status", "context", "kv"].includes(a));
+  return c.argv[i] === "kv" ? `kv ${c.argv[i + 1]}` : c.argv[i];
+};
+const ops = (h) => cliCalls(h).map(op);
+const entryReads = (h, slug) => cliCalls(h).filter((c) => op(c) === "kv get" && c.argv.includes(ENTRY(slug)));
+const legacyLists = (h) => cliCalls(h).filter((c) => op(c) === "kv list" && c.argv[c.argv.indexOf("--space") + 1] === "default");
 
-test("layout.sh: old records and no receipt stay in the old layout, with no new grant, profile or write", () => {
+test("layout.sh (c): no receipt, no discovery entry and an old catalog record stay in the old layout, with no grant, profile or write", () => {
   const h = world();
   const out = runLayout(h, "fitness");
   assert.equal(out.status, 0, out.stderr);
   assert.equal(out.stdout.trim(), "legacy");
-  const calls = cliCalls(h);
-  assert.deepEqual(calls.map((c) => c.argv.slice(0, 2).join(" ")), ["kv list"]);
-  assert.equal(calls[0].profile, "agent-data");
-  assert.equal(calls[0].argv[calls[0].argv.indexOf("--space") + 1], "default");
+  assert.deepEqual(ops(h), ["status", "context", "kv list", "kv get", "kv list"]);
+  // The entry is read with the profile, host and full space app-context.mjs selected, and found absent (KV_NOT_FOUND).
+  const [get] = entryReads(h, "fitness");
+  assert.equal(get.profile, "owner");
+  assert.equal(get.argv[get.argv.indexOf("--host") + 1], "https://node.test");
+  assert.equal(get.argv[get.argv.indexOf("--space") + 1], APPS_SPACE);
+  const [list] = legacyLists(h);
+  assert.equal(list.profile, "agent-data");
   assert.deepEqual(readdirSync(h.state), []);
+  assert.deepEqual(store(h).applications, {});
 });
 
-test("layout.sh: a verified receipt for the app switches it to the new layout without asking the network", () => {
+test("layout.sh (a): a verified receipt for the app switches it to the new layout without reading the entry or the network", () => {
   const h = world();
   writeReceipt(h, "fitness", { v: 1, app: "fitness", id: NEW("fitness"), verified: true });
   const out = runLayout(h, "fitness");
   assert.equal(out.stdout.trim(), "new");
+  assert.deepEqual(entryReads(h, "fitness"), []);
   assert.equal(cliCalls(h).length, 0);
 });
 
-test("layout.sh: an app with no old records starts in the new layout", () => {
+test("layout.sh (b): no receipt but the app's discovery entry exists (moved by the hosted MCP): new, even with the old catalog record", () => {
+  const h = world({ [ENTRY("fitness")]: entryJson("fitness", "Fitness") });
+  const out = runLayout(h, "fitness");
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(out.stdout.trim(), "new");
+  assert.equal(entryReads(h, "fitness").length, 1);
+  assert.deepEqual(legacyLists(h), [], "the old catalog is not consulted once the entry decides");
+  assert.equal(existsSync(receiptPath(h, "fitness")), false);
+});
+
+test("layout.sh (d): an app with no receipt, no discovery entry and no old records starts in the new layout", () => {
   const h = world();
   const out = runLayout(h, "books");
   assert.equal(out.stdout.trim(), "new");
-  assert.deepEqual(cliCalls(h).map((c) => c.argv.slice(0, 2).join(" ")), ["kv list"]);
+  assert.deepEqual(ops(h), ["status", "context", "kv list", "kv get", "kv list"]);
+  assert.equal(entryReads(h, "books").length, 1);
 });
 
-test("layout.sh: a successful migrate.sh without its receipt is still the old layout, and the receipt switches it", () => {
+test("layout.sh: migrate.sh's entry alone switches the app; deleting the entry and the receipt goes back to the old layout", () => {
   const h = world();
   assert.equal(runMigrate(h, ["fitness"]).status, 0);
   assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
   const receipt = readFileSync(receiptPath(h, "fitness"), "utf8");
   rmSync(receiptPath(h, "fitness"));
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "new", "another computer without the receipt sees the entry");
+  const kv = store(h);
+  delete kv.applications[ENTRY("fitness")];
+  writeFileSync(join(h.dir, "kv-state.json"), JSON.stringify(kv));
   assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
   writeFileSync(receiptPath(h, "fitness"), receipt);
   assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
@@ -527,14 +475,155 @@ test("layout.sh: a receipt that is unverified, damaged or for another app does n
   assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
 });
 
-test("layout.sh: with no usable earlier sign-in it says ask, and with another failure it says check-failed", () => {
+test("going back on an app-scoped profile: the helper requests only the catalog del, the entry is deleted first, then the receipt", () => {
+  const h = world();
+  assert.equal(runMigrate(h, ["fitness"]).status, 0);
+  const perm = (path, actions) => ({ service: "tinycloud.kv", space: APPS_SPACE, path, actions: actions.map((a) => `tinycloud.kv/${a}`) });
+  const scoped = { name: "tinyapp-fitness", ownerDid: OWNER_DID, host: "https://node.test", authenticated: true, delegations: [],
+    session: { present: true, expired: false, expiresAt: "2099-01-01T00:00:00Z", permissions: [
+      perm(`${NEW("fitness")}/`, ["get", "list", "put", "del"]), perm("xyz.tinycloud.tinyapps.catalog/fitness/entry", ["get", "put"]),
+    ] } };
+  const setStatus = () => control(h, { status: { activeProfile: "tinyapp-fitness", profiles: [scoped] } });
+  const helper = () => JSON.parse(run(["node", join(skill, "app-context.mjs"), h.bin, "fitness", "--remove-entry"], { HOME: h.dir }).stdout);
+  const entryCmd = (verb) => run([h.bin, "--profile", "tinyapp-fitness", "--host", "https://node.test", "kv", verb, ENTRY("fitness"), "--space", APPS_SPACE, "--json"], { HOME: h.dir });
+  setStatus();
+  // Without the app's exact entry delete the operation is refused, and the helper names only that permission.
+  assert.equal(entryCmd("delete").status, 5);
+  const before = helper();
+  assert.equal(before.status, "grant-required");
+  assert.equal(before.profile, "tinyapp-fitness");
+  assert.deepEqual(before.missing, [{ service: "tinycloud.kv", path: "xyz.tinycloud.tinyapps.catalog/fitness/entry", actions: ["del"], space: APPS_SPACE }]);
+  // §4 grants exactly that.
+  scoped.session.permissions.push(perm("xyz.tinycloud.tinyapps.catalog/fitness/entry", ["del"]));
+  setStatus();
+  assert.equal(helper().status, "ready");
+  // The entry first: the receipt still switches this computer, so a failure after this point never strands it.
+  assert.equal(entryCmd("delete").status, 0);
+  assert.equal(entryCmd("get").status, 4);
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "new");
+  rmSync(receiptPath(h, "fitness"));
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "legacy");
+  assert.deepEqual(Object.keys(store(h).default).sort(), Object.keys(sourceRecords()).sort());
+});
+
+test("layout.sh (e): when the entry can't be read for want of a sign-in or grant it says ask, never legacy or new", () => {
+  const cases = [
+    { getError: { key: ENTRY("fitness"), code: "PERMISSION_DENIED", status: 5 } },
+    { getError: { key: ENTRY("fitness"), code: "AUTH_REQUIRED", status: 3 } },
+    // An earlier agent-data sign-in only: app-context selects it, and it has no grant in `applications`.
+    { status: { activeProfile: "agent-data", profiles: [{ name: "agent-data", authenticated: true }] } },
+    // No applications profile at all: app-context says onboard-first, and the entry is not read.
+    { status: { activeProfile: null, profiles: [] } },
+  ];
+  for (const c of cases) {
+    const h = world();
+    control(h, c);
+    assert.equal(runLayout(h, "fitness").stdout.trim(), "ask", JSON.stringify(c));
+    assert.deepEqual(legacyLists(h), [], JSON.stringify(c));
+  }
+});
+
+test("layout.sh (f): when the entry check fails for another reason it says check-failed, never legacy or new", () => {
+  const cases = [
+    { getError: { key: ENTRY("fitness"), code: "NETWORK_ERROR", status: 6 } },
+    // CLI 1.6.5 with the node unreachable.
+    { getError: { key: ENTRY("fitness"), code: "ERROR", status: 1, message: "Failed to fetch node info at https://node.test." } },
+    { getError: { key: ENTRY("fitness"), code: "SPACE_NOT_HOSTED", status: 1 } },
+    // Exit 4 that is not the CLI's translation of KV_NOT_FOUND for this key.
+    { getError: { key: ENTRY("fitness"), code: "NOT_FOUND", status: 4, message: "share not found" } },
+    { contextError: { code: "NETWORK_ERROR", status: 6 } },
+  ];
+  for (const c of cases) {
+    const h = world();
+    control(h, c);
+    assert.equal(runLayout(h, "fitness").stdout.trim(), "check-failed", JSON.stringify(c));
+    assert.deepEqual(legacyLists(h), [], JSON.stringify(c));
+  }
+});
+test("check-failed in a sandbox allows one network-approved retry, then stops without writing", () => {
+  const text = readFileSync(join(skill, "SKILL.md"), "utf8");
+  const rule = text.split("\n").find((line) => line.startsWith("- `check-failed` →"));
+  assert.ok(rule, "SKILL.md defines the check-failed action");
+  assert.match(rule, /sandbox/);
+  assert.match(rule, /same read once/);
+  assert.match(rule, /client(?:'s|’s) network approval/);
+  assert.match(rule, /if it still fails, report it and write nothing/i);
+});
+
+
+test("layout.sh: with no usable earlier sign-in for the old place it says ask, and with another failure it says check-failed", () => {
   const h = world();
   control(h, { missingProfiles: ["agent-data"] });
   assert.equal(runLayout(h, "fitness").stdout.trim(), "ask");
+  assert.ok(cliCalls(h).some((c) => c.profile === "agent-data" && c.argv[0] === "kv" && c.argv[1] === "list"));
   const g = world();
   const broken = join(g.dir, "broken-tinycloud");
   writeFileSync(broken, "#!/bin/sh\necho '{\"error\":{\"code\":\"NETWORK_ERROR\"}}' >&2\nexit 7\n", { mode: 0o755 });
   assert.equal(runLayout(g, "fitness", { TC_BIN: broken }).stdout.trim(), "check-failed");
+});
+
+// TC-2431: `ask` is never a question to the owner. A request that makes an app uses `new`; otherwise the agent
+// asks OpenKey for read-only access to the old catalog on the `agent-data` profile and runs §1a again.
+const askRule = () => {
+  const text = readFileSync(join(skill, "SKILL.md"), "utf8");
+  const start = text.indexOf("- `ask` →");
+  return text.slice(start, text.indexOf("- `check-failed` →", start));
+};
+
+test("layout.sh (TC-2431): ask, then the read-only old-catalog grant decides legacy or new; a network error is check-failed; nothing is written", () => {
+  const before = sourceRecords();
+  const noWrites = (h) => {
+    assert.deepEqual(readdirSync(h.state), []);
+    assert.deepEqual(store(h).applications, {});
+    assert.deepEqual(store(h).default, before);
+    assert.equal(cliCalls(h).some((c) => (c.argv[0] === "kv" && ["put", "delete"].includes(c.argv[1])) || (c.argv[0] === "sql" && c.argv[1] === "execute")), false);
+  };
+  // Without an agent-data sign-in, no old-catalog reads or writes occur.
+  for (const ctl of [{ missingProfiles: ["agent-data"] }]) {
+    const h = world();
+    control(h, ctl);
+    for (const app of ["fitness", "books"]) assert.equal(runLayout(h, app).stdout.trim(), "ask", JSON.stringify(ctl));
+    noWrites(h);
+  }
+  // The agent text path for `ask`: no question to the owner; `new` for a request that makes an app; otherwise the grant block.
+  const rule = askRule();
+  assert.match(rule, /Never ask the owner whether the app is new/);
+  assert.doesNotMatch(rule, /Ask whether this app had records|If the owner already said/);
+  assert.match(rule, /The request makes an app[^\n]*→ use `new`/);
+  assert.match(rule, /setup guide's default `todos` record → use `new`/);
+  assert.match(rule, /run §1a again\. Write nothing until it prints `new` or `legacy`/);
+  const manifest = JSON.parse(rule.match(/printf '%s\\n' '(\{.*\})' > "\$STATE\/agent-data-catalog\.json"/)[1]);
+  assert.deepEqual(manifest.permissions, [{ service: "tinycloud.kv", path: "xyz.tinycloud.agent-data/catalog/", skipPrefix: true, actions: ["get", "list"] }]);
+  assert.equal(manifest.space, "default");
+  assert.match(rule, /auth login --method openkey --no-popup --manifest "\$STATE\/agent-data-catalog\.json" --expiry 30d --profile agent-data/);
+  // With that grant (catalog get/list only), the rerun decides: fitness has old records, books has none.
+  const g = world();
+  control(g, { missingProfiles: ["agent-data"] });
+  assert.equal(runLayout(g, "fitness").stdout.trim(), "ask");
+  control(g, { agentDataCatalogOnly: true });
+  assert.equal(runLayout(g, "fitness").stdout.trim(), "legacy");
+  assert.equal(runLayout(g, "books").stdout.trim(), "new");
+  const catalogReads = cliCalls(g).filter((c) => c.argv[0] === "kv" && c.argv[1] === "list");
+  assert.ok(catalogReads.length > 0);
+  for (const c of catalogReads) {
+    assert.equal(c.profile, "agent-data");
+    assert.equal(c.argv[c.argv.indexOf("--space") + 1], "default");
+    assert.equal(c.argv[c.argv.indexOf("--prefix") + 1], `${OLD}/catalog/`);
+  }
+  noWrites(g);
+  // A network error on that listing: check-failed, never ask.
+  const n = world();
+  control(n, { agentDataCatalogOnly: true, failList: "NETWORK_ERROR" });
+  assert.equal(runLayout(n, "fitness").stdout.trim(), "check-failed");
+  noWrites(n);
+});
+
+test("tc-apps (TC-2431): no guide or script tells the agent to ask the owner about earlier records", () => {
+  assert.doesNotMatch(readFileSync(layout, "utf8"), /ask the owner/);
+  for (const file of ["skills/tc-apps/SKILL.md", "skills/tc-apps/TINY-APPS.md", "skills/tc-apps/LEGACY.md", "skills/tc-apps/QUICKSTART.md", "setup/tc-apps.md"]) {
+    assert.doesNotMatch(readFileSync(join(root, file), "utf8"), /Ask whether this app had records|is this (your|a) first record/i, file);
+  }
+  assert.match(readFileSync(join(skill, "TINY-APPS.md"), "utf8"), /Never ask the owner whether an app had earlier records/);
 });
 
 test("layout.sh rejects a name that is not a plain slug or is reserved, before any CLI call", () => {
@@ -543,14 +632,42 @@ test("layout.sh rejects a name that is not a plain slug or is reserved, before a
   assert.equal(cliCalls(h).length, 0);
 });
 
+test("tc-apps scripts find the CLI like every skill: agent.env, then the shared private install; there is no cli-path", () => {
+  const saved = world();
+  const config = join(saved.dir, ".config/tinycloud");
+  mkdirSync(config, { recursive: true, mode: 0o700 });
+  const helperPath = join(config, "agent-env.mjs");
+  writeFileSync(helperPath, readFileSync(join(root, "scripts/agent-env.mjs")), { mode: 0o600 });
+  assert.equal(run(["node", helperPath, "set", "TC_BIN", saved.bin], { HOME: saved.dir }).status, 0);
+  writeFileSync(join(saved.work, "cli-path"), "/nonexistent/tinycloud\n");
+  const fromSaved = runLayout(saved, "fitness", { TC_BIN: "" });
+  assert.equal(fromSaved.stdout.trim(), "legacy", fromSaved.stderr);
+  assert.deepEqual(ops(saved), ["status", "context", "kv list", "kv get", "kv list"]);
+  const own = world();
+  const privateBin = join(own.dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud");
+  mkdirSync(dirname(privateBin), { recursive: true });
+  writeFileSync(privateBin, standInCli, { mode: 0o755 });
+  const fromPrivate = runLayout(own, "fitness", { TC_BIN: "" });
+  assert.equal(fromPrivate.stdout.trim(), "legacy", fromPrivate.stderr);
+  assert.deepEqual(ops(own), ["status", "context", "kv list", "kv get", "kv list"]);
+  for (const script of ["layout.sh", "migrate.sh", "owner-grant.sh", "owner-undo.sh", "SKILL.md"]) {
+    assert.doesNotMatch(readFileSync(join(skill, script), "utf8"), /cli-path/, script);
+  }
+});
+
 // ---- layout.sh and migrate.sh: paged catalog, missing jq, local work copy, tab in a key ----
 test("layout.sh follows the old catalog's pages: an app whose key is on a later page is legacy", () => {
   const h = world();
   const paged = join(h.dir, "paged-tinycloud");
+  // Only the old catalog's listing is paged; every other call goes to the stand-in CLI.
   writeFileSync(paged, `#!/bin/sh
 case " $* " in
-  *" --all "*) echo '{"keys":["${OLD}/catalog/fitness","${OLD}/catalog/todos"],"count":2}' ;;
-  *) echo '{"keys":["${OLD}/catalog/fitness"],"count":1,"truncated":true,"nextCursor":"c1"}' ;;
+  *" kv list "*" --space default "*)
+    case " $* " in
+      *" --all "*) echo '{"keys":["${OLD}/catalog/fitness","${OLD}/catalog/todos"],"count":2}' ;;
+      *) echo '{"keys":["${OLD}/catalog/fitness"],"count":1,"truncated":true,"nextCursor":"c1"}' ;;
+    esac ;;
+  *) exec "${h.bin}" "$@" ;;
 esac
 `, { mode: 0o755 });
   assert.equal(runLayout(h, "todos", { TC_BIN: paged }).stdout.trim(), "legacy");
@@ -562,7 +679,7 @@ test("layout.sh and migrate.sh without jq say so and exit 3 before any CLI call 
   const empty = join(h.dir, "empty-bin");
   mkdirSync(empty);
   for (const args of [[layout, "fitness"], [migrate, "--dry-run", "fitness"], [migrate, "fitness"]]) {
-    const out = spawnSync("/bin/sh", args, { encoding: "utf8", timeout: 20000, env: { PATH: empty, HOME: h.dir, TC_BIN: h.bin, TC_BETA_BIN: h.bin, TC_APPS_STATE: h.state } });
+    const out = spawnSync("/bin/sh", args, { encoding: "utf8", timeout: 20000, env: { PATH: empty, HOME: h.dir, TC_BIN: h.bin, TC_APPS_STATE: h.state } });
     assert.equal(out.status, 3, args.join(" "));
     assert.match(out.stderr, /jq is needed/);
     assert.equal(out.stdout, "");
@@ -598,57 +715,195 @@ test("migrate.sh says plainly that a key contains a tab and changes nothing", ()
   assert.deepEqual(readdirSync(h.state), []);
 });
 
-// ---- onboarded.sh: the onboarded profile's grant is reused only when it is live and covers every capability ----
-const onboarded = join(skill, "onboarded.sh");
-// A stand-in CLI that answers like `auth status --json` and `auth caps --diff`: STUB_STATE is the session state,
-// STUB_COVERS holds the capability specs the grant covers (one per line), STUB_PROFILE the profile it reports.
-const onboardCli = (h) => {
-  const path = join(h.work, "cli-beta/node_modules/.bin/tinycloud");
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `#!/bin/sh
-case "$*" in
-  *"auth status"*) [ "\${STUB_STATE:-}" = none ] && { echo '{"error":{"code":"PROFILE_NOT_FOUND"}}'; exit 1; }
-    printf '{"authenticated":%s,"profile":"%s","ownerDid":"did:pkh:eip155:1:0xabc","session":{"state":"%s"}}\\n' "$([ "$STUB_STATE" = present ] && echo true || echo false)" "\${STUB_PROFILE:-default}" "$STUB_STATE" ;;
-  *"auth caps --diff"*) for last; do :; done
-    if printf '%s\\n' "$STUB_COVERS" | grep -qxF -- "$last"; then echo '{"covered":true}'; else echo '{"covered":false}'; fi ;;
-esac
-`, { mode: 0o755 });
+// The session check (setup §4, CONTEXT.md §6): one marked line in each agent's global instructions file.
+const sessionCheck = join(skill, "session-check.sh");
+const MARK = "<!-- tinycloud-context -->";
+const sc = (h, args, extra = {}) => run(["sh", sessionCheck, ...args], { HOME: h.dir, TC_APPS_STATE: h.state, ...extra });
+const withSkill = (h, dir = ".agents/skills/tc-apps") => {
+  mkdirSync(join(h.dir, dir), { recursive: true });
+  writeFileSync(join(h.dir, dir, "CONTEXT.md"), "# context\n");
+  return join(h.dir, dir);
 };
-const ONB_KV = "tinycloud.kv:applications:xyz.tinycloud.tinyapps.todos/:get,put,list,del";
-const ONB_SQL = "tinycloud.sql:applications:xyz.tinycloud.sample.healthlog/healthlog:read,write";
-const runOnboarded = (env, caps) => {
+const lineFor = (skillDir) => `Before your first answer in a session, check my TinyCloud context: follow ${skillDir}/CONTEXT.md (tc-apps skill, context app). Save new facts I tell you there. ${MARK}`;
+
+test("session-check.sh add puts one marked line in each agent's instructions file, keeps every other byte, and remove takes only that line out", () => {
   const h = fresh();
-  onboardCli(h);
-  const out = run(["sh", onboarded, ...caps], { HOME: h.dir, ...env });
-  assert.equal(out.status, 0, out.stderr);
-  return out.stdout.trim();
-};
-
-test("onboarded.sh: a live session that covers every capability is ONBOARDED, with the profile and its applications space", () => {
-  assert.equal(
-    runOnboarded({ STUB_STATE: "present", STUB_COVERS: `${ONB_KV}\n${ONB_SQL}`, STUB_PROFILE: "owner-1" }, [ONB_KV, ONB_SQL]),
-    "ONBOARDED owner-1 tinycloud:pkh:eip155:1:0xabc:applications",
-  );
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".codex"));
+  const claude = join(h.dir, ".claude/CLAUDE.md");
+  const codex = join(h.dir, ".codex/AGENTS.md");
+  writeFileSync(claude, "# Mine\n\nkeep this line\n");
+  writeFileSync(codex, "no newline at the end");
+  const added = sc(h, ["add", "codex"]);
+  assert.equal(added.status, 0, added.stderr + added.stdout);
+  assert.deepEqual(added.stdout.trim().split("\n").sort(), [`added: ${claude}`, `added: ${codex}`].sort());
+  assert.equal(readFileSync(claude, "utf8"), `# Mine\n\nkeep this line\n${lineFor(installed)}\n`);
+  assert.equal(readFileSync(codex, "utf8"), `no newline at the end\n${lineFor(installed)}\n`);
+  assert.equal(existsSync(join(h.dir, ".config/opencode")), false, "OpenCode isn't on this computer: nothing is created for it");
+  const again = sc(h, ["add", "codex"]);
+  assert.equal(again.status, 0);
+  assert.match(again.stdout, /already there/);
+  assert.equal(readFileSync(claude, "utf8").split(MARK).length, 2, "one line, however often add runs");
+  assert.equal(sc(h, ["status", "codex"]).stdout, "on\nclients: codex claude-code\n");
+  const removed = sc(h, ["remove"]);
+  assert.equal(removed.status, 0, removed.stderr);
+  assert.equal(readFileSync(claude, "utf8"), "# Mine\n\nkeep this line\n");
+  assert.equal(readFileSync(codex, "utf8"), "no newline at the end\n");
+  assert.equal(sc(h, ["status", "codex"]).stdout.split("\n")[0], "off");
+});
+test("session-check.sh remove preserves owner text that mentions the marker mid-line", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  const file = join(h.dir, ".claude/CLAUDE.md");
+  const ownerText = "Owner note: this marker <!-- tinycloud-context --> is only an example.\n";
+  writeFileSync(file, `${ownerText}${lineFor(installed)}\n`);
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(readFileSync(file, "utf8"), ownerText);
 });
 
-test("onboarded.sh: one uncovered capability falls back, even when the others are covered", () => {
-  const out = runOnboarded({ STUB_STATE: "present", STUB_COVERS: ONB_KV }, [ONB_KV, ONB_SQL]);
-  assert.match(out, /^NOT_ONBOARDED the grant does not cover tinycloud\.sql:/);
+test("session-check.sh status and add ignore marker text that does not end its line", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  const file = join(h.dir, ".claude/CLAUDE.md");
+  const ownerText = "Owner note: <!-- tinycloud-context --> is only an example.\n";
+  writeFileSync(file, ownerText);
+  assert.equal(sc(h, ["status", "claude-code"]).stdout, "off\nclients: claude-code\n");
+  const added = sc(h, ["add", "claude-code"]);
+  assert.equal(added.status, 0, added.stderr + added.stdout);
+  assert.equal(added.stdout.trim(), `added: ${file}`);
+  assert.equal(readFileSync(file, "utf8"), `${ownerText}${lineFor(installed)}\n`);
 });
 
-test("onboarded.sh: an expired or missing session, or a missing profile, falls back", () => {
-  for (const state of ["expired", "missing", "none"]) {
-    assert.match(runOnboarded({ STUB_STATE: state, STUB_COVERS: ONB_KV }, [ONB_KV]), /^NOT_ONBOARDED /, state);
+
+test("session-check.sh names each agent's own skill copy if it has one, and creates the running agent's file", () => {
+  const h = fresh();
+  const agents = withSkill(h);
+  const own = withSkill(h, ".claude/skills/tc-apps");
+  const added = sc(h, ["add", "claude-code"]);
+  assert.equal(added.status, 0, added.stderr);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(own)}\n`);
+  assert.equal(existsSync(join(h.dir, ".codex")), false);
+  mkdirSync(join(h.dir, ".codex"));
+  assert.equal(sc(h, ["add", "claude-code"]).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.md"), "utf8"), `${lineFor(agents)}\n`);
+});
+
+test("session-check.sh uses Codex's AGENTS.override.md when it exists, and OpenCode's fallback to ~/.claude/CLAUDE.md", () => {
+  const h = fresh();
+  const installed = withSkill(h);
+  mkdirSync(join(h.dir, ".codex"));
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".config/opencode"), { recursive: true });
+  writeFileSync(join(h.dir, ".codex/AGENTS.override.md"), "override\n");
+  writeFileSync(join(h.dir, ".claude/CLAUDE.md"), "claude\n");
+  const added = sc(h, ["add", "opencode"]);
+  assert.equal(added.status, 0, added.stderr);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.override.md"), "utf8"), `override\n${lineFor(installed)}\n`);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `claude\n${lineFor(installed)}\n`);
+  assert.equal(existsSync(join(h.dir, ".codex/AGENTS.md")), false, "a new AGENTS.md would be shadowed by the override");
+  assert.equal(existsSync(join(h.dir, ".config/opencode/AGENTS.md")), false, "a new AGENTS.md would stop OpenCode reading ~/.claude/CLAUDE.md");
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.override.md"), "utf8"), "override\n");
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), "claude\n");
+});
+
+test("session-check.sh remove keeps a linked instructions file linked, with its mode", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, "dotfiles"));
+  mkdirSync(join(h.dir, ".claude"));
+  const target = join(h.dir, "dotfiles/CLAUDE.md");
+  writeFileSync(target, "linked\n", { mode: 0o600 });
+  chmodSync(target, 0o600);
+  symlinkSync(target, join(h.dir, ".claude/CLAUDE.md"));
+  assert.equal(sc(h, ["add", "claude-code"]).status, 0);
+  assert.match(readFileSync(target, "utf8"), /tinycloud-context/);
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(lstatSync(join(h.dir, ".claude/CLAUDE.md")).isSymbolicLink(), true);
+  assert.equal(readFileSync(target, "utf8"), "linked\n");
+  assert.equal(statSync(target).mode & 0o777, 0o600);
+});
+
+test("session-check.sh reports a file it can't change, still changes the others, and exits 1", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".codex"));
+  chmodSync(join(h.dir, ".codex"), 0o500);
+  try {
+    const added = sc(h, ["add", "claude-code"]);
+    assert.equal(added.status, 1);
+    assert.match(added.stdout, new RegExp(`could not change: ${join(h.dir, ".codex/AGENTS.md")}`));
+    assert.match(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), /tinycloud-context/);
+  } finally {
+    chmodSync(join(h.dir, ".codex"), 0o700);
   }
 });
 
-test("onboarded.sh: a profile name that is not a plain name is never passed on", () => {
-  assert.match(runOnboarded({ STUB_STATE: "present", STUB_COVERS: ONB_KV, STUB_PROFILE: "a b; rm" }, [ONB_KV]), /^NOT_ONBOARDED /);
+test("session-check.sh decline is remembered until add, and bad usage changes nothing", () => {
+  const h = fresh();
+  withSkill(h);
+  mkdirSync(join(h.dir, ".claude"));
+  assert.equal(sc(h, ["status", "claude-code"]).stdout.split("\n")[0], "off");
+  assert.equal(sc(h, ["decline"]).status, 0);
+  assert.equal(sc(h, ["status", "claude-code"]).stdout.split("\n")[0], "declined");
+  assert.equal(sc(h, ["add", "claude-code"]).status, 0);
+  assert.equal(sc(h, ["status", "claude-code"]).stdout.split("\n")[0], "on");
+  assert.equal(existsSync(join(h.state, "session-check")), false);
+  for (const args of [[], ["add"], ["add", "cursor"], ["status"], ["wipe"]]) assert.equal(sc(h, args).status, 2, args.join(" "));
 });
 
-test("onboarded.sh: with no capability it is a usage error and with no CLI it falls back", () => {
+test("CONTEXT.md and session-check.sh have no line that Hermes' skills guard blocks", () => {
+  const dumpEnv = /printenv|(?<![A-Za-z0-9_])env\s*\|(?!\|)(?!\s*[{(])/;
+  const curlShell = /curl\s+[^|\s][^\n]*\|\s*(?:sudo\s+(?:-\S+\s+)*)?(?:ba|z|da|k|c|tc|fi)?sh\b/;
+  for (const file of ["CONTEXT.md", "session-check.sh", "TINY-APPS.md", "QUICKSTART.md"]) {
+    const lines = readFileSync(join(skill, file), "utf8").split("\n");
+    assert.deepEqual(lines.flatMap((line, i) => (dumpEnv.test(line) || curlShell.test(line) ? [`${file}:${i + 1}: ${line}`] : [])), []);
+  }
+});
+
+
+
+test("session-check.sh clients lists the running agent first, then each agent found, as status's clients line does", () => {
   const h = fresh();
-  assert.equal(run(["sh", onboarded], { HOME: h.dir }).status, 2);
-  const out = run(["sh", onboarded, ONB_KV], { HOME: h.dir });
-  assert.equal(out.stdout.trim(), "NOT_ONBOARDED the CLI is missing");
+  withSkill(h);
+  mkdirSync(join(h.dir, ".config/opencode"), { recursive: true });
+  assert.equal(sc(h, ["clients", "codex"]).stdout, "codex\nopencode\n");
+  assert.equal(sc(h, ["status", "codex"]).stdout.split("\n")[1], "clients: codex opencode");
+  const config = join(h.dir, "elsewhere");
+  mkdirSync(config);
+  assert.equal(sc(h, ["clients", "opencode"], { CLAUDE_CONFIG_DIR: config }).stdout, "opencode\nclaude-code\n");
+  for (const args of [["clients"], ["clients", "cursor"]]) assert.equal(sc(h, args).status, 2, args.join(" "));
+});
+
+test("session-check.sh names a set CLAUDE_SKILL_DIR's CONTEXT.md in Claude Code's line, and skips it when empty", () => {
+  const h = fresh();
+  const agents = withSkill(h);
+  const plugin = withSkill(h, "plugin/skills/tc-apps");
+  mkdirSync(join(h.dir, ".claude"));
+  mkdirSync(join(h.dir, ".codex"));
+  assert.equal(sc(h, ["add", "codex"], { CLAUDE_SKILL_DIR: plugin }).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(plugin)}\n`);
+  assert.equal(readFileSync(join(h.dir, ".codex/AGENTS.md"), "utf8"), `${lineFor(agents)}\n`, "Codex keeps its own copy");
+  assert.equal(sc(h, ["remove"]).status, 0);
+  assert.equal(sc(h, ["add", "claude-code"], { CLAUDE_SKILL_DIR: "" }).status, 0);
+  assert.equal(readFileSync(join(h.dir, ".claude/CLAUDE.md"), "utf8"), `${lineFor(agents)}\n`);
+});
+
+// Two agents once filed the same coffee order as fact/coffee-order and preference/coffee-order.
+test("CONTEXT.md files a coffee order as a preference, a birthday or home city as a fact, and updates a subject under any kind", () => {
+  const context = readFileSync(join(skill, "CONTEXT.md"), "utf8");
+  const boundary = context.split("\n").find((l) => l.startsWith("- **Fact or preference.**"));
+  assert.ok(boundary, "CONTEXT.md §2 defines fact and preference");
+  assert.ok(boundary.includes("coffee order (`preference/coffee-order`)"), boundary);
+  assert.ok(boundary.includes("birthday (`fact/birthday`)") && boundary.includes("home city (`fact/home-city`)"), boundary);
+  const write = context.split("## 4. Write")[1].split("## 5.")[0];
+  assert.match(write, /same subject under every kind/);
+  assert.match(write, /never write a second record for the same subject/);
+  const runbook = readFileSync(join(root, "forward-tests-tc-apps.md"), "utf8").split("## Follow-up test: context across agents")[1];
+  assert.match(runbook, /\| A \|[^\n]*writes `preference\/coffee-order`/);
+  assert.match(runbook, /\| B \|[^\n]*gets `preference\/coffee-order`/);
 });

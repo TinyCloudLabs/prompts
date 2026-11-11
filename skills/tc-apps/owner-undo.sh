@@ -1,24 +1,31 @@
 #!/bin/sh
-# Owner step: end the Health Log access early. Run in your own terminal, not in an agent's shell.
+# Agent-run, owner-requested step: end Health Log access early. The owner's request in chat is the
+# confirmation, so it needs no terminal: run it in the background with its output going to a file.
 # Usage: sh owner-undo.sh
-# Each revoke asks [y/N] in this terminal. A logout or delete that reports PROFILE_NOT_FOUND is fine: you never signed in to it.
+# If it prints an OpenKey link, send it to the owner (no code comes back). Profiles that don't exist are skipped quietly.
 set -u
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC=$W/tinycloud; [ -x "$TC" ] || TC=$W/tc; else TC=$TC_BIN; fi
+# The same CLI as every TinyCloud skill: process TC_BIN, then /agent's agent.env, then the shared private install, then `tinycloud` on PATH.
+TC=${TC_BIN:-}
+if [ -z "$TC" ]; then
+  if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC=; }; fi
+  [ -n "$TC" ] || TC="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+  [ -x "$TC" ] || TC=$(command -v tinycloud) || exit 1
+fi
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 REVOKED=0
 cancel() { if [ "$REVOKED" -eq 0 ]; then echo "Cancelled. Your agent's local access is already removed, but the grant itself was not revoked. Run this again to finish." >&2; else echo 'Cancelled; some access was already revoked. Tell your agent.' >&2; fi; exit "$1"; }
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
 trap 'cancel 129' HUP
-"$TC" --profile agent-data auth logout
-"$TC" --profile agent-data-sql auth logout
-"$TC" profile delete agent-meal
+"$TC" --profile agent-data profile show > /dev/null 2>&1 && "$TC" --profile agent-data auth logout
+"$TC" --profile agent-data-sql profile show > /dev/null 2>&1 && "$TC" --profile agent-data-sql auth logout
+"$TC" --profile agent-meal profile show > /dev/null 2>&1 && "$TC" profile delete agent-meal
 if [ ! -e "$STATE/meal-grant.json" ]; then
   echo 'No recorded grant to revoke. Nothing was revoked.'
   exit 0
 fi
 if ! command -v jq > /dev/null 2>&1; then
-  echo 'jq is needed to read the grant id, so nothing was revoked. Without jq, copy the delegationCid from meal-grant.json, then run delegation revoke -- <cid> with the same client, in the same terminal.' >&2
+  echo 'jq is needed to read the grant id, so nothing was revoked. Without jq, the agent can read delegationCid from meal-grant.json and run `--profile owner delegation revoke --yes -- <cid>` with the same CLI, sending any OpenKey link it prints to the owner.' >&2
   exit 1
 fi
 CIDS=$(jq -r '.delegationCid // empty' "$STATE/meal-grant.json" 2>/dev/null | grep -E '^bafkr4i[a-z2-7]{52}$' || true)
@@ -28,7 +35,7 @@ if [ -z "$CIDS" ]; then
 fi
 FAIL=0
 for CID in $CIDS; do
-  "$TC" delegation revoke -- "$CID" < /dev/tty; RC=$?
+  "$TC" --profile owner delegation revoke --yes -- "$CID" < /dev/null; RC=$?
   if [ "$RC" -eq 0 ]; then REVOKED=1; elif [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; else FAIL=1; fi
 done
 if [ "$FAIL" -ne 0 ]; then

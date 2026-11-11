@@ -1,8 +1,13 @@
 #!/bin/sh
-# Owner step: finish the approval for one catalog app. Run in your own terminal.
+# Agent-run owner approval: keep stdin attached to the agent's interactive session for the sign-in's chat code.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
-if [ -z "${TC_BIN:-}" ]; then W=$HOME/.local/share/tc-apps; TC_BIN=$W/tinycloud; [ -x "$TC_BIN" ] || TC_BIN=$W/tc; fi
+# The same CLI as every TinyCloud skill: process TC_BIN, then /agent's agent.env, then the shared private install, then `tinycloud` on PATH.
+if [ -z "${TC_BIN:-}" ]; then
+  if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC_BIN=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC_BIN=; }; fi
+  [ -n "${TC_BIN:-}" ] || TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
+  [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || exit 1
+fi
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "${1:-}" in
   healthlog) REQ=meal-request.json; GRANT=meal-grant.json ;;
@@ -12,55 +17,93 @@ esac
 # Remove temp files left by a killed run: only this app's mktemp names (six random characters).
 rm -f -- "$DIR/$GRANT".??????
 if [ ! -f "$DIR/$REQ" ]; then
-  echo "No request file at $DIR/$REQ. Ask your agent to start the install, then run this again." >&2
+  echo "No request file at $DIR/$REQ. The agent must create the request first." >&2
   exit 1
 fi
 # Write to a temp file first: a failed or empty grant must not replace the recorded one.
 TMP=$(mktemp "$DIR/$GRANT.XXXXXX")
 OWNER_PROFILE=owner
-cleanup() { rm -f "$TMP"; }
-cancel() { cleanup; [ -n "${DONE-}" ] || echo 'Cancelled; nothing changed. Tell your agent.' >&2; exit "$1"; }
+ACTIVE_PID=
+printf 'OWNER_GRANT_PID=%s\n' "$$" >&2
+# Preserve chat-code input before the shell gives an asynchronous command /dev/null on stdin.
+exec 3<&0
+cleanup() {
+  if [ -n "$ACTIVE_PID" ]; then
+    kill -TERM "$ACTIVE_PID" 2>/dev/null || true
+    wait "$ACTIVE_PID" 2>/dev/null || true
+    ACTIVE_PID=
+  fi
+  rm -f "$TMP"
+}
+cancel() { trap '' INT TERM HUP; cleanup; [ -n "${DONE-}" ] || echo 'Cancelled; nothing changed. Tell your agent.' >&2; exit "$1"; }
 trap cleanup EXIT
 trap 'cancel 130' INT
 trap 'cancel 143' TERM
 trap 'cancel 129' HUP
-# Sign in as the owner first only when the dedicated owner profile does not exist.
+# Sign the owner in when the dedicated owner profile doesn't exist yet, or exists without a
+# signed-in owner (a sign-in that was cancelled leaves the profile behind with no owner).
+signin() {
+  echo 'OpenKey sign-in: approve the link and paste the code back to your agent in chat.' >&2
+  INIT_RC=0
+  "$@" <&3 3<&- &
+  ACTIVE_PID=$!
+  wait "$ACTIVE_PID" || INIT_RC=$?
+  ACTIVE_PID=
+  if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
+  if [ "$INIT_RC" -ne 0 ]; then
+    echo "Sign-in didn't finish, so nothing was granted. Tell your agent." >&2
+    exit 1
+  fi
+}
+DID_RE='^did:pkh:eip155:[1-9][0-9]*:0x[0-9a-fA-F]{40}$'
 PROBE_RC=0
 PROBE=$("$TC_BIN" --profile "$OWNER_PROFILE" profile show 2>&1) || PROBE_RC=$?
 if [ "$PROBE_RC" -ne 0 ]; then
   case "$PROBE" in
-    *PROFILE_NOT_FOUND*)
-      echo "Signing you in to the owner profile first: \"$TC_BIN\" init --name $OWNER_PROFILE --paste"
-      INIT_RC=0
-      "$TC_BIN" init --name "$OWNER_PROFILE" --paste || INIT_RC=$?
-      if [ "$INIT_RC" -eq 130 ] || [ "$INIT_RC" -eq 143 ]; then cancel "$INIT_RC"; fi
-      if [ "$INIT_RC" -ne 0 ]; then
-        echo "Sign-in didn't finish, so nothing was granted. Run the owner-grant line again." >&2
-        exit 1
-      fi
-      ;;
+    *PROFILE_NOT_FOUND*) signin "$TC_BIN" init --name "$OWNER_PROFILE" --paste ;;
     *)
       echo "Couldn't check your TinyCloud sign-in, so nothing was granted. Tell your agent." >&2
       echo "$PROBE" >&2
       exit 1
       ;;
   esac
+elif CONTEXT=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json 2>/dev/null) && printf '%s' "$CONTEXT" | jq -e '.ownerDid == null' > /dev/null; then
+  signin "$TC_BIN" --profile "$OWNER_PROFILE" auth login --method openkey --paste
+fi
+# Bind only to the explicit signed-in owner, never to the imported grant. Keep an existing binding.
+if [ ! -s "$DIR/owner-did.txt" ]; then
+  OWNER_DID=$("$TC_BIN" --profile "$OWNER_PROFILE" context --json | jq -er --arg re "$DID_RE" '.ownerDid | select(test($re))') || {
+    echo 'Could not read the signed-in owner account; nothing was granted.' >&2
+    exit 1
+  }
+  printf '%s\n' "$OWNER_DID" > "$DIR/owner-did.txt"
 fi
 RC=0
-"$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" > "$TMP" || RC=$?
+echo 'Access link: the owner approves it in OpenKey. When this command exits, follow the shared exit-code table and tell the owner what happened.' >&2
+"$TC_BIN" --profile "$OWNER_PROFILE" auth grant "$DIR/$REQ" <&3 3<&- > "$TMP" &
+ACTIVE_PID=$!
+wait "$ACTIVE_PID" || RC=$?
+ACTIVE_PID=
 if [ "$RC" -eq 130 ] || [ "$RC" -eq 143 ]; then cancel "$RC"; fi
 if [ "$RC" -eq 3 ]; then
-  echo "Your TinyCloud owner profile needs signing in again, so nothing was granted. Run \"$TC_BIN\" --profile $OWNER_PROFILE auth login --paste, choose 1) OpenKey, then run the owner-grant line again." >&2
+  echo 'APPROVAL_REQUEST_EXPIRED above means the access link may have expired before it was approved: use the shared exit-3 decline/expiry rule before starting a new request.' >&2
+  echo 'Otherwise the owner sign-in has expired. The agent must run owner auth login --method openkey --paste in an interactive session, relay the link and chat code, then run this step again.' >&2
+  exit 1
+fi
+if [ "$RC" -eq 8 ]; then
+  echo "OpenKey couldn't be reached, so nothing was granted. Run this step again in a minute, at most three times in a row; if it still fails, stop and tell the owner." >&2
   exit 1
 fi
 if [ "$RC" -ne 0 ]; then
-  echo 'The grant failed. Tell your agent; do not retry the browser screen.' >&2
+  echo 'The grant failed, so nothing was saved. Tell your agent.' >&2
   exit 1
 fi
 if [ ! -s "$TMP" ]; then
-  echo 'The grant printed nothing. Tell your agent; do not retry the browser screen.' >&2
+  echo 'The grant printed nothing, so nothing was saved. Tell your agent.' >&2
   exit 1
 fi
 DONE=1
 mv -f "$TMP" "$DIR/$GRANT"
-echo 'Done: tell your agent'
+# Save the agent host's local IANA zone, including UTC and Etc/*; the page takes precedence.
+node -e 'const fs = require("node:fs"); let zone = Intl.DateTimeFormat().resolvedOptions().timeZone; try { if (!zone) throw new Error(); new Intl.DateTimeFormat("en", {timeZone: zone}); } catch { zone = "UTC"; } fs.writeFileSync(process.argv[1], zone + "\n");' "$DIR/owner-timezone.txt"
+echo 'Done: approval saved for the agent.'

@@ -7,61 +7,62 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-It works in Claude Code, Codex and OpenCode, and needs Node.js 22.20 or later with npm. The skill runs `@tinycloud/cli@1.3.5` from a folder of its own, and `@tinycloud/cli@1.5.0-beta.20` from a second folder for apps in their own folder (below).
+Claude Code, Codex and OpenCode need Node.js 20 or later with npm. Reuse the CLI selected during onboarding, `1.6.5`: new installs and older agent-owned installs get it; an operator-selected older CLI stops setup with a one-line notice. There is no separate app CLI or beta installation.
 
-A permission slip and the code OpenKey shows after you approve are fine to share; keys and session files are not. The full list is in [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
+Never share private keys or session files. Approval links also contain request material: send the complete link only to the approving owner, never to a URL shortener. See [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
 ## 0. Setup, in the same prompt
 
 Add the setup link to your first request:
 
-> Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
+> Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
-1. It checks Node.js and npm. If either is missing, or Node.js is older than 22.20, it stops and tells you; it doesn't install them.
-2. It installs the CLI into `~/.local/share/tc-apps/cli`, a folder only this skill uses, unless it's already there. A `tc` on your `PATH` stays as it is. Next to it, it writes `~/.local/share/tc-apps/tinycloud`, a short script that runs this CLI and retries when TinyCloud drops a connection.
+1. It checks Node.js and npm. If either is missing, or Node.js is older than 20, it stops and tells you; it doesn't install them.
+2. It reuses the CLI from shared setup, or installs (or upgrades) one private copy in `~/.local/share/tinycloud/cli`. Unrelated commands on PATH are preserved.
 3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
-4. It reads the skill and signs you in, as below.
+4. For Health Log, it asks for that app's permission even if onboarding is complete. For other apps, it reuses existing grants where they cover the request and asks only for missing permissions.
 
-No shell profile to edit, and nothing to restart except OpenCode, once (see below). Afterwards, any new conversation in any folder can use your apps without the link.
+No shell profile to edit, variables to set or client to restart. The agent reads the installed skill directly. In a future conversation that has not discovered it, paste the setup link again; the agent uses the installed files and carries on.
 
-| Client | Start | What to expect |
-|---|---|---|
-| Claude Code | `claude` | Claude Code can deny a step or the sign-in, or ask you to confirm it. The agent then shows you the step and asks you to reply naming it: [Confirming a step in Claude Code](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). Manual mode asks on first use for the setup page, the check, the install and each kind of skill step; choose "Yes, and don't ask again" where it's offered. Steps that run commands side by side, or write the skill's state folder, ask every time in manual mode. |
-| Codex | `codex -s workspace-write -c sandbox_workspace_write.network_access=true --add-dir ~/.tinycloud --add-dir ~/.local/state/tc-apps` | One approval, for the install. The CLI needs the network, and it writes the profile store and the state folder, both outside the project. With `TC_HOME` or `TC_APPS_STATE` set, pass `$TC_HOME/.tinycloud` and `$TC_APPS_STATE` instead. Folders under your home don't need to exist yet: the setup creates them. A missing `--add-dir` folder under `/tmp`, though, stops Codex's sandbox from starting, so create it first. |
-| OpenCode | `opencode` | No questions. After the first setup, restart OpenCode once, as the agent will tell you: it loads skills only when it starts. Claude Code and Codex don't need a restart. |
+| Client | What to expect |
+|---|---|
+| Claude Code | It can ask you to confirm a step. Reply in chat naming the step your agent explains: [Confirming a step in Claude Code](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). |
+| Codex | Approve the install escalation in chat if its sandbox asks. The agent installs the CLI and skill. |
+| OpenCode | The agent reads the installed skill for this request without a restart. Paste the setup link again in a future conversation if needed. |
 
-Claude Code and Codex also ask whether you trust a folder the first time you start them in it.
-
-Optional variables, set before you start the client:
-- `TC_HOME`: the CLI profile store. Without it the CLI uses `~/.tinycloud`.
-- `TC_APPS_STATE`: this skill's state folder. Default `~/.local/state/tc-apps`.
-- `TC_BIN`: the absolute path to another `tc`, CLI `1.3.4` or later. The skill then runs it, not the CLI in its own folder. `TC_BETA_BIN` does the same for the `1.5.0-beta.2` CLI.
+Claude Code and Codex may also ask whether you trust a folder.
 
 ## What you see at sign-in
 
-If you ran `tinycloud onboard` on this computer and its 30-day sign-in is still valid, the agent uses it and no approval screen opens: the steps below don't happen. Otherwise each app has its own approval, the first time you track something new, and it lasts 30 days.
+Health Log always uses its own app-specific permission, even if onboarding is complete. Only a live Health Log grant on its dedicated profile can be reused. Generic apps may reuse onboarding access when it covers the task.
 
-1. You ask, for example "Add a todo: renew my passport." The agent checks whether the `todos` app is signed in, then starts the sign-in.
-2. The agent shows a link:
+1. The agent checks only the selected app-specific grant for Health Log.
+2. When that grant is missing or expired, it describes the app access and sends the actual short OpenKey URL on its own line.
+3. You open it on your computer or phone and review the scope and expiry before approving.
+4. The waiting CLI retrieves the app permission automatically and the agent saves and reads back your record. If the dedicated profile needs sign-in, OpenKey may show a short code; the agent asks you to paste that code in chat. The app-permission link itself needs no code or terminal command.
 
-   > Open https://openkey.so/delegate?… and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions: key-value access to that folder for 30 days, reading the list of tiny apps and writing this app's entry in it, and a read of your permissions, which doesn't read your data. Approve, then paste here the code OpenKey shows.
-
-3. Open the link, on this computer or your phone, and sign in to OpenKey. You will see "Update application data"; open "Advanced details" to see the folder `xyz.tinycloud.tinyapps.todos/` in your `applications` space and the permissions, key-value access to that folder and a read of your permissions (that doesn't read your data). Then approve.
-4. OpenKey shows a code. Paste it in the chat, and the agent finishes the sign-in and carries on. Or paste it into your own terminal with the command the agent gives you.
-
-Without onboarding, one approval covers one app, and a new app, such as `fitness`, asks once more. With onboarding, its one sign-in covers the folders of all your apps in `applications`. Every agent on this computer that uses the same `TC_HOME` shares the apps you've approved.
+After an interruption, the agent resumes the same command/profile. Do not use the broader onboarding profile for Health Log.
 
 ## What you can ask
 
-- "Log my weight: 80.5 kg today." This starts a `fitness` app with a `weight` kind. Another value for the same day replaces the first, and the agent says so.
+- "Log my weight: 80.5 kg today." Health Log owns weight records. Its installed knowledge defines the record; a new value for the same day replaces the earlier measurement only as its rules permit.
 - "My goal is 78 kg by December." This adds a `goal` kind to `fitness`.
 - "Bench press, 3 sets of 8 at 60 kg." This adds a `lift` kind.
 - "Ran 5 km in 27 minutes." This adds a `session` kind. Later sports become new values of `sport`, and their details become new fields.
 - "Add a todo: renew my passport." This starts a `todos` app. "Passport renewed" marks the todo done.
 - "What do you keep for me?", "How far am I from my goal?", "My bench volume last week?"
 
-When the agent creates an app or a kind, it tells you in one line. Meals, food, calories and recipes go to Health Log and Recipes, which ask for their own approval unless your onboarding sign-in covers them.
+When the agent creates an app or kind, it tells you in one line. Meals, weight and recipes go to Health Log or Recipes. Health Log always uses its separate app-specific grant; generic apps may reuse onboarding access when it covers them.
+
+## Context: switch agents, keep what you told them
+
+When you tell an agent something about yourself, such as "my coffee order is a flat white" or "keep replies short", it saves it in your context app and says so in one line. The next agent you use reads it: ask "What's my coffee order?" in another client on this computer. At the end of a longer task, the agent leaves a short handoff note, so "pick up where I left off" works in the next conversation, or in another agent. The context app has its own approval, the first time.
+
+- **One question at setup.** At the end of setup the agent asks once whether new sessions of your agents on this computer should check your context first. Yes adds one line, ending with `<!-- tinycloud-context -->`, to each agent's own instructions file: `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`. No is remembered, and nobody asks again.
+- **Light.** Each session lists your context once and reads only the records the request needs, up to about 20. One record per subject: a new value replaces it. Agents save only what you said, never a guess.
+- **What stays out.** Any agent that reads your context sends it to the company that runs its AI model. So secrets go in TinyCloud Secrets, and health data, money and account numbers, ID numbers, your exact address and other people's private details go in their own app. If you paste a key into a chat, the agent won't save it, and tells you to replace it with a new one.
+- **See and delete.** "What's in my TinyCloud context?" lists every record, with the agent that saved it and when. "Forget my coffee order" deletes one. Deleting a record removes it from your TinyCloud, so agents can't get it there again. An earlier copy stays in TinyCloud's storage, and an agent that already read it may have kept its own copy, so don't put anything in context you'd need permanently erased.
 
 ## How your data is organised
 
@@ -85,51 +86,39 @@ Each record is a small JSON document: `{"v":1,"at":"…","data":{…},"by":"clau
 
 Earlier versions of this skill kept all apps together in your `default` space, under `xyz.tinycloud.agent-data/`. Those records stay there; nothing deletes them unless you ask. An app that has records there keeps working exactly as before, with no new approval. The agent tells you once per conversation: "This app can move to its own folder: say "move my <app> records" when you want it (nothing is deleted)."
 
-If this computer has no current sign-in to the old place, the agent can't check it, so it asks whether you kept that app's records with an earlier version. Right after setup, the question comes in the same message as the app's approval link: if you did, say so instead of approving.
+If this computer cannot check the old layout, the agent asks whether you kept that app's records with an earlier version before creating a duplicate. When you request a move, it reuses existing access or asks for missing permissions, then runs the migration:
 
-When you ask, the agent requests the app's own approval and gives you a script to run in your own terminal:
+1. It runs the dry run and shows you the plan in chat.
+2. Once you agree, it copies the records to the new folder, reads them back and compares the keys, count and contents. It checks the old place again before saving the receipt and switching.
+3. Any mismatch or refusal leaves the old records untouched and the old layout active. The agent reports the result in chat.
 
-1. `sh migrate.sh --dry-run <app>` prints the plan and writes nothing.
-2. `sh migrate.sh <app>` copies the records to the app's new folder, reads them back and compares them (the same keys, the same count, the same contents), checks the old place again for edits made meanwhile, and only then marks the app as moved and saves a receipt with counts and a digest.
-3. If anything differs, or is refused, it stops with `NOT SWITCHED`, the old records are untouched, and the app keeps working in the old place. Fix the cause and run it again; keys that already match are recognised.
-
-The app switches to its own folder only after step 2 printed success and its receipt exists. Pause other agents that write the app while it runs, and copy the receipt to your other computers before you use the app there. A move doesn't import old meal records into Health Log; they are moved as they are. An app with no old records starts in its own folder.
+Pause other agents writing the app while it moves. On another computer, ask that agent to install the verified receipt before using the moved app. A move doesn't import old meal records into Health Log.
 
 ## Faster answers over many records
 
-You don't need to set anything up. The first time a question needs many records of one app, such as "bench volume per week since August", the agent answers the slow way, reading them one by one. It then offers a faster way, a searchable copy of that app's records:
+When a question needs many records, the agent first answers from the originals. It then checks whether it can make a searchable copy using existing SQL access. If additional permissions are needed, it offers a short OpenKey link naming this app's database and the expiry.
 
-1. The agent shows an OpenKey link. Open it and sign in. Open "Advanced details" to see the request listed as SQL access to `xyz.tinycloud.tinyapps.fitness/index` in your `applications` space, for 30 days; that's the copy.
-2. Approve. OpenKey then shows a short code, such as `ABCD-EFGH`. Paste it in the chat and the agent finishes the sign-in, or paste it into your own terminal with the command the agent gives you. A short code works once and expires within minutes; if it has expired, paste the full code OpenKey also shows.
-3. The agent finishes, builds the copy from the app's records, and says when it's done. From then on it answers questions over many records of that app with one lookup, without reading every record. The agent's own thinking still takes most of the time.
-
-If you ignore the offer, nothing breaks; the agent asks again in a later conversation that needs it.
+Approve in the browser; the waiting CLI collects the result. There is no manual code in the normal flow. The agent builds and verifies the copy and reports when it is ready. Declining leaves the originals unchanged and answers continue through direct reads.
 
 Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.
 - **When the index expires** after 30 days, everything keeps working, more slowly, until you approve it again.
 - **Don't rely on the database name as a boundary.** The approval names one database, but TinyCloud's node can also open other SQL databases in the same space. The agent only ever uses that app's index.
-- **The code** is a permission slip for this computer's `tinyapp-<app>-sql` profile, so it's fine to paste in the chat. A short code only works for the sign-in that asked for it, works once, and expires within minutes.
+- **Approval is bound to the requesting CLI.** Keep the entire short URL intact; another device can open it, but the CLI that made the request verifies the result.
 
 ## What the sign-ins grant
 
-- **Records:** profile `tinyapp-<app>` can get, put, list and delete keys under `xyz.tinycloud.tinyapps.<app>/` in your `applications` space, read the list of apps under `xyz.tinycloud.tinyapps.catalog/`, and write that app's own entry there. Nothing else. Every OpenKey approval also lets it read which permissions it holds.
-- **Index:** profile `tinyapp-<app>-sql` can read, write and change the schema of the SQL database `xyz.tinycloud.tinyapps.<app>/index` in your `applications` space.
-- **Lifetime:** 30 days each, OpenKey's maximum. Afterwards the agent shows you a new link when it needs one.
-- **Stopping:** each command below clears the local session for one app, with `TC_HOME` and `TC_BIN` set as when you started the client, so it uses the same CLI as the skill. The approvals stay valid on TinyCloud until they expire.
+- **Existing onboarding access:** covers the owner's application data for the approved lifetime. Reuse it; do not pretend it is narrower than it is.
+- **New scoped access:** requests only this app's KV roots or SQL database and only the actions the task needs. A read-only task does not request writes.
+- **Lifetime:** normally 30 days. The short link's request expiry is separate from the resulting grant's expiry.
+- **Stopping:** revocation through https://account.tinycloud.xyz/delegations ends the grant. Local `auth logout` clears only that profile's local session. A shared onboarding profile serves multiple apps; the agent explains that before logging it out.
 
-  ```sh
-  B=${TC_BETA_BIN:-$HOME/.local/share/tc-apps/cli-beta/node_modules/.bin/tinycloud}
-  "$B" --profile tinyapp-<app> auth logout
-  "$B" --profile tinyapp-<app>-sql auth logout
-  ```
-
-  To remove the rest, delete `~/.local/share/tc-apps`, `~/.local/state/tc-apps`, and the `tc-apps` skill folders.
+  To uninstall too, ask the agent in chat to remove this skill's install, state and skill folders. Your records stay in TinyCloud.
 
 ## Why it works this way
 
-- **One folder per app.** Each app has its own key root, so an approval for `todos` can't read `fitness`. Without onboarding a new app asks for its own approval; the onboarding sign-in is one approval for all of them.
-- **Approval with a pasted code.** OpenKey allows the phone-code (device) approval only for the `default` space, so apps in `applications` use an approval where you paste a short code back.
+- **One folder per app; no redundant approval.** Separate roots support narrow future grants, while an already-approved broader grant can be reused.
+- **Short signed browser approval.** The owner can approve on another device, and the waiting CLI retrieves the encrypted result without a pasted code.
 - **KV first, SQL as a copy.** Key-value records survive agent mistakes, because each record is its own key. The SQL index is rebuildable, so it never holds the only copy of anything.
 - **Reads run side by side.** Each storage command takes 3–5 s against TinyCloud, so the agent fetches up to eight records at once.
 - **Literal paths in commands.** Claude Code can remember an approval only for a command it can work out from the text.
@@ -141,3 +130,4 @@ Good to know:
 - When your TinyCloud storage is full, saves fail with `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` and nothing is saved; your records are still readable. The agent tells you and doesn't retry. To keep saving, upgrade at https://account.tinycloud.xyz/storage; deleting records doesn't free space yet.
 - Two agents changing the same kind's description in the same few seconds can lose one change; the next agent re-adds it.
 - `tinycloud-explorer` doesn't show these apps yet.
+- Claude Code doesn't read `~/.agents/skills`, so the setup copies the skill into the folder of each agent it finds. An agent you install after the setup doesn't have the skill until you run the setup again in any agent. OpenCode reads both folders and logs a duplicate-name warning; the two copies are the same.

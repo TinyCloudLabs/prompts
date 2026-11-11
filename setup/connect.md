@@ -1,24 +1,43 @@
+> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/connect.md` and follow that text. Summaries drop the shell blocks you must run.
+
 # Set up TinyCloud
 
-Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in ChatGPT, Claude, Grok, Perplexity, Gemini or Meta Muse, or in an agent with a shell, such as Claude Code, Codex, OpenCode, Cursor, OpenClaw or Hermes.
+Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in a runtime that can install and run the TinyCloud CLI, such as Claude Code, Codex or OpenCode, or a client with remote MCP and OAuth support. A product or bot name alone does not establish those capabilities; see the client-specific routes below.
 
 **Paste this into your app or agent:**
 
-> Set up TinyCloud using https://agents.tinycloud.xyz/connect
+> Fetch https://agents.tinycloud.xyz/connect.md with curl and follow it, including running its installer. Set up TinyCloud.
 
-**For the assistant:** keep the owner's original request and continue it in this conversation. Use the route for the environment you are running in. In a chat app, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format.
+**For the assistant:** keep the owner's original request and continue it in this conversation. If you can install and run the TinyCloud CLI, use it: that's the preferred route. Otherwise, if you support remote MCP, connect the hosted server below. For an MCP agent, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format. The installer the prompt names is the CLI route's; an app that can only run code in a temporary sandbox doesn't run it, and connects through MCP instead.
 
-## Coding agents
+## Agents that can run the CLI (preferred)
 
-**Claude Code, Codex, OpenCode, Cursor, OpenClaw, Hermes, or any agent with a shell on the owner's computer:** fetch and read the coding-agent setup guide for the owner's original request in full, then follow it exactly for that request. Fetch that guide yourself; do not ask the owner to paste another URL or repeat their request.
+**Any agent that can install and run the TinyCloud CLI**, on the owner's computer or in its own workspace (for example Claude Code, Codex, OpenCode, Cursor, OpenClaw or Hermes): fetch [/onboarding](onboarding.md) yourself and follow it. It signs the owner in once, then sends you to the guide for their request. Do not ask the owner to paste another URL or repeat their request.
 
-**Which guide:** personal records or health (meals, weight, workouts, todos), or setup only → [/apps](tc-apps.md); API keys and other secrets → [/secrets](secrets.md); publishing or sharing a document or page → [/publish](publish.md); TinyChat meetings → [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent → [/courier](courier.md); anything else → [/setup](README.md), which lists every ability.
+**After onboarding:** it routes personal records or health (meals, weight, workouts, todos) to [/apps](tc-apps.md); API keys and other secrets to [/secrets](secrets.md); publishing or sharing a document or page to [/publish](publish.md); TinyChat meetings to [/chat](../apps/tinychat/setup.md); Courier, threads with another person's agent, to [/courier](courier.md); anything else to [/setup](README.md), which lists every ability.
 
-That guide is the authority for all prerequisites, installation commands, permissions, sign-in, first-record behavior, troubleshooting and cleanup. This page does not replace or modify any of those instructions. Do not reconstruct the setup from a summary or use the chat-app MCP instructions below for this route. If you are not Claude Code, Codex or OpenCode, use Codex's choice wherever the guide asks for your client or gives a step per client: Codex's skills go in `~/.agents/skills`.
+Those guides are the authority for prerequisites, installation, permissions, sign-in, troubleshooting and cleanup. If you can run the CLI, don't use the MCP steps below. Where a guide asks for your client, use yours; any other agent uses `codex` (its skills go in `~/.agents/skills`).
 
-**ChatGPT, Claude chat, Grok, Perplexity, Gemini, Meta Muse and other chat apps:** use the instructions below instead. Do not run the coding-agent setup in a chat app's temporary code sandbox.
+Optional, for Codex in workspace-write mode: if you trust the project, start Codex with `codex -c sandbox_workspace_write.network_access=true`. Commands Codex runs can then reach [any website](https://learn.chatgpt.com/docs/agent-approvals-security#network-access) without asking, so you'll see fewer network prompts. Your other sandbox and approval settings stay the same.
 
-Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other chat apps](#other-chat-apps).
+**Context:** “remember that …”, a question about what the owner told an agent before, or “pick up where I left off” → [/apps](tc-apps.md) too: its skill keeps the owner's context for every agent on this computer.
+
+**Agents that can't run the CLI but support remote MCP with OAuth:** use the applicable steps below. Do not run the CLI setup in a temporary code sandbox. The hosted MCP keeps personal records (apps, key-value and SQL data) and reads named secrets. It has no meeting, sharing or publishing tools yet; those use the CLI route.
+
+Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Grok Bot](#grok-bot), [WhatsApp / Instinct](#whatsapp-and-instinct), [Perplexity](#perplexity), [Gemini](#gemini), [Meta Muse](#meta-muse), or [other MCP clients](#other-mcp-clients).
+
+Client-specific guides: [ChatGPT](connect/chatgpt.md), [Claude](connect/claude.md), [Cursor](connect/cursor.md), [Gemini](connect/gemini.md), [Grok](connect/grok.md), [Meta Muse](connect/muse.md), [Perplexity](connect/perplexity.md), [OpenClaw](connect/openclaw.md), [Hermes](connect/hermes.md), and [TinyCloud CLI](connect/cli.md). Each keeps the original request, explains the runtime's task and skill route, and distinguishes documented setup from observed success.
+
+**What we have tested, as of 3 November 2026.** ChatGPT, Claude, Grok, Perplexity, Gemini and Meta Muse each document custom remote MCP connectors, and Grok Bot can add an MCP server by URL. Our own checks so far:
+
+| App | What we have seen with TinyCloud |
+| --- | --- |
+| Meta Muse | Connected, listed the tools and stayed signed in past the first token (27 October). Saving a record and first-time setup on a new account not yet checked. |
+| ChatGPT | One owner connected on a Free account (20 October). Saving a record not yet checked. |
+| Claude, Grok, Grok Bot, Perplexity, Gemini | Not yet tested by us. |
+| Instinct | Read one todo through a short read-only permission from a coding agent, not through the connector. |
+
+If a step below doesn't match what your app shows, follow your app's screen and tell us what differed.
 
 ## ChatGPT
 
@@ -29,24 +48,26 @@ Jump to [ChatGPT](#chatgpt), [Claude](#claude), [Grok](#grok), [Perplexity](#per
 3. Review the warning, select **Create as a plugin**, sign in with OpenKey, and install it.
 4. In a conversation, type **@**, select **TinyCloud**, and make your original request. For setup only, ask: **“What personal apps do I already have in TinyCloud?”**
 
-**Troubleshooting only after a reported or observed blocker:** do not infer that an account cannot connect from its plan name, generic availability documentation, or TinyCloud's absence from the app directory. Do not run an eligibility preflight or recommend an upgrade or developer mode speculatively. A successful connection takes precedence over a contrary documentation assumption. If the option is missing or an action is rejected, address that specific UI state or error briefly; ask one targeted question only if needed to choose the next action. Once enabled, follow [Approve access and continue](#approve-access-and-continue) when the tools request approval, not as an extra initial setup section.
+**Troubleshooting only after a reported or observed blocker:** do not infer that an account cannot connect from its plan name, generic availability documentation, or TinyCloud's absence from the app directory. Do not run an eligibility preflight or recommend an upgrade or developer mode speculatively. A successful connection takes precedence over a contrary documentation assumption. If the option is missing or an action is rejected, address that specific UI state or error briefly; ask one targeted question only if needed to choose the next action. OpenAI documents saving and changing data through custom connectors for Business, Enterprise and Edu workspaces, and custom servers can be added only on the web; if a save is rejected on another plan, say that in one line rather than retrying. Once enabled, follow [Approve access and continue](#approve-access-and-continue) when the tools request approval, not as an extra initial setup section.
+
+This is a **custom remote MCP connection**, not a claim that TinyCloud is listed or approved in ChatGPT's app directory, or verified on every ChatGPT surface.
 
 ## Claude
 
-Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+**Claude app (web, Desktop, iOS, Android):** use the hosted MCP connector, not a local CLI or skill install. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, with **OAuth** through OpenKey. **Claude Code** uses the CLI route above.
 
 1. On Claude web or Desktop, open [Customize → Connectors](https://claude.ai/customize/connectors), then **+ Add → Add custom connector**.
 2. Name it **TinyCloud**, enter **`https://mcp.tinycloud.xyz/mcp`**, and continue. Review the detected OAuth settings and choose to sign in with OpenKey.
 3. Finish adding the connector. In your conversation, use **+ → Connectors** to enable TinyCloud, then make your original request.
-4. Follow [Approve access and continue](#approve-access-and-continue) below. Once connected, you can also use it in Claude's mobile apps.
+4. Follow [Approve access and continue](#approve-access-and-continue) below. A connector added on web or Desktop is also available in the Claude mobile apps; add it on web or Desktop first.
 
-For a managed workspace, an owner or administrator may need to add the connector first. See [Claude's custom-connector instructions](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp).
+Claude's Free plan allows one custom connector. For a Team or Enterprise workspace, an owner or administrator may need to add the connector first. See [Claude's custom-connector instructions](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp).
 
 If you want to approve record-writing tools once rather than on every call, find `tinycloud_apps_write` in the connector's tool permissions and choose **Always allow**. Only do this if you trust it to write records without per-call confirmation. This does not replace the OpenKey access approval.
 
 ## Grok
 
-Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
+**Grok on grok.com and the Grok apps:** use Grok's custom MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
 
 1. In a browser, open [grok.com/connectors](https://grok.com/connectors), click **New Connector**, then select **Custom**.
 2. Enter **`https://mcp.tinycloud.xyz/mcp`** and complete the authentication Grok asks for by signing in with OpenKey.
@@ -55,11 +76,29 @@ Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mc
 
 On Grok Business or Enterprise, a team admin must add the connector first. See [xAI's connector instructions](https://docs.x.ai/grok/connectors).
 
+## Grok Bot
+
+xAI's **Grok Bot** runs agents on their own cloud computer, with a terminal. Choose by what it can do in this conversation:
+
+- If it can install and run commands, use [CLI onboarding](onboarding.md) and the agent skills, like any coding agent. Grok Bot shares command-line credentials across all of the owner's Bots, so every Bot of theirs can use this TinyCloud sign-in; tell the owner that in one line before onboarding.
+- Otherwise, add **`https://mcp.tinycloud.xyz/mcp`** as an MCP server by URL. If it offers **OAuth**, sign in with OpenKey, then follow [Approve access and continue](#approve-access-and-continue).
+- If neither is available, explain that specific limitation. Do not invent a connector screen or ask for credentials in chat.
+
+See [xAI's Grok Bot apps instructions](https://docs.x.ai/grok-bot/computer-and-apps).
+
+## WhatsApp and Instinct
+
+WhatsApp is the conversation channel; the bot's runtime determines whether it can use the CLI or hosted MCP route above. Meta Muse also answers in WhatsApp: if that's the bot, use [Meta Muse](#meta-muse). Do not ask the user to install a CLI inside WhatsApp.
+
+In Cian's reported test, Instinct read a Claude Code-written note using a **two-hour, read-only Todos delegation**, with no writes. Preserve that scope and expiry; a known app's read does not need a broader discovery or write grant. This is not proof of native WhatsApp MCP support, installation support for every bot, or approval compatibility on every mobile device.
+
+Send an approval URL complete, on its own line. If the in-app browser loses the fragment or cannot continue sign-in, reopen the original complete link in the normal browser. If the message itself was truncated or the request expired, ask the requesting agent for its current link; never reconstruct the secret fragment.
+
 ## Perplexity
 
 Use the hosted MCP connector, not the local CLI. Its server URL is **`https://mcp.tinycloud.xyz/mcp`**, and its authentication is **OAuth** through OpenKey.
 
-1. On Perplexity, open **Account settings → Connectors**, click **+ Custom connector**, and select **Remote**.
+1. On Perplexity, open **Plugins → Add custom → Add MCP connector → Remote**. If your UI instead shows **Customize → Connectors**, add the custom remote connector there.
 2. Enter **Name:** TinyCloud; **MCP Server URL:** `https://mcp.tinycloud.xyz/mcp`; **Authentication:** OAuth; **Transport:** Streamable HTTP. No client ID or secret is needed: TinyCloud registers the client itself.
 3. Check the acknowledgement box and click **Add**. Then click the TinyCloud connector card, sign in with OpenKey, and enable it.
 4. Make your original request, then follow [Approve access and continue](#approve-access-and-continue) below.
@@ -93,15 +132,15 @@ Use Muse's native custom connector to the hosted MCP server, not the local TinyC
 
 Never ask the owner to paste a password, API key, access token or refresh token into chat. OAuth credentials belong in Muse's secure credential flow, not connector source, prompts or memory. If native OAuth cannot connect, report the actual blocker; do not substitute a key or the coding-agent setup. See [Meta's connector help](https://www.meta.com/help/artificial-intelligence/1687253048996149/).
 
-## Other chat apps
+## Other MCP clients
 
-If your app supports remote MCP over HTTP with OAuth, add **`https://mcp.tinycloud.xyz/mcp`**, choose **OAuth**, and sign in with OpenKey. Enable the connection for your conversation, then make your request. Mobile support depends on the app.
+If your app supports remote MCP over HTTP with OAuth, add **`https://mcp.tinycloud.xyz/mcp`**, choose **OAuth**, and sign in with OpenKey. If the app lets you set OAuth scopes, request **`tinycloud:mcp offline_access`**: without `offline_access`, the sign-in lasts only about five minutes. Enable the connection for your conversation, then make your request. Mobile support depends on the app.
 
-If the app has no custom remote MCP support, reading this page cannot add that capability. Say so and direct the owner to one of the apps above. Do not suggest installing a CLI in a temporary chat sandbox as a substitute.
+If the agent supports neither the CLI nor remote MCP, reading this page cannot add that capability. Say so and tell the owner to use an agent that supports one of them. Do not suggest installing a CLI in a temporary chat sandbox as a substitute.
 
 ## Approve access and continue
 
-With TinyCloud enabled, make your original request, or ask: **“What personal apps do I already have in TinyCloud?”** The assistant will show the actual OpenKey connect or personal-record access link returned by a TinyCloud tool. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue.
+With TinyCloud enabled, make your original request, or ask: **“What personal apps do I already have in TinyCloud?”** The assistant will show the actual OpenKey connect or personal-record access link returned by a TinyCloud tool. Open it yourself, review the requested access, approve, then return to the conversation and tell the assistant to continue. A new account usually sees two or three OpenKey screens before the first record: the sign-in, the connection, and access to the records the request needs.
 
 **For chat assistants:** use the connected TinyCloud personal-app tools and the instructions they return. If the tools are not available yet, give the relevant connection steps above; do not claim setup is complete. Never ask the owner to paste a password, private key or access token into chat. For setup-only requests, follow the [default-record recipe](#setup-only-requests-in-chat-apps) below, but perform the reads and writes through the connected tools, not the CLI. Read the saved record back before reporting success.
 
@@ -115,4 +154,4 @@ To disconnect a chat app, remove or disconnect TinyCloud in that app's plugin or
 
 This record recipe is for chat apps. Use the connected tools rather than CLI or skill-command references.
 
-If the owner only asked for setup or named no record, save one default record without asking, after sign-in is approved (skill §4) and not before: app `todos`, kind `todo`, key `xyz.tinycloud.agent-data/todos/todo/open/try-my-personal-apps`, value `{"v":1,"at":"<UTC>","data":{"title":"Try my personal apps"},"by":<client>}`, where `<UTC>` is the clock's time from `date -u +%FT%TZ` (skill §1; run it again if it is more than 5 minutes old), never an estimate. If the `todos` app or its `todo` kind doesn't exist yet, write their catalog records first (skill §2 rule 2): `xyz.tinycloud.agent-data/catalog/todos` = `{"app":"todos","title":"Todos","about":"Things to do.","created":"<TODAY>","by":<client>}` and `xyz.tinycloud.agent-data/catalog/todos/todo` = `{"app":"todos","kind":"todo","about":"One record per thing to do.","shape":"item","states":["open","done"],"v":1,"fields":{"title":"text: what to do"}}`. Write commands are in skill §6. Get that key and its done twin `xyz.tinycloud.agent-data/todos/todo/done/try-my-personal-apps` first (skill §5), and skip saving if either exists, so a todo the owner already ticked off isn't saved again. Afterwards tell the owner the key, that “What’s on my todo list?” shows it, and that you'll delete it on request (the skill's `kv delete`, §6).
+For setup only, call `tinycloud_apps_context` with `app: "todos"` after the required sign-in and approvals. Follow its returned hosted rules and the live tool schemas: check the default todo and its done twin. If the owner has older TinyCloud app records, or says they do, don't create a same-name replacement; use the CLI Apps guide first. Create missing app/kind/discovery records only as those rules direct, and save “Try my personal apps” only if neither todo exists. Use the layout, keys, value fields and clock returned by the connected tools, not hard-coded CLI examples or shell commands. Read the saved record back before reporting success. CLI legacy-layout and migration instructions are not hosted-tool instructions.

@@ -2,9 +2,10 @@
 // Builds the agents.tinycloud.xyz site into _site/ for Cloudflare Pages.
 // Public URLs are short and flat; the repository layout is only for authoring:
 // - /<page> (/setup, /apps, /chat, …): the guides in PAGES, as Markdown;
-// - /connect: chat-app setup and a handoff to the unchanged coding guide for the
-//   request (/apps, /secrets, /publish, /chat or /courier), as HTML by default or
-//   Markdown via Accept; /connect.md is the same entry page.
+// - /onboarding and /connect (the `html` pages): HTML by default, Markdown via
+//   Accept or at /<page>.md. /onboarding sets up the owner's profile, sign-in and
+//   starting grant, then routes to the goal guide; /connect sends agents that can
+//   run the CLI to /onboarding and gives remote MCP clients their connector steps.
 // - /skills/<short>/<path>: every file of every skill in SKILLS, exactly as
 //   installed, SKILL.md included;
 // - /skills/<short>.md: the skill's SKILL.md to read on the web, with its
@@ -18,13 +19,14 @@
 // index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
 import { createHash } from "node:crypto";
-import { renderMatrix } from "./matrix.mjs";
+import { isUtf8 } from "node:buffer";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { Marked } from "marked";
 import { gfmHeadingId } from "marked-gfm-heading-id";
+import { CLI_VERSION } from "./install-cli.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
@@ -35,19 +37,75 @@ const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
 // docs/: internal notes, kept in the repository, never published.
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills"]);
+const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills", "standard"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
 
+// Shared blocks. The text every guide and skill must carry identically (the read-raw rule, and
+// the CLI rule, owner lines and exit table as they move in) is written once in standard/blocks.md,
+// split by `<!-- std:NAME -->` lines. A guide or skill carries `{{std:NAME}}` alone on a line; the
+// build expands it before anything else (links, {{CLI_VERSION}}, the preview host), so the
+// production and preview builds expand identically. standard/ is never published or listed.
+// The build fails on an unknown marker, a marker that isn't alone on its line, a block nothing
+// uses, a block with a relative link (it would resolve against whichever file carries it), and a
+// guide or skill that pastes a block's text instead of the marker.
+const STD = new Map();
+{
+  const [preamble, ...parts] = readFileSync(join(ROOT, "standard/blocks.md"), "utf8").split(/^<!-- std:([a-z][a-z0-9-]*) -->\n/m);
+  if (preamble.trim()) throw new Error("standard/blocks.md: text before the first <!-- std:NAME --> line");
+  for (let i = 0; i < parts.length; i += 2) {
+    const body = parts[i + 1].trim();
+    if (!body) throw new Error(`standard/blocks.md: std:${parts[i]} is empty`);
+    if (STD.has(parts[i])) throw new Error(`standard/blocks.md: std:${parts[i]} appears twice`);
+    if (/\]\((?!https?:|mailto:|#)/.test(body) || body.includes("{{std:")) throw new Error(`standard/blocks.md: std:${parts[i]} has a relative link or a nested marker`);
+    STD.set(parts[i], body);
+  }
+}
+const STD_USED = new Set();
+// Files that still carry a block's text pasted in: setup/share.md until prompts#147 (TC-2431), which edits it, lands.
+const STD_UNMIGRATED = new Set(["setup/share.md"]);
+function expandStd(text, file) {
+  if (!STD_UNMIGRATED.has(file)) {
+    for (const [name, body] of STD) if (text.includes(body)) throw new Error(`${file}: carries the text of std:${name} instead of {{std:${name}}}`);
+  }
+  const out = text.replace(/^\{\{std:([a-z][a-z0-9-]*)\}\}$/gm, (_, name) => {
+    const body = STD.get(name);
+    if (!body) throw new Error(`${file}: {{std:${name}}} isn't in standard/blocks.md`);
+    STD_USED.add(name);
+    return body;
+  });
+  const left = out.match(/\{\{std:[^\n]*/);
+  if (left) throw new Error(`${file}: ${left[0].slice(0, 60)} must be {{std:NAME}} alone on its line, naming a block`);
+  return out;
+}
+// Fetch tools such as Claude Code's WebFetch can hand the agent a summary that
+// keeps a page's first lines and drops its shell blocks. So every served
+// Markdown guide and skill opens with this line, above its title (a skill:
+// right after its front matter), naming its own Markdown URL: /<page>, /<page>.md
+// for the html pages, /skills/<short>.md for a skill's SKILL.md. The guides and
+// this repository's skills spell it out with the production URL, rewritten on a
+// preview like every other; released skills get it at build time. The build
+// fails without it. The html pages' rendered HTML, which owners see, leaves it out.
+const banner = (path, base = SITE, browserFetch = false) => browserFetch
+  ? `> **Agents: read this page in full, not summarized.** If your fetch tool returned a summary, open the raw page at ${base}/${path} and follow that text.\n\n`
+  : `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${base}/${path}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
+const frontMatter = (text) => text.match(/^---\n[\s\S]*?\n---\n\n*/)?.[0] ?? "";
+const opensWithBanner = (text, path, browserFetch) => text.slice(frontMatter(text).length).startsWith(banner(path, BASE, browserFetch));
+
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
+// `browserFetch` gives hosted chat clients a raw-page link instead of a curl command.
 // `unlisted`: served at its URL, but left out of llms.txt, llms-full.txt, sitemap.xml and the index page, and disallowed in robots.txt.
 const PAGES = [
+  { url: "onboarding", src: "setup/onboarding.md", html: true, redirectFrom: ["owner", "owner.md", "setup/owner.md"] },
   { url: "setup", src: "setup/README.md" },
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
-  { url: "owner", src: "setup/owner.md", unlisted: true },
   { url: "connect", src: "setup/connect.md", html: true },
+  ...["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes", "cli"].map((client) => ({
+    url: `connect/${client}`, src: `setup/connect/${client}.md`, html: true,
+    browserFetch: ["chatgpt", "claude", "gemini", "grok", "muse", "perplexity"].includes(client),
+  })),
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "feed", src: "skills/tinycloud-feed/creating-a-post.md" },
   { url: "publish", src: "setup/publish.md" },
@@ -63,14 +121,17 @@ const PAGES = [
 // checked against its sha512 `integrity`, so every build serves the same files.
 // `version` is used when SKILL.md has no metadata.version: the package's version.
 // `changes` adjusts a released file for this site: either [find, replace] pairs,
-// each of which must match exactly once, or a repository path whose file replaces it.
+// each of which must match exactly once (find is a string or a RegExp), or a
+// repository path whose file replaces it. On a preview, as in the guides, every
+// production URL in a skill's text files points at the preview, before the
+// files' checksums are taken.
 // `checkCli`: the build fails unless every served file of the skill runs the
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
 // /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
 // lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released CLI and Courier skills contain one of these exact resolvers (courier 0.1.3 and
-// CLI 1.2.3 end in `tc`; CLI 1.2.4 and later end in `tinycloud`). Replace it
-// in every published Markdown file, including the core skill's reference pages.
+// The released Courier skill preamble uses one of these exact resolvers. Keep the
+// site's data-only operator selection behavior in every served Markdown file.
+// The CLI skill has none since 1.5.0: its examples run `tinycloud` from the PATH.
 const upstreamResolver = (bin) => [
   `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
   `[ -n "\${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/${bin}"   # else a global npm install`,
@@ -81,13 +142,21 @@ const RESOLVER = [
   '{ set +x; } 2>/dev/null; umask 077',
   'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
   '[ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }',
-  'if [ -z "${TC_BIN:-}" ] && [ -r "$ENV_HELPER" ]; then',
-  '  TC_BIN=$(node "$ENV_HELPER" get TC_BIN) || { status=$?; [ "$status" -eq 1 ] || exit "$status"; }',
+  'if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then',
+  '  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :',
+  '  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi',
   'fi',
-  'TC="${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tc}"',
-  '[ -n "${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tc"',
+  'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
+  '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+// The guide owns the handoff and approval procedures embedded in its skill.
+const courierGuide = readFileSync(join(ROOT, "setup/courier.md"), "utf8");
+const courierHandoff = courierGuide.split("\n## Agent handoff contract\n")[1]?.split("\n## ")[0];
+const courierSetup = courierGuide.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+if (!courierHandoff || !courierSetup) throw new Error("Courier guide is missing its handoff or executable remote setup.");
+const COURIER_HANDOFF = `## Agent handoff contract\n${expandStd(courierHandoff.trim(), "setup/courier.md")}`;
+const COURIER_SETUP = `## Set up Courier once\n${expandStd(courierSetup.trim(), "setup/courier.md")}`;
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
 const BARE_TC = /(^[ \t]*|\|[ \t]*|\$\(|=\()tc(?=[ \t]|$)/gm;
@@ -98,125 +167,190 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.3.5",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.3.5.tgz",
-    integrity: "sha512-pVym0zg04yVvyIimZN4bVjWqApzKeiwToJyvgQ+yYGXL2VkehPiaVFR13TT5lVmxTqswC/tI8+ei5YutcZ8zGA==",
-    dir: "package/skills/tc-cli",
+    version: "1.6.5",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.5.tgz",
+    integrity: "sha512-9g1zTOHBJgFP2neUHH4m9WajiJchCrk65MYgC9vKy2zBMsej0EeUsATv3S+cHaXVavpSdHFPKddbXgn2vIm7gg==",
+    dir: "package/skills/tinycloud-cli",
     checkCli: true,
-  },
-  {
-    short: "courier",
-    version: "0.1.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.1.3.tgz",
-    integrity: "sha512-7QVW0zeu+5A+cb8axFVO2iZPOGbGC0DC4JDPqq68aaOj8DzRt+8J0gwC9tPV3U2bGGES2mOTquWKiOJTHeiVuA==",
-    dir: "package/skills/courier",
-    checkCli: true,
-  },
-  {
-    short: "chat",
-    tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.16/tinychat-retrieval-0.1.1-onboarding.16.tgz",
-    integrity: "sha512-uO016ryrnG0A1OR2d0xJs3jRPd+oPorb0oloRApnG5T28qReZZ35bteZgWqPhqf1Nme/rHuRX3qdmuhtsagV2A==",
-    dir: "package",
-    checkCli: true,
-    // The pack's scripts run `tc` from PATH, which on Linux is often the
-    // traffic-control tool. They now run TC_BIN if set (nothing else), else the
-    // `tinycloud` that agents.tinycloud.xyz/cli installs, else `tinycloud` on
-    // PATH; with none of them, CLI_UNAVAILABLE says to run /cli. Never `tc`.
-    changes: {
-      "lib/retrieval.mjs": [
-        ["import { constants, readFileSync } from 'node:fs';", "import { accessSync, constants, readFileSync } from 'node:fs';"],
-        ["import { tmpdir } from 'node:os';", "import { homedir, tmpdir } from 'node:os';"],
-        [
-          "CLI_UNAVAILABLE: 'TinyCloud CLI was not found. Install the supported release or supply --tc.',",
-          "CLI_UNAVAILABLE: 'TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN.',",
-        ],
-        [
-          "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */\nexport function createTcRunner({ executable = 'tc',",
-          [
-            "/** The TinyCloud CLI to run: TC_BIN if set, else the `tinycloud` agents.tinycloud.xyz/cli installs, else `tinycloud` on PATH. Never `tc`. */",
-            "export function defaultTc() {",
-            "  if (process.env.TC_BIN) return process.env.TC_BIN;",
-            "  const installed = join(homedir(), '.local/share/tinycloud/cli/node_modules/.bin/tinycloud');",
-            "  const onPath = (process.env.PATH || '').split(':').filter(isAbsolute).map(dir => join(dir, 'tinycloud'));",
-            "  for (const candidate of [installed, ...onPath]) { try { accessSync(candidate, constants.X_OK); return candidate; } catch { /* next */ } }",
-            "  return installed; // Missing: running it fails with ENOENT, reported as CLI_UNAVAILABLE.",
-            "}",
-            "",
-            "/** Only a literal executable and argument vector; never a shell or transcript-provided command. */",
-            "export function createTcRunner({ executable = defaultTc(),",
-          ].join("\n"),
-        ],
-      ],
-      "lib/setup.mjs": [
-        ["import { createTcRunner } from './retrieval.mjs';", "import { createTcRunner, defaultTc } from './retrieval.mjs';"],
-        ["manifestPath, executable = 'tc' })", "manifestPath, executable = defaultTc() })"],
-      ],
-      "lib/login.mjs": [
-        ["import { spawn } from 'node:child_process';", "import { spawn } from 'node:child_process';\nimport { defaultTc } from './retrieval.mjs';"],
-        ["CLI_UNAVAILABLE: 'TinyCloud CLI could not be started.',", "CLI_UNAVAILABLE: 'TinyCloud CLI not found: run https://agents.tinycloud.xyz/cli or set TC_BIN.',"],
-        ["{ executable = 'tc', input }", "{ executable = defaultTc(), input }"],
-      ],
-      "scripts/retrieve.mjs": [
-        ["--tc PATH (otherwise resolves tc on PATH; never uses a shell)", "--tc PATH (otherwise TC_BIN, then ~/.local/share/tinycloud/cli's tinycloud, then tinycloud on PATH; never tc, never a shell)"],
-      ],
-      "references/meetings.md": [
-        ["otherwise the helper resolves `tc` through PATH.", "otherwise the helper runs `TC_BIN` if set, else the `tinycloud` that https://agents.tinycloud.xyz/cli installs in `~/.local/share/tinycloud/cli`, else `tinycloud` on the PATH, and never `tc`. With none of them it stops with `CLI_UNAVAILABLE`."],
-      ],
-    },
-  },
-  {
-    short: "mcp",
-    version: "0.5.3",
-    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.5.3.tgz",
-    integrity: "sha512-DRCQ7qDZUTIH2fK+6WJUQYY2krNQI+i3LE5AN/JNnGY8W70JHLfB2aH0R5xV96RCFUtgFqUDiY8ryRyFO0dMEQ==",
-    dir: "package/skills/tinycloud-delegated-secrets",
     changes: {
       "SKILL.md": [
         [
-          "This surface uses local stdio only. It has no continuation tool, resources,\nprompts, elicitation, remote transport, generic permission grant, or secret\nmutation tool.",
-          "TinyCloud MCP has two transports: hosted Streamable HTTP at https://mcp.tinycloud.xyz/mcp, signed in with OpenKey, and local stdio. For current tools and setup, see https://docs.tinycloud.xyz/cli/mcp. Neither transport has resources, prompts, elicitation, a generic permission grant, or a secret mutation tool.",
+          /^Need more than onboarding grants\? Ask once[^\n]*$/m,
+          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. This command has no `--timeout` or pending-link result and blocks until the approval is resolved; run it in a persistent shell session that streams stderr and stays alive while you reply. Send the complete short URL on its own line as soon as it appears, then wait for the owner and read the final output. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not use a one-shot call or rerun blindly after interruption. See [AUTH.md](AUTH.md).",
         ],
         [
-          "## Account and KV exploration",
-          "## Hosted HTTP and local stdio\n\nWith hosted Streamable HTTP, call `tinycloud_connect`, give the owner the returned `approvalUrl` to approve in OpenKey, then call `tinycloud_connect` again. When a tool returns `authority_required` with `approval.url`, give the owner that link, wait for their approval, then retry the same call unchanged. If the result has no `approval.url`, stop and report it; don't try another route. The `tc auth request` / `tc auth import` and `tinycloud_auth_import` instructions below are for local stdio only. The `tc auth grant --stdin --yes` artifact, import, restart, and retry steps below apply to local stdio only; hosted operations use a returned `approval.url` as described above. See the [hosted MCP guide](https://docs.tinycloud.xyz/cli/mcp).\n\n## Account and KV exploration",
+          "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+          "Catalog installation requires `tinycloud.sql/schema` as well as the app's data permissions. The onboarding grant does not include that installation permission; obtain the app's required installation access before running this command:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
+        ],
+        [
+          "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.5`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+        ],
+        [
+          "Shares live in the owner's `default` space, so publish from a dedicated profile with one paste sign-in. Send the owner the link and pass their code to the CLI exactly as sent:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d\n```",
+          "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background (or an interactive session) with stdout and stderr going to files, never as a foreground tool call: it waits for the owner. Send the owner the complete `https://openkey.so/a/…` link exactly as printed on its own line on stderr, including everything after `#`; never retype or shorten it; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
+        ],
+      ],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.5 <2.0.0"']],
+      "AUTH.md": [
+        [
+          /^Keep the user's existing profiles:[^\n]*$/m,
+          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). This command has no `--timeout` or pending-link result and blocks until the approval is resolved; run it in a persistent shell session that streams stderr and stays alive while you reply. Send the actual short URL on its own line as soon as it appears, then wait for the owner and read the final output; use the shared exit table when it finishes. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not use a one-shot call or rerun blindly after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
+        ],
+        [
+          "The owner approves a scoped paste login whose manifest names the secrets.",
+          "The owner approves a scoped login whose manifest names the secrets.",
+        ],
+        [
+          "LOGIN=(tinycloud --profile agent-secrets auth login --method openkey --paste --manifest agent-secrets.json\n  --owner did:pkh:eip155:1:0xOWNER_ADDRESS --expiry 7d)\n\"${LOGIN[@]}\" < /dev/null   # exits 3 with PASTE_CODE_MISSING; its stderr names the approval URL\n# Send the owner that URL. After they approve and send back the code:\nprintf '%s\\n' \"$CODE\" | \"${LOGIN[@]}\"\n",
+          "LOGIN=(tinycloud --profile agent-secrets auth login --method openkey --no-popup --manifest agent-secrets.json\n  --owner did:pkh:eip155:1:0xOWNER_ADDRESS --expiry 7d)\n\"${LOGIN[@]}\" > login.out 2> login.err < /dev/null &   # in the background: it waits for the owner\n# Send the owner the complete https://openkey.so/a/… link from login.err exactly as printed (on its own line, including everything after `#`; never retype or shorten it). It exits 0 once they approve.\n",
+        ],
+        [
+          "- The approval URL depends only on the profile's session key and the request, so the same command run again accepts the owner's code from stdin. Write the code followed by a newline; a final line without one is also accepted. Nothing is saved until a code verifies.",
+          "- Run the login in the background (or an interactive session), never as a foreground tool call: it keeps waiting until the owner approves, then exits 0 with JSON on stdout. There's no code to send back. If it stops first, run it again the same way: it resumes the same pending link. A link that isn't approved in time fails with `APPROVAL_REQUEST_EXPIRED` (exit 3): run it again and send the new link.",
+        ],
+        [
+          "the agent sends the owner one message with a request link, redeems the consent short code if the owner approved a scoped login, then waits.",
+          "the agent sends the owner one message with a request link (plus the scoped-login link if the profile has no grant yet), lets that background login finish, then waits.",
+        ],
+        [
+          "# One message to the owner: the url (plus the scoped-login approval URL above if the profile has no grant yet).\n# If the owner sends back a consent short code, redeem it first:\nprintf '%s\\n' \"$CODE\" | \"${LOGIN[@]}\"\n",
+          "# One message to the owner: the url (plus the scoped-login approval link above if the profile has no grant yet).\n# If a scoped login is running in the background, wait for it to exit 0 first.\n",
+        ],
+        [
+          "tinycloud --profile PROFILE auth request --manifest FILE --grant --paste\n",
+          "tinycloud --profile PROFILE auth request --manifest FILE --grant --no-popup > request.out 2> request.err < /dev/null &   # in the background: it waits for the owner\n",
+        ],
+        [
+          "approve again with `tinycloud auth request --grant --paste`, then remove the old CID.",
+          "approve again with `tinycloud auth request --grant --no-popup` (in the background; send the owner the complete link exactly as printed, including everything after `#`), then remove the old CID.",
+        ],
+      ],
+      "REFERENCE.md": [
+        [
+          "tinycloud auth request --cap SPEC --grant --paste --expiry 30d   # more access: ask once\n",
+          "tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d > request.out 2> request.err < /dev/null &   # more access: ask once, in the background\n",
+        ],
+        [
+          "`tinycloud auth request --manifest FILE --grant --paste` adds another space to the onboarding profile: send the owner the link and pass their code to the CLI exactly as sent (",
+          "`tinycloud auth request --manifest FILE --grant --no-popup` adds another space to the onboarding profile: run it in the background, send the owner the complete link it prints on stderr exactly as printed, including everything after `#`, and it saves the grant itself (",
+        ],
+        [
+          "through a scoped OpenKey paste login with a manifest",
+          "through a scoped OpenKey login with a manifest",
+        ],
+        [
+          "tinycloud --profile agent auth login --method openkey --paste --manifest agent.json --owner did:pkh:eip155:1:0xOWNER < /dev/null\n# exits 3 (PASTE_CODE_MISSING) and names the approval URL; the owner approves and returns a code\nprintf '%s\\n' \"$CODE\" | tinycloud --profile agent auth login --method openkey --paste --manifest agent.json --owner did:pkh:eip155:1:0xOWNER\n",
+          "tinycloud --profile agent auth login --method openkey --no-popup --manifest agent.json --owner did:pkh:eip155:1:0xOWNER > login.out 2> login.err < /dev/null &\n# in the background: send the owner the complete https://openkey.so/a/… link from login.err exactly as printed (including everything after `#`; never retype or shorten it); it exits 0 once they approve\n",
+        ],
+        [
+          "`tinycloud init --name publisher --key-only`, then `tinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d`.",
+          "`tinycloud init --name publisher --key-only`, then, in the background, `tinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d` with the four-entry manifest in [SKILL.md](SKILL.md); send the owner the complete link it prints exactly as printed, including everything after `#`.",
+        ],
+      ],
+      "INSTALL.md": [
+        [
+          "curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent claude-code\ncurl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - courier --agent claude-code",
+          "mkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code",
+        ],
+        [
+          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`.",
+          "To remove the CLI, follow the Undo steps at https://agents.tinycloud.xyz/cli: it is installed in a private prefix, not globally.",
         ],
       ],
     },
   },
+  {
+    short: "courier",
+    version: "0.5.2",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.2.tgz",
+    integrity: "sha512-j1zGbKVNyFgP206+ufyAaWsYn+qBXwc8OQGtbsQB8Ceq1NdQYq6iM5LyeqIeck7DNG+hp3LXHd9dbqU/HHpmMw==",
+    dir: "package/skills/courier",
+    checkCli: true,
+    changes: {
+      "SKILL.md": [
+        [
+          "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
+          "Offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the two-choice flow in the Courier guide, https://agents.tinycloud.xyz/courier.",
+        ],
+        [
+          /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
+          COURIER_HANDOFF + "\n\nCourier uses its own COURIER_HOME and one restricted Courier approval; no general TinyCloud onboarding or CLI profile is required. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Complete the handoff prerequisite gates before the executable remote setup below.\n\n" + COURIER_SETUP,
+        ],
+      ],
+      "start.md": [
+        [
+          "Start Courier for me using the installed courier command. Reuse my existing Courier profile and restricted grant. If setup is required, use the normal courier init approval flow; do not request my owner key or broader permissions.",
+          "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote setup below: request one Courier approval, give me its exact openkeyUrl with one plain line, then collect my approval with courier init --wait --timeout 60s and run it again while it exits 8 (still pending, not a failure). Import a code only if I send one back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
+        ],
+        [
+          "use courier join '<exact link>' --consent instead of creating or selecting another chat.",
+          "use courier join '<exact link>' --consent --wait 60 instead of creating or selecting another chat. Each call waits at most a minute; while the issuer hasn't finished pairing it exits 1 with [invite-pending], so retry the same join without asking me, at most 10 times in a row.",
+        ],
+        [
+          "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
+          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.",
+        ],
+      ],
+    },
+  },
+  {
+    short: "chat",
+    tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz",
+    integrity: "sha512-o+kAbwivfO7kKQUyoaOlrYIREX7RUpb8X91SeBa/SjQkP01PcpmIei5n8N6B15UaFu8ftrajjgRt2eeUxtjG2Q==",
+    dir: "package",
+    // No `changes`: since 0.1.1-onboarding.25 the pack runs TC_BIN, else the
+    // `tinycloud` that /onboarding installs, else `tinycloud` on PATH. Never `tc`.
+    checkCli: true,
+  },
+  {
+    short: "mcp",
+    version: "0.9.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/mcp/-/mcp-0.9.0.tgz",
+    integrity: "sha512-TvgwJ80z1w4VSXyOZ3PthkdxiQHxGszrMjK8EJrgUykcf75zUf+L5XRcLXbMam8aR+L9jNlG2bSlzCiGvwaJrg==",
+    dir: "package/skills/tinycloud-delegated-secrets",
+  },
 ];
 
-// Abilities shown on the front page, in order.
+// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line, which
+// fetches `fetch` when the guide's Markdown lives at another URL than its page (/onboarding.md).
 const ABILITIES = [
+  {
+    title: "Set up TinyCloud",
+    url: "onboarding",
+    fetch: "onboarding.md",
+    text: "Your agent sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do.",
+    task: "Set me up with TinyCloud.",
+  },
   {
     title: "Personal records",
     url: "apps",
-    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go; each app has its own folder in your TinyCloud and its own approval.",
-    prompt: `Fetch ${BASE}/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`,
-    whole: true,
+    text: "Log, track and look up anything you keep records of, like meals, weight, workouts or todos. Your agent organises them into apps as you go; each app has its own folder in your TinyCloud.",
+    task: "Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.",
   },
   {
     title: "Home feed",
     url: "feed",
-    text: "Let your agent post owner-requested cards to TinyCloud Home from its own folder.",
-    prompt: "Post the updates I ask for to my TinyCloud Home feed. Follow:",
+    text: "Connect your agent to TinyCloud Home once; it posts the cards you ask for and reads your answers.",
+    task: "Post the updates I ask for to my TinyCloud Home feed.",
   },
   {
     title: "Publish",
     url: "publish",
-    text: "Publish a document or web page and get back a link, either private to you or public.",
-    prompt: "Publish this report and send me a private link. Use TinyCloud:",
+    text: "Publish a document or web page and get back a link that anyone who has it can open. Your agent asks you first.",
+    task: "Publish this report and send me a link.",
   },
   {
     title: "Secrets",
     url: "secrets",
     text: "Use API keys you keep in TinyCloud Secrets. The value never appears in the conversation. If a key is missing, your agent sends you a link to add it.",
-    prompt: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud:",
+    task: "Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.",
   },
   {
     title: "Meetings",
     url: "chat",
     text: "Ask about your TinyChat meetings: recaps, follow-ups and what was said.",
-    prompt: "How did my last meeting go? Check TinyCloud:",
+    task: "How did my last meeting go?",
   },
 ];
 
@@ -230,9 +364,25 @@ if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
   throw new Error("setup/agent.md agent-env.mjs pin differs from served helper");
 }
 
+// Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
+// package's version (`@tinycloud/cli 1.6.5`, `@tinycloud/cli@1.6.5`) names the pin. Markdown is served as
+// written, so each spells the pin out and must spell the installer's. Text may instead write {{CLI_VERSION}},
+// which render() fills in from install-cli.mjs (as /cli's blocked-install line and fallback commands do).
+const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));
+const stalePins = pinFiles.flatMap((path) =>
+  [...readFileSync(join(ROOT, path), "utf8").matchAll(/awk -F\. -v p=(\S+) |older than the pinned (\S+);|@tinycloud\/cli[@ ](\d+\.\d+\.\d+(?:-[0-9A-Za-z.]*[0-9A-Za-z])?)/g)]
+    .map((match) => match[1] ?? match[2] ?? match[3])
+    .filter((pin) => pin !== CLI_VERSION)
+    .map((pin) => `${path}: ${pin}`),
+);
+if (stalePins.length) throw new Error(`CLI version pins that differ from install-cli.mjs's ${CLI_VERSION}:\n  ${stalePins.join("\n  ")}`);
+
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
-const examplePrompt = (a) => (a.whole ? a.prompt : `${a.prompt} ${url(a.url)}`);
+// Every owner prompt names the guide to fetch raw and the installer it runs: Claude Code's auto mode
+// runs a downloaded installer when the owner's own prompt asked for it, and may refuse it otherwise.
+const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it, including running its installer. ${task}`;
+const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task);
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -294,6 +444,17 @@ async function loadSkill(skill) {
   }
   files.sort(([a], [b]) => (a < b ? -1 : 1));
   const changed = new Set();
+  if (!skill.tarball) {
+    // Repo-authored skills expand shared blocks like the guides do; a file that changes is listed as `changed`.
+    files = files.map(([path, body]) => {
+      if (!path.endsWith(".md") || !isUtf8(body)) return [path, body];
+      const text = body.toString("utf8");
+      const out = expandStd(text, `${skill.dir}/${path}`);
+      if (out === text) return [path, body];
+      changed.add(path);
+      return [path, Buffer.from(out)];
+    });
+  }
   for (const [path, change] of Object.entries(skill.changes || {})) {
     const i = files.findIndex(([p]) => p === path);
     if (i < 0) throw new Error(`${skill.short}: changes ${path}, which isn't in ${skill.tarball || skill.dir}`);
@@ -309,13 +470,44 @@ async function loadSkill(skill) {
     }
     changed.add(path);
   }
-  if (skill.short === "cli" || skill.short === "courier") {
+  if (skill.tarball) {
+    files = files.map(([path, body]) => {
+      if (path !== "SKILL.md") return [path, body];
+      changed.add(path);
+      const text = body.toString("utf8");
+      const front = frontMatter(text);
+      return [path, Buffer.from(front + banner(`skills/${skill.short}.md`) + text.slice(front.length))];
+    });
+  }
+  if (skill.short === "courier") {
+    files = files.map(([path, body]) => {
+      if (path !== "start.md") return [path, body];
+      changed.add(path);
+      const prompt = body.toString("utf8").replace(/\bcourier (?=start|init|join|invite|read|send)/g, '"$TC" courier ');
+      return [path, Buffer.from(`${COURIER_HANDOFF}\n\n${prompt.trimEnd()}\n\n${COURIER_SETUP}\n`)];
+    });
+  }
+  if (skill.short === "courier") {
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
-      const text = body.toString("utf8");
-      if (!UPSTREAM_RESOLVERS.some((upstream) => text.includes(upstream))) return [path, body];
+      let text = body.toString("utf8");
+      text = UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text);
+      if (skill.short === "cli") {
+        text = text.replace(SHELL_BLOCK, (block) => {
+          const commands = /(^[ \t]*|\|[ \t]*|\$\(|&&[ \t]*|;[ \t]*|=\()tinycloud(?=[ \t]|$)/gm;
+          if (!commands.test(block)) return block;
+          return block.replace(/\n/, `\n${RESOLVER}\n`).replace(commands, '$1"$TC"');
+        });
+      }
+      if (text !== body.toString("utf8")) changed.add(path);
+      return [path, Buffer.from(text)];
+    });
+  }
+  if (BASE !== SITE) {
+    files = files.map(([path, body]) => {
+      if (!body.includes(SITE) || !isUtf8(body)) return [path, body];
       changed.add(path);
-      return [path, Buffer.from(UPSTREAM_RESOLVERS.reduce((out, upstream) => out.replaceAll(upstream, RESOLVER), text))];
+      return [path, Buffer.from(body.toString("utf8").replaceAll(SITE, BASE))];
     });
   }
   const main = files.find(([path]) => path === "SKILL.md");
@@ -347,15 +539,16 @@ const route = new Map(copied.map((f) => [f, `/${f}`]));
 for (const p of PAGES) if (!route.has(p.src)) route.set(p.src, `/${p.url}`);
 for (const s of skills) if (!s.tarball) for (const f of s.files) route.set(`${s.dir}/${f.path}`, f.path === "SKILL.md" ? `/skills/${s.short}.md` : f.url);
 
-// A guide as published: relative links become absolute public URLs, and on a
-// preview every production URL points at the preview.
+// A guide as published: standard blocks expand, relative links become absolute public URLs,
+// {{CLI_VERSION}} becomes install-cli.mjs's pin, and on a preview every production URL points at the preview.
 function render(src) {
-  return readFileSync(join(ROOT, src), "utf8")
+  return expandStd(readFileSync(join(ROOT, src), "utf8"), src)
     .replace(/\]\((?!https?:|mailto:|#)([^)\s#]+)(#[^)\s]*)?\)/g, (_, target, hash = "") => {
       const to = route.get(posix.normalize(posix.join(posix.dirname(src), target)));
       if (!to) throw new Error(`${src}: links to ${target}, which is not published`);
       return `](${SITE}${to}${hash})`;
     })
+    .replaceAll("{{CLI_VERSION}}", CLI_VERSION)
     .replaceAll(SITE, BASE);
 }
 
@@ -371,12 +564,15 @@ for (const f of copied) {
   cpSync(join(ROOT, f), join(OUT, f));
 }
 write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
+write("install-cli.mjs", readFileSync(join(ROOT, "scripts/install-cli.mjs")));
 
 const pages = PAGES.map((p) => {
   const text = render(p.src);
   write(p.html ? `${p.url}.md` : p.url, text);
   return { ...p, text, ...describe(text, p.url) };
 });
+const unusedStd = [...STD.keys()].filter((name) => !STD_USED.has(name));
+if (unusedStd.length) throw new Error(`standard/blocks.md: no guide or skill carries {{std:${unusedStd.join("}}, {{std:")}}}`);
 const page = (name) => pages.find((p) => p.url === name);
 
 for (const s of skills) {
@@ -384,10 +580,27 @@ for (const s of skills) {
   write(`skills/${s.short}/SHA256SUMS`, s.files.map((f) => `${sha256(f.body)}  ${f.path}\n`).join(""));
   write(`skills/${s.short}.md`, s.text);
 }
+const unbannered = [
+  ...pages.map((p) => [p.html ? `${p.url}.md` : p.url, p.text, p.browserFetch]),
+  ...skills.flatMap((s) => [
+    [`skills/${s.short}.md`, s.text],
+    [`skills/${s.short}.md`, s.files.find((f) => f.path === "SKILL.md").body.toString("utf8")],
+  ]),
+].filter(([path, text, browserFetch]) => !opensWithBanner(text, path, browserFetch));
+if (unbannered.length) throw new Error(`guides and skills that don't open with the read-raw line for their own URL:\n  ${unbannered.map(([path]) => path).join("\n  ")}`);
 const installer = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
 const siteLine = `const SITE = "${SITE}";`;
 if (!installer.includes(siteLine)) throw new Error(`scripts/install-skill.js: no line ${siteLine}`);
 write("skills/install.js", installer.replace(siteLine, `const SITE = "${BASE}";`));
+// Preserve the published POSIX entry point while sharing one installer policy
+// with Windows. Download and execution remain separate agent tool calls.
+write("skills/install-cli.sh", `#!/bin/sh
+set -eu
+INSTALL_DIR=$(mktemp -d)
+trap 'rm -rf "$INSTALL_DIR"' EXIT
+curl -fsSL "${BASE}/install-cli.mjs" -o "$INSTALL_DIR/install.mjs"
+node "$INSTALL_DIR/install.mjs"
+`);
 
 write(
   "skills/index.json",
@@ -409,20 +622,6 @@ write(
   ) + "\n",
 );
 
-// The /apps setup downloads the skill's files by name, checks them against SHA256SUMS and copies them
-// by name, so those three lists must be the apps skill's file set, and SHA256SUMS must be index.json's checksums.
-const appsGuide = readFileSync(join(ROOT, "setup/tc-apps.md"), "utf8");
-const appsFiles = skills.find((s) => s.short === "apps").files.map((f) => f.path).sort();
-const curlLine = appsGuide.match(/curl -fsSL((?: -O "[^"\n]*\/skills\/apps\/[^"\n]+")+)/);
-if (!curlLine) throw new Error("setup/tc-apps.md: step 3 has no curl line for the apps skill's files");
-const fetched = [...curlLine[1].matchAll(/\/skills\/apps\/([^"\n]+)"/g)].map((m) => m[1]);
-if (!fetched.includes("SHA256SUMS") || JSON.stringify(fetched.filter((n) => n !== "SHA256SUMS").sort()) !== JSON.stringify(appsFiles)) {
-  throw new Error(`setup/tc-apps.md step 3 downloads ${fetched}, but the apps skill's files are SHA256SUMS and ${appsFiles}`);
-}
-const copies = [...appsGuide.matchAll(/ cp ((?:[\w.-]+ )+)"[^"\n]*\/tc-apps\/"/g)];
-if (copies.length !== 2 || copies.some(([, names]) => JSON.stringify(names.trim().split(" ").sort()) !== JSON.stringify(appsFiles))) {
-  throw new Error(`setup/tc-apps.md step 5 must copy exactly ${appsFiles}, in both the Claude Code and the Codex/OpenCode block`);
-}
 const servedIndex = JSON.parse(readFileSync(join(OUT, "skills/index.json"), "utf8"));
 for (const s of servedIndex.skills) {
   const sums = readFileSync(join(OUT, `skills/${s.short}/SHA256SUMS`), "utf8").trimEnd().split("\n");
@@ -491,8 +690,8 @@ const skillQueries = {
     "How do I add an update to my TinyCloud Home feed?",
   ],
   publish: [
-    "How can my agent publish a report and return a private link?",
-    "How can I make a published document public when I ask?",
+    "How can my agent publish a report and return a link?",
+    "How does my agent ask before it makes a link anyone can open?",
   ],
   secrets: [
     "How can my agent use a stored API key without showing its value?",
@@ -583,18 +782,23 @@ const listedPages = indexed.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides for chat apps and coding agents, backed by the owner's own TinyCloud space. Fetch the guide for the task and follow it in the same conversation. /connect serves HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
+  "> Setup guides for any AI agent, backed by the owner's own TinyCloud space: the TinyCloud CLI when the agent can install and run it, otherwise the hosted MCP. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
   "",
-  `Start at ${url("connect")} for personal records in ChatGPT, Claude or a coding agent. ${url("setup")} lists every coding-agent ability, what it does, and what the owner approves. Only the coding-agent setup needs a local shell, Node.js 22.20 or later and npm.`,
+  `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
+  "",
+  "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
+  "",
+  "Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.",
   "",
   "## Abilities",
   "",
-  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${examplePrompt(a)}"`),
+  ...ABILITIES.map((a) => `- [${a.title}](${url(a.url)}): ${a.text} Example prompt: "${abilityPrompt(a)}"`),
   "",
   "## Guides",
   "",
   `- [${page("setup").title}](${url("setup")}): ${page("setup").desc}`,
-  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}`),
+  // /onboarding is where setup starts, so its guide entry carries the set-up example too.
+  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}${p.url === "onboarding" ? ` Example prompt: "${abilityPrompt(ABILITIES.find((a) => a.url === "onboarding"))}"` : ""}`),
   "",
   "## Skills",
   "",
@@ -603,7 +807,7 @@ const llms = [
   "## Optional",
   "",
   `- [Full text](${url("llms-full.txt")}): every guide and skill above in one file.`,
-  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one with \`curl -fsSL ${url("skills/install.js")} | node - <short name> --agent <claude-code|codex|opencode>\`.`,
+  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one by downloading the installer, then running it in a separate shell call: \`mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" ${url("skills/install.js")}\`, then \`node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
   `- [Source repository](https://github.com/TinyCloudLabs/prompts): where the guides and TinyCloud's own skills are written.`,
   "",
 ].join("\n");
@@ -617,7 +821,7 @@ write(
     .join("\n"),
 );
 
-const sitemapPaths = ["", ...indexed.map((p) => p.url), "matrix", "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
+const sitemapPaths = ["", ...indexed.map((p) => p.url), "llms.txt", "llms-full.txt", ...skills.map((s) => `skills/${s.short}.md`)];
 write(
   "sitemap.xml",
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -678,19 +882,20 @@ const style = `  <style>
     a { color: #0b57d0; }
     footer { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; color: #555; }
   </style>`;
-const connect = page("connect");
+// Each html page: rendered HTML at /<url>, its Markdown at /<url>.md (functions/<url>.js negotiates).
 const markdownRenderer = new Marked(gfmHeadingId());
-write(
-  "connect.html",
-  `<!doctype html>
+for (const p of pages.filter((p) => p.html)) {
+  write(
+    `${p.url}.html`,
+    `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${esc(connect.title)} · TinyCloud</title>
-  <meta name="description" content="${esc(connect.desc)}">
-  <link rel="canonical" href="${esc(url("connect"))}">
-  <link rel="alternate" type="text/markdown" href="/connect.md">
+  <title>${esc(p.title)} · TinyCloud</title>
+  <meta name="description" content="${esc(p.desc)}">
+  <link rel="canonical" href="${esc(url(p.url))}">
+  <link rel="alternate" type="text/markdown" href="/${p.url}.md">
 ${style}
   <style>
     h2 { margin-top: 2.5rem; border-top: 1px solid #ddd; padding-top: 1rem; }
@@ -699,23 +904,26 @@ ${style}
     pre code { padding: 0; }
     blockquote { margin: 1rem 0; padding: 0.25rem 1rem; border-left: 3px solid #0b57d0; background: #f2f2f2; overflow-wrap: anywhere; }
     li { margin: 0.4rem 0; }
+    table { border-collapse: collapse; }
+    th, td { border-top: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
   </style>
 </head>
 <body>
   <main>
-${markdownRenderer.parse(connect.text)}
+${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE, p.browserFetch).length))}
   </main>
 </body>
 </html>
 `,
-);
+  );
+}
 
 const card = (a) => `      <li>
         <h3><a href="/${a.url}">${esc(a.title)}</a></h3>
         <p>${esc(a.text)}</p>
-        <p>Try: <code>${esc(examplePrompt(a))}</code></p>
+        <p>Try: <code>${esc(abilityPrompt(a))}</code></p>
       </li>`;
-const desc = "Paste one line into your coding agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
+const desc = "Paste one line into your AI agent. It reads the setup from this site and does the job with your data, kept in your own TinyCloud space.";
 write(
   "index.html",
   `<!doctype html>
@@ -733,12 +941,12 @@ ${style}
   <main>
     <h1>Give your agent abilities</h1>
     <p>${esc(desc)}</p>
-    <p>Works with agents that can run commands: Claude Code, Codex and OpenCode. Needs Node.js 22.20 or later.</p>
-    <p>Everything starts at <a href="/setup"><code>${esc(url("setup"))}</code></a>: what each ability does, what to paste, what you approve and how to undo it.</p>
+    <p>Works with any agent that can install and run the TinyCloud CLI (Node.js 20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
+    <p>Everything starts at <a href="/onboarding"><code>${esc(url("onboarding"))}</code></a>. <a href="/setup">/setup</a> lists what each ability does, what to paste, what you approve and how to undo it.</p>
 
     <h2>How it works</h2>
     <ol>
-      <li><strong>Paste a prompt.</strong> Say what you want, then add a link to the ability.</li>
+      <li><strong>Paste a prompt.</strong> It links the ability's page, asks your agent to run its installer, and says what you want.</li>
       <li><strong>Your agent reads the setup.</strong> It installs what it needs and shows you an OpenKey link, where you approve exactly what it may access.</li>
       <li><strong>It does the thing.</strong> Your agent finishes your request in the same conversation, with your data in your TinyCloud space.</li>
     </ol>
@@ -758,16 +966,12 @@ ${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<co
     <ul>
 ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
-    <p><a href="/matrix">How many steps each skill asks of you</a></p>
   </main>
-  <footer>Agents: start at <a href="/setup">/setup</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
+  <footer>Agents: start at <a href="/onboarding">/onboarding</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
 </body>
 </html>
 `,
 );
-
-// /matrix: steps each skill asks of the owner, from matrix/interactions.json.
-write("matrix.html", renderMatrix(JSON.parse(readFileSync(join(ROOT, "matrix/interactions.json"), "utf8")), style));
 
 // Without a 404 page, Pages serves index.html with 200 for missing paths.
 write(
@@ -777,7 +981,10 @@ write(
 
 // Every released CLI/Courier Markdown block has the persisted-selection
 // resolver; no upstream process/private/global-only resolver may survive.
-// Other checked skills use their own explicit CLI selection.
+// Other checked skills use their own explicit CLI selection. On a preview, the
+// resolvers' install URL points at the preview, like the rest of the skill.
+const servedResolver = RESOLVER.replaceAll(SITE, BASE);
+const servedUpstream = UPSTREAM_RESOLVERS.map((resolver) => resolver.replaceAll(SITE, BASE));
 const SCRIPT_TC = /\bexecutable\s*=\s*['"]tc['"]|\b(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)\(\s*['"]tc\b|\breturn\s+['"]tc['"]/;
 const wrongCli = skills
   .filter((s) => s.checkCli)
@@ -785,10 +992,10 @@ const wrongCli = skills
     s.files.flatMap((f) => {
       const text = f.body.toString("utf8");
       const lookups = text.split("npm prefix --global").length - 1;
-      const upstream = UPSTREAM_RESOLVERS.some((resolver) => text.includes(resolver));
+      const upstream = servedUpstream.some((resolver) => text.includes(resolver));
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
       const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
-      return !upstream && lookups === text.split(RESOLVER).length - 1 && !bare && !scriptDefault ? [] : [f.url];
+      return !upstream && lookups === text.split(servedResolver).length - 1 && !bare && !scriptDefault ? [] : [f.url];
     }),
   );
 if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);
