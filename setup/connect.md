@@ -18,6 +18,8 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 Those guides are the authority for prerequisites, installation, permissions, sign-in, troubleshooting and cleanup. If you can run the CLI, don't use the MCP steps below. Where a guide asks for your client, use yours; any other agent uses `codex` (its skills go in `~/.agents/skills`).
 
+Optional, for Codex in workspace-write mode: if you trust the project, start Codex with `codex -c sandbox_workspace_write.network_access=true`. Commands Codex runs can then reach [any website](https://learn.chatgpt.com/docs/agent-approvals-security#network-access) without asking, so you'll see fewer network prompts. Your other sandbox and approval settings stay the same.
+
 **Context:** “remember that …”, a question about what the owner told an agent before, or “pick up where I left off” → [/apps](tc-apps.md) too: its skill keeps the owner's context for every agent on this computer.
 
 **Agents that can't run the CLI but support remote MCP with OAuth:** use the applicable steps below. Do not run the CLI setup in a temporary code sandbox. The hosted MCP keeps personal records (apps, key-value and SQL data) and reads named secrets. It has no meeting, sharing or publishing tools yet; those use the CLI route.
