@@ -257,19 +257,29 @@ test("/connect sends an agent that can run the CLI to /onboarding and gives each
   }
 });
 
-test("tc-apps sends an agent with no onboarded profile through /onboarding before any scoped sign-in", () => {
+test("tc-apps onboards generic apps first and keeps Health Log on its dedicated profile", () => {
   const site = join(root, "_site");
   const onboarding = "https://agents.tinycloud.xyz/onboarding";
-  const catalog = readFileSync(join(site, "skills/apps/TINY-APPS.md"), "utf8");
-  for (const file of ["apps", "skills/apps/SKILL.md", "skills/apps/TINY-APPS.md"]) {
+  for (const file of ["apps", "skills/apps/SKILL.md"]) {
     const rules = readFileSync(join(site, file), "utf8").split("\n").filter((line) => line.includes("`onboard-first`") && line.includes(onboarding));
     assert.equal(rules.length, 1, file);
-    assert.match(rules[0], /original request/, file);
-    assert.match(rules[0], /rerun/, file);
-    assert.match(rules[0], /cannot run onboarding/, file);
+    assert.match(rules[0], /generic apps?/);
+    assert.match(rules[0], /original request/);
+    assert.match(rules[0], /rerun/);
   }
-  const scoped = catalog.split("\n### Scoped setup without onboarding\n")[1].trim().split("\n")[0];
-  assert.match(scoped, /only after `use-scoped-catalog-flow`, or after `onboard-first` when you cannot run onboarding/);
+  const catalog = readFileSync(join(site, "skills/apps/TINY-APPS.md"), "utf8");
+  assert.match(catalog, /Health Log always uses its own app-scoped profile and approval/);
+  assert.match(catalog, /never use the onboarded profile for Health Log/);
+  assert.match(catalog, /Check only the existing Health Log app grant on `agent-meal`, not a broad onboarding grant/);
+  assert.match(catalog, /--profile agent-meal auth request --preset apps-agent --write --app xyz\.tinycloud\.sample\.healthlog --emit/);
+  assert.match(catalog, /### Health Log's per-app access/);
+  const recipeOnboarding = catalog.split("\n\n").find((paragraph) => paragraph.includes("onboard-first") && paragraph.includes(onboarding));
+  assert.ok(recipeOnboarding);
+  assert.match(recipeOnboarding, /For Recipes, fetch the onboarding guide raw/);
+  assert.match(recipeOnboarding, /keeping the owner's original request/);
+  assert.match(recipeOnboarding, /The owner's request is the go-ahead/);
+  assert.match(recipeOnboarding, /rerun the check above/);
+  assert.match(recipeOnboarding, /Never use this check or its profile for Health Log/);
 });
 
 test("onboarding keeps optional-skill continuation guidance", () => {
