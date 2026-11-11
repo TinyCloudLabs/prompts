@@ -134,8 +134,6 @@ test("blocking auth request guidance covers every authored surface that invokes 
     ["onboarding", read("setup/onboarding.md")],
     ["served onboarding", served("onboarding.md")],
     ["tc-apps", read("skills/tc-apps/SKILL.md")],
-    ["tc-apps TINY-APPS", read("skills/tc-apps/TINY-APPS.md")],
-    ["served tc-apps TINY-APPS", served("skills/apps/TINY-APPS.md")],
     ["tc-apps SQL", read("skills/tc-apps/SQL.md")],
     ["served tc-apps SQL", served("skills/apps/SQL.md")],
     ["served tc-apps", served("skills/apps/SKILL.md")],
@@ -150,6 +148,12 @@ test("blocking auth request guidance covers every authored surface that invokes 
     assert.match(text, /persistent shell session that streams stderr and stays alive while you reply/);
     assert.match(text, /If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow/);
   }
+});
+test("tc-apps catalog keeps request artifacts separate from the blocking app grant", () => {
+  const catalog = read("skills/tc-apps/TINY-APPS.md");
+  assert.match(catalog, /auth request --preset apps-agent --write --app xyz\.tinycloud\.sample\.healthlog --emit/);
+  assert.match(catalog, /`auth grant` in CLI `1\.6\.5` prints a short OpenKey link and waits until the owner approves it/);
+  assert.match(catalog, /Do not close stdin, hide stderr, or run it as a non-interactive one-shot shell call/);
 });
 
 test("onboarding describes the status lines emitted for exit 3", () => {

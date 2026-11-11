@@ -8,7 +8,7 @@ DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "$1" in
   healthlog) NAME='Health Log'; MARK=owner-approved; ACCESS="read it, add, change and delete its entries, save notes and preference files in it, and it can create, change and delete this app's tables" ;;
   recipes) NAME=Recipes; MARK=recipes-owner-approved; ACCESS='read it, add, change and delete its entries, save notes and preference files in it' ;;
-  *) echo 'usage: sh announce.sh healthlog | recipes' >&2; exit 2 ;;
+  *) echo 'usage: sh announce.sh healthlog | sh announce.sh recipes' >&2; exit 2 ;;
 esac
 if [ ! -f "$DIR/$MARK" ]; then KIND=FIRST; elif [ "$AGENT_INSTALL_ENABLED" = true ]; then KIND=APPROVED-ON; else KIND=APPROVED-OFF; fi
 echo "STATE: $KIND"

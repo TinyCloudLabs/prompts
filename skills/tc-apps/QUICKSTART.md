@@ -21,7 +21,7 @@ The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tiny
 1. It checks Node.js and npm. If either is missing, or Node.js is older than 20, it stops and tells you; it doesn't install them.
 2. It reuses the CLI from shared setup, or installs (or upgrades) one private copy in `~/.local/share/tinycloud/cli`. Unrelated commands on PATH are preserved.
 3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
-4. It checks existing grants and actual app access, then carries out the requested record operation. Only missing permissions need approval.
+4. Health Log always asks for its own permission, even if you've finished onboarding. Other apps reuse access you've already approved when it covers what they need, and ask only for what's missing.
 
 No shell profile to edit, variables to set or client to restart. The agent reads the installed skill directly. In a future conversation that has not discovered it, paste the setup link again; the agent uses the installed files and carries on.
 
@@ -35,14 +35,14 @@ Claude Code and Codex may also ask whether you trust a folder.
 
 ## What you see at sign-in
 
-If you already completed onboarding, its application grants are reused. A new app does not automatically mean another sign-in. If you haven't, the agent runs [onboarding](https://agents.tinycloud.xyz/onboarding) first and then carries on with your request. When more access is needed:
+Health Log always uses its own app-specific permission, even if onboarding is complete. Only a live Health Log grant on its dedicated profile can be reused. Generic apps may reuse onboarding access when it covers the task.
 
-1. The agent checks the selected owner's current permissions.
-2. It describes only the missing access and sends the actual short OpenKey URL on its own line.
+1. The agent checks only the selected app-specific grant for Health Log.
+2. When that grant is missing or expired, it describes the app access and sends the actual short OpenKey URL on its own line.
 3. You open it on your computer or phone and review the scope and expiry before approving.
-4. The waiting CLI retrieves the approval automatically and the agent saves and reads back your record. No code or terminal command is needed.
+4. The waiting CLI retrieves the app permission automatically and the agent saves and reads back your record. If the dedicated profile needs sign-in, OpenKey may show a short code; the agent asks you to paste that code in chat. The app-permission link itself needs no code or terminal command.
 
-After an interruption, the agent resumes the same command/profile. The older narrow Health Log/Recipes fallback still uses manual codes and longer links; the normal onboarding path avoids it. Agents sharing the same profile store also share its existing grants.
+After an interruption, the agent resumes the same command/profile. Do not use the broader onboarding profile for Health Log.
 
 ## What you can ask
 
@@ -53,7 +53,7 @@ After an interruption, the agent resumes the same command/profile. The older nar
 - "Add a todo: renew my passport." This starts a `todos` app. "Passport renewed" marks the todo done.
 - "What do you keep for me?", "How far am I from my goal?", "My bench volume last week?"
 
-When the agent creates an app or kind, it tells you in one line. Meals, weight and recipes go to Health Log or Recipes. Existing onboarding access is reused rather than requiring a new approval per catalog app.
+When the agent creates an app or kind, it tells you in one line. Meals, weight and recipes go to Health Log or Recipes. Health Log always uses its separate app-specific grant; generic apps may reuse onboarding access when it covers them.
 
 ## Context: switch agents, keep what you told them
 
