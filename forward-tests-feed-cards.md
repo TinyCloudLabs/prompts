@@ -73,7 +73,7 @@ Not covered by the guide's own text: lines 11 and 53 are each longer than 800 ch
 
 ## Fields the real feed does not support yet
 
-`tinycloud feed publish` (CLI 1.6.5) stores `payload` as sent, so every field below survives publishing. What's missing is Home, which doesn't read or show them:
+`tinycloud feed publish` (CLI 1.6.5) stores `payload` as sent, so every field below survives publishing. What's missing is Home, which doesn't read or show them. Rows marked v2 are new in guide 0.4.0; the lab names come from the lab builder's `MERGE-NOTES.md` (tinychat `holden/feed-lab`, uncommitted on 11-12).
 
 | Field | Lab | tinychat main | Needed for |
 | --- | --- | --- | --- |
@@ -84,6 +84,13 @@ Not covered by the guide's own text: lines 11 and 53 are each longer than 800 ch
 | `payload.agent.job` | shown after the agent name | not read anywhere | job / role |
 | "Received" / "Replied" comment status | yes | main shows "{agent} got it" for an acknowledged comment; no replied state | comment status |
 | Page answer progress ("N of M answered") | in-memory drafts only | no | partial page answers |
+| v2 `payload.priority` (0 highest to 5) | "P0"…"P5" mark, filter, "Priority first" | not read; main sorts plain cards by `urgency` only, so the guide sets `urgency = 5 - priority` | priority |
+| v2 `payload.brief` (`title`, `markdown` or `url`) | `BriefSheet`: full screen on phones, dialog on wide screens | not read | the one-page brief |
+| v2 `payload.deadline` | "Due …" on the card, "Due first" order | not read on plain cards; main reads `deadline` only inside a typed sitrep record | deadline |
+| v2 `payload.expiresAt` | past it, the card leaves every view and shows under History as "Expired" | not read on plain cards | expiry. Sam may merge expiry and deadline into one field: the lab keeps two until he decides. |
+| v2 "Ask me later" reaching the agent: a `message` with payload `{type: "feed.snooze", version: 1, data: {until}}` and text `Ask me later: <until>` | private: the snooze is saved for the owner only | private `feed_view_events` row; the agent never hears | telling the agent the owner snoozed its card. The guide's §7 rule 4 and these tests use this proposed shape; Home has to write it. |
+| v2 "Received" = the agent's `acknowledged` handling, written by the agent itself when the watcher wakes it | "Received"; "Not confirmed · Send again" after 30 s without one | "{agent} got it" on answers | comment status. 30 s matches the watcher: acknowledgements in round 5 came in … (below). |
+| v2 `feed watch --once` and JSON lines | n/a | n/a | needs the CLI from js-sdk#936; the guide's CLI pin (1.6.5) must move to the release that has it. |
 
 Constraints the guide works around:
 - Responses and handling are tied to the exact `cardId`/`revision`/`issuanceId`.
