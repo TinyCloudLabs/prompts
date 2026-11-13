@@ -87,7 +87,7 @@ foreach ($Target in ($Targets | Sort-Object -Unique)) {
 Remove-Item -Recurse -Force $D
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.4.2 <folder>` (or a newer skill) for each target. The installer verifies every file before replacing a skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.4.3 <folder>` (or a newer skill) for each target. The installer verifies every file before replacing a skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
@@ -96,7 +96,7 @@ If something goes wrong:
 - **Claude Code (or your client) denies a step or asks to confirm it:** show the owner the step and what it does, then ask them to reply naming that step, as in [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). Run it again only once they agree. Don't edit settings or run it another way.
 - **A command, download or checksum check fails:** stop and report the error. Don't retry with other options, in another folder or from another source.
 
-Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.2` (or a newer version) for every target.
+Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.3` (or a newer version) for every target.
 
 
 ## 3. Carry on with the skill
@@ -106,11 +106,11 @@ Read the installed skill with three shell calls in order; together they are the 
 Claude Code uses its TinyCloud plugin path when set; otherwise it reads its user installation:
 
 ```sh
-if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "${CLAUDE_SKILL_DIR}/SKILL.md"; else sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"; fi
+if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed '/^## 2\. How the records are organised$/,$d' "${CLAUDE_SKILL_DIR}/SKILL.md"; else sed '/^## 2\. How the records are organised$/,$d' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"; fi
 ```
 
 ```sh
-if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "${CLAUDE_SKILL_DIR}/SKILL.md" | sed '$d'; else sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md" | sed '$d'; fi
+if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed -n '/^## 2\. How the records are organised$/,/^## 4\. Request only missing access$/p' "${CLAUDE_SKILL_DIR}/SKILL.md" | sed '$d'; else sed -n '/^## 2\. How the records are organised$/,/^## 4\. Request only missing access$/p' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md" | sed '$d'; fi
 ```
 
 ```sh
@@ -120,11 +120,11 @@ if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then
 Codex and OpenCode:
 
 ```sh
-sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "$HOME/.agents/skills/tc-apps/SKILL.md"
+sed '/^## 2\. How the records are organised$/,$d' "$HOME/.agents/skills/tc-apps/SKILL.md"
 ```
 
 ```sh
-sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "$HOME/.agents/skills/tc-apps/SKILL.md" | sed '$d'
+sed -n '/^## 2\. How the records are organised$/,/^## 4\. Request only missing access$/p' "$HOME/.agents/skills/tc-apps/SKILL.md" | sed '$d'
 ```
 
 ```sh

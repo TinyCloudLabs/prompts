@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records and context (facts and preferences, decisions, handoffs between agents) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, tells you to remember something about them, asks about something they told an agent before, or asks you to continue or pick up an earlier task, even if they don't mention TinyCloud. The owner approves any missing access through OpenKey; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.4.2"
+  version: "0.4.3"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/apps.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -66,6 +66,7 @@ The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domain
 ```sh
 B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
 if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
+case "$B" in */tc) [ -x "${B%/tc}/tinycloud" ] && B="${B%/tc}/tinycloud" ;; esac
 O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$P" || O=
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || B=
@@ -83,7 +84,7 @@ if [ -n "$B" ]; then
 fi
 ```
 
-It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per line.
+It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per line. If the selected path is `tc` (the legacy alias, which prints a notice on every call), the check uses the `tinycloud` beside it instead, when there is one.
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id, for generic apps. Health Log instead uses its validated owner timezone and fresh clock from `healthlog-context.mjs` (`TINY-APPS.md` §4).
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
 - `TC_BIN is unset` → follow the shared CLI setup, then continue this request with the path from its `TC_SELECTED`. Do not install a second CLI.
@@ -260,29 +261,29 @@ TC_BIN='<TC_BIN>'; umask 077
 
 It prints `{"key": …, "data": <record>, …}`. `NOT_FOUND` → there's no record at that key.
 
-**Does a record exist?** Read it with `kv get` on its key: it prints the record, or `NOT_FOUND` (exit 4) when there is none. To check without reading the record, list with the key as the prefix (the folder block below) and look for that exact key in `keys`. Only an exact match counts, because a longer key can start with the same prefix. Don't use `kv head`: the app's own access doesn't cover it, so it fails with `AUTH_REQUIRED`, and that is no reason to request more access.
+**Does a record exist?** Read it with `kv get` on its key: it prints the record, or `NOT_FOUND` (exit 4) when there is none. To check without reading the record, list with the key as the prefix (the folder block below) and look for that exact key in `keys`. Only an exact match counts, because a longer key can start with the same prefix. Don't use `kv head`: the app's own access doesn't cover it, so the CLI fails with `PERMISSION_DENIED` (exit 5) and a hint to request a new capability. Don't follow that hint: it is no reason to request more access.
 
 What's in one or more folders, side by side:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
 D=$(mktemp -d)
-printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} sh -c '"$0" --profile "<APP_PROFILE>" --host "<APP_HOST>" kv list --prefix "$1" --space "<APP_SPACE>" --all --json > "$2/$(printf %s "$1" | tr / %).json" 2>&1' "$TC_BIN" {} "$D"
-cat "$D"/*.json; rm -rf "$D"
+printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} sh -c 'f="$2/$(printf %s "$1" | tr / %)"; "$0" --profile "<APP_PROFILE>" --host "<APP_HOST>" kv list --prefix "$1" --space "<APP_SPACE>" --all --json > "$f.json" 2> "$f.err"' "$TC_BIN" {} "$D"
+cat "$D"/*.json; cat "$D"/*.err >&2; rm -rf "$D"
 ```
 
-A prefix ends with `/`: a month folder (`<ID>/lift/2026-10/`), a whole kind (`<ID>/lift/`), or an item state (`<ID>/todo/open/`). Each prints `{"keys": […], "count": …, "prefix": …}`. Each command writes its own file, so large output from one never mixes into another's.
+A prefix ends with `/`: a month folder (`<ID>/lift/2026-10/`), a whole kind (`<ID>/lift/`), or an item state (`<ID>/todo/open/`). Each prints `{"keys": […], "count": …, "prefix": …}`. Each command writes its own output and error files, so large output from one never mixes into another's and a CLI notice never lands in the JSON.
 
 Several records, side by side:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
 D=$(mktemp -d)
-printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c '"$0" --profile "<APP_PROFILE>" --host "<APP_HOST>" kv get "$1" --space "<APP_SPACE>" --json > "$2/$(printf %s "$1" | tr / %).json" 2>&1' "$TC_BIN" {} "$D"
-cat "$D"/*.json; rm -rf "$D"
+printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c 'f="$2/$(printf %s "$1" | tr / %)"; "$0" --profile "<APP_PROFILE>" --host "<APP_HOST>" kv get "$1" --space "<APP_SPACE>" --json > "$f.json" 2> "$f.err"' "$TC_BIN" {} "$D"
+cat "$D"/*.json; cat "$D"/*.err >&2; rm -rf "$D"
 ```
 
-It prints one JSON object per key, in any order, so match them by `"key"`. Each key's output is its own file, so a large record (tens of KB) stays whole: never send several `kv get` outputs into one pipe with `xargs -P`, because they interleave and break the JSON. A key you asked for that's missing from the output failed, and its error is printed instead:
+It prints one JSON object per key, in any order, so match them by `"key"`. Each key gets its own output file and error file, so a large record (tens of KB) stays whole and a CLI notice never lands in the JSON. Never send several `kv get` outputs into one pipe with `xargs -P`: they interleave and break the JSON. A key you asked for that's missing from the output failed, and its error is printed on stderr instead:
 - `NOT_FOUND` → the record is gone.
 - anything else → usually a network hiccup: read that key once more.
 
