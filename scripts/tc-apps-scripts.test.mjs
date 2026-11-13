@@ -965,3 +965,66 @@ test("CONTEXT.md files a coffee order as a preference, a birthday or home city a
   assert.match(runbook, /\| A \|[^\n]*writes `preference\/coffee-order`/);
   assert.match(runbook, /\| B \|[^\n]*gets `preference\/coffee-order`/);
 });
+
+// ---- TC-2915: SKILL.md §1 and §5 blocks, run as written against a stand-in for the legacy `tc` alias ----
+const skillText = () => readFileSync(join(skill, "SKILL.md"), "utf8");
+// The first fenced `sh` block after `marker`.
+const blockAfter = (text, marker) => {
+  const at = text.indexOf(marker);
+  assert.ok(at >= 0, marker);
+  const open = text.indexOf("```sh\n", at);
+  return text.slice(open + 6, text.indexOf("\n```", open));
+};
+// A CLI that prints the alias's notice on stderr for every call, then behaves like `kv get` / `kv list`.
+const aliasStub = (dir, name, version = "1.6.5") => {
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, name);
+  writeFileSync(file, `#!/usr/bin/env node
+const argv = process.argv.slice(2);
+process.stderr.write("${name} is now tinycloud; ${name} will keep working for now.\\n");
+if (argv[0] === "--version") { console.log("${version}"); process.exit(0); }
+const at = argv.indexOf("get") >= 0 ? argv.indexOf("get") : argv.indexOf("list");
+const arg = argv[at] === "get" ? argv[at + 1] : argv[argv.indexOf("--prefix") + 1];
+if (argv[at] === "get" && arg.includes("missing")) {
+  process.stderr.write(JSON.stringify({ error: { code: "NOT_FOUND", message: "Key not found" } }) + "\\n");
+  process.exit(4);
+}
+// 60-90 KB, written in small pieces so that output sharing one pipe would interleave.
+const out = JSON.stringify(argv[at] === "get" ? { key: arg, data: { note: "x".repeat(60000 + arg.length * 1000) } } : { keys: [arg + "a"], count: 1, prefix: arg, pad: "y".repeat(70000) }) + "\\n";
+(async () => { for (let i = 0; i < out.length; i += 4096) { process.stdout.write(out.slice(i, i + 4096)); await new Promise((r) => setTimeout(r, 2)); } })();
+`, { mode: 0o755 });
+  return file;
+};
+
+test("tc-apps §5 (TC-2915): batch reads give clean JSON on stdout when the CLI prints a notice on stderr, and the errors go to stderr", () => {
+  const h = fresh();
+  const tc = aliasStub(join(h.dir, "bin"), "tc");
+  const text = skillText();
+  const keys = ["app/a/1", "app/a/2", "app/b/3", "app/missing/4", "app/c/5", "app/c/6", "app/d/7", "app/d/8", "app/e/9", "app/e/10"];
+  const fill = (block, args) => block.replaceAll("'<TC_BIN>'", `'${tc}'`).replace(/'<key>' '<key>'|'<prefix>' '<prefix>'/, args.map((a) => `'${a}'`).join(" "))
+    .replaceAll("<APP_PROFILE>", "p").replaceAll("<APP_HOST>", "https://node.test").replaceAll("<APP_SPACE>", "s");
+  for (const [marker, args, expected] of [
+    ["Several records, side by side:", keys, keys.filter((k) => !k.includes("missing"))],
+    ["What's in one or more folders, side by side:", ["app/a/", "app/b/", "app/c/"], ["app/a/", "app/b/", "app/c/"]],
+  ]) {
+    const out = run(["sh", "-c", fill(blockAfter(text, marker), args)], { HOME: h.dir });
+    const rows = out.stdout.split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    assert.deepEqual(rows.map((r) => r.key ?? r.prefix).sort(), [...expected].sort(), marker);
+    assert.match(out.stderr, /tc is now tinycloud/, marker);
+    if (marker.startsWith("Several")) assert.match(out.stderr, /"code":"NOT_FOUND"/);
+    assert.doesNotMatch(out.stdout, /is now tinycloud|NOT_FOUND/, marker);
+    assert.deepEqual(readdirSync(join(h.dir)).filter((n) => n.startsWith("tmp.")), [], "the work folder is removed");
+  }
+});
+
+test("tc-apps §1 (TC-2915): a `tc` path is replaced by the `tinycloud` beside it, and stands when there is none", () => {
+  const h = fresh();
+  const block = blockAfter(skillText(), "## 1. Read the paths and the time");
+  const pin = block.match(/-v p=([0-9.]+)/)[1];
+  const both = join(h.dir, "both"), only = join(h.dir, "only");
+  aliasStub(both, "tc", pin); const tinycloud = aliasStub(both, "tinycloud", pin);
+  const alone = aliasStub(only, "tc", pin);
+  const first = (tcBin) => run(["sh", "-c", block], { HOME: h.dir, TC_BIN: tcBin }).stdout.split("\n")[0];
+  assert.equal(first(join(both, "tc")), tinycloud);
+  assert.equal(first(alone), alone);
+});
