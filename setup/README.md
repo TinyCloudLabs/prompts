@@ -17,11 +17,11 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 - **You approve:** Health Log always asks for its own permission, even if you've finished onboarding; installing it may also ask for permission to create its tables. Other personal apps can reuse your onboarding access when it covers the task.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
-## One Feed: [/feed](https://agents.tinycloud.xyz/feed)
+## Feed: [/feed](https://agents.tinycloud.xyz/feed)
 
-- **What it does:** you connect your agent to your One Feed in TinyCloud One once; it then posts the cards you asked for there, and reads your answers.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/feed with curl and follow it, including running its installer. Post the updates I ask for to my One Feed in TinyCloud One.`
-- **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your One Feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), `1.6.6`.
+- **What it does:** you connect your agent to your Feed in TinyCloud One once; it then posts the cards you asked for there, and reads your answers.
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/feed with curl and follow it, including running its installer. Post the updates I ask for to my Feed in TinyCloud One.`
+- **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your Feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), `1.6.6`.
 - **Undo:** ask your agent to disconnect it: that revokes the agent's grant, and can also remove its cards from TinyCloud One ([§8 of the page](https://agents.tinycloud.xyz/feed#8-disconnect)).
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)

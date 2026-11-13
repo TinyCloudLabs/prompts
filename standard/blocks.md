@@ -17,7 +17,7 @@
 | 5 | The owner declined, approved less than you asked for, or approved with another account. | Stop and send the “couldn't” failed line, then the error code on its own line. Ask again only if the owner wants to. The 1.6.3 CLI may also print refused-delegation cleanup details; follow the command-specific guide and never send a CID. |
 | Anything else | An error; stderr has `{"error":{"code":…}}`. | Any code not mapped above is an error: stop and send the “couldn't” failed line, then the code on its own line. Do not treat it as pending or retry. |
 
-**The three owner lines, word for word.** `<what>` is what you are setting up, in a few plain words: “TinyCloud”, “Courier”, “your One Feed”, “publishing”. Call what the owner approves a permission.
+**The three owner lines, word for word.** `<what>` is what you are setting up, in a few plain words: “TinyCloud”, “Courier”, “your Feed”, “publishing”. Call what the owner approves a permission.
 
 - **Done**, on exit 0: “`<What>` is set up.”
 - **Failed** when OpenKey stays down: “I can't set up `<what>` right now. Please ask me again later.”

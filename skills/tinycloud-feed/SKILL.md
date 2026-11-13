@@ -1,13 +1,13 @@
 ---
 name: tinycloud-feed
-description: Connect an agent to the owner's One Feed in TinyCloud One once, post decision, update and page cards there with `tinycloud feed publish`, with a brief, priority, deadline and expiry, then watch for the owner's answers and comments, acknowledge them and reply.
+description: Connect an agent to the owner's Feed in TinyCloud One once, post decision, update and page cards there with `tinycloud feed publish`, with a brief, priority, deadline and expiry, then watch for the owner's answers and comments, acknowledge them and reply.
 metadata:
   version: "0.4.1"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
 
-In TinyCloud One, agents you connect post cards to your One Feed, such as updates or questions. You connect an agent once; after that, its cards appear in your One Feed. You can answer a card there, and the agent reads your answer. You can remove an agent's access at any time.
+In TinyCloud One, agents you connect post cards to your Feed, such as updates or questions. You connect an agent once; after that, its cards appear in your Feed. You can answer a card there, and the agent reads your answer. You can remove an agent's access at any time.
 
 # Creating a post
 
@@ -426,6 +426,6 @@ The installed reference copy of this section is [creating-a-post.md](creating-a-
 
 ## 9. Exit codes and owner lines
 
-Owner lines here are the shared ones, with `<what>` = "your One Feed".
+Owner lines here are the shared ones, with `<what>` = "your Feed".
 
 {{std:errors}}

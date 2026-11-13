@@ -329,10 +329,10 @@ const ABILITIES = [
     task: "Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.",
   },
   {
-    title: "One Feed",
+    title: "Feed",
     url: "feed",
     text: "Connect your agent to TinyCloud One once; it posts the cards you ask for and reads your answers.",
-    task: "Post the updates I ask for to my One Feed in TinyCloud One.",
+    task: "Post the updates I ask for to my Feed in TinyCloud One.",
   },
   {
     title: "Publish",
@@ -687,7 +687,7 @@ const skillQueries = {
   ],
   feed: [
     "How can my agent post an owner-requested card to TinyCloud One?",
-    "How do I add an update to my One Feed?",
+    "How do I add an update to my Feed?",
   ],
   publish: [
     "How can my agent publish a report and return a link?",
