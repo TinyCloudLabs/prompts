@@ -85,6 +85,18 @@ Fixes after W1, all in the guide:
 - **Terra:** the dates moved out of the optional list into a rule: "Whenever what you know has a date … set `expiresAt` … and `deadline`." A one-line checklist before publishing names priority, summary, agent, the brief and dates.
 - **Test prompt, not the guide:** W1 Haiku stopped to ask for venue names. The W2 prompt says there are none and to use placeholders.
 
+| Round | Guide change before it | Haiku | Luna | Terra | Sonnet |
+| --- | --- | --- | --- | --- | --- |
+| W2 | the W1 fixes above | 67/67, 38/38, 32/32 (it declined the go-ahead, saying it can't book and won't post an update; the check now reads that phrasing) | 68/68, then **0 responses handled**: it ran the watcher in a separate Paseo terminal, which never woke it | 65/65, 38/38, 32/32: dates set this time | 65/65, 38/38, 32/32 |
+
+Fix after W2: "Start it with your own shell or command tool, as a background command whose end your tool reports back to you … A separate terminal, a pane you have to look at, `&`, `nohup` or `screen` runs it but never wakes you." In W1, Luna had used a background job and been woken.
+
+| Round | Guide change before it | Haiku | Luna | Terra | Sonnet |
+| --- | --- | --- | --- | --- | --- |
+| W3 (final text) | the W2 fix | 65/65, 38/38, 32/32 | 65/65, 36/36, 32/32 | 65/65, 38/38, 32/32 | 65/65, 38/38, 32/32 |
+
+**W3: all four passed first try** on the final text, with no prompt after the first. On the go-ahead, Haiku couldn't place the order: it said why and posted no card, as the guide says. Luna is slow but complete: in a burst, "Received" came 86–99 s after storage, and one reply landed 27 s after the 120 s check. Every other model acknowledged within 8–60 s.
+
 Round 1 also found:
 - **`createdAt`:** every agent made up `createdAt` values, including future ones.
 - **Long lines:** read tools cut long single-line JSON examples.
