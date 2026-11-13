@@ -287,6 +287,15 @@ test("onboarding keeps optional-skill continuation guidance", () => {
   assert.match(onboarding, /If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI/);
 });
 
+test("served setup pages keep code fences balanced", () => {
+  const pages = ["cli", "onboarding.md", "setup", "agent", "apps", "connect.md", "chat", "feed", "publish", "share", "secrets", "courier", "openkey"];
+  for (const page of pages) {
+    const source = readFileSync(join(root, "_site", page), "utf8");
+    const fences = source.match(/^ {0,3}(?:`{3,}|~{3,})/gm) ?? [];
+    assert.equal(fences.length % 2, 0, `${page}: unbalanced Markdown code fences`);
+  }
+});
+
 test("the POSIX installer note renders as prose after its command block", () => {
   const rendered = marked.parse(readFileSync(join(root, "_site", "cli"), "utf8"));
   const note = rendered.match(/<p>This POSIX entry point[\s\S]*?<\/p>/)?.[0];
