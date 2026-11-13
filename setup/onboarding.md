@@ -123,7 +123,7 @@ Fetch the guide for what the owner asked for yourself and follow it from the sta
 | Publish a page with a link | [/publish](publish.md) |
 | Use an API key or other secret | [/secrets](secrets.md) |
 | Ask about their meetings (CLI route only) | [/chat](../apps/tinychat/setup.md) |
-| Post to their TinyCloud Home feed | [/feed](https://agents.tinycloud.xyz/feed) |
+| Post to their Feed in TinyCloud One | [/feed](https://agents.tinycloud.xyz/feed) |
 | Let you work with another person's agent | [/courier](courier.md) |
 | Something not listed here | The ability list at [/setup](README.md) |
 
