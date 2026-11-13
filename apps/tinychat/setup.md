@@ -11,7 +11,7 @@
 
 ## For the agent
 
-Answer from the user's existing TinyChat account and synced meetings with the TinyCloud CLI. Meetings need an agent that can install and run the CLI; the hosted MCP has no meeting tools yet. Do not reconnect sources, copy meetings or clone a repository.
+Answer from the user's existing TinyChat account and synced meetings with the TinyCloud CLI. Meetings run through the CLI route, so they need an agent that can install and run the CLI. Do not reconnect sources, copy meetings or clone a repository.
 
 Keep the user's original request and current client throughout setup. Setup is a prerequisite, not a replacement task. After setup becomes ready, continue the original request in this same conversation without asking the user to paste another prompt.
 

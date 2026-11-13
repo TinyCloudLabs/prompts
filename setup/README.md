@@ -6,7 +6,7 @@ Give your AI agent abilities that keep your data in your own TinyCloud space. Ag
 
 **New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). Follow its current OpenKey approval steps; your agent carries on with your request.
 
-The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
+The CLI route needs Node.js 20 or later and npm. Meetings run through the CLI route.
 
 **Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI and signs the owner in. Health Log always asks for its own permission, even after onboarding. Other personal apps reuse your onboarding access when it covers the task, and ask only for what's missing.
 
@@ -40,7 +40,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 ## Share an artifact: [/share](share.md)
 
-- **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first; sharing with an email address or a domain is not available yet. Every share expires, and your agent can revoke it.
+- **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first. Every share expires, and your agent can revoke it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it, including running its installer. Share this with TinyCloud.`
 - **You approve:** the same OpenKey link as [/publish](publish.md), to let your agent publish to your share folders, for up to 30 days.
 - **Undo:** same as [/publish](publish.md#undo).
