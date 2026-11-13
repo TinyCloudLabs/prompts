@@ -168,7 +168,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
-  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.6\.5; keeping this operator-selected CLI$/m);
+  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.6\.6; keeping this operator-selected CLI$/m);
   assert.deepEqual(readFileSync(conflicting), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
 });
@@ -299,7 +299,7 @@ test("a failed optional core-skill install is reported without blocking CLI onbo
   mkdirSync(bin);
   const cli = join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud");
   mkdirSync(dirname(cli), { recursive: true });
-  executable(cli, 'case "$*" in "--version") echo 1.6.5 ;; "onboard --help") echo help ;; esac');
+  executable(cli, 'case "$*" in "--version") echo 1.6.6 ;; "onboard --help") echo help ;; esac');
   const installer = join(dir, ".local/share/tinycloud/install.js");
   mkdirSync(dirname(installer), { recursive: true });
   writeFileSync(installer, "process.exit(23);\n");
@@ -360,8 +360,8 @@ test("Courier selection resolves saved TC_BIN before installation and preserves 
     const saved = scenario === "private" ? join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud") : join(bin, "saved-cli");
     const override = join(bin, "process-cli");
     mkdirSync(dirname(saved), { recursive: true });
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.2" : "1.6.5"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.6.5 ;; esac');
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.2" : "1.6.6"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.6.6 ;; esac');
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -398,7 +398,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     mkdirSync(join(dir, ".agents/skills/courier"), { recursive: true });
     writeFileSync(join(dir, ".agents/skills/courier/SKILL.md"), "");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.2" : "1.6.5"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.2" : "1.6.6"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
@@ -550,7 +550,7 @@ const requested = (issued, courierHome, surface) => {
 };
 // The real-CLI tests run the pinned CLI; COURIER_TEST_TC points them at a candidate build before a pin bump.
 const COURIER_CLI = process.env.COURIER_TEST_TC || join(root, "node_modules/.bin/tinycloud");
-// js-sdk #821 (TC-2300) adds `courier init --wait`; the pinned 1.6.5 has it. A COURIER_TEST_TC without it skips the real-CLI test.
+// js-sdk #821 (TC-2300) adds `courier init --wait`; the pinned 1.6.6 has it. A COURIER_TEST_TC without it skips the real-CLI test.
 const COURIER_SHORT_LINK = spawnSync(COURIER_CLI, ["courier", "--help"], { encoding: "utf8" }).stdout?.includes("init [--request | --wait") ?? false;
 const OPENKEY = "https://openkey.example.invalid";
 const LINKS_API = "https://links.example.invalid";

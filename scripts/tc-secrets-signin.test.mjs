@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
-// tc-secrets §3b-§3d, run as written against a stand-in CLI that prints CLI 1.6.5's approval banner (the link on its
+// tc-secrets §3b-§3d, run as written against a stand-in CLI that prints CLI 1.6.6's approval banner (the link on its
 // own line, after "Approve this request in OpenKey (open the complete link):"): no code is read, the sign-in runs in the
 // background with its output in files, and only a sealed openkey.so/a/ link is accepted.
 const base = mkdtempSync(join("/var/tmp", "tc-secrets-signin."));

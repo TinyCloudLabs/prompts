@@ -160,7 +160,7 @@ if (op === "list") {
   const key = pos[2];
   if (ctl.getError && ctl.getError.key === key) fail(ctl.getError.code, ctl.getError.status, ctl.getError.message);
   if (!allowed("get", key)) fail("PERMISSION_DENIED", 5);
-  // The real CLI 1.6.5 turns the node's KV_NOT_FOUND into this exact error.
+  // The real CLI 1.6.6 turns the node's KV_NOT_FOUND into this exact error.
   if (!(key in s)) fail("NOT_FOUND", 4, 'Key "' + key + '" not found');
   const value = space === "applications" && ctl.corruptRead && ctl.corruptRead[key] !== undefined ? ctl.corruptRead[key] : s[key];
   if (opts["--raw"]) process.stdout.write(value); else console.log(JSON.stringify({ key, data: value }));
@@ -585,7 +585,7 @@ esac
 test("layout.sh (f): when the entry check fails for another reason it says check-failed, never legacy or new", () => {
   const cases = [
     { getError: { key: ENTRY("fitness"), code: "NETWORK_ERROR", status: 6 } },
-    // CLI 1.6.5 with the node unreachable.
+    // CLI 1.6.6 with the node unreachable.
     { getError: { key: ENTRY("fitness"), code: "ERROR", status: 1, message: "Failed to fetch node info at https://node.test." } },
     { getError: { key: ENTRY("fitness"), code: "SPACE_NOT_HOSTED", status: 1 } },
     // Exit 4 that is not the CLI's translation of KV_NOT_FOUND for this key.
@@ -976,7 +976,7 @@ const blockAfter = (text, marker) => {
   return text.slice(open + 6, text.indexOf("\n```", open));
 };
 // A CLI that prints the alias's notice on stderr for every call, then behaves like `kv get` / `kv list`.
-const aliasStub = (dir, name, version = "1.6.5") => {
+const aliasStub = (dir, name, version = "1.6.6") => {
   mkdirSync(dir, { recursive: true });
   const file = join(dir, name);
   writeFileSync(file, `#!/usr/bin/env node

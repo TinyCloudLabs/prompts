@@ -38,11 +38,11 @@ Run each block as one shell tool call. Use the same `TC_BIN` and `TC_HOME` as on
 
 ## 1. Reuse the CLI
 
-Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation, with `apps` as the action skill, so its one run call also installs this guide's skill. It checks Node.js 20 or later with npm. It installs the pinned release, `1.6.5`, or upgrades the agent's own older copy to it. Preserve an operator-provided `TC_BIN`; a missing or broken override is an explicit error, not permission to replace it. If it prints `TC_OLDER`, the operator selected a CLI older than `1.6.5`: tell the owner in one line that it is older than the required `1.6.5`, and stop. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
+Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation, with `apps` as the action skill, so its one run call also installs this guide's skill. It checks Node.js 20 or later with npm. It installs the pinned release, `1.6.6`, or upgrades the agent's own older copy to it. Preserve an operator-provided `TC_BIN`; a missing or broken override is an explicit error, not permission to replace it. If it prints `TC_OLDER`, the operator selected a CLI older than `1.6.6`: tell the owner in one line that it is older than the required `1.6.6`, and stop. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. Later conversations find the same CLI the way every TinyCloud skill does: process `TC_BIN`, then the selection in `~/.config/tinycloud/agent.env`, then the shared private install. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
 
-**CLI rule (stable `1.6.5`): after this step, run skill §1's block (see §3 below) before any other TinyCloud command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from skill §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.5`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: skill §1 prints `CLI_OLDER`; follow the shared CLI setup once, even if it already ran in this conversation, and rerun skill §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
+**CLI rule (stable `1.6.6`): after this step, run skill §1's block (see §3 below) before any other TinyCloud command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from skill §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: skill §1 prints `CLI_OLDER`; follow the shared CLI setup once, even if it already ran in this conversation, and rerun skill §1. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
 ## 2. Install the skill for each agent
 
@@ -87,7 +87,7 @@ foreach ($Target in ($Targets | Sort-Object -Unique)) {
 Remove-Item -Recurse -Force $D
 ```
 
-Require `SKILL_INSTALLED tc-apps 0.4.3 <folder>` (or a newer skill) for each target. The installer verifies every file before replacing a skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
+Require `SKILL_INSTALLED tc-apps 0.4.4 <folder>` (or a newer skill) for each target. The installer verifies every file before replacing a skill folder. A network, checksum or client-permission failure stops setup; do not switch download sources or bypass a denied step.
 
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
@@ -96,7 +96,7 @@ If something goes wrong:
 - **Claude Code (or your client) denies a step or asks to confirm it:** show the owner the step and what it does, then ask them to reply naming that step, as in [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). Run it again only once they agree. Don't edit settings or run it another way.
 - **A command, download or checksum check fails:** stop and report the error. Don't retry with other options, in another folder or from another source.
 
-Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.3` (or a newer version) for every target.
+Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.4` (or a newer version) for every target.
 
 
 ## 3. Carry on with the skill

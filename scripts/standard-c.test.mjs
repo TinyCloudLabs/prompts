@@ -152,7 +152,7 @@ test("blocking auth request guidance covers every authored surface that invokes 
 test("tc-apps catalog keeps request artifacts separate from the blocking app grant", () => {
   const catalog = read("skills/tc-apps/TINY-APPS.md");
   assert.match(catalog, /auth request --preset apps-agent --write --app xyz\.tinycloud\.sample\.healthlog --emit/);
-  assert.match(catalog, /`auth grant` in CLI `1\.6\.5` prints a short OpenKey link and waits until the owner approves it/);
+  assert.match(catalog, /`auth grant` in CLI `1\.6\.6` prints a short OpenKey link and waits until the owner approves it/);
   assert.match(catalog, /Do not close stdin, hide stderr, or run it as a non-interactive one-shot shell call/);
 });
 
@@ -201,7 +201,7 @@ test("the real built onboarding block sends exit 3 through the agent-side expiry
   writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "installed");
   const cli = join(work, "fake-tinycloud");
   writeFileSync(cli, `#!/bin/sh
-if [ "$*" = "--version" ]; then echo 1.6.5; exit 0; fi
+if [ "$*" = "--version" ]; then echo 1.6.6; exit 0; fi
 if [ "$*" = "onboard --timeout 1s" ]; then
   printf '%s\\n' "$PENDING_JSON"
   exit 3

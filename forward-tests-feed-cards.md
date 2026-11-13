@@ -142,7 +142,7 @@ Not covered by the guide's own text: lines 11 and 53 are each longer than 800 ch
 | v2 `payload.expiresAt` | past it, the card leaves every view and shows under History as "Expired" | not read on plain cards | expiry. Sam may merge expiry and deadline into one field: the lab keeps two until he decides. |
 | v2 card actions reaching the agent, as a `message` with a private payload, written only after the 5 s undo (names agreed with the lab builder, 11-13): "Ask me later" `{type: "feed.snooze", version: 1, data: {until}}`, text `Ask me later: <until>`; "Drop this card" `feed.drop`, text `Dropped`; "Acknowledge" `feed.acknowledge`, text `Acknowledged` | the lab will write exactly these | snooze is a private `feed_view_events` row, so the agent never hears of it. Plain cards have no Drop or Acknowledge: main has only "Drop question" on typed sitrep asks | the agent learning that the owner snoozed, dropped or closed its card. Home has to write them. |
 | v2 "Received" = the agent's `acknowledged` handling, written by the agent itself when the watcher wakes it | "Received"; "Not confirmed · Send again" after 30 s without one | "{agent} got it" on answers | comment status. Set "Not confirmed" to 60 s (timing above). |
-| v2 `feed watch --once`, JSON lines and the idle-exit fix | n/a | n/a | needs the CLI from js-sdk#936; the guide's CLI pin (1.6.5) must move to the release that has it. |
+| v2 `feed watch --once`, JSON lines and the idle-exit fix | n/a | n/a | in `@tinycloud/cli@1.6.6` (stable, carries js-sdk#936); the site pin is now 1.6.6. |
 
 Constraints the guide works around:
 - Responses and handling are tied to the exact `cardId`/`revision`/`issuanceId`.
