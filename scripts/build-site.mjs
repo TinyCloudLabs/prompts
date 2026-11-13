@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { Marked } from "marked";
 import { gfmHeadingId } from "marked-gfm-heading-id";
-import { CLI_VERSION, compatible } from "./install-cli.mjs";
+import { CLI_VERSION } from "./install-cli.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "_site");
@@ -375,15 +375,14 @@ const stalePins = pinFiles.flatMap((path) =>
 );
 if (stalePins.length) throw new Error(`CLI version pins that differ from install-cli.mjs's ${CLI_VERSION}:\n  ${stalePins.join("\n  ")}`);
 
-// The one other CLI pin on the site. Courier's automatic pickup needs a CLI that no stable release carries yet
-// (js-sdk#971 on top of the per-agent watcher state of 1.7), so that section alone upgrades the agent's private CLI
-// to exactly this version, written {{COURIER_WATCH_CLI_VERSION}} in setup/courier.md and nowhere else. Once
-// CLI_VERSION is at or past it, delete this pin, the token and that section's upgrade block.
-const COURIER_WATCH_CLI_VERSION = "1.7.0-beta.0";
-const WATCH_TOKEN = "{{COURIER_WATCH_CLI_VERSION}}";
-if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.]*[0-9A-Za-z])?$/.test(COURIER_WATCH_CLI_VERSION) || !compatible(COURIER_WATCH_CLI_VERSION)) {
-  throw new Error(`COURIER_WATCH_CLI_VERSION ${COURIER_WATCH_CLI_VERSION} must be an exact version at or past the pinned ${CLI_VERSION}`);
-}
+// Courier's automatic pickup needs a Courier that no stable CLI carries yet: per-agent watcher state (1.7) and
+// `watch --agent-cli` (js-sdk#971). That one section of setup/courier.md installs exactly this pre-release of the
+// standalone package in a folder only the watcher uses, written {{COURIER_WATCH_VERSION}} there and nowhere else;
+// the pinned CLI stays what every guide installs. Once the pinned CLI's own Courier has `watch --agent-cli`, delete
+// this pin and the token, and make that section run "$TC" courier instead.
+const COURIER_WATCH_VERSION = "0.6.0-beta.37";
+const WATCH_TOKEN = "{{COURIER_WATCH_VERSION}}";
+if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.]*[0-9A-Za-z])?$/.test(COURIER_WATCH_VERSION)) throw new Error(`COURIER_WATCH_VERSION ${COURIER_WATCH_VERSION} must be one exact version`);
 const watchPinElsewhere = pinFiles.filter((path) => path !== "setup/courier.md" && readFileSync(join(ROOT, path), "utf8").includes(WATCH_TOKEN));
 if (watchPinElsewhere.length) throw new Error(`${WATCH_TOKEN} belongs to setup/courier.md only:\n  ${watchPinElsewhere.join("\n  ")}`);
 
@@ -559,7 +558,7 @@ function render(src) {
       return `](${SITE}${to}${hash})`;
     })
     .replaceAll("{{CLI_VERSION}}", CLI_VERSION)
-    .replaceAll(WATCH_TOKEN, COURIER_WATCH_CLI_VERSION)
+    .replaceAll(WATCH_TOKEN, COURIER_WATCH_VERSION)
     .replaceAll(SITE, BASE);
 }
 

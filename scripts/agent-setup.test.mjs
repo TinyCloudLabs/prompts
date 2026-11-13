@@ -391,8 +391,7 @@ test("Courier selection resolves saved TC_BIN before installation and preserves 
 test("Courier preview resolver preserves an explicitly selected binary and checks its release and features", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const probe = block(guide, "## Check the installed CLI");
-  // CLI 1.7 leaves `invite` out of `courier --help` (the command still runs), so the probe asks only for start and join.
-  for (const scenario of ["current", "hidden-invite", "old", "broken", "missing", "not-executable", "no-join"]) {
+  for (const scenario of ["current", "old", "broken", "missing", "not-executable", "no-join"]) {
     const dir = home();
     const selected = join(dir, "operator-cli");
     // The Courier skill is installed, so the block reaches its CLI checks.
@@ -400,50 +399,53 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     writeFileSync(join(dir, ".agents/skills/courier/SKILL.md"), "");
     const body = `case "$*" in
       --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.2" : "1.6.6"}`} ;;
-      "courier --help") printf '%s\\n' '  start [--new subject | --session id]' ${scenario === "hidden-invite" ? "" : "'  invite --session id --mode same-owner|anyone --consent' '  invite serve id'"} ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
+      "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
     if (scenario !== "missing") executable(selected, body);
     if (scenario === "not-executable") chmodSync(selected, 0o600);
     const before = scenario === "missing" ? null : readFileSync(selected);
     const result = shell(`${probe}\nprintf 'COURIER_LINK_ORIGIN=%s\\n' "$COURIER_LINK_ORIGIN"`, { HOME: dir, TC_BIN: selected });
-    const passes = scenario === "current" || scenario === "hidden-invite";
-    assert.equal(result.status === 0, passes, `${scenario}: ${result.stderr}`);
-    assert.equal(result.stdout.trim(), passes ? "COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz" : "");
+    assert.equal(result.status === 0, scenario === "current", `${scenario}: ${result.stderr}`);
+    assert.equal(result.stdout.trim(), scenario === "current" ? "COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz" : "");
     if (before) assert.deepEqual(readFileSync(selected), before);
     else assert.equal(existsSync(selected), false);
     assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
-    if (!passes) assert.match(result.stderr, /TC_NOT_FOUND|COURIER_CLI/);
+    if (scenario !== "current") assert.match(result.stderr, /TC_NOT_FOUND|COURIER_CLI/);
   }
 });
 
-// Automatic pickup updates only the agent's own private CLI, to the one exact pre-release the build names, and
-// never a CLI the operator selected. The served page is read, so the pin is the rendered one.
-test("Courier automatic pickup updates the private CLI to the exact pinned pre-release and leaves an operator CLI alone", () => {
+// Automatic pickup installs one exact pre-release of the standalone Courier in a folder only the watcher uses,
+// reuses it when it is already there, and never touches the pinned CLI. The served page is read, so the pin is
+// the rendered one.
+test("Courier automatic pickup installs the watcher's exact pinned Courier beside the CLI, once", () => {
   const served = readFileSync(join(root, "_site/courier"), "utf8");
-  const update = block(served, "## Pick up messages automatically");
-  const pin = update.match(/@tinycloud\/cli@(\d+\.\d+\.\d+-[0-9A-Za-z.]+)/)?.[1];
+  const install = block(served, "## Pick up messages automatically");
+  const pin = install.match(/@tinycloud\/courier@(\d+\.\d+\.\d+-[0-9A-Za-z.]+)/)?.[1];
   assert.ok(pin, "the served block names an exact pre-release");
-  assert.equal(served.split(`@tinycloud/cli@${pin}`).length - 1, 2, "once in the text, once in the block");
-  for (const scenario of ["has-flag", "private-old", "operator-old", "npm-fails"]) {
+  assert.ok(!served.includes("{{COURIER_WATCH_VERSION}}"), "the token is rendered");
+  for (const scenario of ["fresh", "present", "other-version", "npm-fails", "no-flag"]) {
     const dir = home();
-    const prefix = join(dir, ".local/share/tinycloud/cli");
-    const bin = scenario === "operator-old" ? join(dir, "operator-cli") : join(prefix, "node_modules/.bin/tinycloud");
-    mkdirSync(dirname(bin), { recursive: true });
-    const cli = (flag) => `case "$*" in --version) echo ${flag ? pin : "1.6.6"} ;; "courier --help") echo '  watch [--wake …]${flag ? " [--exec <cmd> --unguarded [--agent-cli]]" : ""}' ;; *) exit 90 ;; esac`;
-    executable(bin, cli(scenario === "has-flag"));
+    const prefix = join(dir, ".local/share/tinycloud/courier-watch");
+    const bin = join(prefix, "node_modules/.bin/courier");
+    const courier = (version, flag) => `#!/bin/sh\ncase "$*" in --version) echo ${version} ;; --help) echo '  watch [--wake …]${flag ? " [--exec <cmd> --unguarded [--agent-cli]]" : ""}' ;; *) exit 90 ;; esac`;
+    if (scenario === "present" || scenario === "other-version") {
+      mkdirSync(dirname(bin), { recursive: true });
+      writeFileSync(bin, courier(scenario === "present" ? pin : "0.5.3", true), { mode: 0o700 });
+    }
     const tools = join(dir, "tools");
     mkdirSync(tools);
     const calls = join(dir, "npm-calls");
-    // A stand-in npm: records its arguments and, unless it is the failing one, "installs" a CLI that has the flag.
-    executable(join(tools, "npm"), `printf '%s\\n' "$*" >> "$CALLS"\n${scenario === "npm-fails" ? "echo 'npm ERR! offline' >&2; exit 1" : `cat > "$BIN" <<'EOF'\n#!/bin/sh\n${cli(true)}\nEOF`}`);
-    const result = shell(update, { HOME: dir, TC: bin, PATH: `${tools}:${process.env.PATH}`, CALLS: calls, BIN: bin });
+    // A stand-in npm: records its arguments and, unless it is the failing one, "installs" the pinned Courier.
+    executable(join(tools, "npm"), `printf '%s\\n' "$*" >> "$CALLS"\n${scenario === "npm-fails" ? "echo 'npm ERR! offline' >&2; exit 1" : `mkdir -p "$(dirname "$BIN")" && cat > "$BIN" <<'EOF'\n${courier(pin, scenario !== "no-flag")}\nEOF\nchmod 700 "$BIN"`}`);
+    const result = shell(install, { HOME: dir, PATH: `${tools}:${process.env.PATH}`, CALLS: calls, BIN: bin });
     assert.equal(result.status, 0, `${scenario}: ${result.stderr}`);
-    const expected = { "has-flag": "WATCH_OK", "private-old": `WATCH_OK updated to ${pin}`, "operator-old": "WATCH_UNAVAILABLE 1.6.6", "npm-fails": "WATCH_UPDATE_FAILED 1.6.6" }[scenario];
-    assert.equal(result.stdout.trim(), expected, scenario);
+    const failed = scenario === "npm-fails" || scenario === "no-flag";
+    assert.equal(result.stdout.trim(), failed ? "WATCH_INSTALL_FAILED" : `WATCH_OK ${bin}`, scenario);
     const ran = existsSync(calls) ? readFileSync(calls, "utf8").trim() : "";
-    if (scenario === "private-old" || scenario === "npm-fails") assert.equal(ran, `install --prefix ${prefix} --save-exact --no-audit --no-fund @tinycloud/cli@${pin}`, scenario);
-    else assert.equal(ran, "", `${scenario}: npm must not run`);
+    if (scenario === "present") assert.equal(ran, "", "an install at the pin is reused");
+    else assert.equal(ran, `install --prefix ${prefix} --save-exact --no-audit --no-fund @tinycloud/courier@${pin}`, scenario);
+    assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false, "the pinned CLI's folder is never created or changed");
   }
 });
 
