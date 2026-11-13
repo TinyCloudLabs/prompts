@@ -149,7 +149,7 @@ printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c 'f="$2/$(printf %s "$1" | 
 cat "$D"/*.json; cat "$D"/*.err >&2; rm -rf "$D"
 ```
 
-It prints one JSON object per key, in any order, so match them by `"key"`. Each key gets its own output file and its own error file, so a large record stays whole and a CLI notice never lands in the JSON: never send several `kv get` outputs into one pipe with `xargs -P`. A key you asked for that's missing from the output failed, and its error is printed on stderr instead:
+It prints one JSON object per key, in any order, so match them by `"key"`. Each key gets its own output file and error file, so a large record stays whole and a CLI notice never lands in the JSON. Never send several `kv get` outputs into one pipe with `xargs -P`. A key you asked for that's missing from the output failed, and its error is printed on stderr instead:
 - `NOT_FOUND` → the record is gone.
 - anything else → usually a network hiccup: read that key once more.
 

@@ -84,7 +84,7 @@ if [ -n "$B" ]; then
 fi
 ```
 
-It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per line. A `tc` path (the legacy alias, which prints a notice on every call) is replaced by the `tinycloud` beside it, when there is one.
+It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per line. If the selected path is `tc` (the legacy alias, which prints a notice on every call), the check uses the `tinycloud` beside it instead, when there is one.
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id, for generic apps. Health Log instead uses its validated owner timezone and fresh clock from `healthlog-context.mjs` (`TINY-APPS.md` §4).
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
 - `TC_BIN is unset` → follow the shared CLI setup, then continue this request with the path from its `TC_SELECTED`. Do not install a second CLI.
@@ -283,7 +283,7 @@ printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c 'f="$2/$(printf %s "$1" | 
 cat "$D"/*.json; cat "$D"/*.err >&2; rm -rf "$D"
 ```
 
-It prints one JSON object per key, in any order, so match them by `"key"`. Each key gets its own output file and its own error file, so a large record (tens of KB) stays whole and a CLI notice never lands in the JSON: never send several `kv get` outputs into one pipe with `xargs -P`, because they interleave and break the JSON. A key you asked for that's missing from the output failed, and its error is printed on stderr instead:
+It prints one JSON object per key, in any order, so match them by `"key"`. Each key gets its own output file and error file, so a large record (tens of KB) stays whole and a CLI notice never lands in the JSON. Never send several `kv get` outputs into one pipe with `xargs -P`: they interleave and break the JSON. A key you asked for that's missing from the output failed, and its error is printed on stderr instead:
 - `NOT_FOUND` → the record is gone.
 - anything else → usually a network hiccup: read that key once more.
 
