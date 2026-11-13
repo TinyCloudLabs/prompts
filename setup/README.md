@@ -4,6 +4,8 @@
 
 Give your AI agent abilities that keep your data in your own TinyCloud space. Agents that can install and run the TinyCloud CLI use it; others that support remote MCP connect through /connect. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.
 
+**Access and privacy:** agents get the capability scopes you approve. That access control is not encryption: ordinary data on hosted nodes is currently stored in plaintext at rest, without encryption at rest or end-to-end encryption. Hosted MCP and the connected AI client process the data you authorize them to read. See [Security and trust](https://docs.tinycloud.xyz/concepts/security-and-trust) for operator access, key custody and application-specific encryption boundaries.
+
 **New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). Follow its current OpenKey approval steps; your agent carries on with your request.
 
 The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
@@ -47,7 +49,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 ## Secrets: [/secrets](secrets.md)
 
-- **What it does:** your agent uses API keys you keep in TinyCloud Secrets without the value ever appearing in the conversation. If a key is missing, it sends you a link to add it.
+- **What it does:** your agent uses API keys you keep in TinyCloud Secrets, following instructions to keep values out of the conversation. The authorized agent or MCP runtime still receives the values it uses. If a key is missing, it sends you a link to add it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it, including running its installer. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
 - **You approve:** a Secret Manager link to add a missing key, and one OpenKey link to let your agent read the keys it names, for 30 days. There's nothing to send back.
 - **Undo:** `auth logout` is local only; [the page](secrets.md#undo) explains the distinction.

@@ -4,6 +4,8 @@
 
 Keep your personal records, such as weight, workouts, goals and todos, in your own TinyCloud storage. Use the same link in a runtime that can install and run the TinyCloud CLI, such as Claude Code, Codex or OpenCode, or a client with remote MCP and OAuth support. A product or bot name alone does not establish those capabilities; see the client-specific routes below.
 
+**Access and privacy:** you approve the capability scopes your agent receives. Ordinary data on hosted nodes is currently stored in plaintext at rest, without encryption at rest or end-to-end encryption. Hosted MCP and your AI client process authorized inputs and results. See [Security and trust](https://docs.tinycloud.xyz/concepts/security-and-trust) before choosing a connection.
+
 **Paste this into your app or agent:**
 
 > Fetch https://agents.tinycloud.xyz/connect.md with curl and follow it, including running its installer. Set up TinyCloud.
