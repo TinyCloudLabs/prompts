@@ -150,12 +150,10 @@ const RESOLVER = [
   '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
-// The guide owns the handoff and approval procedures embedded in its skill.
-const courierGuide = readFileSync(join(ROOT, "setup/courier.md"), "utf8");
-const courierHandoff = courierGuide.split("\n## Agent handoff contract\n")[1]?.split("\n## ")[0];
-const courierSetup = courierGuide.split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
-if (!courierHandoff || !courierSetup) throw new Error("Courier guide is missing its handoff or executable remote setup.");
-const COURIER_HANDOFF = `## Agent handoff contract\n${expandStd(courierHandoff.trim(), "setup/courier.md")}`;
+// Courier's setup section is published inside its skill as well as this guide.
+const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
+  .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
+if (!courierSetup) throw new Error("Courier guide is missing executable remote setup.");
 const COURIER_SETUP = `## Set up Courier once\n${expandStd(courierSetup.trim(), "setup/courier.md")}`;
 const SHELL_BLOCK = /^```(?:bash|sh|shell)?\n[\s\S]*?^```$/gm;
 // `tc` where a shell runs it: at the start of a line, after a pipe, in `$(…)` or in an array `=(…)`.
@@ -275,7 +273,7 @@ const SKILLS = [
         ],
         [
           /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
-          COURIER_HANDOFF + "\n\nCourier uses its own COURIER_HOME and one restricted Courier approval; no general TinyCloud onboarding or CLI profile is required. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Complete the handoff prerequisite gates before the executable remote setup below.\n\n" + COURIER_SETUP,
+          "Courier uses its own COURIER_HOME and one restricted Courier approval; no general TinyCloud onboarding or CLI profile is required. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
         ],
       ],
       "start.md": [
@@ -484,7 +482,7 @@ async function loadSkill(skill) {
       if (path !== "start.md") return [path, body];
       changed.add(path);
       const prompt = body.toString("utf8").replace(/\bcourier (?=start|init|join|invite|read|send)/g, '"$TC" courier ');
-      return [path, Buffer.from(`${COURIER_HANDOFF}\n\n${prompt.trimEnd()}\n\n${COURIER_SETUP}\n`)];
+      return [path, Buffer.from(`${prompt.trimEnd()}\n\n${COURIER_SETUP}\n`)];
     });
   }
   if (skill.short === "courier") {
