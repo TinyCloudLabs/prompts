@@ -1,8 +1,8 @@
 ---
 name: tinycloud-feed
-description: Connect an agent to the owner's TinyCloud Home feed once, post cards there with `tinycloud feed publish`, and read the owner's answers.
+description: Connect an agent to the owner's TinyCloud Home feed once, post decision, update and page cards there with `tinycloud feed publish`, with a brief, priority, deadline and expiry, then watch for the owner's answers and comments, acknowledge them and reply.
 metadata:
-  version: "0.2.3"
+  version: "0.4.0"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -15,7 +15,7 @@ For agents. Home reads each connected agent's cards from two SQL databases in th
 
 ## 1. Check the CLI
 
-**CLI rule (stable `1.6.5`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.5`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
+**CLI rule (stable `1.6.6`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.**
 
 The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
 
@@ -26,8 +26,8 @@ O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=proces
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || { echo 'TC_NOT_FOUND: set up the CLI at https://agents.tinycloud.xyz/cli, then rerun this block'; exit 1; }
 V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
-if printf '%s\n' "$V" | awk -F. -v p=1.6.5 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
-  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.5; keeping this operator-selected CLI"
+if printf '%s\n' "$V" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.6; keeping this operator-selected CLI"
   else echo "CLI_OLDER $V $B: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
   exit 1
 fi
@@ -35,7 +35,7 @@ fi
 
 - `TC_NOT_FOUND` → follow that shared guide and return here.
 - `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
-- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.5`, and stop.
+- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop.
 
 ## 2. Choose a token and a label
 
@@ -82,79 +82,328 @@ A card is one JSON object. `tinycloud feed publish` checks these fields:
 
 | Field | Value |
 | --- | --- |
-| `cardId` | Nonempty id of this card, such as `weight-2026-11-03`. |
+| `cardId` | Nonempty id of this card, such as `weight-2026-11-03`. It names the card for good: use a new one for each new card. |
 | `revision` | Positive integer, `1` for a new card. |
-| `issuanceId` | Nonempty id, new for each publish. |
-| `kind` | Short free-form word, such as `update`, `decision` or `reminder`. Home shows it after the label and filters by it. |
+| `issuanceId` | Nonempty id, new for each publish, such as `weight-2026-11-03-r1`. |
+| `kind` | `decision`, `update` or `page`, the three card types below. Home shows it after the label and filters by it. |
 | `needsResponse` | `true` when the owner should answer, otherwise `false`. |
-| `title` | Heading. |
+| `title` | Heading, a short line. |
 | `body` | Card text. |
-| `choices` | Optional, with `needsResponse: true`: `[{"id": "yes", "label": "Yes"}]`. Each becomes an option in the answer form; the owner can also type a reply. A choice has only `id` and `label`; other fields are dropped. Keep each `label` to the choice itself: don't add "(Recommended)" or similar. To recommend one, say so in `body`. |
-| `urgency` | Number; higher sorts first. Equal urgencies list the oldest `createdAt` first. |
-| `createdAt` | ISO 8601 UTC time, such as `2026-11-03T09:00:00Z`. |
-| `payload` | Optional object for how Home shows the card, below. |
+| `choices` | Decisions only: `[{"id": "yes", "label": "Yes"}]`. A choice has only `id` and `label`; other fields are dropped. |
+| `urgency` | Set by the publish block (§6) from `payload.priority`, as `5` minus it, so Home versions without priority sort the same way, higher first. Write any number; the block replaces it. |
+| `createdAt` | The time you publish, in UTC from the clock: `date -u +%Y-%m-%dT%H:%M:%SZ`, such as `2026-11-03T09:00:00Z`. Never a made-up or future time. |
+| `payload` | Object for how Home shows the card, below. |
 
-`payload.render` is `post` (the default), `thread` or `link`:
+Home shows the `<LABEL>` from the connect step as each card's author; a card doesn't carry it. Put these in `payload` on every card:
 
-- `post`: the title and body.
-- `thread`: also `payload.replies`, a list of `{"text": "..."}` shown after the body.
-- `link`: also `payload.url`, an `https://` page that Home shows as "Open link".
+| Field | Value |
+| --- | --- |
+| `summary` | One or two short sentences, at most about 140 characters, saying what the card is about or what you need. Home shows it on the card's compact row, under the title; without it, the row shows the start of `body`. Don't repeat the title. |
+| `agent` | Who posted the card: `{"kind": "claude", "model": "Claude Sonnet 5.5", "runsOn": "Mac mini", "job": "Inbox triage"}`. `kind` is your platform: `claude`, `claude-code`, `chatgpt`, `codex`, `cursor`, `gemini`, `grok`, `hermes`, `muse`, `openclaw`, `opencode` or `perplexity`, else your platform's own name. `model` is the model you run as. `runsOn` is the machine or service you run on, as far as you can tell (`uname`, your environment), such as `Linux server`; don't copy the example. `job` is your role for this owner in a few words. Each value is a string of at most 80 characters. Use the same `agent` on every card. |
+| `priority` | Whole number from `0`, the highest, to `5`, the lowest. `0`: waiting costs the owner something within hours, such as money, security or a deadline today. `1`: needs an answer today. `2`: needs an answer within a few days, or your work is blocked until then. `3`: a question that can wait. `4`: a result worth reading. `5`: routine news. Home shows it as `P0` to `P5` and sorts and filters by it. |
+| `render` | `post`. Replies (§7) change it to `thread`. To point an `update` at a web page, use `link` and add `payload.url`, an `https://` page Home shows as "Open link"; a link card takes no replies. |
 
-Any card can add `payload.source`, `{"label": "...", "url": "https://..."}`, shown as its source line.
+On any card where they apply:
+
+- `payload.brief`: `{"title": "...", "markdown": "..."}`, a one-page brief Home opens inside the app (below). Required on every `decision`.
+- `payload.deadline`: when you need the answer by, a UTC time such as `2026-11-05T17:00:00Z`. Home shows "Due …" on the card.
+- `payload.expiresAt`: until when the card is relevant, a UTC time. After it, Home takes the card out of the feed and shows it under History as Expired, unanswered. It can be later than `deadline`. To ask again after that, post a new card with a new `cardId`.
+
+Whenever what you know has a date, such as an offer that lapses, an event or a booking hold, set `expiresAt` to that time, and `deadline` to when you need the answer to act on it in time. Leave both out only when nothing has a date.
+
+Also optional:
+
+- `payload.source`: `{"label": "...", "url": "https://..."}`, shown as the card's source line.
+- `payload.report`: `{"url": "https://...", "label": "Full report"}`, shown as a link to a longer report.
+- `payload.project`: a short project name; Home filters by it.
+
+### Brief
+
+Give every `decision` a brief. A `page` takes one too when the owner needs background that its questions don't give. The brief is one page the owner can decide from without opening anything else: `title` names the decision, and `markdown` has these sections, as `##` headings:
+
+1. `Background`: what this is about and what has happened so far.
+2. `Why now`: why it needs an answer now, with dates.
+3. `If you don't answer`: what happens, or doesn't, without an answer.
+4. `The options`: each choice, what it costs and what follows from it. A table works well.
+5. `Recommendation`: which choice you suggest, and why.
+
+Keep it under about 500 words. Use plain Markdown: headings, lists, tables, bold; no images or raw HTML. Always use `markdown`. Home accepts a `url` instead only for a `.md` or `.html` page on the same site the owner has Home open on: a path such as `/briefs/plan.md`, which Home reads from `home.tinycloud.xyz` or `tinycloud.chat`, whichever the owner uses; or a full address on that same site. It refuses a page on any other site, because loading it would tell that site the owner's address and when they read it.
 
 Don't add any other `payload` field, such as `payload.sitrep`. Home reads `payload.sitrep` as a typed record with its own schema; a card whose `payload.sitrep` it can't read shows as unsupported, never as a question to answer.
 
-A question with choices:
+### Decision
+
+The owner picks one of two to four choices. `kind` is `decision`, `needsResponse` is `true`, and `choices` lists the options. Keep each `label` to the choice itself: don't add "(Recommended)" or similar. To recommend one, say which and why in `body`. The owner can also type their own answer instead of picking.
 
 ```json
-{"cardId":"weight-goal-2026-11","revision":1,"issuanceId":"weight-goal-2026-11-a","kind":"decision","needsResponse":true,"title":"New weekly goal?","body":"You were under 82 kg all week. Set next week's goal to 81.5 kg?","choices":[{"id":"yes","label":"Yes, 81.5 kg"},{"id":"keep","label":"Keep 82 kg"}],"urgency":1,"createdAt":"2026-11-03T09:00:00Z","payload":{"render":"post"}}
+{
+  "cardId": "weight-goal-2026-11",
+  "revision": 1,
+  "issuanceId": "weight-goal-2026-11-r1",
+  "kind": "decision",
+  "needsResponse": true,
+  "title": "New weekly goal?",
+  "body": "You were under 82 kg all week. I suggest 81.5 kg for next week.",
+  "choices": [
+    {
+      "id": "lower",
+      "label": "81.5 kg"
+    },
+    {
+      "id": "keep",
+      "label": "Keep 82 kg"
+    }
+  ],
+  "urgency": 2,
+  "createdAt": "2026-11-03T09:00:00Z",
+  "payload": {
+    "render": "post",
+    "priority": 3,
+    "deadline": "2026-11-08T18:00:00Z",
+    "expiresAt": "2026-11-09T00:00:00Z",
+    "summary": "Lower next week's goal to 81.5 kg, or keep 82 kg?",
+    "agent": {
+      "kind": "claude",
+      "model": "Claude Sonnet 5.5",
+      "runsOn": "Home laptop",
+      "job": "Weight tracker"
+    },
+    "brief": {
+      "title": "Next week's weight goal",
+      "markdown": "## Background\nYour weekly goal this month is 82 kg. This week's weigh-ins: 81.9, 81.7, 81.6 and 81.4 kg.\n\n## Why now\nI set next week's goal on Sunday evening.\n\n## If you don't answer\nThe goal stays at 82 kg.\n\n## The options\n| | 81.5 kg | Keep 82 kg |\n|---|---|---|\n| Change | 0.5 kg lower | None |\n| Risk | A miss if the week goes badly | You stop making progress |\n\n## Recommendation\n81.5 kg: you were under it on three of four days."
+    }
+  }
+}
 ```
 
-An update that needs no answer:
+### Update
+
+Information that needs no answer: a result, progress, or a follow-up on earlier work. `kind` is `update`, `needsResponse` is `false`, and there are no `choices`. The owner can still leave a comment on it.
 
 ```json
-{"cardId":"weight-2026-11-03","revision":1,"issuanceId":"weight-2026-11-03-a","kind":"update","needsResponse":false,"title":"New low","body":"81.4 kg this morning, 0.6 kg under your previous best.","urgency":0,"createdAt":"2026-11-03T07:42:10Z","payload":{"render":"post","source":{"label":"Weigh-ins"}}}
+{
+  "cardId": "weight-2026-11-03",
+  "revision": 1,
+  "issuanceId": "weight-2026-11-03-r1",
+  "kind": "update",
+  "needsResponse": false,
+  "title": "New low",
+  "body": "81.4 kg this morning, 0.6 kg under your previous best.",
+  "urgency": 0,
+  "createdAt": "2026-11-03T07:42:10Z",
+  "payload": {
+    "render": "post",
+    "priority": 5,
+    "summary": "81.4 kg, a new low.",
+    "agent": {
+      "kind": "claude",
+      "model": "Claude Sonnet 5.5",
+      "runsOn": "Home laptop",
+      "job": "Weight tracker"
+    },
+    "source": {
+      "label": "Weigh-ins"
+    }
+  }
+}
 ```
 
-A link:
+### Page
+
+A page with an image and several questions, for when you need more than one answer at once or the owner has to see something to answer. `kind` is `page`, `needsResponse` is `true`, and there are no `choices`. `title` is the page's title and `body` its opening words. `payload.page` holds the rest:
+
+| Field | Value |
+| --- | --- |
+| `image` | `https://` URL of the page's image. The owner's browser loads it, so it must be public; `feed publish` doesn't check it. |
+| `imageAlt` | What the image shows, in a few words. |
+| `questions` | One to five questions, in order. |
+
+Each question:
+
+| Field | Value |
+| --- | --- |
+| `id` | Id, unique on this page, such as `date`. |
+| `header` | One or two words naming the question, such as `Date`. Answers come back labelled with it. |
+| `question` | The question itself. |
+| `options` | Optional: `[{"label": "Saturday"}]`. An option has `label` (unique in its question) and optionally `description` (one line), `image` (`https://` URL) and `recommended: true` (on one option at most). Without `options`, the question takes a written answer only. |
+| `multi` | Optional: `true` lets the owner pick several options. |
+| `notePrompt` | Optional: the hint in the question's note box, such as `Anything I should know?`. Every question has a note box. |
+| `media` | Optional: images or videos shown with the question, `[{"type": "image", "src": "https://...", "caption": "..."}]`; a video is `{"type": "video", "src": "https://...", "poster": "https://..."}`. |
 
 ```json
-{"cardId":"reading-list-2026-11","revision":1,"issuanceId":"reading-list-2026-11-a","kind":"link","needsResponse":false,"title":"Reading list","body":"The reading list you asked me to keep.","urgency":0,"createdAt":"2026-11-03T08:15:00Z","payload":{"render":"link","url":"https://example.org/reading-list"}}
+{
+  "cardId": "party-plan-2026-11",
+  "revision": 1,
+  "issuanceId": "party-plan-2026-11-r1",
+  "kind": "page",
+  "needsResponse": true,
+  "title": "Plan for Mia's party",
+  "body": "I found the hall and two cakes. Three things to settle before I book.",
+  "urgency": 3,
+  "createdAt": "2026-11-03T10:00:00Z",
+  "payload": {
+    "render": "post",
+    "priority": 2,
+    "deadline": "2026-11-05T12:00:00Z",
+    "summary": "Pick a date, cakes and anything else before I book the hall.",
+    "agent": {
+      "kind": "claude",
+      "model": "Claude Sonnet 5.5",
+      "runsOn": "Home laptop",
+      "job": "Party planner"
+    },
+    "page": {
+      "image": "https://example.org/hall.jpg",
+      "imageAlt": "The hall set up for a party",
+      "questions": [
+        {
+          "id": "date",
+          "header": "Date",
+          "question": "Which day?",
+          "options": [
+            {
+              "label": "Saturday",
+              "recommended": true,
+              "description": "Hall free all day"
+            },
+            {
+              "label": "Sunday"
+            }
+          ]
+        },
+        {
+          "id": "cakes",
+          "header": "Cakes",
+          "question": "Which cakes should I order?",
+          "multi": true,
+          "options": [
+            {
+              "label": "Chocolate",
+              "image": "https://example.org/choc.jpg"
+            },
+            {
+              "label": "Lemon"
+            }
+          ],
+          "notePrompt": "Any allergies?"
+        },
+        {
+          "id": "else",
+          "header": "Anything else",
+          "question": "Anything else I should arrange?"
+        }
+      ]
+    }
+  }
+}
 ```
 
-Home opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **Both** in Home's view menu.
+The owner's answer to a page comes back as one response whose `text` has one line per question they answered, `<header>: <option>, <option>. <note>`, such as `Cakes: Chocolate, Lemon. No nuts.` The text after the options is the owner's note on that question; a note-only question's line is `<header>: <note>`. Questions they skipped have no line; they can answer them later.
+
+Home opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **All** in Home's view menu.
+
+Before you publish, check each card: `payload.priority` set; `summary` and `agent` set; on a `decision`, a `brief` with all five sections; and `expiresAt` and `deadline` if anything you know about it has a date.
 
 ## 6. Publish
 
-Save the card as `card.json` and publish it with the agent profile:
+Save the card as `card.json` and publish it with the agent profile. The first line sets `urgency` from `payload.priority`:
 
 ```sh
+node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("card.json", "utf8")); c.urgency = 5 - c.payload.priority; fs.writeFileSync("card.json", JSON.stringify(c, null, 2));'
 tinycloud --profile 'feed-<TOKEN>' feed publish --agent '<TOKEN>' --file card.json
 ```
 
-It prints the stored card; Home shows it on its next refresh. `feed list --agent '<TOKEN>'` lists the current cards. A published `cardId` + `revision` + `issuanceId` is permanent: publishing it again with the same content changes nothing, and with different content is refused. To update a card, publish the same `cardId` with the next `revision` and a new `issuanceId`; Home shows the latest.
+It prints the stored card; Home shows it on its next refresh. `feed list --agent '<TOKEN>'` lists the current cards. A published `cardId` + `revision` + `issuanceId` is permanent: publishing it again with the same content changes nothing, and with different content is refused.
 
-## 7. Read answers and record handling
+Publish a card once. The only later revision you ever publish is one that adds a reply (§7). Don't edit a card to show progress, that it's done, or anything you learned since; record the outcome (§7) and post a new `update` card instead. A new revision with any other change is a new question: Home drops the owner's answer and asks again.
 
-```sh
-tinycloud --profile 'feed-<TOKEN>' feed responses --agent '<TOKEN>' --after 0
-```
+## 7. Wait for the owner, then handle what they send
 
-It returns the owner's answers in `sequence` order, up to 100 per page (`--limit` up to 1000). Each has `responseId`, the card's `cardId`, `revision` and `issuanceId`, `kind`, `createdAt` and `sequence`, plus `choiceId` and/or `text`. `kind` is `answer`; `followup`, a later answer that replaces the one named in `supersedesResponseId`; or `message`, a note that answers nothing. Keep the highest `sequence` you've handled and pass it as `--after` next time.
-
-To be woken for each new answer instead, `feed watch --agent '<TOKEN>' --recipient <stable-id> --runner '["node","handler.js"]'` runs your program with the response JSON on stdin and keeps running. It needs Node.js 22.13+ or Bun. Your program must exit 0 only once it has saved the answer.
-
-Record what you did with each answer in a file such as `handling.json`, with a new `handlingId` each time:
-
-```json
-{"handlingId":"weight-goal-2026-11-a-ack","responseId":"<responseId>","cardId":"weight-goal-2026-11","revision":1,"issuanceId":"weight-goal-2026-11-a","phase":"acknowledged","createdAt":"2026-11-03T09:05:00Z"}
-```
+After you post, start the watcher. It keeps a live connection to the feed and, the moment the owner answers, comments or taps a card action on any of your cards, prints that as one JSON line and exits:
 
 ```sh
+tinycloud --profile 'feed-<TOKEN>' feed watch --agent '<TOKEN>' --recipient '<TOKEN>' --once | tee -a responses.jsonl
+```
+
+- Run it in the background, with no time limit, and end your turn. When it exits, its lines wake you: handle each one (below), then start it again. Keep it running for as long as the owner wants you on the feed.
+- Start it with your own shell or command tool, as a background command whose end your tool reports back to you, such as a background job or task that notifies you when it finishes. A separate terminal, a pane you have to look at, `&`, `nohup` or `screen` runs it but never wakes you, so you miss every response.
+- It prints each response once for a `--recipient`, across restarts too: on start it prints straight away whatever you haven't had yet, including what arrived while it wasn't running. Use the same `--recipient` every time.
+- Its lines carry the owner's own words. Keep them in `responses.jsonl` in your working folder; never pipe them into a shared log or anywhere other people or agents can read.
+- Home saves an answer, comment or card action only after the owner's 5-second undo window has closed, so every line the watcher prints is final: act on it straight away. If the owner changes their mind later, that comes as a new response: a `followup` or a comment.
+- If it stops without printing a line, for example at your tool's time limit, start it again. If it prints an `error` object, read all of it.
+- If your tool shows a running command's output line by line, you can leave out `--once` and handle each line as it comes. If you can't keep a process waiting at all, `--runner '["node","handler.js"]'` instead of `--once` runs your program once per response with the JSON on stdin; it must exit 0 only once it has saved the response.
+
+The watcher needs Node.js 22.13+ or Bun. Each line has `responseId`, the card's `cardId`, `revision` and `issuanceId`, `kind`, `createdAt` and `sequence`, plus `choiceId` and/or `text`. `kind` is one of:
+
+- `answer`: the owner's answer to a `decision` (`choiceId`, or `text` if they typed their own) or a `page` (`text`, §5). A page answer also has `"payloadType": "feed.page"`; `text` already holds everything in it. The structured answers are in its private payload, which `feed payload` reads with your grant. Private means it's left out of these lines and of notifications, not hidden from you.
+- `followup`: a later answer that replaces the one named in `supersedesResponseId`. Treat it as the current answer, such as a page's remaining questions or a changed choice. Leave the answer it replaces as it is, with or without an outcome.
+- `message`: a comment on a card, which answers nothing. It can come on any card, including updates and cards you've finished, and is often a question for you.
+
+A `message` whose `payloadType` is one of the three below, with `"payloadVersion": 1`, isn't a comment but a card action the owner tapped. Treat any other `message` as a comment. Home moves the card to History for the first two:
+
+| `payloadType` | `text` | The owner tapped |
+| --- | --- | --- |
+| `feed.drop` | `Dropped` | "Drop this card" on a `decision`: they won't answer it. |
+| `feed.acknowledge` | `Acknowledged` | "Acknowledge" on an `update`: they've read it. |
+| `feed.snooze` | `Ask me later: <time>` | "Ask me later" on a `decision`, or "Show me later" on an `update`: Home shows the card again at that time. |
+
+Handle every response, in `sequence` order:
+
+1. **Acknowledge it** when it reaches you, the agent that will act on it: as soon as the watcher wakes you with it, before anything else. Home then shows the owner "Received". A program that only saves it for later must not acknowledge it; you do, when you read it.
+2. **An answer or followup:** do what it asks, then record one outcome for it, `succeeded` or `failed`, with one short sentence on what you did (below). Home shows the card as done or failed, with your sentence. If you couldn't do it, record `failed` and say why; if something is left for the owner to do, say what. A page answered in part: act on what's answered, and say in the sentence what's still open; the rest comes as a followup.
+3. **A comment:** reply to it (below). Don't record an outcome for a comment. Answer what it asks; if it asks you to do something, do it, say in the reply what you did, and post the new `update` card it asks for. If you can't do it, say so and why in the reply, and post no card. Don't promise to check back or remind the owner at a time you won't be running.
+4. **A card action:** acknowledge it, and nothing else: no reply, no outcome.
+   - `feed.drop`: the question is closed unanswered. Stop chasing it: don't ask it again, in this card or a new one, and don't do the work that waited on it. If that leaves something undone that matters, say so once in your next `update` card.
+   - `feed.acknowledge`: the update is closed. Don't post about it again.
+   - `feed.snooze`: don't post about that card again before that time.
+5. When you've finished something worth telling the owner, post a new `update` card about it, one card per piece of finished work. Don't change the old card.
+
+To read every response again, `feed responses --agent '<TOKEN>' --after 0` prints them as a JSON array, up to 100 per page (`--limit` up to 1000); pass the last `sequence` as `--after` for the next page.
+
+### Record handling
+
+Record each step with the block below. It copies `responseId`, `cardId`, `revision` and `issuanceId` from the response's line in `responses.jsonl`, even if the card has a newer revision, and gives each record its own `handlingId`. For an outcome, first write your sentence in `outcome.txt`. Replace `<sequence>` with the response's `sequence` and `<phase>` with `acknowledged`, `succeeded` or `failed`:
+
+```sh
+node -e '
+const fs = require("fs");
+const [sequence, phase] = process.argv.slice(1);
+const r = fs.readFileSync("responses.jsonl", "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).find((x) => String(x.sequence) === sequence);
+if (!r) throw new Error("No response " + sequence + " in responses.jsonl");
+const record = { handlingId: `${r.cardId}-${sequence}-${phase}`, responseId: r.responseId, cardId: r.cardId, revision: r.revision, issuanceId: r.issuanceId, phase, createdAt: new Date().toISOString().replace(/\.\d+Z$/, "Z") };
+if (phase !== "acknowledged") record.detail = { message: fs.readFileSync("outcome.txt", "utf8").trim() };
+fs.writeFileSync("handling.json", JSON.stringify(record));
+' '<sequence>' '<phase>'
 tinycloud --profile 'feed-<TOKEN>' feed handling --agent '<TOKEN>' --file handling.json
 ```
 
-`acknowledged` shows "Agent received" on the card in Home. When you finish, record one outcome for that response, `succeeded` or `failed`, which Home shows as "Completed" or "Failed"; add `"detail":{"message":"..."}` to show a short note under it. A response takes one outcome only.
+It prints the stored record, or an `error` object: read all of it.
+
+`phase` is `acknowledged`, `succeeded` or `failed`. A response takes one outcome only.
+
+### Reply to a comment
+
+A reply is the same card published again, with your reply added to `payload.replies` and pointing at the comment by its `responseId`. Home shows it under that comment, which then shows as replied. Everything else on the card must stay exactly as it is, or Home treats it as a new question and drops the owner's answer; so the block builds the next revision from the current card, and copies the comment's `responseId` and `cardId` from its line in `responses.jsonl`. Write your reply in `reply.txt`, then replace `<sequence>` with the comment's `sequence`:
+
+```sh
+tinycloud --profile 'feed-<TOKEN>' feed list --agent '<TOKEN>' > cards.json
+node -e '
+const fs = require("fs");
+const [sequence] = process.argv.slice(1);
+const comment = fs.readFileSync("responses.jsonl", "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).find((x) => String(x.sequence) === sequence);
+if (!comment) throw new Error("No response " + sequence + " in responses.jsonl");
+const card = JSON.parse(fs.readFileSync("cards.json", "utf8")).find((c) => c.cardId === comment.cardId);
+if (!card) throw new Error("No card " + comment.cardId);
+const payload = card.payload ?? {};
+if (payload.render === "link") throw new Error("Link cards take no replies: answer with a new update card");
+const reply = { text: fs.readFileSync("reply.txt", "utf8").trim(), at: new Date().toISOString().replace(/\.\d+Z$/, "Z"), replyTo: comment.responseId };
+const revision = card.revision + 1;
+fs.writeFileSync("card.json", JSON.stringify({ ...card, revision, issuanceId: `${card.cardId}-r${revision}`, payload: { ...payload, render: "thread", replies: [...(payload.replies ?? []), reply] } }));
+' '<sequence>'
+tinycloud --profile 'feed-<TOKEN>' feed publish --agent '<TOKEN>' --file card.json
+```
+
+Each reply is `{"text": "...", "at": "<time>", "replyTo": "<responseId>"}`. Earlier replies stay as they are, in order. Reply to each comment once; to answer several comments on a card, run the block once per comment.
 
 ## 8. Disconnect
 

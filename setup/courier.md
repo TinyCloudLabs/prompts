@@ -37,7 +37,7 @@ fi
 if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
   TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
-  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.5 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.5 or newer; binary left unchanged" >&2; exit 1; fi
+  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
 fi
 ```
 
@@ -63,7 +63,7 @@ It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 
 
 ## Check the installed CLI
 
-After installation, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks CLI `1.6.5` or newer and the basic conversational subcommands. These are not background-readiness checks.
+After installation, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks CLI `1.6.6` or newer and the basic conversational subcommands. These are not background-readiness checks.
 
 Run this in the same shell as the later commands:
 
@@ -82,7 +82,7 @@ TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 [ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"
 [ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
-if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.5 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.5 or newer; binary left unchanged" >&2; exit 1; fi
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
 for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac
@@ -98,7 +98,7 @@ Do these checks yourself; keep engineering evidence in a private durable receipt
 
 1. **Recover before creating.** Read the runtime's existing authorized handoff/ledger store. Retain executable/home locators, public owner/agent/peer identities, session, invitation ID, pending approval expiry, exact message/request IDs, original deadlines, pause/quota state, last verified stage and unknown effects. Never read keys or private pending-approval files. Preserve incoming invitations until they can be resumed.
 2. **Discover the actual runtime.** Inspect local help, supported read-only status and official public documentation for event delivery, durable admission, permission, capacity, completion/consumption and supervisor ownership. Do not assume OpenBot, Grok, Claude or another client has interchangeable APIs. Do not ask the owner for source exports, Docker privileges or SSH/private-file transfers.
-3. **Gate requested automation before authority changes.** Inspect the selected Courier help. If it advertises `capabilities`, execute `"$TC" courier capabilities --json` and compare its schemas, features and build provenance with the reviewed adapter. Require exact message/self/task reads, caller-planned message IDs, identity-bound routing, strict options and signed renewal/installation support; a protected same-owner service also requires `authenticated-admission-context-v1`. Otherwise record `blocked/release-capability` and stop before fresh approval, pairing or service changes. CLI `1.6.5` currently has no `capabilities` command. Do not try unknown flags, treat a package version as proof, or install an unreleased worktree as an official update.
+3. **Gate requested automation before authority changes.** Inspect the selected Courier help. If it advertises `capabilities`, execute `"$TC" courier capabilities --json` and compare its schemas, features and build provenance with the reviewed adapter. Require exact message/self/task reads, caller-planned message IDs, identity-bound routing, strict options and signed renewal/installation support; a protected same-owner service also requires `authenticated-admission-context-v1`. Otherwise record `blocked/release-capability` and stop before fresh approval, pairing or service changes. CLI `1.6.6` currently has no `capabilities` command. Do not try unknown flags, treat a package version as proof, or install an unreleased worktree as an official update.
 4. **Do not manufacture an adapter.** Background operation also needs an existing supported event/permission/capacity/admission/consumption contract and an authorized supervisor independent of the chat. A missing contract is `blocked/runtime-adapter` (or its exact permission/capacity/consumption stage). The runtime maintainer owns it. A notification, foreground shell, webhook success or fixture is not native consumption. Do not install a notify-only/UI/Mac fallback for requested automation.
 5. **Request only real decisions.** After prerequisites exist, follow the incoming invitation/setup flow below. Send the printed approval URL privately, immediately, then collect the same request with bounded `init --wait` calls. A supported process-completion event can resume the agent; do not require an extra owner message when the runtime can already continue. If a tool cannot stay alive or deliver a continuation, persist pending state and report that limitation instead of promising an automatic return. Denial is not expiry; never generate a replacement approval loop.
 6. **Prove the requested mode.** Verify an owner-authorized substantive request and correlated reply in the exact authenticated session. Only that exchange earns `messaging-ready`. `autonomous-ready` additionally requires service-owned durable admission, processing and real caller consumption after the initiating turn ends, observed restart/cold-start catch-up, and verified renewal ownership/expiry recovery while preserving pauses, quotas and deadlines. A successful pairing, empty inbox, wake or result publication is insufficient. Activation/restart/migration and live source work remain separately gated.
