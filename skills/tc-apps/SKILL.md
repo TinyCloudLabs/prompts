@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records and context (facts and preferences, decisions, handoffs between agents) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, tells you to remember something about them, asks about something they told an agent before, or asks you to continue or pick up an earlier task, even if they don't mention TinyCloud. The owner approves any missing access through OpenKey; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.4.1"
+  version: "0.4.2"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/apps.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -59,7 +59,7 @@ How to run the blocks:
 
 ## 0. Route the request
 
-The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domains no catalog app owns. Use only the selected profile and verified permissions; never read key or session files or arbitrarily choose another owner's profile.
+The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domains no catalog app owns. Use only the selected profile and verified permissions; never read key or session files or arbitrarily choose another owner's profile. "Profile" here means the owner's CLI profile: the sign-in saved under a name such as `owner` or `agent-data`, and the files behind it. It never means an app's own records. Records an app calls "profile" (a Gene Keys profile, say) are ordinary records of that app: read and write them like any other.
 
 ## 1. Read the paths and the time
 
@@ -104,12 +104,12 @@ The CLI checks, in this order, and stops at the first that applies:
 3. The old catalog in `default` has the app's record, `xyz.tinycloud.agent-data/catalog/<APP>` → `legacy`.
 4. Otherwise → `new`.
 
-If step 2 or 3 cannot be read, it prints `ask` or `check-failed` instead of going on to the next step.
+If step 2 or 3 cannot be read, it prints `ask` or `check-failed` instead of going on to the next step. Step 2 is skipped when this computer has no profile that can read `applications` (not onboarded yet). A computer that never signed in to the old place has nothing to read there, so step 3 ends in `new` for it. Step 3 prints `ask` only when an earlier sign-in for the old place expired or lacks the grant, or when step 2 was skipped and the old catalog holds the app. It runs with the CLI that §1 selected. If that CLI has no `kv list --all`, it lists the old catalog in one call, and if that listing says it was cut off, it prints `check-failed`.
 
 The output is the layout; use the same `<TC_BIN>` in either layout.
 - `legacy` → the app has records in `default` and no verified move exists on this computer. **Keep reading and writing the old layout exactly as before:** read `LEGACY.md` in full with the shell, `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/LEGACY.md"` (Claude Code) or `cat "$HOME/.agents/skills/tc-apps/LEGACY.md"` (Codex, OpenCode), and follow its §2 to §8, with `<TC_BIN>`. Request no new approval, create no new profile, and don't use §3 to §9 for this app. Once per conversation, tell the owner: "This app can move to its own folder: say "move my <APP> records" when you want it (nothing is deleted)." When the owner says it, follow §9. Until the move is verified, nothing about this app changes.
-- `new` → use §2 to §8 below with the same CLI.
-- `ask` → this computer's earlier sign-in for the old place is missing or expired, so it can't list the old catalog. **Never ask the owner whether the app is new or had earlier records:** their request is the go-ahead, and they can't know what an earlier version or another client stored.
+- `new` → use §2 to §8 below with the same CLI. If the owner says they used this app before, with an earlier version on any computer, don't set it up as new. Request read-only access to the old catalog with the sign-in block under `ask` below, send its link as §4 says, and run §1a again.
+- `ask` → this computer has an earlier sign-in for the old place that is expired or lacks the grant, so it can't list the old catalog; or step 2 was skipped and the old catalog holds the app. **Never ask the owner whether the app is new or had earlier records:** their request is the go-ahead, and they can't know what an earlier version or another client stored.
   - The request makes an app ("make me a Gene Keys app", "start a reading log"), or it is the setup guide's default `todos` record → use `new`.
   - Otherwise (the owner means an app this computer can't find) → request read-only access to the old catalog with the block below, and send its link as §4 says. When it exits with `"authenticated": true`, run §1a again. Write nothing until it prints `new` or `legacy`.
 
@@ -260,23 +260,29 @@ TC_BIN='<TC_BIN>'; umask 077
 
 It prints `{"key": …, "data": <record>, …}`. `NOT_FOUND` → there's no record at that key.
 
+**Does a record exist?** Read it with `kv get` on its key: it prints the record, or `NOT_FOUND` (exit 4) when there is none. To check without reading the record, list with the key as the prefix (the folder block below) and look for that exact key in `keys`. Only an exact match counts, because a longer key can start with the same prefix. Don't use `kv head`: the app's own access doesn't cover it, so it fails with `AUTH_REQUIRED`, and that is no reason to request more access.
+
 What's in one or more folders, side by side:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
-printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} "$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv list --prefix {} --space '<APP_SPACE>' --all --json
+D=$(mktemp -d)
+printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} sh -c '"$0" --profile "<APP_PROFILE>" --host "<APP_HOST>" kv list --prefix "$1" --space "<APP_SPACE>" --all --json > "$2/$(printf %s "$1" | tr / %).json" 2>&1' "$TC_BIN" {} "$D"
+cat "$D"/*.json; rm -rf "$D"
 ```
 
-A prefix ends with `/`: a month folder (`<ID>/lift/2026-10/`), a whole kind (`<ID>/lift/`), or an item state (`<ID>/todo/open/`). Each prints `{"keys": […], "count": …, "prefix": …}`.
+A prefix ends with `/`: a month folder (`<ID>/lift/2026-10/`), a whole kind (`<ID>/lift/`), or an item state (`<ID>/todo/open/`). Each prints `{"keys": […], "count": …, "prefix": …}`. Each command writes its own file, so large output from one never mixes into another's.
 
 Several records, side by side:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
-printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} "$TC_BIN" --profile '<APP_PROFILE>' --host '<APP_HOST>' kv get {} --space '<APP_SPACE>' --json
+D=$(mktemp -d)
+printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c '"$0" --profile "<APP_PROFILE>" --host "<APP_HOST>" kv get "$1" --space "<APP_SPACE>" --json > "$2/$(printf %s "$1" | tr / %).json" 2>&1' "$TC_BIN" {} "$D"
+cat "$D"/*.json; rm -rf "$D"
 ```
 
-It prints one JSON object per key, in any order, so match them by `"key"`. A key you asked for that's missing from the output failed, and its error is printed instead:
+It prints one JSON object per key, in any order, so match them by `"key"`. Each key's output is its own file, so a large record (tens of KB) stays whole: never send several `kv get` outputs into one pipe with `xargs -P`, because they interleave and break the JSON. A key you asked for that's missing from the output failed, and its error is printed instead:
 - `NOT_FOUND` → the record is gone.
 - anything else → usually a network hiccup: read that key once more.
 

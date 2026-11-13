@@ -153,6 +153,7 @@ if (op === "list") {
   const prefix = opts["--prefix"] || "";
   if (!allowed("list", prefix)) fail("PERMISSION_DENIED", 5);
   if (ctl.failList) fail(ctl.failList, 7);
+  if (ctl.failOldList && profile === "agent-data") fail(ctl.failOldList, 7);
   const keys = Object.keys(s).filter((k) => k.startsWith(prefix)).sort();
   console.log(JSON.stringify({ keys, count: keys.length, prefix }));
 } else if (op === "get") {
@@ -512,8 +513,6 @@ test("layout.sh (e): when the entry can't be read for want of a sign-in or grant
     { getError: { key: ENTRY("fitness"), code: "AUTH_REQUIRED", status: 3 } },
     // An earlier agent-data sign-in only: app-context selects it, and it has no grant in `applications`.
     { status: { activeProfile: "agent-data", profiles: [{ name: "agent-data", authenticated: true }] } },
-    // No applications profile at all: app-context says onboard-first, and the entry is not read.
-    { status: { activeProfile: null, profiles: [] } },
   ];
   for (const c of cases) {
     const h = world();
@@ -521,6 +520,66 @@ test("layout.sh (e): when the entry can't be read for want of a sign-in or grant
     assert.equal(runLayout(h, "fitness").stdout.trim(), "ask", JSON.stringify(c));
     assert.deepEqual(legacyLists(h), [], JSON.stringify(c));
   }
+});
+
+test("layout.sh (TC-2915): a computer with no earlier sign-in for the old place goes on in the new layout, never ask", () => {
+  const cases = [
+    // Onboarded, entry absent, and no agent-data profile at all.
+    { missingProfiles: ["agent-data"] },
+    // The agent-data profile exists but never signed in.
+    { failOldList: "AUTH_REQUIRED" },
+    // Not onboarded and no agent-data profile: nothing can be read anywhere.
+    { missingProfiles: ["agent-data"], status: { activeProfile: null, profiles: [] } },
+  ];
+  for (const c of cases) {
+    for (const app of ["fitness", "books"]) {
+      const h = world();
+      control(h, c);
+      assert.equal(runLayout(h, app).stdout.trim(), "new", `${app} ${JSON.stringify(c)}`);
+      assert.deepEqual(readdirSync(h.state), []);
+    }
+  }
+  // An earlier sign-in that expired or lacks the grant still says ask: records there may exist.
+  for (const failOldList of ["AUTH_EXPIRED", "PERMISSION_DENIED"]) {
+    const h = world();
+    control(h, { failOldList });
+    assert.equal(runLayout(h, "fitness").stdout.trim(), "ask", failOldList);
+  }
+  // The entry can't be read (not onboarded) and the old catalog has no record of the app: new. If it holds the app, the layout can't be told: ask.
+  const n = world();
+  control(n, { status: { activeProfile: null, profiles: [] } });
+  assert.equal(runLayout(n, "books").stdout.trim(), "new");
+  assert.equal(runLayout(n, "fitness").stdout.trim(), "ask");
+});
+
+test("layout.sh (TC-2915): a CLI without `kv list --all` lists the old catalog once; a truncated listing is check-failed", () => {
+  const h = world();
+  const old = join(h.dir, "old-tinycloud");
+  // Stands in for CLI 1.2.1: commander rejects the flag, and the listing has no paging fields.
+  writeFileSync(old, `#!/bin/sh
+case " $* " in
+  *" kv list "*" --space default "*)
+    case " $* " in
+      *" --all "*) echo "error: unknown option '--all'" >&2; exit 1 ;;
+      *) echo '{"keys":["${OLD}/catalog/fitness"],"count":1}' ;;
+    esac ;;
+  *) exec "${h.bin}" "$@" ;;
+esac
+`, { mode: 0o755 });
+  assert.equal(runLayout(h, "fitness", { TC_BIN: old }).stdout.trim(), "legacy");
+  assert.equal(runLayout(h, "books", { TC_BIN: old }).stdout.trim(), "new");
+  const cut = join(h.dir, "old-truncated-tinycloud");
+  writeFileSync(cut, `#!/bin/sh
+case " $* " in
+  *" kv list "*" --space default "*)
+    case " $* " in
+      *" --all "*) echo "error: unknown option '--all'" >&2; exit 1 ;;
+      *) echo '{"keys":["${OLD}/catalog/todos"],"count":1,"truncated":true,"nextCursor":"c1"}' ;;
+    esac ;;
+  *) exec "${h.bin}" "$@" ;;
+esac
+`, { mode: 0o755 });
+  for (const app of ["fitness", "books"]) assert.equal(runLayout(h, app, { TC_BIN: cut }).stdout.trim(), "check-failed", app);
 });
 
 test("layout.sh (f): when the entry check fails for another reason it says check-failed, never legacy or new", () => {
@@ -551,15 +610,14 @@ test("check-failed in a sandbox allows one network-approved retry, then stops wi
 });
 
 
-test("layout.sh: with no usable earlier sign-in for the old place it says ask, and with another failure it says check-failed", () => {
-  const h = world();
-  control(h, { missingProfiles: ["agent-data"] });
-  assert.equal(runLayout(h, "fitness").stdout.trim(), "ask");
-  assert.ok(cliCalls(h).some((c) => c.profile === "agent-data" && c.argv[0] === "kv" && c.argv[1] === "list"));
+test("layout.sh: another failure listing the old place is check-failed", () => {
   const g = world();
   const broken = join(g.dir, "broken-tinycloud");
   writeFileSync(broken, "#!/bin/sh\necho '{\"error\":{\"code\":\"NETWORK_ERROR\"}}' >&2\nexit 7\n", { mode: 0o755 });
   assert.equal(runLayout(g, "fitness", { TC_BIN: broken }).stdout.trim(), "check-failed");
+  const h = world();
+  control(h, { failOldList: "NETWORK_ERROR" });
+  assert.equal(runLayout(h, "fitness").stdout.trim(), "check-failed");
 });
 
 // TC-2431: `ask` is never a question to the owner. A request that makes an app uses `new`; otherwise the agent
@@ -578,8 +636,8 @@ test("layout.sh (TC-2431): ask, then the read-only old-catalog grant decides leg
     assert.deepEqual(store(h).default, before);
     assert.equal(cliCalls(h).some((c) => (c.argv[0] === "kv" && ["put", "delete"].includes(c.argv[1])) || (c.argv[0] === "sql" && c.argv[1] === "execute")), false);
   };
-  // Without an agent-data sign-in, no old-catalog reads or writes occur.
-  for (const ctl of [{ missingProfiles: ["agent-data"] }]) {
+  // An expired agent-data sign-in can't list the old catalog, and nothing is written.
+  for (const ctl of [{ failOldList: "AUTH_EXPIRED" }]) {
     const h = world();
     control(h, ctl);
     for (const app of ["fitness", "books"]) assert.equal(runLayout(h, app).stdout.trim(), "ask", JSON.stringify(ctl));
@@ -598,7 +656,7 @@ test("layout.sh (TC-2431): ask, then the read-only old-catalog grant decides leg
   assert.match(rule, /auth login --method openkey --no-popup --manifest "\$STATE\/agent-data-catalog\.json" --expiry 30d --profile agent-data/);
   // With that grant (catalog get/list only), the rerun decides: fitness has old records, books has none.
   const g = world();
-  control(g, { missingProfiles: ["agent-data"] });
+  control(g, { failOldList: "AUTH_EXPIRED" });
   assert.equal(runLayout(g, "fitness").stdout.trim(), "ask");
   control(g, { agentDataCatalogOnly: true });
   assert.equal(runLayout(g, "fitness").stdout.trim(), "legacy");
