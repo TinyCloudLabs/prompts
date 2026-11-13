@@ -158,7 +158,7 @@ The owner picks one of two to four choices. `kind` is `decision`, `needsResponse
     "agent": {
       "kind": "claude",
       "model": "Claude Sonnet 5.5",
-      "runsOn": "Sam's laptop",
+      "runsOn": "Home laptop",
       "job": "Weight tracker"
     },
     "brief": {
@@ -191,7 +191,7 @@ Information that needs no answer: a result, progress, or a follow-up on earlier 
     "agent": {
       "kind": "claude",
       "model": "Claude Sonnet 5.5",
-      "runsOn": "Sam's laptop",
+      "runsOn": "Home laptop",
       "job": "Weight tracker"
     },
     "source": {
@@ -242,7 +242,7 @@ Each question:
     "agent": {
       "kind": "claude",
       "model": "Claude Sonnet 5.5",
-      "runsOn": "Sam's laptop",
+      "runsOn": "Home laptop",
       "job": "Party planner"
     },
     "page": {
@@ -293,7 +293,7 @@ Each question:
 
 The owner's answer to a page comes back as one response whose `text` has one line per question they answered, `<header>: <option>, <option>. <note>`, such as `Cakes: Chocolate, Lemon. No nuts.` The text after the options is the owner's note on that question; a note-only question's line is `<header>: <note>`. Questions they skipped have no line; they can answer them later.
 
-Home opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **Both** in Home's view menu.
+Home opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **All** in Home's view menu.
 
 Before you publish, check each card: `payload.priority` set; `summary` and `agent` set; on a `decision`, a `brief` with all five sections; and `expiresAt` and `deadline` if anything you know about it has a date.
 
@@ -335,9 +335,9 @@ A `message` with a `payloadType` isn't a comment but a card action the owner tap
 
 | `payloadType` | `text` | The owner tapped |
 | --- | --- | --- |
-| `feed.drop` | `Dropped` | "Drop this card" on a `decision` or `page`: they won't answer it. |
+| `feed.drop` | `Dropped` | "Drop this card" on a `decision`: they won't answer it. |
 | `feed.acknowledge` | `Acknowledged` | "Acknowledge" on an `update`: they've read it. |
-| `feed.snooze` | `Ask me later: <time>` | "Ask me later": Home shows the card again at that time. |
+| `feed.snooze` | `Ask me later: <time>` | "Ask me later" on a `decision`, or "Show me later" on an `update`: Home shows the card again at that time. |
 
 Handle every response, in `sequence` order:
 
