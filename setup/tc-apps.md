@@ -106,11 +106,11 @@ Read the installed skill with three shell calls in order; together they are the 
 Claude Code uses its TinyCloud plugin path when set; otherwise it reads its user installation:
 
 ```sh
-if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "${CLAUDE_SKILL_DIR}/SKILL.md"; else sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"; fi
+if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed '/^## 2\. How the records are organised$/,$d' "${CLAUDE_SKILL_DIR}/SKILL.md"; else sed '/^## 2\. How the records are organised$/,$d' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md"; fi
 ```
 
 ```sh
-if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "${CLAUDE_SKILL_DIR}/SKILL.md" | sed '$d'; else sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md" | sed '$d'; fi
+if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then sed -n '/^## 2\. How the records are organised$/,/^## 4\. Request only missing access$/p' "${CLAUDE_SKILL_DIR}/SKILL.md" | sed '$d'; else sed -n '/^## 2\. How the records are organised$/,/^## 4\. Request only missing access$/p' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/SKILL.md" | sed '$d'; fi
 ```
 
 ```sh
@@ -120,11 +120,11 @@ if [ -n "${CLAUDE_SKILL_DIR:-}" ] && [ -f "${CLAUDE_SKILL_DIR}/SKILL.md" ]; then
 Codex and OpenCode:
 
 ```sh
-sed '/^## 3\. Reuse access, find the app and read its catalog$/,$d' "$HOME/.agents/skills/tc-apps/SKILL.md"
+sed '/^## 2\. How the records are organised$/,$d' "$HOME/.agents/skills/tc-apps/SKILL.md"
 ```
 
 ```sh
-sed -n '/^## 3\. Reuse access, find the app and read its catalog$/,/^## 4\. Request only missing access$/p' "$HOME/.agents/skills/tc-apps/SKILL.md" | sed '$d'
+sed -n '/^## 2\. How the records are organised$/,/^## 4\. Request only missing access$/p' "$HOME/.agents/skills/tc-apps/SKILL.md" | sed '$d'
 ```
 
 ```sh
