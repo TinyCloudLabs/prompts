@@ -6,7 +6,7 @@ Give your AI agent abilities that keep your data in your own TinyCloud space. Ag
 
 **New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). Follow its current OpenKey approval steps; your agent carries on with your request.
 
-The CLI route needs Node.js 20 or later and npm. Meetings run through the CLI route.
+The CLI route needs Node.js 20 or later and npm. For meetings, use the TinyCloud CLI.
 
 **Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI and signs the owner in. Health Log always asks for its own permission, even after onboarding. Other personal apps reuse your onboarding access when it covers the task, and ask only for what's missing.
 

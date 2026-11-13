@@ -56,8 +56,8 @@ Use the tools this connection actually exposes. The [MCP reference skill](https:
 | Read or write KV data | Inspect the available `tinycloud_kv_list`, `tinycloud_kv_get` and `tinycloud_kv_put` schemas; use the exact non-secrets space and path authorized for the task. The [MCP skill](https://agents.tinycloud.xyz/skills/mcp.md) covers scoped reads, pagination and conditional writes. Read before replacing data; do not broaden scope or overwrite a concurrent change. |
 | Personal records or apps | Use `tinycloud_apps_context`, then its returned rules and the live tool schemas. [Apps](https://agents.tinycloud.xyz/apps) and the [apps skill](https://agents.tinycloud.xyz/skills/apps.md) describe the CLI workflow; their layout detection, `LEGACY.md`, migration and shell installation steps are not hosted-tool instructions. |
 | A named secret | Use `tinycloud_secrets_get` only for the owner's requested task and follow its approval instructions. [Secrets](https://agents.tinycloud.xyz/secrets) is the CLI workflow; the [MCP skill](https://agents.tinycloud.xyz/skills/mcp.md) distinguishes hosted access. Never display the value or put it in prompts, memory or reports. The client may retain tool results; do not promise that a secret never reaches the host. |
-| Publish or share | Publishing and sharing run through the TinyCloud CLI: keep the request and use a persistent CLI-capable agent with [publish](https://agents.tinycloud.xyz/publish) or [share](https://agents.tinycloud.xyz/share). A chat prompt link does not create a share or publish anything. |
-| Meetings | Meetings run through the TinyCloud CLI: use a CLI-capable agent with [TinyChat meetings](https://agents.tinycloud.xyz/chat) and its retrieval skill. |
+| Publish or share | Publishing and sharing use the TinyCloud CLI: keep the request and use a persistent CLI-capable agent with [publish](https://agents.tinycloud.xyz/publish) or [share](https://agents.tinycloud.xyz/share). A chat prompt link does not create a share or publish anything. |
+| Meetings | For meetings, use the TinyCloud CLI. Use a CLI-capable agent with [TinyChat meetings](https://agents.tinycloud.xyz/chat) and its retrieval skill. |
 
 The [skill index](https://agents.tinycloud.xyz/skills/index.json) identifies the task's reference material; hosted clients use connected tools, not downloaded CLI skill bodies. If a needed tool is absent, report the observed limitation instead of claiming CLI parity.
 
@@ -90,7 +90,7 @@ node "$HOME/.local/share/tinycloud/install.js" apps --agent codex
 
 Use `claude-code` for Claude Code, `opencode` for OpenCode and `codex` for other runtimes. The latter installs into `~/.agents/skills`; use the runtime-specific discovery instructions on this page. Read the installed `SKILL.md` and its task-relevant references before acting. Do not install every skill or switch to local stdio MCP merely to complete CLI onboarding.
 
-The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. It covers personal records, key-value and SQL data and named secrets; publishing, sharing and meetings run through the CLI route. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
+The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. It covers personal records, key-value and SQL data, and named secrets. For publishing, sharing and meetings, use the TinyCloud CLI. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
 
 <!-- std:connect-feedback -->
 ## If something went wrong

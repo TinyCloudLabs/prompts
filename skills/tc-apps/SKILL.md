@@ -2,7 +2,7 @@
 name: tc-apps
 description: Keep the owner's personal records and context (facts and preferences, decisions, handoffs between agents) in their own TinyCloud storage, organised into apps you create and extend as they go. Use when the owner asks you to log, record, track, add, look up, list or sum up something about their life, tells you to remember something about them, asks about something they told an agent before, or asks you to continue or pick up an earlier task, even if they don't mention TinyCloud. The owner approves any missing access through OpenKey; the agent runs every command and verifies saved records.
 metadata:
-  version: "0.4.5"
+  version: "0.4.4"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/apps.md` and follow that text. Summaries drop the shell blocks you must run.
