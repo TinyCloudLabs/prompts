@@ -133,7 +133,9 @@ What's in one or more folders, side by side:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
-printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} "$TC_BIN" kv list --prefix {} --space default --json --profile agent-data
+D=$(mktemp -d)
+printf '%s\n' '<prefix>' '<prefix>' | xargs -P 8 -I{} sh -c '"$0" kv list --prefix "$1" --space default --json --profile agent-data > "$2/$(printf %s "$1" | tr / %).json" 2>&1' "$TC_BIN" {} "$D"
+cat "$D"/*.json; rm -rf "$D"
 ```
 
 A prefix ends with `/`: a month folder (`<R>/fitness/lift/2026-10/`), a whole kind (`<R>/fitness/lift/`), or an item state (`<R>/todos/todo/open/`). Each prints `{"keys": […], "count": …, "prefix": …}`.
@@ -142,10 +144,12 @@ Several records, side by side:
 
 ```sh
 TC_BIN='<TC_BIN>'; umask 077
-printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} "$TC_BIN" kv get {} --space default --json --profile agent-data
+D=$(mktemp -d)
+printf '%s\n' '<key>' '<key>' | xargs -P 8 -I{} sh -c '"$0" kv get "$1" --space default --json --profile agent-data > "$2/$(printf %s "$1" | tr / %).json" 2>&1' "$TC_BIN" {} "$D"
+cat "$D"/*.json; rm -rf "$D"
 ```
 
-It prints one JSON object per key, in any order, so match them by `"key"`. A key you asked for that's missing from the output failed, and its error is printed instead:
+It prints one JSON object per key, in any order, so match them by `"key"`. Each key's output is its own file, so a large record stays whole: never send several `kv get` outputs into one pipe with `xargs -P`. A key you asked for that's missing from the output failed, and its error is printed instead:
 - `NOT_FOUND` → the record is gone.
 - anything else → usually a network hiccup: read that key once more.
 
