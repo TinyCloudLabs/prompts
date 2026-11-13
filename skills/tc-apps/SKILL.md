@@ -59,7 +59,7 @@ How to run the blocks:
 
 ## 0. Route the request
 
-The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domains no catalog app owns. Use only the selected profile and verified permissions; never read key or session files or arbitrarily choose another owner's profile. "Profile" here means the owner's account sign-in in the CLI (a name such as `owner` or `agent-data`, and the files behind it). It never means an app's own records: an app that stores records it calls "profile" (a Gene Keys profile, say) is read and written like any other record of that app.
+The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domains no catalog app owns. Use only the selected profile and verified permissions; never read key or session files or arbitrarily choose another owner's profile. "Profile" here means the owner's CLI profile: the sign-in saved under a name such as `owner` or `agent-data`, and the files behind it. It never means an app's own records. An app that stores records it calls "profile" (a Gene Keys profile, say) has you read and write them like any other record of that app.
 
 ## 1. Read the paths and the time
 
@@ -104,12 +104,12 @@ The CLI checks, in this order, and stops at the first that applies:
 3. The old catalog in `default` has the app's record, `xyz.tinycloud.agent-data/catalog/<APP>` → `legacy`.
 4. Otherwise → `new`.
 
-If step 2 or 3 cannot be read, it prints `ask` or `check-failed` instead of going on to the next step. Step 2 is skipped when this computer has no profile that can read `applications` (not onboarded yet). A computer that never signed in to the old place has nothing to read there, so step 3 ends in `new` for it; it prints `ask` only when an earlier sign-in for the old place expired or lacks the grant, or when step 2 was skipped and the old catalog holds the app. It runs with the CLI that §1 selected. A CLI that has no `kv list --all` lists the old catalog in one call, and a listing that says it was cut off prints `check-failed`.
+If step 2 or 3 cannot be read, it prints `ask` or `check-failed` instead of going on to the next step. Step 2 is skipped when this computer has no profile that can read `applications` (not onboarded yet). A computer that never signed in to the old place has nothing to read there, so step 3 ends in `new` for it. Step 3 prints `ask` only when an earlier sign-in for the old place expired or lacks the grant, or when step 2 was skipped and the old catalog holds the app. It runs with the CLI that §1 selected. If that CLI has no `kv list --all`, it lists the old catalog in one call, and if that listing says it was cut off, it prints `check-failed`.
 
 The output is the layout; use the same `<TC_BIN>` in either layout.
 - `legacy` → the app has records in `default` and no verified move exists on this computer. **Keep reading and writing the old layout exactly as before:** read `LEGACY.md` in full with the shell, `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/LEGACY.md"` (Claude Code) or `cat "$HOME/.agents/skills/tc-apps/LEGACY.md"` (Codex, OpenCode), and follow its §2 to §8, with `<TC_BIN>`. Request no new approval, create no new profile, and don't use §3 to §9 for this app. Once per conversation, tell the owner: "This app can move to its own folder: say "move my <APP> records" when you want it (nothing is deleted)." When the owner says it, follow §9. Until the move is verified, nothing about this app changes.
 - `new` → use §2 to §8 below with the same CLI.
-- `ask` → this computer has an earlier sign-in for the old place that is expired or lacks the grant, so it can't list the old catalog (or the app's entry couldn't be read and the old catalog holds the app). **Never ask the owner whether the app is new or had earlier records:** their request is the go-ahead, and they can't know what an earlier version or another client stored.
+- `ask` → this computer has an earlier sign-in for the old place that is expired or lacks the grant, so it can't list the old catalog; or step 2 was skipped and the old catalog holds the app. **Never ask the owner whether the app is new or had earlier records:** their request is the go-ahead, and they can't know what an earlier version or another client stored.
   - The request makes an app ("make me a Gene Keys app", "start a reading log"), or it is the setup guide's default `todos` record → use `new`.
   - Otherwise (the owner means an app this computer can't find) → request read-only access to the old catalog with the block below, and send its link as §4 says. When it exits with `"authenticated": true`, run §1a again. Write nothing until it prints `new` or `legacy`.
 
@@ -260,7 +260,7 @@ TC_BIN='<TC_BIN>'; umask 077
 
 It prints `{"key": …, "data": <record>, …}`. `NOT_FOUND` → there's no record at that key.
 
-**Does a record exist?** Read it with `kv get` on its key: it prints the record, or `NOT_FOUND` (exit 4) when there is none. To check without reading the record, list with the key as the prefix (the folder block below) and look for that exact key in `keys`; a longer key can share the prefix. Don't use `kv head`: the app's own access doesn't cover it, so it fails with `AUTH_REQUIRED`, and that is no reason to request more access.
+**Does a record exist?** Read it with `kv get` on its key: it prints the record, or `NOT_FOUND` (exit 4) when there is none. To check without reading the record, list with the key as the prefix (the folder block below) and look for that exact key in `keys`. Only an exact match counts, because a longer key can start with the same prefix. Don't use `kv head`: the app's own access doesn't cover it, so it fails with `AUTH_REQUIRED`, and that is no reason to request more access.
 
 What's in one or more folders, side by side:
 
