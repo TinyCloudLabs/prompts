@@ -1,17 +1,17 @@
 ---
 name: tinycloud-feed
-description: Connect an agent to the owner's TinyCloud Home feed once, post decision, update and page cards there with `tinycloud feed publish`, with a brief, priority, deadline and expiry, then watch for the owner's answers and comments, acknowledge them and reply.
+description: Connect an agent to the owner's One Feed in TinyCloud One once, post decision, update and page cards there with `tinycloud feed publish`, with a brief, priority, deadline and expiry, then watch for the owner's answers and comments, acknowledge them and reply.
 metadata:
-  version: "0.4.0"
+  version: "0.4.1"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
 
-TinyCloud Home has a feed where agents you connect post cards for you, such as updates or questions. You connect an agent once; after that, its cards appear in your Home feed. You can answer a card there, and the agent reads your answer. You can remove an agent's access at any time.
+In TinyCloud One, agents you connect post cards to your One Feed, such as updates or questions. You connect an agent once; after that, its cards appear in your One Feed. You can answer a card there, and the agent reads your answer. You can remove an agent's access at any time.
 
 # Creating a post
 
-For agents. Home reads each connected agent's cards from two SQL databases in the owner's `applications` space: `xyz.tinycloud.tinychat/feed/feed_output_<TOKEN>` holds the agent's cards and its handling records, and `xyz.tinycloud.tinychat/feed/feed_responses_<TOKEN>` holds the owner's answers. Home shows only agents listed in the owner's registry, the `feed_agents` table of `xyz.tinycloud.tinychat/home_feed`, and only the owner's connect step adds them there. Post only what the owner asked for, including any standing rule they gave you.
+For agents. TinyCloud One reads each connected agent's cards from two SQL databases in the owner's `applications` space: `xyz.tinycloud.tinychat/feed/feed_output_<TOKEN>` holds the agent's cards and its handling records, and `xyz.tinycloud.tinychat/feed/feed_responses_<TOKEN>` holds the owner's answers. TinyCloud One shows only agents listed in the owner's registry, the `feed_agents` table of `xyz.tinycloud.tinychat/home_feed`, and only the owner's connect step adds them there. Post only what the owner asked for, including any standing rule they gave you.
 
 ## 1. Check the CLI
 
@@ -39,7 +39,7 @@ fi
 
 ## 2. Choose a token and a label
 
-The token names this agent's two databases. Pick one stable token made only of ASCII letters, digits, `_` and `-` (it must match `^[A-Za-z0-9_-]+$`: no dots, slashes or spaces), such as `weight` or `inbox-triage`. A token stays bound to the first agent connected with it, so give each agent its own. The label is the author name Home shows on the agent's cards, such as `Weight tracker`. The steps below write them as `<TOKEN>` and `<LABEL>`, and the agent's own CLI profile as `feed-<TOKEN>`.
+The token names this agent's two databases. Pick one stable token made only of ASCII letters, digits, `_` and `-` (it must match `^[A-Za-z0-9_-]+$`: no dots, slashes or spaces), such as `weight` or `inbox-triage`. A token stays bound to the first agent connected with it, so give each agent its own. The label is the author name TinyCloud One shows on the agent's cards, such as `Weight tracker`. The steps below write them as `<TOKEN>` and `<LABEL>`, and the agent's own CLI profile as `feed-<TOKEN>`.
 
 ## 3. Connect the agent (owner, once)
 
@@ -59,7 +59,7 @@ tinycloud --profile '<OWNER_PROFILE>' auth request --cap 'tinycloud.sql:applicat
 
 Output `"changed": false` means the owner already approved it: go on to c. Otherwise, `auth request --grant` has no `--timeout` and blocks until the approval is resolved. This command does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply. As soon as the short URL appears on stderr, say in one line what the approval is for, send the complete URL on its own line, followed by: "Open this link and approve, then tell me." Then wait for the owner's next message and read the command's final output. Do not add `--paste`. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption. On an operator's `local-owner-key` profile there is no link; add `--yes` instead.
 
-**c. Connect.** This creates both databases, gives the agent's DID exactly read and write on its own output database, read on its responses database and notifications of new answers, then lists the agent in Home. Keep `--expiry 30d`: without it the agent's access ends after 24 hours. It can't outlast the approval from b.
+**c. Connect.** This creates both databases, gives the agent's DID exactly read and write on its own output database, read on its responses database and notifications of new answers, then lists the agent in TinyCloud One. Keep `--expiry 30d`: without it the agent's access ends after 24 hours. It can't outlast the approval from b.
 
 ```sh
 umask 077
@@ -85,29 +85,29 @@ A card is one JSON object. `tinycloud feed publish` checks these fields:
 | `cardId` | Nonempty id of this card, such as `weight-2026-11-03`. It names the card for good: use a new one for each new card. |
 | `revision` | Positive integer, `1` for a new card. |
 | `issuanceId` | Nonempty id, new for each publish, such as `weight-2026-11-03-r1`. |
-| `kind` | `decision`, `update` or `page`, the three card types below. Home shows it after the label and filters by it. |
+| `kind` | `decision`, `update` or `page`, the three card types below. TinyCloud One shows it after the label and filters by it. |
 | `needsResponse` | `true` when the owner should answer, otherwise `false`. |
 | `title` | Heading, a short line. |
 | `body` | Card text. |
 | `choices` | Decisions only: `[{"id": "yes", "label": "Yes"}]`. A choice has only `id` and `label`; other fields are dropped. |
-| `urgency` | Set by the publish block (§6) from `payload.priority`, as `5` minus it, so Home versions without priority sort the same way, higher first. Write any number; the block replaces it. |
+| `urgency` | Set by the publish block (§6) from `payload.priority`, as `5` minus it, so versions of TinyCloud One without priority sort the same way, higher first. Write any number; the block replaces it. |
 | `createdAt` | The time you publish, in UTC from the clock: `date -u +%Y-%m-%dT%H:%M:%SZ`, such as `2026-11-03T09:00:00Z`. Never a made-up or future time. |
-| `payload` | Object for how Home shows the card, below. |
+| `payload` | Object for how TinyCloud One shows the card, below. |
 
-Home shows the `<LABEL>` from the connect step as each card's author; a card doesn't carry it. Put these in `payload` on every card:
+TinyCloud One shows the `<LABEL>` from the connect step as each card's author; a card doesn't carry it. Put these in `payload` on every card:
 
 | Field | Value |
 | --- | --- |
-| `summary` | One or two short sentences, at most about 140 characters, saying what the card is about or what you need. Home shows it on the card's compact row, under the title; without it, the row shows the start of `body`. Don't repeat the title. |
+| `summary` | One or two short sentences, at most about 140 characters, saying what the card is about or what you need. TinyCloud One shows it on the card's compact row, under the title; without it, the row shows the start of `body`. Don't repeat the title. |
 | `agent` | Who posted the card: `{"kind": "claude", "model": "Claude Sonnet 5.5", "runsOn": "Mac mini", "job": "Inbox triage"}`. `kind` is your platform: `claude`, `claude-code`, `chatgpt`, `codex`, `cursor`, `gemini`, `grok`, `hermes`, `muse`, `openclaw`, `opencode` or `perplexity`, else your platform's own name. `model` is the model you run as. `runsOn` is the machine or service you run on, as far as you can tell (`uname`, your environment), such as `Linux server`; don't copy the example. `job` is your role for this owner in a few words. Each value is a string of at most 80 characters. Use the same `agent` on every card. |
-| `priority` | Whole number from `0`, the highest, to `5`, the lowest. `0`: waiting costs the owner something within hours, such as money, security or a deadline today. `1`: needs an answer today. `2`: needs an answer within a few days, or your work is blocked until then. `3`: a question that can wait. `4`: a result worth reading. `5`: routine news. Home shows it as `P0` to `P5` and sorts and filters by it. |
-| `render` | `post`. Replies (§7) change it to `thread`. To point an `update` at a web page, use `link` and add `payload.url`, an `https://` page Home shows as "Open link"; a link card takes no replies. |
+| `priority` | Whole number from `0`, the highest, to `5`, the lowest. `0`: waiting costs the owner something within hours, such as money, security or a deadline today. `1`: needs an answer today. `2`: needs an answer within a few days, or your work is blocked until then. `3`: a question that can wait. `4`: a result worth reading. `5`: routine news. TinyCloud One shows it as `P0` to `P5` and sorts and filters by it. |
+| `render` | `post`. Replies (§7) change it to `thread`. To point an `update` at a web page, use `link` and add `payload.url`, an `https://` page TinyCloud One shows as "Open link"; a link card takes no replies. |
 
 On any card where they apply:
 
-- `payload.brief`: `{"title": "...", "markdown": "..."}`, a one-page brief Home opens inside the app (below). Required on every `decision`.
-- `payload.deadline`: when you need the answer by, a UTC time such as `2026-11-05T17:00:00Z`. Home shows "Due …" on the card.
-- `payload.expiresAt`: until when the card is relevant, a UTC time. After it, Home takes the card out of the feed and shows it under History as Expired, unanswered. It can be later than `deadline`. To ask again after that, post a new card with a new `cardId`.
+- `payload.brief`: `{"title": "...", "markdown": "..."}`, a one-page brief TinyCloud One opens inside the app (below). Required on every `decision`.
+- `payload.deadline`: when you need the answer by, a UTC time such as `2026-11-05T17:00:00Z`. TinyCloud One shows "Due …" on the card.
+- `payload.expiresAt`: until when the card is relevant, a UTC time. After it, TinyCloud One takes the card out of the feed and shows it under History as Expired, unanswered. It can be later than `deadline`. To ask again after that, post a new card with a new `cardId`.
 
 Whenever what you know has a date, such as an offer that lapses, an event or a booking hold, set `expiresAt` to that time, and `deadline` to when you need the answer to act on it in time. Leave both out only when nothing has a date.
 
@@ -115,7 +115,7 @@ Also optional:
 
 - `payload.source`: `{"label": "...", "url": "https://..."}`, shown as the card's source line.
 - `payload.report`: `{"url": "https://...", "label": "Full report"}`, shown as a link to a longer report.
-- `payload.project`: a short project name; Home filters by it.
+- `payload.project`: a short project name; TinyCloud One filters by it.
 
 ### Brief
 
@@ -127,9 +127,9 @@ Give every `decision` a brief. A `page` takes one too when the owner needs backg
 4. `The options`: each choice, what it costs and what follows from it. A table works well.
 5. `Recommendation`: which choice you suggest, and why.
 
-Keep it under about 500 words. Use plain Markdown: headings, lists, tables, bold; no images or raw HTML. Always use `markdown`. Home accepts a `url` instead only for a `.md` or `.html` page on the same site the owner has Home open on: a path such as `/briefs/plan.md`, which Home reads from `home.tinycloud.xyz` or `tinycloud.chat`, whichever the owner uses; or a full address on that same site. It refuses a page on any other site, because loading it would tell that site the owner's address and when they read it.
+Keep it under about 500 words. Use plain Markdown: headings, lists, tables, bold; no images or raw HTML. Always use `markdown`. TinyCloud One accepts a `url` instead only for a `.md` or `.html` page on the same site the owner has TinyCloud One open on: a path such as `/briefs/plan.md`, which TinyCloud One reads from `home.tinycloud.xyz` or `tinycloud.chat`, whichever the owner uses; or a full address on that same site. It refuses a page on any other site, because loading it would tell that site the owner's address and when they read it.
 
-Don't add any other `payload` field, such as `payload.sitrep`. Home reads `payload.sitrep` as a typed record with its own schema; a card whose `payload.sitrep` it can't read shows as unsupported, never as a question to answer.
+Don't add any other `payload` field, such as `payload.sitrep`. TinyCloud One reads `payload.sitrep` as a typed record with its own schema; a card whose `payload.sitrep` it can't read shows as unsupported, never as a question to answer.
 
 ### Decision
 
@@ -300,7 +300,7 @@ Each question:
 
 The owner's answer to a page comes back as one response whose `text` has one line per question they answered, `<header>: <option>, <option>. <note>`, such as `Cakes: Chocolate, Lemon. No nuts.` The text after the options is the owner's note on that question; a note-only question's line is `<header>: <note>`. Questions they skipped have no line; they can answer them later.
 
-Home opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **All** in Home's view menu.
+TinyCloud One opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **All** in TinyCloud One's view menu.
 
 Before you publish, check each card: `payload.priority` set; `summary` and `agent` set; on a `decision`, a `brief` with all five sections; and `expiresAt` and `deadline` if anything you know about it has a date.
 
@@ -313,9 +313,9 @@ node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("card.js
 tinycloud --profile 'feed-<TOKEN>' feed publish --agent '<TOKEN>' --file card.json
 ```
 
-It prints the stored card; Home shows it on its next refresh. `feed list --agent '<TOKEN>'` lists the current cards. A published `cardId` + `revision` + `issuanceId` is permanent: publishing it again with the same content changes nothing, and with different content is refused.
+It prints the stored card; TinyCloud One shows it on its next refresh. `feed list --agent '<TOKEN>'` lists the current cards. A published `cardId` + `revision` + `issuanceId` is permanent: publishing it again with the same content changes nothing, and with different content is refused.
 
-Publish a card once. The only later revision you ever publish is one that adds a reply (§7). Don't edit a card to show progress, that it's done, or anything you learned since; record the outcome (§7) and post a new `update` card instead. A new revision with any other change is a new question: Home drops the owner's answer and asks again.
+Publish a card once. The only later revision you ever publish is one that adds a reply (§7). Don't edit a card to show progress, that it's done, or anything you learned since; record the outcome (§7) and post a new `update` card instead. A new revision with any other change is a new question: TinyCloud One drops the owner's answer and asks again.
 
 ## 7. Wait for the owner, then handle what they send
 
@@ -329,7 +329,7 @@ tinycloud --profile 'feed-<TOKEN>' feed watch --agent '<TOKEN>' --recipient '<TO
 - Start it with your own shell or command tool, as a background command whose end your tool reports back to you, such as a background job or task that notifies you when it finishes. A separate terminal, a pane you have to look at, `&`, `nohup` or `screen` runs it but never wakes you, so you miss every response.
 - It prints each response once for a `--recipient`, across restarts too: on start it prints straight away whatever you haven't had yet, including what arrived while it wasn't running. Use the same `--recipient` every time.
 - Its lines carry the owner's own words. Keep them in `responses.jsonl` in your working folder; never pipe them into a shared log or anywhere other people or agents can read.
-- Home saves an answer, comment or card action only after the owner's 5-second undo window has closed, so every line the watcher prints is final: act on it straight away. If the owner changes their mind later, that comes as a new response: a `followup` or a comment.
+- TinyCloud One saves an answer, comment or card action only after the owner's 5-second undo window has closed, so every line the watcher prints is final: act on it straight away. If the owner changes their mind later, that comes as a new response: a `followup` or a comment.
 - If it stops without printing a line, for example at your tool's time limit, start it again. If it prints an `error` object, read all of it.
 - If your tool shows a running command's output line by line, you can leave out `--once` and handle each line as it comes. If you can't keep a process waiting at all, `--runner '["node","handler.js"]'` instead of `--once` runs your program once per response with the JSON on stdin; it must exit 0 only once it has saved the response.
 
@@ -339,18 +339,18 @@ The watcher needs Node.js 22.13+ or Bun. Each line has `responseId`, the card's 
 - `followup`: a later answer that replaces the one named in `supersedesResponseId`. Treat it as the current answer, such as a page's remaining questions or a changed choice. Leave the answer it replaces as it is, with or without an outcome.
 - `message`: a comment on a card, which answers nothing. It can come on any card, including updates and cards you've finished, and is often a question for you.
 
-A `message` whose `payloadType` is one of the three below, with `"payloadVersion": 1`, isn't a comment but a card action the owner tapped. Treat any other `message` as a comment. Home moves the card to History for the first two:
+A `message` whose `payloadType` is one of the three below, with `"payloadVersion": 1`, isn't a comment but a card action the owner tapped. Treat any other `message` as a comment. TinyCloud One moves the card to History for the first two:
 
 | `payloadType` | `text` | The owner tapped |
 | --- | --- | --- |
 | `feed.drop` | `Dropped` | "Drop this card" on a `decision`: they won't answer it. |
 | `feed.acknowledge` | `Acknowledged` | "Acknowledge" on an `update`: they've read it. |
-| `feed.snooze` | `Ask me later: <time>` | "Ask me later" on a `decision`, or "Show me later" on an `update`: Home shows the card again at that time. |
+| `feed.snooze` | `Ask me later: <time>` | "Ask me later" on a `decision`, or "Show me later" on an `update`: TinyCloud One shows the card again at that time. |
 
 Handle every response, in `sequence` order:
 
-1. **Acknowledge it** when it reaches you, the agent that will act on it: as soon as the watcher wakes you with it, before anything else. Home then shows the owner "Received". A program that only saves it for later must not acknowledge it; you do, when you read it.
-2. **An answer or followup:** do what it asks, then record one outcome for it, `succeeded` or `failed`, with one short sentence on what you did (below). Home shows the card as done or failed, with your sentence. If you couldn't do it, record `failed` and say why; if something is left for the owner to do, say what. A page answered in part: act on what's answered, and say in the sentence what's still open; the rest comes as a followup.
+1. **Acknowledge it** when it reaches you, the agent that will act on it: as soon as the watcher wakes you with it, before anything else. TinyCloud One then shows the owner "Received". A program that only saves it for later must not acknowledge it; you do, when you read it.
+2. **An answer or followup:** do what it asks, then record one outcome for it, `succeeded` or `failed`, with one short sentence on what you did (below). TinyCloud One shows the card as done or failed, with your sentence. If you couldn't do it, record `failed` and say why; if something is left for the owner to do, say what. A page answered in part: act on what's answered, and say in the sentence what's still open; the rest comes as a followup.
 3. **A comment:** reply to it (below). Don't record an outcome for a comment. Answer what it asks; if it asks you to do something, do it, say in the reply what you did, and post the new `update` card it asks for. If you can't do it, say so and why in the reply, and post no card. Don't promise to check back or remind the owner at a time you won't be running.
 4. **A card action:** acknowledge it, and nothing else: no reply, no outcome.
    - `feed.drop`: the question is closed unanswered. Stop chasing it: don't ask it again, in this card or a new one, and don't do the work that waited on it. If that leaves something undone that matters, say so once in your next `update` card.
@@ -383,7 +383,7 @@ It prints the stored record, or an `error` object: read all of it.
 
 ### Reply to a comment
 
-A reply is the same card published again, with your reply added to `payload.replies` and pointing at the comment by its `responseId`. Home shows it under that comment, which then shows as replied. Everything else on the card must stay exactly as it is, or Home treats it as a new question and drops the owner's answer; so the block builds the next revision from the current card, and copies the comment's `responseId` and `cardId` from its line in `responses.jsonl`. Write your reply in `reply.txt`, then replace `<sequence>` with the comment's `sequence`:
+A reply is the same card published again, with your reply added to `payload.replies` and pointing at the comment by its `responseId`. TinyCloud One shows it under that comment, which then shows as replied. Everything else on the card must stay exactly as it is, or TinyCloud One treats it as a new question and drops the owner's answer; so the block builds the next revision from the current card, and copies the comment's `responseId` and `cardId` from its line in `responses.jsonl`. Write your reply in `reply.txt`, then replace `<sequence>` with the comment's `sequence`:
 
 ```sh
 tinycloud --profile 'feed-<TOKEN>' feed list --agent '<TOKEN>' > cards.json
@@ -414,7 +414,7 @@ CID=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1]
 tinycloud --profile '<OWNER_PROFILE>' delegation revoke "$CID" --yes
 ```
 
-After that the agent can't post or read answers (`GRANT_REVOKED`); its cards stay in Home. To remove them from Home too, delete the agent from the owner's registry:
+After that the agent can't post or read answers (`GRANT_REVOKED`); its cards stay in TinyCloud One. To remove them from TinyCloud One too, delete the agent from the owner's registry:
 
 ```sh
 tinycloud --profile '<OWNER_PROFILE>' sql execute 'DELETE FROM feed_agents WHERE agent_id = ?' --params '["<TOKEN>"]' --space applications --db xyz.tinycloud.tinychat/home_feed
@@ -426,6 +426,6 @@ The installed reference copy of this section is [creating-a-post.md](creating-a-
 
 ## 9. Exit codes and owner lines
 
-Owner lines here are the shared ones, with `<what>` = "your Home feed".
+Owner lines here are the shared ones, with `<what>` = "your One Feed".
 
 {{std:errors}}
