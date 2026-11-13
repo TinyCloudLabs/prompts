@@ -96,11 +96,16 @@ Home shows the `<LABEL>` from the connect step as each card's author; a card doe
 | `priority` | Whole number from `0`, the highest, to `5`, the lowest. `0`: waiting costs the owner something within hours, such as money, security or a deadline today. `1`: needs an answer today. `2`: needs an answer within a few days, or your work is blocked until then. `3`: a question that can wait. `4`: a result worth reading. `5`: routine news. Home shows it as `P0` to `P5` and sorts and filters by it. |
 | `render` | `post`. Replies (§7) change it to `thread`. To point an `update` at a web page, use `link` and add `payload.url`, an `https://` page Home shows as "Open link"; a link card takes no replies. |
 
-Optional, on any card:
+On any card where they apply:
 
-- `payload.brief`: `{"title": "...", "markdown": "..."}`, a one-page brief Home opens inside the app (below).
-- `payload.deadline`: when you need the answer by, a UTC time such as `2026-11-05T17:00:00Z`. Home shows "Due …" on the card. Set it only when there is a real date.
-- `payload.expiresAt`: until when the card is relevant, a UTC time. After it, Home takes the card out of the feed and shows it under History as Expired, unanswered. Set it when the card stops mattering at a known time, such as when a booking hold lapses; it can be later than `deadline`. To ask again after that, post a new card with a new `cardId`.
+- `payload.brief`: `{"title": "...", "markdown": "..."}`, a one-page brief Home opens inside the app (below). Required on every `decision`.
+- `payload.deadline`: when you need the answer by, a UTC time such as `2026-11-05T17:00:00Z`. Home shows "Due …" on the card.
+- `payload.expiresAt`: until when the card is relevant, a UTC time. After it, Home takes the card out of the feed and shows it under History as Expired, unanswered. It can be later than `deadline`. To ask again after that, post a new card with a new `cardId`.
+
+Whenever what you know has a date, such as an offer that lapses, an event or a booking hold, set `expiresAt` to that time, and `deadline` to when you need the answer to act on it in time. Leave both out only when nothing has a date.
+
+Also optional:
+
 - `payload.source`: `{"label": "...", "url": "https://..."}`, shown as the card's source line.
 - `payload.report`: `{"url": "https://...", "label": "Full report"}`, shown as a link to a longer report.
 - `payload.project`: a short project name; Home filters by it.
@@ -290,6 +295,8 @@ The owner's answer to a page comes back as one response whose `text` has one lin
 
 Home opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **Both** in Home's view menu.
 
+Before you publish, check each card: `payload.priority` set; `summary` and `agent` set; on a `decision`, a `brief` with all five sections; and `expiresAt` and `deadline` if anything you know about it has a date.
+
 ## 6. Publish
 
 Save the card as `card.json` and publish it with the agent profile. The first line sets `urgency` from `payload.priority`:
@@ -301,7 +308,7 @@ tinycloud --profile 'feed-<TOKEN>' feed publish --agent '<TOKEN>' --file card.js
 
 It prints the stored card; Home shows it on its next refresh. `feed list --agent '<TOKEN>'` lists the current cards. A published `cardId` + `revision` + `issuanceId` is permanent: publishing it again with the same content changes nothing, and with different content is refused.
 
-Don't edit a card to show progress or that it's done; record the outcome (§7) and post a new `update` card. A new revision with any change other than added replies (§7) is a new question: Home drops the owner's answer and asks again.
+Publish a card once. The only later revision you ever publish is one that adds a reply (§7). Don't edit a card to show progress, that it's done, or anything you learned since; record the outcome (§7) and post a new `update` card instead. A new revision with any other change is a new question: Home drops the owner's answer and asks again.
 
 ## 7. Wait for the owner, then handle what they send
 
@@ -319,7 +326,7 @@ tinycloud --profile 'feed-<TOKEN>' feed watch --agent '<TOKEN>' --recipient '<TO
 
 The watcher needs Node.js 22.13+ or Bun. Each line has `responseId`, the card's `cardId`, `revision` and `issuanceId`, `kind`, `createdAt` and `sequence`, plus `choiceId` and/or `text`. `kind` is one of:
 
-- `answer`: the owner's answer to a `decision` (`choiceId`, or `text` if they typed their own) or a `page` (`text`, §5).
+- `answer`: the owner's answer to a `decision` (`choiceId`, or `text` if they typed their own) or a `page` (`text`, §5). A page answer also has `"payloadType": "feed.page"`; `text` already holds everything in it.
 - `followup`: a later answer that replaces the one named in `supersedesResponseId`. Treat it as the current answer, such as a page's remaining questions or a changed choice. Leave the answer it replaces as it is, with or without an outcome.
 - `message`: a comment on a card, which answers nothing. It can come on any card, including updates and cards you've finished, and is often a question for you.
 
@@ -367,21 +374,23 @@ It prints the stored record, or an `error` object: read all of it.
 
 ### Reply to a comment
 
-A reply is the same card published again, with your reply added to `payload.replies` and pointing at the comment by its `responseId`. Home shows it under that comment, which then shows as replied. Everything else on the card must stay exactly as it is, or Home treats it as a new question and drops the owner's answer; so build the next revision from the current card. Write your reply in `reply.txt`, then:
+A reply is the same card published again, with your reply added to `payload.replies` and pointing at the comment by its `responseId`. Home shows it under that comment, which then shows as replied. Everything else on the card must stay exactly as it is, or Home treats it as a new question and drops the owner's answer; so the block builds the next revision from the current card, and copies the comment's `responseId` and `cardId` from its line in `responses.jsonl`. Write your reply in `reply.txt`, then replace `<sequence>` with the comment's `sequence`:
 
 ```sh
 tinycloud --profile 'feed-<TOKEN>' feed list --agent '<TOKEN>' > cards.json
 node -e '
 const fs = require("fs");
-const [cardId, commentId] = process.argv.slice(1);
-const card = JSON.parse(fs.readFileSync("cards.json", "utf8")).find((c) => c.cardId === cardId);
-if (!card) throw new Error("No card " + cardId);
+const [sequence] = process.argv.slice(1);
+const comment = fs.readFileSync("responses.jsonl", "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).find((x) => String(x.sequence) === sequence);
+if (!comment) throw new Error("No response " + sequence + " in responses.jsonl");
+const card = JSON.parse(fs.readFileSync("cards.json", "utf8")).find((c) => c.cardId === comment.cardId);
+if (!card) throw new Error("No card " + comment.cardId);
 const payload = card.payload ?? {};
 if (payload.render === "link") throw new Error("Link cards take no replies: answer with a new update card");
-const reply = { text: fs.readFileSync("reply.txt", "utf8").trim(), at: new Date().toISOString().replace(/\.\d+Z$/, "Z"), replyTo: commentId };
+const reply = { text: fs.readFileSync("reply.txt", "utf8").trim(), at: new Date().toISOString().replace(/\.\d+Z$/, "Z"), replyTo: comment.responseId };
 const revision = card.revision + 1;
-fs.writeFileSync("card.json", JSON.stringify({ ...card, revision, issuanceId: `${cardId}-r${revision}`, payload: { ...payload, render: "thread", replies: [...(payload.replies ?? []), reply] } }));
-' '<cardId>' '<responseId of the comment>'
+fs.writeFileSync("card.json", JSON.stringify({ ...card, revision, issuanceId: `${card.cardId}-r${revision}`, payload: { ...payload, render: "thread", replies: [...(payload.replies ?? []), reply] } }));
+' '<sequence>'
 tinycloud --profile 'feed-<TOKEN>' feed publish --agent '<TOKEN>' --file card.json
 ```
 

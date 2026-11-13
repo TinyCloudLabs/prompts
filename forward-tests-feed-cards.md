@@ -45,6 +45,9 @@ The coordinator gives each **fresh agent only the built `/feed` guide** (`_site/
 | 3 | + `urgency` scale, `runsOn` from the machine, `failed` when the agent can't do the work, comments that ask for work | r3-a, r3-b, r3-c | 38/38 each | 29/29, 28/28, 28/28 | 23/23, 21/21, 22/22 |
 | 4 (confirmation, final text) | + where the label comes from | r4-a | 38/38 | 28/28 | 20/21: no update card because it couldn't place the order. This is the guide's rule ("if you can't do it, say so and post no card"), not a defect. |
 | 5 (guide 0.4.0: watcher, brief, priority, deadline/expiry, Ask me later; CLI from js-sdk#936) | v2 sequence below | r5-a, r5-b, r5-c | 54/54, 54/54, 55/55 | 30/30 each | r5-b 25/25, r5-c 25/25; r5-a 24/25 on the old check: it couldn't book the venue, said so and posted no card, as the guide says. The check now accepts that. |
+| 6 (+ the 5 s undo window: every line the watcher prints is final) | v2 sequence | r6-a, r6-b | 55/55 each | 30/30 each | 25/25 each: **both passed first try** |
+| 7 (+ card actions Drop and Acknowledge; four cards with two decisions) | v2 sequence with Drop and Acknowledge | r7-a, r7-b | 68/68; r7-b 65/68: `urgency` 3 with priority 3, and no brief on the page | 38/38 each | 32/32 each |
+| 8 (urgency spelled out as a table: 0→5 … 5→0; a brief required on decisions, optional on pages) | same | r8-a, r8-b | r8-b 65/65; r8-a 63/65: `urgency` 3 with priority 3 again | 38/38 each | see below |
 
 ### Watcher rounds (5 and later)
 
