@@ -20,6 +20,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/courier` | One-link Courier discovery, restricted setup and verified messaging/background readiness | [`setup/courier.md`](setup/courier.md) |
 | `/cli` | Building block: the TinyCloud CLI, its `tinycloud` command and its `tinycloud-cli` skill | [`setup/tinycloud.md`](setup/tinycloud.md) |
 | `/openkey` | Building block: the standalone OpenKey CLI, installed into its own folder, `~/.local/share/tinycloud/openkey` | [`setup/openkey.md`](setup/openkey.md) |
+| `/bugs` | For approved TinyCloud agents: read screened reports from feedback.tinycloud.xyz with their own key. Unlisted | [`setup/bugs.md`](setup/bugs.md) |
 | `/skills/<skill>.md` | A skill's `SKILL.md` to read, for `apps`, `feed`, `chat`, `publish`, `secrets`, `courier`, `cli` and `mcp`; its relative links point into `/skills/<skill>/` | see [Skills](#skills) |
 | `/skills/<skill>/<file>` | The skill's files exactly as installed, `SKILL.md` included | |
 | `/skills/<skill>/SHA256SUMS` | The sha256 of each of the skill's files, in `sha256sum -c` format, the same values as `index.json`; the `/apps` setup checks its downloads against it | generated |

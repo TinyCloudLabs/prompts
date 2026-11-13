@@ -114,6 +114,7 @@ const PAGES = [
   { url: "courier", src: "setup/courier.md" },
   { url: "cli", src: "setup/tinycloud.md" },
   { url: "openkey", src: "setup/openkey.md" },
+  { url: "bugs", src: "setup/bugs.md", unlisted: true },
 ];
 
 // Every TinyCloud agent skill. Skills authored here are read from `dir`; the
