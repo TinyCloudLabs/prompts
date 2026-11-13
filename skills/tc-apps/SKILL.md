@@ -59,7 +59,7 @@ How to run the blocks:
 
 ## 0. Route the request
 
-The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domains no catalog app owns. Use only the selected profile and verified permissions; never read key or session files or arbitrarily choose another owner's profile. "Profile" here means the owner's CLI profile: the sign-in saved under a name such as `owner` or `agent-data`, and the files behind it. It never means an app's own records. An app that stores records it calls "profile" (a Gene Keys profile, say) has you read and write them like any other record of that app.
+The catalog in `TINY-APPS.md` decides the target. Use §1 to §9 only for domains no catalog app owns. Use only the selected profile and verified permissions; never read key or session files or arbitrarily choose another owner's profile. "Profile" here means the owner's CLI profile: the sign-in saved under a name such as `owner` or `agent-data`, and the files behind it. It never means an app's own records. Records an app calls "profile" (a Gene Keys profile, say) are ordinary records of that app: read and write them like any other.
 
 ## 1. Read the paths and the time
 
@@ -108,7 +108,7 @@ If step 2 or 3 cannot be read, it prints `ask` or `check-failed` instead of goin
 
 The output is the layout; use the same `<TC_BIN>` in either layout.
 - `legacy` → the app has records in `default` and no verified move exists on this computer. **Keep reading and writing the old layout exactly as before:** read `LEGACY.md` in full with the shell, `cat "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps/LEGACY.md"` (Claude Code) or `cat "$HOME/.agents/skills/tc-apps/LEGACY.md"` (Codex, OpenCode), and follow its §2 to §8, with `<TC_BIN>`. Request no new approval, create no new profile, and don't use §3 to §9 for this app. Once per conversation, tell the owner: "This app can move to its own folder: say "move my <APP> records" when you want it (nothing is deleted)." When the owner says it, follow §9. Until the move is verified, nothing about this app changes.
-- `new` → use §2 to §8 below with the same CLI. If the owner says they used this app with an earlier version (on any computer), don't start new: request read-only access to the old catalog with the block below, send its link as §4 says, and run §1a again.
+- `new` → use §2 to §8 below with the same CLI. If the owner says they used this app before, with an earlier version on any computer, don't set it up as new. Request read-only access to the old catalog with the sign-in block under `ask` below, send its link as §4 says, and run §1a again.
 - `ask` → this computer has an earlier sign-in for the old place that is expired or lacks the grant, so it can't list the old catalog; or step 2 was skipped and the old catalog holds the app. **Never ask the owner whether the app is new or had earlier records:** their request is the go-ahead, and they can't know what an earlier version or another client stored.
   - The request makes an app ("make me a Gene Keys app", "start a reading log"), or it is the setup guide's default `todos` record → use `new`.
   - Otherwise (the owner means an app this computer can't find) → request read-only access to the old catalog with the block below, and send its link as §4 says. When it exits with `"authenticated": true`, run §1a again. Write nothing until it prints `new` or `legacy`.
