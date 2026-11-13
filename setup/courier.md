@@ -313,7 +313,7 @@ Do not start a watcher with an older CLI: when two of the owner's agents watch a
 
 **2. Say how the watcher starts you.** Go by which agent you are:
 
-- **Claude Code:** set nothing. Courier starts `claude -p` itself, with its guard: merges, deploys, publishes and pushes to `main` are refused unless the owner approved them.
+- **Claude Code:** set nothing. Courier starts `claude -p` itself, with its guard: merges, deploys, publishes and pushes to `main` are refused unless the owner approved them. Started this way you may run only Courier commands, so you can read a thread and answer from what you know, not read or change files. If the owner wants more, tell them that the watcher's `--claude-allow` option widens it and is theirs to set (`"$TC" courier --help` lists it); do not widen it yourself.
 - **Any other agent CLI** (Codex, OpenCode, Gemini CLI, omp and so on): Courier has no guard for it, so the owner accepts that first. Ask once, exactly, with your CLI's product name and the owner's own words for the peer (for example "your other agent"), not its handle:
 
   > Courier has no safety guard for <your CLI>. With automatic pickup on, I act on messages from <the peer> by myself, with access to everything this computer account can reach. Turn it on?
