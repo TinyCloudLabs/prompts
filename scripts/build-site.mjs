@@ -375,6 +375,17 @@ const stalePins = pinFiles.flatMap((path) =>
 );
 if (stalePins.length) throw new Error(`CLI version pins that differ from install-cli.mjs's ${CLI_VERSION}:\n  ${stalePins.join("\n  ")}`);
 
+// Courier's automatic pickup needs a Courier that no stable CLI carries yet: per-agent watcher state (1.7) and
+// `watch --agent-cli` (js-sdk#971). That one section of setup/courier.md installs exactly this pre-release of the
+// standalone package in a folder only the watcher uses, written {{COURIER_WATCH_VERSION}} there and nowhere else;
+// the pinned CLI stays what every guide installs. Once the pinned CLI's own Courier has `watch --agent-cli`, delete
+// this pin and the token, and make that section run "$TC" courier instead.
+const COURIER_WATCH_VERSION = "0.6.0-beta.37";
+const WATCH_TOKEN = "{{COURIER_WATCH_VERSION}}";
+if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.]*[0-9A-Za-z])?$/.test(COURIER_WATCH_VERSION)) throw new Error(`COURIER_WATCH_VERSION ${COURIER_WATCH_VERSION} must be one exact version`);
+const watchPinElsewhere = pinFiles.filter((path) => path !== "setup/courier.md" && readFileSync(join(ROOT, path), "utf8").includes(WATCH_TOKEN));
+if (watchPinElsewhere.length) throw new Error(`${WATCH_TOKEN} belongs to setup/courier.md only:\n  ${watchPinElsewhere.join("\n  ")}`);
+
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
 // Every owner prompt names the guide to fetch raw and the installer it runs: Claude Code's auto mode
@@ -547,6 +558,7 @@ function render(src) {
       return `](${SITE}${to}${hash})`;
     })
     .replaceAll("{{CLI_VERSION}}", CLI_VERSION)
+    .replaceAll(WATCH_TOKEN, COURIER_WATCH_VERSION)
     .replaceAll(SITE, BASE);
 }
 

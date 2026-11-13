@@ -415,6 +415,79 @@ test("Courier preview resolver preserves an explicitly selected binary and check
   }
 });
 
+// Automatic pickup installs one exact pre-release of the standalone Courier in a folder only the watcher uses,
+// reuses it when it is already there, and never touches the pinned CLI. The served page is read, so the pin is
+// the rendered one.
+test("Courier automatic pickup installs the watcher's exact pinned Courier beside the CLI, once", () => {
+  const served = readFileSync(join(root, "_site/courier"), "utf8");
+  const install = block(served, "**2. Install the watcher's Courier.**");
+  const pin = install.match(/@tinycloud\/courier@(\d+\.\d+\.\d+-[0-9A-Za-z.]+)/)?.[1];
+  assert.ok(pin, "the served block names an exact pre-release");
+  assert.ok(!served.includes("{{COURIER_WATCH_VERSION}}"), "the token is rendered");
+  for (const scenario of ["fresh", "present", "other-version", "npm-fails", "no-flag"]) {
+    const dir = home();
+    const prefix = join(dir, ".local/share/tinycloud/courier-watch");
+    const bin = join(prefix, "node_modules/.bin/courier");
+    const courier = (version, flag) => `#!/bin/sh\ncase "$*" in --version) echo ${version} ;; --help) echo '  watch [--wake …]${flag ? " [--exec <cmd> --unguarded [--agent-cli]]" : ""}' ;; *) exit 90 ;; esac`;
+    if (scenario === "present" || scenario === "other-version") {
+      mkdirSync(dirname(bin), { recursive: true });
+      writeFileSync(bin, courier(scenario === "present" ? pin : "0.5.3", true), { mode: 0o700 });
+    }
+    const tools = join(dir, "tools");
+    mkdirSync(tools);
+    const calls = join(dir, "npm-calls");
+    // A stand-in npm: records its arguments and, unless it is the failing one, "installs" the pinned Courier.
+    executable(join(tools, "npm"), `printf '%s\\n' "$*" >> "$CALLS"\n${scenario === "npm-fails" ? "echo 'npm ERR! offline' >&2; exit 1" : `mkdir -p "$(dirname "$BIN")" && cat > "$BIN" <<'EOF'\n${courier(pin, scenario !== "no-flag")}\nEOF\nchmod 700 "$BIN"`}`);
+    const result = shell(install, { HOME: dir, PATH: `${tools}:${process.env.PATH}`, CALLS: calls, BIN: bin });
+    assert.equal(result.status, 0, `${scenario}: ${result.stderr}`);
+    const failed = scenario === "npm-fails" || scenario === "no-flag";
+    assert.equal(result.stdout.trim(), failed ? "WATCH_INSTALL_FAILED" : `WATCH_OK ${bin}`, scenario);
+    const ran = existsSync(calls) ? readFileSync(calls, "utf8").trim() : "";
+    if (scenario === "present") assert.equal(ran, "", "an install at the pin is reused");
+    else assert.equal(ran, `install --prefix ${prefix} --save-exact --no-audit --no-fund @tinycloud/courier@${pin}`, scenario);
+    assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false, "the pinned CLI's folder is never created or changed");
+  }
+});
+
+// The service block starts the watcher with the right adapter for the agent, from the watcher's own Courier, and
+// never replaces a watcher service that belongs to another agent's Courier home on the same account.
+test("Courier automatic pickup installs the service for this agent and leaves another agent's watcher alone", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const service = block(guide, "**3. Install and start the service.**");
+  const installFlag = process.platform === "darwin" ? "--install-launchd" : "--install-systemd";
+  const unitPath = (dir) => process.platform === "darwin" ? join(dir, "Library/LaunchAgents/xyz.tinycloud.courier.watch.plist") : join(dir, ".config/systemd/user/courier-watch.service");
+  for (const scenario of ["claude", "other-agent", "other-agent-login-file", "reinstall", "taken", "not-installed"]) {
+    const dir = home();
+    const bin = join(dir, ".local/share/tinycloud/courier-watch/node_modules/.bin/courier");
+    const calls = join(dir, "courier-calls");
+    if (scenario !== "not-installed") {
+      mkdirSync(dirname(bin), { recursive: true });
+      executable(bin, `for arg in "$@"; do printf '%s\\n' "$arg"; done > "$CALLS"; command -v courier > "$CALLS.path"`);
+    }
+    const courierHome = join(dir, ".courier");
+    if (scenario === "reinstall" || scenario === "taken") {
+      mkdirSync(dirname(unitPath(dir)), { recursive: true });
+      writeFileSync(unitPath(dir), `COURIER_HOME=${scenario === "taken" ? join(dir, "another-agent/.courier") : courierHome}\n`);
+    }
+    const agent = scenario.startsWith("other-agent") ? { AGENT_CMD: '/opt/agent/bin/agent run "$COURIER_PROMPT"' } : {};
+    const login = scenario === "other-agent-login-file" ? { HOME_FILE: ".agent/auth.json" } : {};
+    const work = join(dir, "work");
+    const result = shell(service, { HOME: dir, WATCH_DIR: work, CALLS: calls, ...agent, ...login });
+    if (scenario === "taken" || scenario === "not-installed") {
+      assert.notEqual(result.status, 0, scenario);
+      assert.match(result.stderr, scenario === "taken" ? /^WATCH_TAKEN / : /^WATCH_MISSING/, scenario);
+      assert.equal(existsSync(calls), false, `${scenario}: the watcher is not started`);
+      continue;
+    }
+    assert.equal(result.status, 0, `${scenario}: ${result.stderr}`);
+    const expected = scenario.startsWith("other-agent")
+      ? ["watch", "--wake", "exec", "--unguarded", "--agent-cli", "--exec", agent.AGENT_CMD, ...(login.HOME_FILE ? ["--home-file", login.HOME_FILE] : []), "--cwd", work, installFlag]
+      : ["watch", "--wake", "claude", "--cwd", work, installFlag];
+    assert.deepEqual(readFileSync(calls, "utf8").trimEnd().split("\n"), expected, scenario);
+    assert.equal(readFileSync(`${calls}.path`, "utf8").trim(), bin, "the service's PATH resolves courier to the watcher's own");
+  }
+});
+
 test("Courier preview offers exactly same-owner and anyone and never executes another mode", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const invite = block(guide, "## Choose how to invite");
