@@ -123,6 +123,7 @@ Courier inspects the complete installed skill before invoking an installer and p
 | Component | Pin | Owner/source |
 | --- | --- | --- |
 | TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.6.6` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.6) |
+| TinyCloud CLI for Courier's automatic pickup only | `COURIER_WATCH_CLI_VERSION` in [`scripts/build-site.mjs`](scripts/build-site.mjs), a pre-release | `/courier` updates the agent's private CLI to it when the owner asks for automatic pickup. Temporary: delete it, its `{{COURIER_WATCH_CLI_VERSION}}` token and that update block once the stable pin above is at or past it |
 | `courier` skill | `@tinycloud/courier@0.5.2` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.2) |
 | `mcp` skill | `@tinycloud/mcp@0.9.0` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) |
 | TinyChat retrieval pack | `0.1.1-onboarding.25` | [TinyChat release](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz) |

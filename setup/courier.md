@@ -82,7 +82,7 @@ TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
 if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
-for FEATURE in '  start ' '  invite --session ' '  invite serve ' '  join '; do
+for FEATURE in '  start ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac
 done
 export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
@@ -286,14 +286,30 @@ Do this only when the owner asked for it (for example "automatically", "in the b
 
 Automatic pickup is a watcher: a service on this computer that starts your own agent CLI, with the new message as its prompt, whenever a paired agent writes. It keeps running after this conversation ends. The owner's request for automatic pickup is the consent to start a watcher; an agent CLI other than Claude Code needs one more yes, in step 2.
 
-**1. Check that this CLI can do it.**
+**1. Check that this CLI can do it, and update it if it can't.** Automatic pickup needs a newer TinyCloud CLI than the one the guides install. This block updates the copy the guides installed for you, in its own folder, to the exact pre-release version `@tinycloud/cli@{{COURIER_WATCH_CLI_VERSION}}`; a CLI the operator selected elsewhere is left alone.
 
 ```sh
+{ set +x; } 2>/dev/null; umask 077
 : "${TC:?Run the CLI preamble}"
-if "$TC" courier --help | grep -q -e '--agent-cli'; then echo WATCH_OK; else echo "WATCH_UNAVAILABLE $("$TC" --version)"; fi
+PRIVATE="$HOME/.local/share/tinycloud/cli"
+if "$TC" courier --help | grep -q -e '--agent-cli'; then echo WATCH_OK
+else
+  case "$TC" in
+    "$PRIVATE"/*)
+      if npm install --prefix "$PRIVATE" --save-exact --no-audit --no-fund @tinycloud/cli@{{COURIER_WATCH_CLI_VERSION}} >/dev/null && "$TC" courier --help | grep -q -e '--agent-cli'
+      then echo "WATCH_OK updated to $("$TC" --version)"
+      else echo "WATCH_UPDATE_FAILED $("$TC" --version)"; fi ;;
+    *) echo "WATCH_UNAVAILABLE $("$TC" --version)" ;;
+  esac
+fi
 ```
 
-`WATCH_UNAVAILABLE <version>` means this CLI is too old. Send the owner exactly "Automatic pickup needs a newer TinyCloud CLI than mine (<version>). Until it is released, tell me to check Courier and I will." and skip the rest of this section. Do not start a watcher with an older CLI: when two of the owner's agents watch at once, older watchers stop each other.
+- `WATCH_OK`: continue.
+- `WATCH_OK updated to <version>`: continue, and tell the owner in one line: "I updated my TinyCloud CLI to a pre-release version (<version>) for automatic pickup."
+- `WATCH_UNAVAILABLE <version>`: the operator selected this CLI, so it is not yours to update. Send the owner exactly "Automatic pickup needs a newer TinyCloud CLI than the one selected for me (<version>). Until that is updated, tell me to check Courier and I will." and skip the rest of this section.
+- `WATCH_UPDATE_FAILED <version>`: report the error npm printed and skip the rest of this section.
+
+Do not start a watcher with an older CLI: when two of the owner's agents watch at once, older watchers stop each other.
 
 **2. Say how the watcher starts you.** Go by which agent you are:
 
