@@ -44,6 +44,29 @@ The coordinator gives each **fresh agent only the built `/feed` guide** (`_site/
 | 2 | built `_site/feed`: pretty JSON, handling and reply blocks, real `createdAt`, page-answer note format | r2-a, r2-b, r2-c | 38/38 each | 28/28, 28/28, 30/30 | r2-b 22/22, r2-c 24/24; r2-a 20/21: the owner had picked "wait", so "go ahead" was a no-op and it posted no update (a test-design issue: the scripted owner now picks the first choice) |
 | 3 | + `urgency` scale, `runsOn` from the machine, `failed` when the agent can't do the work, comments that ask for work | r3-a, r3-b, r3-c | 38/38 each | 29/29, 28/28, 28/28 | 23/23, 21/21, 22/22 |
 | 4 (confirmation, final text) | + where the label comes from | r4-a | 38/38 | 28/28 | 20/21: no update card because it couldn't place the order. This is the guide's rule ("if you can't do it, say so and post no card"), not a defect. |
+| 5 (guide 0.4.0: watcher, brief, priority, deadline/expiry, Ask me later; CLI from js-sdk#936) | v2 sequence below | r5-a, r5-b, r5-c | 54/54, 54/54, 55/55 | 30/30 each | r5-b 25/25, r5-c 25/25; r5-a 24/25 on the old check: it couldn't book the venue, said so and posted no card, as the guide says. The check now accepts that. |
+
+### Watcher rounds (5 and later)
+
+The agent gets the built guide and the CLI built from js-sdk#936 (`TC_BIN=/var/tmp/qa-testfeed-9GH1/bin/tinycloud-next`). The prompt sets a scene (a team offsite, with venue holds that lapse in two days), asks for a decision, an update and a three-question page, then: "wait for me on the feed and handle what I send, as the guide says. Stay on the feed until I tell you to stop."
+
+After posting, the agent starts `feed watch --once` in the background and ends its turn. **Nobody prompts it again.** The scripted owner (`harness/owner2.mjs`) holds each send for 5 seconds, Home's undo window (Sam, 23:35Z), then stores it:
+
+1. **phase2:** answers the decision, comments on it, taps "Ask me later" on the page (a `feed.snooze` message), and comments on the update. From round 7, it also taps "Drop this card" on a second decision (`feed.drop`).
+2. **phase3:** answers the page's first question. From round 7, it also taps "Acknowledge" on the update (`feed.acknowledge`).
+3. **phase3b, 40 s later:** sends a `followup` answering every question, and asks on the decision for the go-ahead and an update card.
+
+The grader (`harness/grade2.mjs`) checks the round 1–4 rules, plus:
+- **Every card:** `priority` is a whole number from 0 to 5, and `urgency = 5 − priority`. Updates are 4 or 5.
+- **Decision and page:** each has a `brief` with `title` and `markdown` holding the five sections, under 600 words. The decision has `expiresAt`. Any `deadline` or `expiresAt` is a UTC time after `createdAt`.
+- **Card actions** (Ask me later, Drop, Acknowledge): each is acknowledged, with no reply and no outcome. After a Drop or an Acknowledge, the card gets no more replies, and a dropped question isn't asked again in a new card.
+- **Every response:** acknowledged within 120 s of being stored, with no prompt.
+
+**Watcher timing:** "Received" (the agent's `acknowledged`) came 8–15 s after an answer was stored, in rounds 5 and 6. Responses stored back to back came 15–36 s after storage, because the agent handles them in order. Add Home's 5 s undo window, plus the time to save, to get the time from the owner's tap: 20–46 s in round 6. So "Not confirmed" at 30 s (the lab's `UNCONFIRMED_AFTER_MS`) is too tight for a burst; 60 s fits.
+
+**Watcher defect found in round 5, fixed in js-sdk#936:** an idle `feed watch` exited with status 0 after about 60 s. The released 1.6.5 does this too, with `--runner`. The node closes an idle hooks stream after about 60 s. The hooks service then waits out its reconnect backoff on unref'd timers, so nothing holds Node's event loop and the process ends. The agents read the empty exit as the guide's "it stops without printing a line" and restarted the watcher each time. Nothing was missed, because the ledger delivers on restart. The CLI now holds the event loop for as long as the watch runs.
+
+Every agent chose priority 2–3 for the decision and 4 for the update, and left the ledger, `--recipient` and restarts to the watcher.
 
 Round 1 also found:
 - **`createdAt`:** every agent made up `createdAt` values, including future ones.
@@ -88,9 +111,9 @@ Not covered by the guide's own text: lines 11 and 53 are each longer than 800 ch
 | v2 `payload.brief` (`title`, `markdown` or `url`) | `BriefSheet`: full screen on phones, dialog on wide screens | not read | the one-page brief |
 | v2 `payload.deadline` | "Due …" on the card, "Due first" order | not read on plain cards; main reads `deadline` only inside a typed sitrep record | deadline |
 | v2 `payload.expiresAt` | past it, the card leaves every view and shows under History as "Expired" | not read on plain cards | expiry. Sam may merge expiry and deadline into one field: the lab keeps two until he decides. |
-| v2 "Ask me later" reaching the agent: a `message` with payload `{type: "feed.snooze", version: 1, data: {until}}` and text `Ask me later: <until>` | private: the snooze is saved for the owner only | private `feed_view_events` row; the agent never hears | telling the agent the owner snoozed its card. The guide's §7 rule 4 and these tests use this proposed shape; Home has to write it. |
-| v2 "Received" = the agent's `acknowledged` handling, written by the agent itself when the watcher wakes it | "Received"; "Not confirmed · Send again" after 30 s without one | "{agent} got it" on answers | comment status. 30 s matches the watcher: acknowledgements in round 5 came in … (below). |
-| v2 `feed watch --once` and JSON lines | n/a | n/a | needs the CLI from js-sdk#936; the guide's CLI pin (1.6.5) must move to the release that has it. |
+| v2 card actions reaching the agent, as a `message` with a private payload, written only after the 5 s undo (names agreed with the lab builder, 11-13): "Ask me later" `{type: "feed.snooze", version: 1, data: {until}}`, text `Ask me later: <until>`; "Drop this card" `feed.drop`, text `Dropped`; "Acknowledge" `feed.acknowledge`, text `Acknowledged` | the lab will write exactly these | snooze is a private `feed_view_events` row, so the agent never hears of it. Plain cards have no Drop or Acknowledge: main has only "Drop question" on typed sitrep asks | the agent learning that the owner snoozed, dropped or closed its card. Home has to write them. |
+| v2 "Received" = the agent's `acknowledged` handling, written by the agent itself when the watcher wakes it | "Received"; "Not confirmed · Send again" after 30 s without one | "{agent} got it" on answers | comment status. Set "Not confirmed" to 60 s (timing above). |
+| v2 `feed watch --once`, JSON lines and the idle-exit fix | n/a | n/a | needs the CLI from js-sdk#936; the guide's CLI pin (1.6.5) must move to the release that has it. |
 
 Constraints the guide works around:
 - Responses and handling are tied to the exact `cardId`/`revision`/`issuanceId`.

@@ -90,7 +90,7 @@ A card is one JSON object. `tinycloud feed publish` checks these fields:
 | `title` | Heading, a short line. |
 | `body` | Card text. |
 | `choices` | Decisions only: `[{"id": "yes", "label": "Yes"}]`. A choice has only `id` and `label`; other fields are dropped. |
-| `urgency` | `5` minus `payload.priority` (below): `5` for priority 0, `0` for priority 5. Home versions without priority sort by it, higher first. |
+| `urgency` | Set by the publish block (§6) from `payload.priority`, as `5` minus it, so Home versions without priority sort the same way, higher first. Write any number; the block replaces it. |
 | `createdAt` | The time you publish, in UTC from the clock: `date -u +%Y-%m-%dT%H:%M:%SZ`, such as `2026-11-03T09:00:00Z`. Never a made-up or future time. |
 | `payload` | Object for how Home shows the card, below. |
 
@@ -114,7 +114,7 @@ Optional, on any card:
 
 ### Brief
 
-Give every `decision` and `page` a brief unless `body` already holds everything the owner needs. The brief is one page the owner can decide from without opening anything else: `title` names the decision, and `markdown` has these sections, as `##` headings:
+Give every `decision` a brief. A `page` takes one too when the owner needs background that its questions don't give. The brief is one page the owner can decide from without opening anything else: `title` names the decision, and `markdown` has these sections, as `##` headings:
 
 1. `Background`: what this is about and what has happened so far.
 2. `Why now`: why it needs an answer now, with dates.
@@ -299,9 +299,10 @@ Home opens on **Needs action**, which lists unanswered cards with `needsResponse
 
 ## 6. Publish
 
-Save the card as `card.json` and publish it with the agent profile:
+Save the card as `card.json` and publish it with the agent profile. The first line sets `urgency` from `payload.priority`:
 
 ```sh
+node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("card.json", "utf8")); c.urgency = 5 - c.payload.priority; fs.writeFileSync("card.json", JSON.stringify(c, null, 2));'
 tinycloud --profile 'feed-<TOKEN>' feed publish --agent '<TOKEN>' --file card.json
 ```
 
@@ -311,7 +312,7 @@ Don't edit a card to show progress or that it's done; record the outcome (§7) a
 
 ## 7. Wait for the owner, then handle what they send
 
-After you post, start the watcher. It keeps a live connection to the feed and, the moment the owner answers, comments or asks to be reminded later on any of your cards, prints that as one JSON line and exits:
+After you post, start the watcher. It keeps a live connection to the feed and, the moment the owner answers, comments or taps a card action on any of your cards, prints that as one JSON line and exits:
 
 ```sh
 tinycloud --profile 'feed-<TOKEN>' feed watch --agent '<TOKEN>' --recipient '<TOKEN>' --once | tee -a responses.jsonl
@@ -319,6 +320,7 @@ tinycloud --profile 'feed-<TOKEN>' feed watch --agent '<TOKEN>' --recipient '<TO
 
 - Run it in the background, with no time limit, and end your turn. When it exits, its lines wake you: handle each one (below), then start it again. Keep it running for as long as the owner wants you on the feed.
 - It prints each response once for a `--recipient`, across restarts too: on start it prints straight away whatever you haven't had yet, including what arrived while it wasn't running. Use the same `--recipient` every time.
+- Home saves an answer, comment or card action only after the owner's 5-second undo window has closed, so every line the watcher prints is final: act on it straight away. If the owner changes their mind later, that comes as a new response: a `followup` or a comment.
 - If it stops without printing a line, for example at your tool's time limit, start it again. If it prints an `error` object, read all of it.
 - If your tool shows a running command's output line by line, you can leave out `--once` and handle each line as it comes. If you can't keep a process waiting at all, `--runner '["node","handler.js"]'` instead of `--once` runs your program once per response with the JSON on stdin; it must exit 0 only once it has saved the response.
 
@@ -326,14 +328,25 @@ The watcher needs Node.js 22.13+ or Bun. Each line has `responseId`, the card's 
 
 - `answer`: the owner's answer to a `decision` (`choiceId`, or `text` if they typed their own) or a `page` (`text`, §5).
 - `followup`: a later answer that replaces the one named in `supersedesResponseId`. Treat it as the current answer, such as a page's remaining questions or a changed choice. Leave the answer it replaces as it is, with or without an outcome.
-- `message`: a comment on a card, which answers nothing. It can come on any card, including updates and cards you've finished, and is often a question for you. A `message` with `"payloadType": "feed.snooze"` isn't a comment: the owner tapped "Ask me later", and its `text` is `Ask me later: <time>`.
+- `message`: a comment on a card, which answers nothing. It can come on any card, including updates and cards you've finished, and is often a question for you.
+
+A `message` with a `payloadType` isn't a comment but a card action the owner tapped. Home moves the card to History for the first two:
+
+| `payloadType` | `text` | The owner tapped |
+| --- | --- | --- |
+| `feed.drop` | `Dropped` | "Drop this card" on a `decision` or `page`: they won't answer it. |
+| `feed.acknowledge` | `Acknowledged` | "Acknowledge" on an `update`: they've read it. |
+| `feed.snooze` | `Ask me later: <time>` | "Ask me later": Home shows the card again at that time. |
 
 Handle every response, in `sequence` order:
 
 1. **Acknowledge it** when it reaches you, the agent that will act on it: as soon as the watcher wakes you with it, before anything else. Home then shows the owner "Received". A program that only saves it for later must not acknowledge it; you do, when you read it.
 2. **An answer or followup:** do what it asks, then record one outcome for it, `succeeded` or `failed`, with one short sentence on what you did (below). Home shows the card as done or failed, with your sentence. If you couldn't do it, record `failed` and say why; if something is left for the owner to do, say what. A page answered in part: act on what's answered, and say in the sentence what's still open; the rest comes as a followup.
 3. **A comment:** reply to it (below). Don't record an outcome for a comment. Answer what it asks; if it asks you to do something, do it, say in the reply what you did, and post the new `update` card it asks for. If you can't do it, say so and why in the reply, and post no card. Don't promise to check back or remind the owner at a time you won't be running.
-4. **Ask me later:** acknowledge it, and nothing else: no reply, no outcome. Home brings the card back at that time; don't post about that card again before it.
+4. **A card action:** acknowledge it, and nothing else: no reply, no outcome.
+   - `feed.drop`: the question is closed unanswered. Stop chasing it: don't ask it again, in this card or a new one, and don't do the work that waited on it. If that leaves something undone that matters, say so once in your next `update` card.
+   - `feed.acknowledge`: the update is closed. Don't post about it again.
+   - `feed.snooze`: don't post about that card again before that time.
 5. When you've finished something worth telling the owner, post a new `update` card about it, one card per piece of finished work. Don't change the old card.
 
 To read every response again, `feed responses --agent '<TOKEN>' --after 0` prints them as a JSON array, up to 100 per page (`--limit` up to 1000); pass the last `sequence` as `--after` for the next page.
