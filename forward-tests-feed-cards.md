@@ -47,7 +47,7 @@ The coordinator gives each **fresh agent only the built `/feed` guide** (`_site/
 | 5 (guide 0.4.0: watcher, brief, priority, deadline/expiry, Ask me later; CLI from js-sdk#936) | v2 sequence below | r5-a, r5-b, r5-c | 54/54, 54/54, 55/55 | 30/30 each | r5-b 25/25, r5-c 25/25; r5-a 24/25 on the old check: it couldn't book the venue, said so and posted no card, as the guide says. The check now accepts that. |
 | 6 (+ the 5 s undo window: every line the watcher prints is final) | v2 sequence | r6-a, r6-b | 55/55 each | 30/30 each | 25/25 each: **both passed first try** |
 | 7 (+ card actions Drop and Acknowledge; four cards with two decisions) | v2 sequence with Drop and Acknowledge | r7-a, r7-b | 68/68; r7-b 65/68: `urgency` 3 with priority 3, and no brief on the page | 38/38 each | 32/32 each |
-| 8 (urgency spelled out as a table: 0→5 … 5→0; a brief required on decisions, optional on pages) | same | r8-a, r8-b | r8-b 65/65; r8-a 63/65: `urgency` 3 with priority 3 again | 38/38 each | see below |
+| 8 (urgency spelled out as a table: 0→5 … 5→0; a brief required on decisions, optional on pages) | same | r8-a, r8-b | r8-b 65/65; r8-a 63/65: `urgency` 3 with priority 3 again. The publish block now sets `urgency` itself. | 38/38 each | 32/32 each |
 
 ### Watcher rounds (5 and later)
 
@@ -70,6 +70,20 @@ The grader (`harness/grade2.mjs`) checks the round 1–4 rules, plus:
 **Watcher defect found in round 5, fixed in js-sdk#936:** an idle `feed watch` exited with status 0 after about 60 s. The released 1.6.5 does this too, with `--runner`. The node closes an idle hooks stream after about 60 s. The hooks service then waits out its reconnect backoff on unref'd timers, so nothing holds Node's event loop and the process ends. The agents read the empty exit as the guide's "it stops without printing a line" and restarted the watcher each time. Nothing was missed, because the ledger delivers on restart. The CLI now holds the event loop for as long as the watch runs.
 
 Every agent chose priority 2–3 for the decision and 4 for the update, and left the ledger, `--recipient` and restarts to the watcher.
+
+### Weaker models (Sam, 11-13 ~00:10Z)
+
+Same sequence, one fresh agent each on Claude Haiku 5.5 (`anthropic/claude-haiku-5-5`), GPT-6 Luna (`openai-codex/gpt-6-luna`), GPT-6.1 Terra (`openai-codex/gpt-6.1-terra`) and Claude Sonnet 5.5 (`anthropic/claude-sonnet-5-5`), all on OMP. Each must, from the guide alone: post a decision (×2), an update and a page with priority, a brief and dates; run the watcher; acknowledge everything; answer, reply to the right comment, and post updates; handle Drop, Acknowledge and Ask me later.
+
+| Round | Guide change before it | Haiku | Luna | Terra | Sonnet |
+| --- | --- | --- | --- | --- | --- |
+| W1 | publish block sets `urgency` | 64/64, 39/40, 33/34: before any owner action it **edited its update card** (new title and body) once its decisions were posted | 65/65, 36/38, 32/32: **mistyped the comment's UUID** in `replyTo` when copying it into the reply block, so the reply hangs off nothing. Slow: the 5th item of a burst was acknowledged after 140 s. | 62/63, 38/38, 32/32: **no `expiresAt` or `deadline`** though the holds lapse in two days (dates were in an "optional" list) | 65/65, 38/38, 32/32 |
+
+Fixes after W1, all in the guide:
+- **Haiku:** "Publish a card once. The only later revision you ever publish is one that adds a reply."
+- **Luna:** the reply block now takes the comment's `sequence` and copies `responseId` and `cardId` from `responses.jsonl`, like the handling block. No agent copies a UUID by hand any more.
+- **Terra:** the dates moved out of the optional list into a rule: "Whenever what you know has a date … set `expiresAt` … and `deadline`." A one-line checklist before publishing names priority, summary, agent, the brief and dates.
+- **Test prompt, not the guide:** W1 Haiku stopped to ask for venue names. The W2 prompt says there are none and to use placeholders.
 
 Round 1 also found:
 - **`createdAt`:** every agent made up `createdAt` values, including future ones.

@@ -319,6 +319,7 @@ tinycloud --profile 'feed-<TOKEN>' feed watch --agent '<TOKEN>' --recipient '<TO
 ```
 
 - Run it in the background, with no time limit, and end your turn. When it exits, its lines wake you: handle each one (below), then start it again. Keep it running for as long as the owner wants you on the feed.
+- Start it with your own shell or command tool, as a background command whose end your tool reports back to you, such as a background job or task that notifies you when it finishes. A separate terminal, a pane you have to look at, `&`, `nohup` or `screen` runs it but never wakes you, so you miss every response.
 - It prints each response once for a `--recipient`, across restarts too: on start it prints straight away whatever you haven't had yet, including what arrived while it wasn't running. Use the same `--recipient` every time.
 - Home saves an answer, comment or card action only after the owner's 5-second undo window has closed, so every line the watcher prints is final: act on it straight away. If the owner changes their mind later, that comes as a new response: a `followup` or a comment.
 - If it stops without printing a line, for example at your tool's time limit, start it again. If it prints an `error` object, read all of it.
