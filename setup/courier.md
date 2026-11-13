@@ -5,21 +5,19 @@
 Give any agent this same link: **https://agents.tinycloud.xyz/courier**.
 If it needs a prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Set up Courier for my requested workflow.`
 
-The agent does the discovery, installation, setup, verification and recovery. You approve permissions and choose who it connects to; you do not find source files, construct commands, share keys or keep a chat open for ordinary background work.
-
-**Readiness is specific.** A successful invitation is not working automation. The current published CLI does not contain the reviewed reliability candidate's capabilities. An agent must report that release/runtime blocker, not claim that new instructions alone made background operation work.
+The agent installs what it needs, sets Courier up and checks that it works. You approve one permission and choose who it connects to; you never run commands or share keys.
 
 ## For the agent
 
 {{std:read-raw}}
 
-Retain the owner's original task, requested operating mode and exact incoming invitation. A bare link means start this procedure, not explain it back to the owner or present a feature menu. If the owner requested automatic/background handoff, do not substitute a conversational demo.
+Keep the owner's original task and any incoming invitation exactly as given. A bare link means start this procedure, not explain it back to the owner or present a feature menu.
 
-Route by observed capability, not client name. CLI-capable agents use the steps below. Without shell/process execution, inspect the actual available tools: the hosted TinyCloud MCP currently has no Courier tools. Missing Courier tools is `blocked/tooling`, not a reason to request unrelated connector permissions.
+Route by capability, not client name. If you can run shell commands, use the steps below. If you can't, stop and tell the owner that Courier needs an agent that can run the TinyCloud CLI: the hosted TinyCloud MCP has no Courier tools yet, so don't ask for connector permissions instead.
 
 ## Before installation or approval
 
-Use Node.js 20 or later. Inspect existing Courier skill files **before** calling any installer. Compare the complete installed file set and hashes with the `courier` entry in `https://agents.tinycloud.xyz/skills/index.json`; reuse an exact match. A modified or unrecognized existing skill is `blocked/skill-conflict`: preserve it and describe the specific conflict. The installer replaces whole folders; it does not protect local edits for you.
+Use Node.js 20 or later. Inspect existing Courier skill files **before** calling any installer. Compare the complete installed file set and hashes with the `courier` entry in `https://agents.tinycloud.xyz/skills/index.json`; reuse an exact match. If an existing Courier skill was modified or isn't a published one, keep it, tell the owner what differs and stop. The installer replaces whole folders; it does not protect local edits for you.
 
 Run the selection check below. Then use [CLI setup](tinycloud.md) only for the missing executable, with no action-skill argument; install/reuse Courier through this page's separate skill step after the preservation check. Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
 
@@ -43,11 +41,11 @@ fi
 
 Keep the owner's original request and any incoming invitation URL exactly as supplied. Never ask for an owner key, hidden approval files, owner-run commands or hand-constructed grant JSON. Send approval and invitation URLs exactly as printed, only to their intended recipient.
 
-**One Courier approval when needed:** Courier keeps its own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from any TinyCloud CLI profile. Reuse a ready setup and preserve its identity. For background work, finish the read-only readiness gates below before requesting a fresh grant.
+**One Courier approval when needed:** Courier keeps its own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from any TinyCloud CLI profile. Reuse a ready setup and preserve its identity.
 
 ## Install the Courier skill
 
-Install or reuse the Courier action skill; the current public manifest pins that **skill** to `0.5.2`. This is not proof of the executable's internal Courier version or reliability capabilities. The usual location is `$HOME/.agents/skills/courier/SKILL.md` for Codex/OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Apply the complete-file preservation check above before installation.
+Install or reuse the Courier action skill; the current public manifest pins that **skill** to `0.5.2`. The usual location is `$HOME/.agents/skills/courier/SKILL.md` for Codex/OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Apply the complete-file preservation check above before installation.
 
 If the skill is missing, download and run the existing installer in separate calls below. Do not reinstall an exact match or overwrite a mismatch. Skip a download already completed in this run. `CLIENT` is `claude-code`, `codex` or `opencode`, as in [CLI setup](tinycloud.md).
 
@@ -63,7 +61,7 @@ It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 
 
 ## Check the installed CLI
 
-After installation, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks CLI `1.6.6` or newer and the basic conversational subcommands. These are not background-readiness checks.
+After installation, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks CLI `1.6.6` or newer and the Courier subcommands this guide uses.
 
 Run this in the same shell as the later commands:
 
@@ -91,24 +89,6 @@ export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 ```
 
 `SKILL_MISSING courier` means the required skill isn't installed: install it as in [Install the Courier skill](#install-the-courier-skill), then rerun the block. Installing the skill is part of the owner's request: don't ask first; at most one short line ("Installing the Courier skill."). The other checks are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
-
-## Agent handoff contract
-
-Do these checks yourself; keep engineering evidence in a private durable receipt, not a task list for the owner.
-
-1. **Recover before creating.** Read the runtime's existing authorized handoff/ledger store. Retain executable/home locators, public owner/agent/peer identities, session, invitation ID, pending approval expiry, exact message/request IDs, original deadlines, pause/quota state, last verified stage and unknown effects. Never read keys or private pending-approval files. Preserve incoming invitations until they can be resumed.
-2. **Discover the actual runtime.** Inspect local help, supported read-only status and official public documentation for event delivery, durable admission, permission, capacity, completion/consumption and supervisor ownership. Do not assume OpenBot, Grok, Claude or another client has interchangeable APIs. Do not ask the owner for source exports, Docker privileges or SSH/private-file transfers.
-3. **Gate requested automation before authority changes.** Inspect the selected Courier help. If it advertises `capabilities`, execute `"$TC" courier capabilities --json` and compare its schemas, features and build provenance with the reviewed adapter. Require exact message/self/task reads, caller-planned message IDs, identity-bound routing, strict options and signed renewal/installation support; a protected same-owner service also requires `authenticated-admission-context-v1`. Otherwise record `blocked/release-capability` and stop before fresh approval, pairing or service changes. CLI `1.6.6` currently has no `capabilities` command. Do not try unknown flags, treat a package version as proof, or install an unreleased worktree as an official update.
-4. **Do not manufacture an adapter.** Background operation also needs an existing supported event/permission/capacity/admission/consumption contract and an authorized supervisor independent of the chat. A missing contract is `blocked/runtime-adapter` (or its exact permission/capacity/consumption stage). The runtime maintainer owns it. A notification, foreground shell, webhook success or fixture is not native consumption. Do not install a notify-only/UI/Mac fallback for requested automation.
-5. **Request only real decisions.** After prerequisites exist, follow the incoming invitation/setup flow below. Send the printed approval URL privately, immediately, then collect the same request with bounded `init --wait` calls. A supported process-completion event can resume the agent; do not require an extra owner message when the runtime can already continue. If a tool cannot stay alive or deliver a continuation, persist pending state and report that limitation instead of promising an automatic return. Denial is not expiry; never generate a replacement approval loop.
-6. **Prove the requested mode.** Verify an owner-authorized substantive request and correlated reply in the exact authenticated session. Only that exchange earns `messaging-ready`. `autonomous-ready` additionally requires service-owned durable admission, processing and real caller consumption after the initiating turn ends, observed restart/cold-start catch-up, and verified renewal ownership/expiry recovery while preserving pauses, quotas and deadlines. A successful pairing, empty inbox, wake or result publication is insufficient. Activation/restart/migration and live source work remain separately gated.
-7. **Leave a resumable receipt.** Record requested/observed mode, safe identity/build/skill references, evidence for each lifecycle stage, independent authority expiries, next authorized event/check, exact blocker and responsible maintainer. Keep bearer URLs only in private state. On reentry recheck bindings and resume the same IDs; reconcile an unknown effect rather than repeat it. Use documented bounded retries within the original deadline, never reset a pause or budget.
-
-Ordinary work uses the installed skill's authority rules. With reliability capabilities, read exact event IDs even if transport receipts already advanced; persist a planned message ID before sending and reconcile it with exact self-read after a lost acknowledgement. Never use full-history polling as a reliability fallback. Track owner approval renewal separately from designated peer maintenance and runtime/data permissions. Preserve the same identity, peer, scope and installation receipts; one renewed permission does not renew the others.
-
-Tell the owner only the result and any actual decision: “Messaging is unverified; background setup is blocked at <stage>. I saved the evidence for the <maintainer>. No files or permissions are needed from you now.” Use `messaging-ready` only when observed. Do not call the workflow automatic while any required gate is unproved.
-
-For an explicitly requested conversational-only journey, continue below; retain that mode in the receipt. For a blocked background request, stop without silently changing the goal.
 
 ## Incoming invitation takes priority
 

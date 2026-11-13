@@ -236,22 +236,7 @@
         {
           "id": "start-courier",
           "task": "Start Courier",
-          "fresh": {
-            "owner_interactions": {
-              "total": null,
-              "openkey_approvals": null,
-              "pastes": null,
-              "choices": null,
-              "codes_typed": null
-            },
-            "agent_turns": null,
-            "measured_on": "2026-11-10",
-            "cli_version": "1.6.5",
-            "skill_version": "0.5.2",
-            "result": "blocked",
-            "run_ref": "Courier one-link QA 2026-11-10, FreshLinkAgent; review archive SHA256 fa8c62fd397fb1024e673151edbbe95a7c934aa0f1e1802b2786362ad9c7c71e",
-            "notes": "Independent agent followed the local preview from its link in an empty isolated home, ran the official installers, verified the complete skill file hashes and stopped at blocked/release-capability: the published CLI has no Courier capabilities command. No owner question, approval, pairing or Courier home was created. Counts for a completed workflow remain unknown. A separate ExistingLinkAgent fixture preserved an explicit executable, customized skill and synthetic paused/unknown-effect state; it was not a returning signed-in owner run. The trials preceded the final approval-shell quoting and read-chunk fixes; the final behavioral site suite covered those corrections. Messaging and native autonomous consumption were not exercised."
-          },
+          "fresh": null,
           "returning": null
         },
         {
