@@ -15,7 +15,7 @@ The agent does the discovery, installation, setup, verification and recovery. Yo
 
 Retain the owner's original task, requested operating mode and exact incoming invitation. A bare link means start this procedure, not explain it back to the owner or present a feature menu. If the owner requested automatic/background handoff, do not substitute a conversational demo.
 
-Route by observed capability, not client name. CLI-capable agents use the steps below. Without shell/process execution, inspect the actual available tools: the hosted TinyCloud MCP currently has no Courier tools. Missing Courier tools is `blocked/tooling`, not a reason to request unrelated connector permissions.
+Route by observed capability, not client name. CLI-capable agents use the steps below. Without shell/process execution, inspect the actual available tools: For Courier, use the TinyCloud CLI: an agent with no tool that can run it reports `blocked/tooling` and does not request unrelated connector permissions.
 
 ## Before installation or approval
 

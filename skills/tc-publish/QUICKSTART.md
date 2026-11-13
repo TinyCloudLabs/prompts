@@ -56,7 +56,7 @@ A link is about 2.6 KB. An agent that prints a link in pieces and reassembles it
 - Everything after `#` is a credential (`#tc1=…`). The full URL lives only in the CLI output, the 0600 state file, the one delivery read, and the one owner message.
 - Always pass `--expires`: 24h unless the owner says otherwise. `SESSION_LIFETIME_EXCEEDED` with "exceeds session expiry": the share would outlive the login → use a shorter `--expires`, never a longer one; under 1 h of session left → the owner starts ONE new login. With "must be at least 60 seconds from now" → use the smallest allowed value, never beyond the session end minus 1 h.
 - `share list --json` is sender history with fields `shareId`, `target`, `expiresAt` and `revoked`; there is no `id` field. Link ids are CIDs (`bafkr4…`). Filter out revoked and expired records before calling anything active.
-- Sharing with an email address, a domain or a DID isn't available yet.
+- A share is a link: anyone who has it can open it.
 - Sign-in: the first time, you approve one OpenKey link; nothing to send back. It covers links, for up to 30 days.
 - File names with spaces, `..` or symbols are stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`); the link shows the stored name.
 - Links can be revoked: `share revoke <shareId>` stops the link opening (`SHARE_REVOKED`); `share show <id>` then reports `"revoked": true`. Copies already downloaded can't be recalled.
@@ -69,7 +69,7 @@ A link is about 2.6 KB. An agent that prints a link in pieces and reassembles it
 
 ## Errors
 
-Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text. Branch on `code`, not the exit status — exits 4, 5 and 6 each cover several errors (for example exit 4 is `EXPIRED`, `NOT_FOUND` or `UNAVAILABLE`; exit 6 is `REGISTRY_REJECTED` or a network error). `UNAVAILABLE` means nothing was shared: with "not available in this release" that kind of share isn't available yet; otherwise the registry or network was unreachable, so report it and try again later, never in a loop. `REGISTRY_REJECTED` won't improve on retry — report it. The full table, with actions, is in `SKILL.md`.
+Errors are `{"error":{"code","message","hint"?}}` on stderr; Commander option errors are plain text. Branch on `code`, not the exit status — exits 4, 5 and 6 each cover several errors (for example exit 4 is `EXPIRED`, `NOT_FOUND` or `UNAVAILABLE`; exit 6 is `REGISTRY_REJECTED` or a network error). `UNAVAILABLE` means nothing was shared: with "not available in this release", tell the owner in one line that a share is a link anyone who has it can open, and don't retry; otherwise the registry or network was unreachable, so report it and try again later, never in a loop. `REGISTRY_REJECTED` won't improve on retry — report it. The full table, with actions, is in `SKILL.md`.
 
 ## Never
 

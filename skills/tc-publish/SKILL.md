@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.11"
+  version: "0.6.12"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/publish.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -46,7 +46,7 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 ## Ask before making a link
 
-Only links are available for now: anyone who has the link can open it. Sharing with an email address, a domain, a DID or only the owner is not available yet; if the owner asks for one, say so in one line.
+Shares are links: anyone who has the link can open it. If the owner asks to share with an email address, a domain, a DID or only the owner, say in one line that a share is a link anyone who has it can open.
 
 Before every publish, ask the owner exactly: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer, and don't offer another place to publish or share it. Never decide on your own that content is shareable, and never publish without that yes.
 
@@ -442,7 +442,7 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 | `SESSION_IN_USE` | 2 | Live session would narrow — ask the owner; never `--replace-session` unprompted |
 | `ORIGIN_MISMATCH` | 2 publish / 5 receive | Share origin vs configured service — check host/viewer-origin config, not re-login |
 | `EXPIRED` / `NOT_FOUND` | 4 | The share expired or the id is wrong |
-| `UNAVAILABLE` | 4 | Nothing was shared. If the message contains "not available in this release": that kind of share isn't available yet — tell the owner in one line, and don't retry. Otherwise (the location registry or the network couldn't be reached): report the CLI's message and suggest trying again later. Never retry in a loop |
+| `UNAVAILABLE` | 4 | Nothing was shared. If the message contains "not available in this release": tell the owner in one line that a share is a link anyone who has it can open, and don't retry. Otherwise (the location registry or the network couldn't be reached): report the CLI's message and suggest trying again later. Never retry in a loop |
 | `REGISTRY_REJECTED` | 6 | The registry refused the owner's location record — retrying won't help; report it |
 | `STORAGE_QUOTA_EXCEEDED` / `STORAGE_LIMIT_REACHED` | 10 | The owner's TinyCloud storage is full, or this file is larger than what is left. Nothing was shared. Tell the owner and point them to https://account.tinycloud.xyz/storage; don't retry and don't run §2 |
 | `UPLOAD_FAILED` | 4 | The source upload failed; nothing was shared. Retry once shortly, then report |

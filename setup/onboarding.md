@@ -127,7 +127,7 @@ Fetch the guide for what the owner asked for yourself and follow it from the sta
 | Let you work with another person's agent | [/courier](courier.md) |
 | Something not listed here | The ability list at [/setup](README.md) |
 
-With MCP, use the connected TinyCloud tools for the goal. The hosted MCP has no meeting tools yet, so meetings use the CLI route. For meetings, or anything else the tools don't cover, tell the owner it needs an agent that can install and run the TinyCloud CLI.
+With MCP, use the connected TinyCloud tools for the goal. For meetings, use the TinyCloud CLI. For anything else the tools don't cover, tell the owner it needs an agent that can install and run the TinyCloud CLI.
 
 ### Asking for more later
 
