@@ -120,7 +120,7 @@ Give every `decision` a brief. A `page` takes one too when the owner needs backg
 4. `The options`: each choice, what it costs and what follows from it. A table works well.
 5. `Recommendation`: which choice you suggest, and why.
 
-Keep it under about 500 words. Use plain Markdown: headings, lists, tables, bold; no images or raw HTML. Always use `markdown`. Home accepts a `url` instead only for a `.md` or `.html` page on Home's own site, and refuses a page anywhere else, because loading it would tell that site the owner's address and when they read it.
+Keep it under about 500 words. Use plain Markdown: headings, lists, tables, bold; no images or raw HTML. Always use `markdown`. Home accepts a `url` instead only for a `.md` or `.html` page on the same site the owner has Home open on: a path such as `/briefs/plan.md`, which Home reads from `home.tinycloud.xyz` or `tinycloud.chat`, whichever the owner uses; or a full address on that same site. It refuses a page on any other site, because loading it would tell that site the owner's address and when they read it.
 
 Don't add any other `payload` field, such as `payload.sitrep`. Home reads `payload.sitrep` as a typed record with its own schema; a card whose `payload.sitrep` it can't read shows as unsupported, never as a question to answer.
 
@@ -332,7 +332,7 @@ The watcher needs Node.js 22.13+ or Bun. Each line has `responseId`, the card's 
 - `followup`: a later answer that replaces the one named in `supersedesResponseId`. Treat it as the current answer, such as a page's remaining questions or a changed choice. Leave the answer it replaces as it is, with or without an outcome.
 - `message`: a comment on a card, which answers nothing. It can come on any card, including updates and cards you've finished, and is often a question for you.
 
-A `message` whose `payloadType` is one of the three below, with `"payloadVersion": 1`, isn't a comment but a card action the owner tapped. Home moves the card to History for the first two:
+A `message` whose `payloadType` is one of the three below, with `"payloadVersion": 1`, isn't a comment but a card action the owner tapped. Treat any other `message` as a comment. Home moves the card to History for the first two:
 
 | `payloadType` | `text` | The owner tapped |
 | --- | --- | --- |
