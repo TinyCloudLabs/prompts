@@ -332,7 +332,7 @@ const ABILITIES = [
     title: "Feed",
     url: "feed",
     text: "Connect your agent to TinyCloud One once; it posts the cards you ask for and reads your answers.",
-    task: "Post the updates I ask for to my Feed in TinyCloud One.",
+    task: "Post the updates I ask for to my TinyCloud Home feed.",
   },
   {
     title: "Publish",
