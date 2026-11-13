@@ -90,7 +90,7 @@ A card is one JSON object. `tinycloud feed publish` checks these fields:
 | `title` | Heading, a short line. |
 | `body` | Card text. |
 | `choices` | Decisions only: `[{"id": "yes", "label": "Yes"}]`. A choice has only `id` and `label`; other fields are dropped. |
-| `urgency` | Set by the publish block (§6) from `payload.priority`, as `5` minus it, so versions of TinyCloud One without priority sort the same way, higher first. Write any number; the block replaces it. |
+| `urgency` | Set by the publish block (§6) from `payload.priority`, as `5` minus it, so older versions of TinyCloud One that don't show priority sort the same way, higher first. Write any number; the block replaces it. |
 | `createdAt` | The time you publish, in UTC from the clock: `date -u +%Y-%m-%dT%H:%M:%SZ`, such as `2026-11-03T09:00:00Z`. Never a made-up or future time. |
 | `payload` | Object for how TinyCloud One shows the card, below. |
 
@@ -127,7 +127,7 @@ Give every `decision` a brief. A `page` takes one too when the owner needs backg
 4. `The options`: each choice, what it costs and what follows from it. A table works well.
 5. `Recommendation`: which choice you suggest, and why.
 
-Keep it under about 500 words. Use plain Markdown: headings, lists, tables, bold; no images or raw HTML. Always use `markdown`. TinyCloud One accepts a `url` instead only for a `.md` or `.html` page on the same site the owner has TinyCloud One open on: a path such as `/briefs/plan.md`, which TinyCloud One reads from `home.tinycloud.xyz` or `tinycloud.chat`, whichever the owner uses; or a full address on that same site. It refuses a page on any other site, because loading it would tell that site the owner's address and when they read it.
+Keep it under about 500 words. Use plain Markdown: headings, lists, tables, bold; no images or raw HTML. Always use `markdown`. TinyCloud One accepts a `url` instead only for a `.md` or `.html` page on the same site the owner has TinyCloud One open on: a path such as `/briefs/plan.md`, which TinyCloud One reads from `tinycloud.one`, `home.tinycloud.xyz` or `tinycloud.chat`, whichever the owner uses; or a full address on that same site. It refuses a page on any other site, because loading it would tell that site the owner's address and when they read it.
 
 Don't add any other `payload` field, such as `payload.sitrep`. TinyCloud One reads `payload.sitrep` as a typed record with its own schema; a card whose `payload.sitrep` it can't read shows as unsupported, never as a question to answer.
 
