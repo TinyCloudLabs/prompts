@@ -496,6 +496,45 @@ test("Courier automatic pickup installs the service for this agent and leaves an
   }
 });
 
+// The start check decides whether a non-Claude agent may go on to ask the owner. It must say yes only when the agent,
+// started the way the watcher starts it (empty home, the one login file, no inherited environment), really ran a
+// command; an agent that merely prints its prompt back, or that needs something the watcher will not give it, is a no.
+test("Courier automatic pickup's start check passes only an agent that works the way the watcher starts it", () => {
+  const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
+  const check = block(guide, "check that the watcher can start you.**");
+  const agents = {
+    works: "echo ok > courier-ready",
+    "needs-login": '[ -f "$HOME/.codex/auth.json" ] && echo ok > courier-ready',
+    "echoes-prompt": 'printf "%s\\n" "$COURIER_PROMPT"',
+    broken: "echo 'login expired' >&2; exit 1",
+    "wants-owner-home": '[ -f "$HOME/owner-only" ] && echo ok > courier-ready',
+    "wants-owner-env": '[ -n "${OWNER_SECRET-}" ] && echo ok > courier-ready',
+  };
+  const cases = [
+    ["works", {}, true],
+    ["needs-login", { HOME_FILE: ".codex/auth.json" }, true],
+    ["needs-login", {}, false],
+    ["works", { HOME_FILE: ".gemini/oauth_creds.json" }, false],
+    ["echoes-prompt", {}, false],
+    ["broken", {}, false],
+    ["wants-owner-home", {}, false],
+    ["wants-owner-env", {}, false],
+  ];
+  for (const [agent, login, ok] of cases) {
+    const dir = home();
+    mkdirSync(join(dir, ".codex"));
+    writeFileSync(join(dir, ".codex/auth.json"), "{}");
+    writeFileSync(join(dir, "owner-only"), "");
+    const bin = join(dir, "agent");
+    executable(bin, agents[agent]);
+    const result = shell(check, { HOME: dir, OWNER_SECRET: "s3cret", AGENT_CMD: `${bin} "$COURIER_PROMPT"`, ...login });
+    const label = `${agent} ${JSON.stringify(login)}`;
+    assert.equal(result.stdout.split("\n")[0], ok ? "AGENT_OK" : "AGENT_FAILED", `${label}: ${result.stderr}`);
+    if (agent === "broken") assert.match(result.stdout, /login expired/, "the agent's last lines are shown");
+    assert.doesNotMatch(result.stdout, /s3cret/, label);
+  }
+});
+
 test("Courier preview offers exactly same-owner and anyone and never executes another mode", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const invite = block(guide, "## Choose how to invite");
