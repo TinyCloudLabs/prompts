@@ -367,3 +367,22 @@ test("catalog fallback never asks for a broader grant than a narrow existing app
   assert.deepEqual(w.writes, []);
   assert.deepEqual(w.reads, []);
 });
+
+test("a profile whose context reports renewed is ready, not signed out", () => {
+  const w = world([profile()]);
+  const asState = (state) => (cli, args, options) => {
+    const result = w.run(cli, args, options);
+    if (!args.includes("context")) return result;
+    const body = JSON.parse(result.stdout);
+    return { ...result, stdout: JSON.stringify({ ...body, session: { state, expiresAt: expiry } }) };
+  };
+  assert.equal(appContext("/cli", "notes", { env: {}, run: asState("renewed"), write: true }).status, "ready");
+  assert.equal(appContext("/cli", "notes", { env: {}, run: asState("expired"), write: true }).status, "sign-in-required");
+  const missingGrant = world([profile("owner", [])]);
+  const needsGrant = (cli, args, options) => {
+    const result = missingGrant.run(cli, args, options);
+    if (!args.includes("context")) return result;
+    return { ...result, stdout: JSON.stringify({ ...JSON.parse(result.stdout), session: { state: "renewed", expiresAt: expiry } }) };
+  };
+  assert.equal(appContext("/cli", "notes", { env: {}, run: needsGrant, write: true }).status, "grant-required");
+});

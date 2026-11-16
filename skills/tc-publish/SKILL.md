@@ -113,7 +113,7 @@ fi
 rm -f "$STATE/context.json" "$STATE/context.err"
 ```
 
-- `SESSION: present` → **skip to §3.** Come back here only when a publish returns `AUTH_REQUIRED`.
+- `SESSION: present` or `SESSION: renewed` → **skip to §3.** `renewed` means the original grant has ended and the owner's renewal is still running, so the profile stays signed in. Come back here only when a publish returns `AUTH_REQUIRED`.
 - `SESSION: missing` / `expired` / `unknown-expiry` → run the sign-in below.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
@@ -219,7 +219,7 @@ PY
 
 - `APPROVE_LINK same` → the link is the one you already sent. Don't send it again.
 - `NO_LINK_YET` → the command hasn't printed its link yet. With `LOGIN_RUNNING`, run the check again in a few seconds, for about 30 seconds in all. If there is still no link then, or the status is `LOGIN_STOPPED` with no link, print the first lines of the CLI's output with links replaced, report them, and don't retry in a loop: `sed -E 's#https://[^[:space:]]+#<link>#g' "$STATE/login.err" | head -3`.
-- `LOGIN_STOPPED` with a link → the sign-in stopped without a result (a restart, or its process was ended). Run the session check at the top of §2 first (`SESSION: present` → the sign-in finished: go to §3); otherwise run the sign-in block again. 1.6.3 resumes the same pending request, so the check then prints `APPROVE_LINK same`: don't send it again. The same goes for `LOGIN_FAILED exit-143`, a sign-in that was ended. If the check prints `LOGIN_STOPPED` (or `exit-143`) twice in a row, stop: tell the operator this shell can't keep a background process running.
+- `LOGIN_STOPPED` with a link → the sign-in stopped without a result (a restart, or its process was ended). Run the session check at the top of §2 first (`SESSION: present` or `renewed` → the sign-in finished: go to §3); otherwise run the sign-in block again. 1.6.3 resumes the same pending request, so the check then prints `APPROVE_LINK same`: don't send it again. The same goes for `LOGIN_FAILED exit-143`, a sign-in that was ended. If the check prints `LOGIN_STOPPED` (or `exit-143`) twice in a row, stop: tell the operator this shell can't keep a background process running.
 - `SIGNED_IN` → go to §3. A `NOT_GRANTED <entry>` line means the owner left that permission out: tell them which. Without `xyz.tinycloud.share/shares/`, links fail.
 - `REQUEST_MISMATCH <why>` → the block stopped the sign-in. Don't send a link; tell the owner what the check reported.
 
@@ -227,7 +227,7 @@ When the owner says they're done, run the check again:
 
 - `SIGNED_IN` → go to §3.
 - `LOGIN_RUNNING` with `APPROVE_LINK same` → the approval hasn't arrived yet; OpenKey hands it over within seconds. Run the check again in a few seconds; if it still shows the link a minute later, ask the owner once whether they pressed Approve on that link.
-- `LOGIN_STOPPED` → run the session check at the top of §2 (`SESSION: present` → go to §3); otherwise run the sign-in block again (it resumes the same pending link), then the check. Don't resend a link you already sent.
+- `LOGIN_STOPPED` → run the session check at the top of §2 (`SESSION: present` or `renewed` → go to §3); otherwise run the sign-in block again (it resumes the same pending link), then the check. Don't resend a link you already sent.
 - `LOGIN_FAILED APPROVAL_REQUEST_EXPIRED`, `APPROVAL_RESULT_EXPIRED`, `APPROVAL_REQUEST_NOT_FOUND` or `APPROVAL_RESULT_NOT_FOUND` (exit 3) → the link expired before it was approved (about 1 hour), or the approval wasn't collected within 10 minutes. Follow the shared exit-3 rule in "Exit codes and owner lines" below. This sign-in never returns a pending result, so there is no earlier exit-8 JSON: ask the decline question first and wait. When the rule has you create a new request, run the sign-in block again and send the new link with the same line.
 - `LOGIN_FAILED NETWORK_ERROR` (exit 6) → run the sign-in block again once; it resumes the same request. If it also exits 6, stop and report the code.
 - `LOGIN_FAILED APPROVAL_REQUEST_UNAVAILABLE`, `APPROVAL_RESULT_UNAVAILABLE` or `APPROVAL_ACK_PENDING` (exit 8) → OpenKey couldn't be reached for a moment. Wait a minute and start the sign-in block again, at most three times in a row; it resumes the same request. Don't resend a link you already sent. The check prints the CLI's message after the code. If it still fails, stop and report the code; don't retry. Never edit or delete the CLI's files yourself.
