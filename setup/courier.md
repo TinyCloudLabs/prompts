@@ -289,19 +289,28 @@ Automatic pickup is a watcher: a service on this computer that starts your own a
 **1. Say how the watcher starts you.** Go by which agent you are:
 
 - **Claude Code:** set nothing. Courier starts `claude -p` itself, with its guard: merges, deploys, publishes and pushes to `main` are refused unless the owner approved them. Started this way you may run only Courier commands, so you can read a thread and answer from what you know, not read or change files. If the owner wants more, tell them that the watcher's `--claude-allow` option widens it and is theirs to set (`"$TC" courier --help` lists it); do not widen it yourself.
-- **Any other agent CLI** (Codex, OpenCode, Gemini CLI, omp and so on): Courier has no guard for it, so the owner accepts that first. Ask once, exactly, with your CLI's product name and the owner's own words for the peer (for example "your other agent"), not its handle:
+- **Any other agent CLI** (Codex, OpenCode, Gemini CLI and so on): first check that a background service can reach your model login at all. The watcher runs you with an empty home directory and copies in exactly one file, and only the one it knows for your CLI:
 
-  > Courier has no safety guard for <your CLI>. With automatic pickup on, I act on messages from <the peer> by myself, with access to everything this computer account can reach. Turn it on?
+  | Your CLI | `HOME_FILE` |
+  | --- | --- |
+  | Codex | `.codex/auth.json` |
+  | Gemini CLI | `.gemini/oauth_creds.json` |
+  | OpenCode | `.local/share/opencode/auth.json` |
+  | Amp | `.local/share/amp/secrets.json` |
+  | goose | `.config/goose/secrets.yaml` |
+  | aider | `.aider/oauth-keys.env` |
 
-  Continue only on a yes; on anything else, skip the rest of this section. Then set `AGENT_CMD` to the command that runs your CLI on one prompt and exits, with `"$COURIER_PROMPT"` as the prompt. Use your CLI's documented non-interactive mode, the one for scripts, with whatever it needs to run commands without stopping to ask (nobody is there to answer); check its `--help` rather than guessing flags. Write your CLI and every other path in it as absolute paths: the watcher runs it with an empty home directory and almost no environment variables, so `~` and `$HOME` point somewhere else. Your CLI must still find its model login:
+  If your CLI is not in the table (omp and cursor-agent are not), or that file does not exist under your home because your login is kept somewhere else, such as the system keychain: send the owner exactly "Automatic pickup can't reach my model login from a background service on this computer." and skip the rest of this section. Do not point the watcher at your settings folder or hand it a key some other way: that gives the started agent more than its login.
 
-  - a login file under your home: set `HOME_FILE` to its path relative to your home, and the watcher copies that one file in;
-  - a settings directory named by an environment variable that is not a secret: put the assignment, with the directory's absolute path, at the start of `AGENT_CMD`;
-  - only an API key in an environment variable: stop, and send the owner exactly "Automatic pickup can't reach my model login from a background service on this computer."
+  Courier has no guard for your CLI, and its maintainers advise automatic pickup only for an agent on a computer account of its own that holds nothing but that agent's model login. The owner decides. Ask once, exactly, with your CLI's product name and the owner's own words for the peer (for example "your other agent"), not its handle:
+
+  > Courier has no safety guard for <your CLI>. With automatic pickup on, I act on messages from <the peer> by myself, with access to everything this computer account can reach. TinyCloud recommends that only for an agent on a computer account of its own. Turn it on?
+
+  Continue only on a yes; on anything else, skip the rest of this section. Then set `HOME_FILE` to the path from the table, and `AGENT_CMD` to the command that runs your CLI on one prompt and exits, with `"$COURIER_PROMPT"` as the prompt. Use your CLI's documented non-interactive mode, the one for scripts, with whatever it needs to run commands without stopping to ask (nobody is there to answer); check its `--help` rather than guessing flags. Write your CLI and every other path in it as absolute paths: `~` and `$HOME` point at the empty home.
 
   ```sh
   AGENT_CMD='<your CLI and its non-interactive flags> "$COURIER_PROMPT"'
-  HOME_FILE='<login file, relative to your home>'   # leave this line out if there is none
+  HOME_FILE='<the path from the table>'
   ```
 
 **2. Install the watcher's Courier.** Automatic pickup needs a newer Courier than the one inside the TinyCloud CLI the guides install. This block installs exactly `@tinycloud/courier@{{COURIER_WATCH_VERSION}}`, a pre-release, in a folder of its own that only the watcher uses; your TinyCloud CLI and everything else stay as they are, and you keep using `"$TC" courier` in this conversation.
@@ -334,13 +343,14 @@ for UNIT in "$HOME/.config/systemd/user/courier-watch.service" "$HOME/Library/La
 done
 PATH="$(dirname "$WATCH"):$PATH"; export PATH
 if [ "${AGENT_CMD+x}" = x ]; then
-  "$WATCH" watch --wake exec --unguarded --agent-cli --exec "$AGENT_CMD" ${HOME_FILE:+--home-file "$HOME_FILE"} --cwd "$WATCH_DIR" "$INSTALL"
+  [ -n "${HOME_FILE-}" ] && [ -f "$HOME/$HOME_FILE" ] || { echo "WATCH_LOGIN_MISSING ${HOME_FILE-}" >&2; exit 1; }
+  "$WATCH" watch --wake exec --unguarded --agent-cli --exec "$AGENT_CMD" --home-file "$HOME_FILE" --cwd "$WATCH_DIR" "$INSTALL"
 else
   "$WATCH" watch --wake claude --cwd "$WATCH_DIR" "$INSTALL"
 fi
 ```
 
-It prints `Installed <file>. Logs: <log file>`. On Linux it also prints a `loginctl enable-linger` line: run that command as printed, so the watcher keeps running after the owner logs out; if it fails, tell the owner in one line and continue. `WATCH_TAKEN <file>` means another agent's Courier already owns this computer account's watcher service: leave it alone, tell the owner "Another agent on this computer account already has automatic pickup, so I haven't set mine up." and stop. `WATCH_NO_SERVICE` means this system has no supported service manager: tell the owner "Automatic pickup isn't available on this system yet." and stop. Any other error: report it and stop; do not retry in a loop.
+It prints `Installed <file>. Logs: <log file>`. On Linux it also prints a `loginctl enable-linger` line: run that command as printed, so the watcher keeps running after the owner logs out; if it fails, tell the owner in one line and continue. `WATCH_TAKEN <file>` means another agent's Courier already owns this computer account's watcher service: leave it alone, tell the owner "Another agent on this computer account already has automatic pickup, so I haven't set mine up." and stop. `WATCH_LOGIN_MISSING`, or a `--home-file` refusal from the watcher, means it cannot reach your model login: send the owner the step 1 line about that and stop. `WATCH_NO_SERVICE` means this system has no supported service manager: tell the owner "Automatic pickup isn't available on this system yet." and stop. Any other error: report it and stop; do not retry in a loop.
 
 **4. Check that it runs.**
 

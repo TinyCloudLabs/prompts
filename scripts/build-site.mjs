@@ -380,7 +380,7 @@ if (stalePins.length) throw new Error(`CLI version pins that differ from install
 // standalone package in a folder only the watcher uses, written {{COURIER_WATCH_VERSION}} there and nowhere else;
 // the pinned CLI stays what every guide installs. Once the pinned CLI's own Courier has `watch --agent-cli`, delete
 // this pin and the token, and make that section run "$TC" courier instead.
-const COURIER_WATCH_VERSION = "0.6.0-beta.37";
+const COURIER_WATCH_VERSION = "0.6.0-beta.40";
 const WATCH_TOKEN = "{{COURIER_WATCH_VERSION}}";
 if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.]*[0-9A-Za-z])?$/.test(COURIER_WATCH_VERSION)) throw new Error(`COURIER_WATCH_VERSION ${COURIER_WATCH_VERSION} must be one exact version`);
 const watchPinElsewhere = pinFiles.filter((path) => path !== "setup/courier.md" && readFileSync(join(ROOT, path), "utf8").includes(WATCH_TOKEN));
