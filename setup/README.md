@@ -4,7 +4,7 @@
 
 Give your AI agent abilities that keep your data in your own TinyCloud space. Agents that can install and run the TinyCloud CLI use it; others that support remote MCP connect through /connect. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.
 
-**Access and privacy:** agents get the capability scopes you approve. That access control is not encryption: ordinary data on hosted nodes is currently stored in plaintext at rest, without encryption at rest or end-to-end encryption. Hosted MCP and the connected AI client process the data you authorize them to read. See [Security and trust](https://docs.tinycloud.xyz/concepts/security-and-trust) for operator access, key custody and application-specific encryption boundaries.
+**Access and privacy:** agents get the capability scopes you approve. Access control is not encryption: ordinary data in your space is not end-to-end encrypted, and the node that hosts it can read it in order to serve it. Hosted MCP and the connected AI client process the data you authorize them to read. See [Security and trust](https://docs.tinycloud.xyz/concepts/security-and-trust) for key custody, TEE limits and application-level encryption.
 
 **New to TinyCloud, or want it set up first?** Start at [/onboarding](onboarding.md). Follow its current OpenKey approval steps; your agent carries on with your request.
 
