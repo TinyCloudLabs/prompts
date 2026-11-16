@@ -307,30 +307,35 @@ Automatic pickup is a watcher: a service on this computer that starts your own a
   HOME_FILE='<the path from the table>'   # leave this line out if that file is not there
   ```
 
-**Any other agent CLI: check that the watcher can start you.** Claude Code skips this. Run it in the same shell. It starts you once the way the watcher will, with that empty home and only that file, and asks for one harmless shell command:
+**Any other agent CLI: check that the watcher can start you.** Claude Code skips this. Run it in the same shell. It starts you once the way the watcher will, with that empty home and only that file, and asks you to run one harmless script. The script does what answering a message needs: it reaches the network and writes a file outside your working directory.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 if TRY="$(mktemp -d)" && mkdir -p "$TRY/home" "$TRY/work"; then
+  cat > "$TRY/work/courier-check.sh" <<EOF
+node -e 'fetch("https://agents.tinycloud.xyz/courier").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))' && echo ok > "$TRY/courier-ready"
+EOF
   if [ -z "${HOME_FILE-}" ] || { mkdir -p "$TRY/home/$(dirname "$HOME_FILE")" && cp "$HOME/$HOME_FILE" "$TRY/home/$HOME_FILE"; }; then
-    (cd "$TRY/work" && env -i HOME="$TRY/home" PATH="$PATH" COURIER_PROMPT='Run this shell command in the current directory, then stop: echo ok > courier-ready' /bin/sh -c "$AGENT_CMD" </dev/null >"$TRY/out" 2>&1)
+    (cd "$TRY/work" && env -i HOME="$TRY/home" PATH="$PATH" COURIER_PROMPT='Run this shell command in the current directory, then stop: sh ./courier-check.sh' /bin/sh -c "$AGENT_CMD" </dev/null >"$TRY/out" 2>&1)
   fi
-  if [ -f "$TRY/work/courier-ready" ]; then echo AGENT_OK; else echo AGENT_FAILED; [ ! -f "$TRY/out" ] || tail -n 5 "$TRY/out"; fi
+  if [ -f "$TRY/courier-ready" ]; then echo AGENT_OK; else echo AGENT_FAILED; [ ! -f "$TRY/out" ] || tail -n 5 "$TRY/out"; fi
   rm -rf "$TRY"
 else
   echo AGENT_FAILED
 fi
 ```
 
-- `AGENT_OK`: you start, reach your model and can run commands on your own. Ask the owner:
+- `AGENT_OK`: you start, reach your model, and can run commands with network access on your own. Ask the owner:
 
   > Courier has no safety guard for <your CLI>. With automatic pickup on, I act on messages from <the peer> by myself, with access to everything this computer account can reach. TinyCloud recommends that only for an agent on a computer account of its own. Turn it on?
+
+- `AGENT_FAILED`, and the lines under it (the last your CLI printed) show that your CLI's own sandbox or approval mode refused the command, the network or the file: change the flags in `AGENT_CMD` so that it can do all three unattended, and run the check again.
 
 - `AGENT_FAILED`, and your CLI finds its login through a settings folder named by an environment variable that is not a secret (omp does, with `PI_CODING_AGENT_DIR`): put that assignment, with the folder's absolute path, at the start of `AGENT_CMD`, and run the check again. The watcher cannot copy a folder, so this points the started agent at the whole folder and hands it everything inside: every account, session and setting, not just a login. Courier's maintainers advise against that, so the owner must choose it knowingly. If the check now prints `AGENT_OK`, ask the owner this instead:
 
   > Courier has no safety guard for <your CLI>, and the only way I can run in the background is with my whole <your CLI> settings folder (<its path>): every account and all my saved state, not just my login. With automatic pickup on, I act on messages from <the peer> by myself, with access to everything this computer account can reach. TinyCloud's Courier team advises against this setup. Turn it on anyway?
 
-- `AGENT_FAILED` in any other case (the lines under it are the last your CLI printed): send the owner exactly "Automatic pickup can't reach my model login from a background service on this computer." and skip the rest of this section. Do not hand your CLI a key some other way.
+- `AGENT_FAILED` in any other case, or still after those changes: send the owner exactly "Automatic pickup isn't possible for me on this computer: I can't run as a background service here." and skip the rest of this section. Do not hand your CLI a key some other way.
 
 Ask your question once, exactly, with your CLI's product name and the owner's own words for the peer (for example "your other agent"), not its handle. Continue only on a yes; on anything else, skip the rest of this section.
 
@@ -371,7 +376,7 @@ else
 fi
 ```
 
-It prints `Installed <file>. Logs: <log file>`. On Linux it also prints a `loginctl enable-linger` line: run that command as printed, so the watcher keeps running after the owner logs out; if it fails, tell the owner in one line and continue. `WATCH_TAKEN <file>` means another agent's Courier already owns this computer account's watcher service: leave it alone, tell the owner "Another agent on this computer account already has automatic pickup, so I haven't set mine up." and stop. `WATCH_LOGIN_MISSING`, or a `--home-file` refusal from the watcher, means it cannot reach your model login: send the owner the step 1 line about that and stop. `WATCH_NO_SERVICE` means this system has no supported service manager: tell the owner "Automatic pickup isn't available on this system yet." and stop. Any other error: report it and stop; do not retry in a loop.
+It prints `Installed <file>. Logs: <log file>`. On Linux it also prints a `loginctl enable-linger` line: run that command as printed, so the watcher keeps running after the owner logs out; if it fails, tell the owner in one line and continue. `WATCH_TAKEN <file>` means another agent's Courier already owns this computer account's watcher service: leave it alone, tell the owner "Another agent on this computer account already has automatic pickup, so I haven't set mine up." and stop. `WATCH_LOGIN_MISSING`, or a `--home-file` refusal from the watcher, means it cannot reach your model login: send the owner step 1's line for a failed check and stop. `WATCH_NO_SERVICE` means this system has no supported service manager: tell the owner "Automatic pickup isn't available on this system yet." and stop. Any other error: report it and stop; do not retry in a loop.
 
 **4. Check that it runs.**
 
