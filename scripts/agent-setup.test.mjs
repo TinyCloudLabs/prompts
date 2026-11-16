@@ -449,14 +449,15 @@ test("Courier automatic pickup installs the watcher's exact pinned Courier besid
   }
 });
 
-// The service block starts the watcher with the right adapter for the agent, from the watcher's own Courier, and
-// never replaces a watcher service that belongs to another agent's Courier home on the same account.
+// The service block starts the watcher with the right adapter for the agent, from the watcher's own Courier, never
+// replaces a watcher service that belongs to another agent's Courier home on the same account, and starts no
+// unguarded agent whose named login file is not there to copy.
 test("Courier automatic pickup installs the service for this agent and leaves another agent's watcher alone", () => {
   const guide = readFileSync(join(root, "setup/courier.md"), "utf8");
   const service = block(guide, "**3. Install and start the service.**");
   const installFlag = process.platform === "darwin" ? "--install-launchd" : "--install-systemd";
   const unitPath = (dir) => process.platform === "darwin" ? join(dir, "Library/LaunchAgents/xyz.tinycloud.courier.watch.plist") : join(dir, ".config/systemd/user/courier-watch.service");
-  for (const scenario of ["claude", "other-agent", "other-agent-login-file", "reinstall", "taken", "not-installed"]) {
+  for (const scenario of ["claude", "other-agent", "other-agent-settings-folder", "other-agent-login-absent", "reinstall", "taken", "not-installed"]) {
     const dir = home();
     const bin = join(dir, ".local/share/tinycloud/courier-watch/node_modules/.bin/courier");
     const calls = join(dir, "courier-calls");
@@ -469,13 +470,20 @@ test("Courier automatic pickup installs the service for this agent and leaves an
       mkdirSync(dirname(unitPath(dir)), { recursive: true });
       writeFileSync(unitPath(dir), `COURIER_HOME=${scenario === "taken" ? join(dir, "another-agent/.courier") : courierHome}\n`);
     }
-    const agent = scenario.startsWith("other-agent") ? { AGENT_CMD: '/opt/agent/bin/agent run "$COURIER_PROMPT"' } : {};
-    const login = scenario === "other-agent-login-file" ? { HOME_FILE: ".agent/auth.json" } : {};
+    const agent = scenario === "other-agent-settings-folder"
+      ? { AGENT_CMD: 'AGENT_DIR=/home/owner/.agent /opt/agent/bin/agent run "$COURIER_PROMPT"' }
+      : scenario.startsWith("other-agent") ? { AGENT_CMD: '/opt/codex/bin/codex exec "$COURIER_PROMPT"' } : {};
+    const login = scenario === "other-agent" || scenario === "other-agent-login-absent" ? { HOME_FILE: ".codex/auth.json" } : {};
+    if (scenario === "other-agent") {
+      mkdirSync(join(dir, ".codex"));
+      writeFileSync(join(dir, ".codex/auth.json"), "{}");
+    }
     const work = join(dir, "work");
     const result = shell(service, { HOME: dir, WATCH_DIR: work, CALLS: calls, ...agent, ...login });
-    if (scenario === "taken" || scenario === "not-installed") {
+    const refusal = { taken: /^WATCH_TAKEN /, "not-installed": /^WATCH_MISSING/, "other-agent-login-absent": /^WATCH_LOGIN_MISSING \.codex\/auth\.json/ }[scenario];
+    if (refusal) {
       assert.notEqual(result.status, 0, scenario);
-      assert.match(result.stderr, scenario === "taken" ? /^WATCH_TAKEN / : /^WATCH_MISSING/, scenario);
+      assert.match(result.stderr, refusal, scenario);
       assert.equal(existsSync(calls), false, `${scenario}: the watcher is not started`);
       continue;
     }
