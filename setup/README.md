@@ -37,7 +37,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link that anyone who has it can open. It asks you before it makes one.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a link.`
-- **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days. There's nothing to send back.
+- **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days. When the agent sends the link in the chat, there's nothing to send back.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Share an artifact: [/share](share.md)
@@ -51,7 +51,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 - **What it does:** your agent uses API keys you keep in TinyCloud Secrets, following instructions to keep values out of the conversation. The authorized agent or MCP runtime still receives the values it uses. If a key is missing, it sends you a link to add it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it, including running its installer. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
-- **You approve:** a Secret Manager link to add a missing key, and one OpenKey link to let your agent read the keys it names, for 30 days. There's nothing to send back.
+- **You approve:** a Secret Manager link to add a missing key, and one OpenKey link to let your agent read the keys it names, for 30 days. When the agent sends the link in the chat, there's nothing to send back.
 - **Undo:** `auth logout` is local only; [the page](secrets.md#undo) explains the distinction.
 
 ## Agent-to-agent threads: [/courier](courier.md)
