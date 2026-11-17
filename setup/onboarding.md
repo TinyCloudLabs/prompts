@@ -92,7 +92,7 @@ When a rerun shows step 2's link, send it in your reply at once, without the ste
 - **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, send the done line ("TinyCloud is set up."), then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. For setup only, end with what the owner can ask next: records, sharing, stored API keys or meetings.
 - **The command stopped first** (a tool timeout, a restart): rerun the identical command/profile. It preserves completed approvals and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.
 
-Never run `onboard --code`: these links don't produce a code, and the approval is retrieved automatically, including from a phone.
+Never run `onboard --code` in place of the link: onboarding's automatic links don't produce a code, and the approval is retrieved automatically, including from a phone. That is why onboarding is a live-conversation flow: send its link only to the owner in the chat, never on a card or in an inbox.
 
 **If something goes wrong:** exit codes go by the [shared table](#exit-codes-and-owner-lines), with `<what>` = "TinyCloud". These come first:
 

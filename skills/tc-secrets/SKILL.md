@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.21"
+  version: "0.5.22"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/secrets.md` and follow that text. Summaries drop the shell blocks you must run.

@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Connect an agent to the owner's TinyCloud Home feed once, post decision, update and page cards there with `tinycloud feed publish`, with a brief, priority, deadline and expiry, then watch for the owner's answers and comments, acknowledge them and reply.
 metadata:
-  version: "0.4.0"
+  version: "0.4.1"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -57,7 +57,7 @@ tinycloud profile create 'feed-<TOKEN>' --posture delegate-session --operator ag
 tinycloud --profile '<OWNER_PROFILE>' auth request --cap 'tinycloud.sql:applications:xyz.tinycloud.tinychat/home_feed:read,write,schema' --cap 'tinycloud.sql:applications:xyz.tinycloud.tinychat/feed/:read,write,schema' --cap 'tinycloud.hooks:applications:sql/xyz.tinycloud.tinychat/feed/:subscribe' --grant --no-popup --expiry 30d
 ```
 
-Output `"changed": false` means the owner already approved it: go on to c. Otherwise, `auth request --grant` has no `--timeout` and blocks until the approval is resolved. This command does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply. As soon as the short URL appears on stderr, say in one line what the approval is for, send the complete URL on its own line, followed by: "Open this link and approve, then tell me." Then wait for the owner's next message and read the command's final output. Do not add `--paste`. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption. On an operator's `local-owner-key` profile there is no link; add `--yes` instead.
+Output `"changed": false` means the owner already approved it: go on to c. Otherwise, `auth request --grant` has no `--timeout` and blocks until the approval is resolved. This command does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply. As soon as the short URL appears on stderr, say in one line what the approval is for, send the complete URL on its own line, followed by: "Open this link and approve, then tell me." Then wait for the owner's next message and read the command's final output. In a live conversation, do not add `--paste`. If the approval will instead wait on a card, an inbox or a ticket, use the `--paste` code flow: with no code on stdin the command prints the link and stops at `PASTE_CODE_MISSING` instead of waiting, so no process has to stay alive; put the link on the card, and when the owner pastes back the code OpenKey shows, run the same command with the code on stdin. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption. On an operator's `local-owner-key` profile there is no link; add `--yes` instead.
 
 **c. Connect.** This creates both databases, gives the agent's DID exactly read and write on its own output database, read on its responses database and notifications of new answers, then lists the agent in Home. Keep `--expiry 30d`: without it the agent's access ends after 24 hours. It can't outlast the approval from b.
 
