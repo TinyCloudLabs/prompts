@@ -10,7 +10,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | --- | --- | --- |
 | `/setup` | The entry point: every ability, what to paste, what the owner approves, how to undo it | [`setup/README.md`](setup/README.md) |
 | `/apps` | Personal records (`tc-apps`): one-prompt setup | [`setup/tc-apps.md`](setup/tc-apps.md) |
-| `/feed` | Creating a post in TinyCloud Home (`tinycloud-feed`) | [`skills/tinycloud-feed/creating-a-post.md`](skills/tinycloud-feed/creating-a-post.md) |
+| `/feed` | Creating a post in TinyCloud One (`tinycloud-feed`) | [`skills/tinycloud-feed/creating-a-post.md`](skills/tinycloud-feed/creating-a-post.md) |
 | `/connect` | One link for any agent: CLI-capable agents go to `/onboarding`, remote MCP clients (for example ChatGPT, Claude, Grok, Grok Bot, Perplexity, Gemini, Meta Muse) get connector steps and what we have tested with each. HTML by default, Markdown when requested | [`setup/connect.md`](setup/connect.md); after [`/onboarding`](setup/onboarding.md), agents follow the guide for their request: [`/apps`](setup/tc-apps.md), [`/secrets`](setup/secrets.md), [`/publish`](setup/publish.md), [`/chat`](apps/tinychat/setup.md) or [`/courier`](setup/courier.md) |
 | `/connect/<client>` | Client-specific HTML/Markdown guides for `chatgpt`, `claude`, `cursor`, `gemini`, `grok`, `muse`, `perplexity`, `openclaw`, `hermes` and `cli`; each has a real `.md` alternate | [`setup/connect/`](setup/connect/) |
 | `/chat` | TinyChat meetings (`tinychat-retrieval`): one-prompt setup | [`apps/tinychat/setup.md`](apps/tinychat/setup.md) |
