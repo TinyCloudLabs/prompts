@@ -8,6 +8,8 @@
 <!-- std:errors -->
 **Exit codes and owner lines.** This table applies to the CLI approval commands `onboard`, `auth grant`, `auth login` without `--paste`, and `auth request --grant`. Codes named by a guide itself, such as `SPACE_SETUP_PENDING`, follow that guide. Commands under **Exceptions** have their own codes.
 
+**Approval links: codes on cards, one tap in chat.** When an approval waits somewhere the owner will act on later (a task card, an inbox, a ticket), use the code flow: run the approval command with `--paste` (`auth login --paste`, `auth request --grant --paste`, or Courier's `init --paste`). It prints the approval link and exits with `PASTE_CODE_MISSING` instead of waiting, so no watcher has to keep running; put that link on the card, and when the owner pastes back the code OpenKey shows (valid once, for 5 minutes), run the same command again with the code on stdin. The code tells you the approval is done and carries what you need. Send a one-tap link (the default, which has no code to paste back) only directly to the owner in a live conversation, and never send a chat link that asks them to copy a code back to you. `onboard` has no code flow for its automatic links, so run it only in a live conversation.
+
 | Exit | Means | Do |
 | --- | --- | --- |
 | 0 | Done. | Send the done line, then carry on. |
