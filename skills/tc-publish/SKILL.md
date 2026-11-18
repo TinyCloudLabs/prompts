@@ -2,7 +2,7 @@
 name: tc-publish
 description: Publish a document or HTML page to TinyCloud and return a shareable link. Use when the owner asks the agent to publish, share, or host a file — a link anyone who has it can open, made only after the owner says yes, with verification and lifecycle.
 metadata:
-  version: "0.6.12"
+  version: "0.6.13"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/publish.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -46,7 +46,7 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 ## Ask before making a link
 
-Only links are available for now: anyone who has the link can open it. Sharing with an email address, a domain, a DID or only the owner is not available yet; if the owner asks for one, say so in one line.
+This skill makes links only: anyone who has the link can open it. If the owner wants to share with one email address or a whole email domain, tell them to use share.tinycloud.xyz. Sharing with only the owner isn't available yet; if the owner asks for it, say so in one line.
 
 Before every publish, ask the owner exactly: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer, and don't offer another place to publish or share it. Never decide on your own that content is shareable, and never publish without that yes.
 
