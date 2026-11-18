@@ -51,7 +51,7 @@ test("an unwritable ~/.agents names the folder, the chmod fix and that the CLI s
   const result = await run(home);
   assert.equal(result.code, 1);
   assert.match(result.out[0], /^SKILL_INSTALL_FAILED EACCES: permission denied, mkdir /);
-  assert.equal(result.out[1], `SKILL_FIX ${agents} refused the write; run this yourself: chmod u+rwx '${agents}'   (if it belongs to another user: sudo chown -R "$USER" '${agents}')`);
+  assert.equal(result.out[1], `SKILL_FIX your user can't write to ${agents}; run this yourself in a terminal, not through an agent: chmod u+rwx '${agents}'   (if it belongs to another user: sudo chown -R "$USER" '${agents}')`);
   assert.equal(result.out[2], "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.");
   assert.equal(existsSync(join(agents, "skills")), false);
 });
@@ -59,7 +59,7 @@ test("an unwritable ~/.agents names the folder, the chmod fix and that the CLI s
 test("a skills folder outside the home, as with HOME=/nonexistent, gets no chmod or chown line", { skip }, async () => {
   const result = await run("/nonexistent");
   assert.equal(result.code, 1);
-  assert.equal(result.out[1], "SKILL_FIX / refused the write; ask the person who manages this computer to give your user write access to it");
+  assert.equal(result.out[1], "SKILL_FIX your user can't write to /; ask the person who manages this computer to give your user write access to it");
   assert.equal(result.out.some((line) => /chmod|chown|icacls/.test(line)), false);
 });
 
@@ -69,6 +69,6 @@ test("a ~/.agents that is a link to a system folder gets no chmod or chown line"
   symlinkSync("/usr", join(linked, ".agents"));
   const result = await run(linked);
   assert.equal(result.code, 1);
-  assert.equal(result.out[1], `SKILL_FIX ${join(linked, ".agents")} refused the write; ask the person who manages this computer to give your user write access to it`);
+  assert.equal(result.out[1], `SKILL_FIX your user can't write to ${join(linked, ".agents")}; ask the person who manages this computer to give your user write access to it`);
   assert.equal(result.out.some((line) => /chmod|chown|icacls/.test(line)), false);
 });

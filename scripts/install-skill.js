@@ -206,14 +206,14 @@ function permissionFix(error) {
   const inside = relative !== "" && !relative.startsWith("..") && !isAbsolute(relative);
   const windows = process.platform === "win32";
   if (CONTROL.test(folder) || (!inside && !isHome) || (windows && isHome)) {
-    return [`SKILL_FIX ${shown(folder)} refused the write; ask the person who manages this computer to give your user write access to it`, again];
+    return [`SKILL_FIX your user can't write to ${shown(folder)}; ask the person who manages this computer to give your user write access to it`, again];
   }
   if (windows) {
-    return [`SKILL_FIX ${folder} refused the write; in PowerShell run: icacls '${folder.replace(/'/g, "''")}' /grant "\${env:USERNAME}:(OI)(CI)F" /T`, again];
+    return [`SKILL_FIX your Windows user can't write to ${folder}; in PowerShell run: icacls '${folder.replace(/'/g, "''")}' /grant "\${env:USERNAME}:(OI)(CI)F" /T`, again];
   }
   const quoted = `'${folder.replace(/'/g, "'\\''")}'`;
   const other = isHome ? "" : `   (if it belongs to another user: sudo chown -R "$USER" ${quoted})`;
-  return [`SKILL_FIX ${folder} refused the write; run this yourself: chmod u+rwx ${quoted}${other}`, again];
+  return [`SKILL_FIX your user can't write to ${folder}; run this yourself in a terminal, not through an agent: chmod u+rwx ${quoted}${other}`, again];
 }
 
 main().catch((error) => {
