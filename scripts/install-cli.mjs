@@ -47,14 +47,14 @@ export function permissionLines(folder, opts) {
   if (CONTROL.test(folder) || (!inside && !isHome) || (windows && isHome)) {
     const where = CONTROL.test(folder) ? " (its name has control characters)" : inside || isHome ? "" : ", which is outside your home folder";
     return [
-      `TC_CAUSE your user cannot write to ${shown(folder)}${where}`,
+      `TC_CAUSE your user can't write to ${shown(folder)}${where}`,
       "TC_FIX ask the person who manages this computer to give your user write access to it, or to install the CLI for you",
       again,
     ];
   }
   if (windows) {
     return [
-      `TC_CAUSE your Windows user cannot write to ${folder}`,
+      `TC_CAUSE your Windows user can't write to ${folder}`,
       `TC_FIX in PowerShell run: icacls ${powershellQuoted(folder)} /grant "\${env:USERNAME}:(OI)(CI)F" /T`,
       again,
     ];
@@ -66,8 +66,8 @@ export function permissionLines(folder, opts) {
   if (owned) {
     return [
       `TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}) or sits on a read-only disk`,
-      `TC_FIX run yourself: chmod u+rwx ${posixQuoted(folder)}`,
-      "TC_FIX if that is not allowed, the disk is read-only: free a writable home folder and run the installer as that user",
+      `TC_FIX run this yourself: chmod u+rwx ${posixQuoted(folder)}`,
+      "TC_FIX if chmod is refused, the disk is read-only: run the installer as a user whose home folder can be written",
       again,
     ];
   }
@@ -80,7 +80,7 @@ export function permissionLines(folder, opts) {
   }
   return [
     `TC_CAUSE ${folder} belongs to another user${mode ? ` (mode ${mode})` : ""}, often root after an earlier sudo run`,
-    `TC_FIX run yourself in a terminal, not through an agent: sudo chown -R "$USER" ${posixQuoted(folder)}`,
+    `TC_FIX run this yourself in a terminal, not through an agent: sudo chown -R "$USER" ${posixQuoted(folder)}`,
     again,
   ];
 }

@@ -51,7 +51,7 @@ test("an unwritable ~/.agents names the folder, the chmod fix and that the CLI s
   const result = await run(home);
   assert.equal(result.code, 1);
   assert.match(result.out[0], /^SKILL_INSTALL_FAILED EACCES: permission denied, mkdir /);
-  assert.equal(result.out[1], `SKILL_FIX ${agents} refused the write; run yourself: chmod u+rwx '${agents}'   (if it belongs to another user: sudo chown -R "$USER" '${agents}')`);
+  assert.equal(result.out[1], `SKILL_FIX ${agents} refused the write; run this yourself: chmod u+rwx '${agents}'   (if it belongs to another user: sudo chown -R "$USER" '${agents}')`);
   assert.equal(result.out[2], "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.");
   assert.equal(existsSync(join(agents, "skills")), false);
 });

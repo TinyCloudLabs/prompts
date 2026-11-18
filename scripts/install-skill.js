@@ -213,7 +213,7 @@ function permissionFix(error) {
   }
   const quoted = `'${folder.replace(/'/g, "'\\''")}'`;
   const other = isHome ? "" : `   (if it belongs to another user: sudo chown -R "$USER" ${quoted})`;
-  return [`SKILL_FIX ${folder} refused the write; run yourself: chmod u+rwx ${quoted}${other}`, again];
+  return [`SKILL_FIX ${folder} refused the write; run this yourself: chmod u+rwx ${quoted}${other}`, again];
 }
 
 main().catch((error) => {
