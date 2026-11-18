@@ -14,7 +14,7 @@
 // site it is served from, so a Pages preview installs the preview's skills.
 "use strict";
 const { createHash, randomBytes } = require("node:crypto");
-const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } = require("node:fs");
 const { homedir } = require("node:os");
 const { dirname, isAbsolute, join, relative: relativePath, resolve, sep } = require("node:path");
 
@@ -187,37 +187,49 @@ async function main() {
   console.log(`SKILL_INSTALLED ${skill.name} ${skill.version} ${dest}`);
 }
 
-// A permission failure also names the folder that refused the write and the exact fix. The fix is for the owner
-// to run, never an agent through sudo, and it is printed only for a folder strictly inside the owner's home (the
-// home folder itself gets chmod only). Elsewhere, or for a name with control characters, no command is printed.
-// The CLI works without the skill, so setup goes on.
+// A permission failure also says which folder refused the write and why, and nothing else: no fix is printed. The
+// CLI works without the skill, so setup goes on. Real paths (symlinks resolved) decide whether a folder is inside the home.
 const CONTROL = /[\u0000-\u001f\u007f]/;
 const shown = (text) => text.replace(/[\u0000-\u001f\u007f]/g, "?");
-function permissionFix(error) {
+function ownerName(uid) {
+  try {
+    for (const line of readFileSync("/etc/passwd", "utf8").split("\n")) {
+      const fields = line.split(":");
+      if (fields[2] === String(uid)) return fields[0];
+    }
+  } catch { /* no passwd file: fall through to the id */ }
+  return `uid ${uid}`;
+}
+function permissionCause(error) {
   if (!["EACCES", "EPERM", "EROFS"].includes(error?.code) || typeof error.path !== "string") return [];
   let folder = error.path;
   while (!existsSync(folder) && dirname(folder) !== folder) folder = dirname(folder);
-  const again = "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.";
-  // Real paths (symlinks resolved), so a folder that links out of the home gets no command.
   const real = (file) => { try { return realpathSync(file); } catch { return resolve(file); } };
-  const home = real(homedir());
-  const relative = relativePath(home, real(folder));
+  const relative = relativePath(real(homedir()), real(folder));
   const isHome = relative === "";
-  const inside = relative !== "" && !relative.startsWith("..") && !isAbsolute(relative);
+  const inside = !isHome && !relative.startsWith("..") && !isAbsolute(relative);
   const windows = process.platform === "win32";
-  if (CONTROL.test(folder) || (!inside && !isHome) || (windows && isHome)) {
-    return [`SKILL_FIX your user can't write to ${shown(folder)}; ask the person who manages this computer to give your user write access to it`, again];
-  }
-  if (windows) {
-    return [`SKILL_FIX your Windows user can't write to ${folder}; in PowerShell run: icacls '${folder.replace(/'/g, "''")}' /grant "\${env:USERNAME}:(OI)(CI)F" /T`, again];
-  }
-  const quoted = `'${folder.replace(/'/g, "'\\''")}'`;
-  const other = isHome ? "" : `   (if it belongs to another user: sudo chown -R "$USER" ${quoted})`;
-  return [`SKILL_FIX your user can't write to ${folder}; run this yourself in a terminal, not through an agent: chmod u+rwx ${quoted}${other}`, again];
+  const who = (windows ? process.env.USERNAME : process.env.USER || process.env.LOGNAME) || "your user";
+  const done = "The CLI works without the skill.";
+  if (CONTROL.test(folder)) return [`SKILL_CAUSE ${who} can't write to ${shown(folder)}; its name has control characters`, done];
+  if (!inside && !isHome) return [`SKILL_CAUSE ${who} can't write to ${folder}, which is outside the home folder`, done];
+  if (windows) return [`SKILL_CAUSE Windows user ${who} can't write to ${folder}`, done];
+  let owned = false;
+  let mode = "";
+  let owner = "";
+  try {
+    const info = statSync(folder);
+    owned = info.uid === process.getuid?.();
+    mode = (info.mode & 0o777).toString(8);
+    owner = ownerName(info.uid);
+  } catch { return [`SKILL_CAUSE ${who} can't write to ${folder}`, done]; }
+  if (owned) return [`SKILL_CAUSE ${folder} is read-only for ${who} (mode ${mode}), or the disk is read-only`, done];
+  if (isHome) return [`SKILL_CAUSE the home folder ${folder} belongs to another user (mode ${mode})`, done];
+  return [`SKILL_CAUSE ${folder} belongs to another user (owner ${owner}, mode ${mode})`, done];
 }
 
 main().catch((error) => {
   console.error(`SKILL_INSTALL_FAILED ${shown(String(error.message))}`);
-  for (const line of permissionFix(error)) console.error(line);
+  for (const line of permissionCause(error)) console.error(line);
   process.exitCode = 1;
 });

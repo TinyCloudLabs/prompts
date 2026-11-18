@@ -16,8 +16,7 @@ const options = (input = {}) => {
   return { ...input, env, platform, home: input.home || (platform === "win32" ? env.USERPROFILE || env.HOME : env.HOME) || homedir(), log: input.log || console.log };
 };
 
-// A permission problem stops with the path, the cause and the exact fix. The fix is for the owner to run;
-// an agent never retries it with sudo. After it, the installer is safe to run again and setup continues.
+// A permission problem stops with the folder and the cause, and nothing changes before it stops. No fix is printed.
 const BLOCKED = ["EACCES", "EPERM", "EROFS"];
 const permissionError = (error) => BLOCKED.includes(error?.code);
 export class PermissionFailure extends Error {
@@ -25,64 +24,45 @@ export class PermissionFailure extends Error {
 }
 const CONTROL = /[\u0000-\u001f\u007f]/;
 const shown = (text) => text.replace(/[\u0000-\u001f\u007f]/g, "?");
-// Single quotes keep `$`, backticks, `!` and `(` literal when the owner pastes a line into bash or PowerShell.
-const posixQuoted = (file) => `'${file.replace(/'/g, "'\\''")}'`;
-const powershellQuoted = (file) => `'${file.replace(/'/g, "''")}'`;
+// The owner of a folder, by name when the passwd file knows the id.
+function ownerName(uid) {
+  try {
+    for (const line of readFileSync("/etc/passwd", "utf8").split("\n")) {
+      const fields = line.split(":");
+      if (fields[2] === String(uid)) return fields[0];
+    }
+  } catch { /* no passwd file: fall through to the id */ }
+  return `uid ${uid}`;
+}
 // The nearest folder at or above `file` that exists: the one that refused the write.
 const refusing = (file) => { let at = file; while (!existsSync(at) && path.dirname(at) !== at) at = path.dirname(at); return at; };
 
-// A fix command is printed only for a folder strictly inside the owner's home (the home folder itself gets chmod
-// only, never a recursive command). Anywhere else, such as a system folder when HOME is missing, or a name with
-// control characters, the owner's administrator decides and no command is printed.
+// Which folder refused the write and why: a cause line, never a fix. Nothing is printed for the person or agent
+// to run, so no path is quoted for a shell. Real paths (symlinks resolved) decide whether a folder is inside the home.
 export function permissionLines(folder, opts) {
-  const again = "TC_FIX then run the same installer command again; it is safe to repeat";
   const windows = opts.platform === "win32";
   const api = windows ? path.win32 : path;
   const fold = (file) => (windows ? file.toLowerCase() : file);
-  // Real paths (symlinks resolved), so a ~/.local that links to a system folder gets no command.
   const [target, base] = windows ? [folder, opts.home] : [real(folder) || folder, real(opts.home) || opts.home];
   const relative = api.relative(fold(api.resolve(base)), fold(api.resolve(target)));
   const isHome = relative === "";
   const inside = !isHome && !relative.startsWith("..") && !api.isAbsolute(relative);
-  if (CONTROL.test(folder) || (!inside && !isHome) || (windows && isHome)) {
-    const where = CONTROL.test(folder) ? " (its name has control characters)" : inside || isHome ? "" : ", which is outside your home folder";
-    return [
-      `TC_CAUSE your user can't write to ${shown(folder)}${where}`,
-      "TC_FIX ask the person who manages this computer to give your user write access to it, or to install the CLI for you",
-      again,
-    ];
-  }
-  if (windows) {
-    return [
-      `TC_CAUSE your Windows user can't write to ${folder}`,
-      `TC_FIX in PowerShell run: icacls ${powershellQuoted(folder)} /grant "\${env:USERNAME}:(OI)(CI)F" /T`,
-      again,
-    ];
-  }
+  const who = (windows ? opts.env.USERNAME : opts.env.USER || opts.env.LOGNAME) || "your user";
+  if (CONTROL.test(folder)) return [`TC_CAUSE ${who} can't write to ${shown(folder)}; its name has control characters`];
+  if (!inside && !isHome) return [`TC_CAUSE ${who} can't write to ${folder}, which is outside the home folder`];
+  if (windows) return [`TC_CAUSE Windows user ${who} can't write to ${folder}`];
   let owned = false;
   let mode = "";
-  try { const info = statSync(folder); owned = info.uid === process.getuid?.(); mode = (info.mode & 0o777).toString(8); } catch { /* the cause line stays general */ }
-  const who = opts.env.USER || opts.env.LOGNAME || "your user";
-  if (owned) {
-    return [
-      `TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}) or sits on a read-only disk`,
-      `TC_FIX run this yourself: chmod u+rwx ${posixQuoted(folder)}`,
-      "TC_FIX if chmod is refused, the disk is read-only: run the installer as a user who can write to their home folder",
-      again,
-    ];
-  }
-  if (isHome) {
-    return [
-      `TC_CAUSE your home folder ${folder} belongs to another user${mode ? ` (mode ${mode})` : ""}`,
-      "TC_FIX ask the person who manages this computer to give your user write access to it",
-      again,
-    ];
-  }
-  return [
-    `TC_CAUSE ${folder} belongs to another user${mode ? ` (mode ${mode})` : ""}, often root after an earlier sudo run`,
-    `TC_FIX run this yourself in a terminal, not through an agent: sudo chown -R "$USER" ${posixQuoted(folder)}`,
-    again,
-  ];
+  let owner = "";
+  try {
+    const info = statSync(folder);
+    owned = info.uid === process.getuid?.();
+    mode = (info.mode & 0o777).toString(8);
+    owner = ownerName(info.uid);
+  } catch { return [`TC_CAUSE ${who} can't write to ${folder}`]; }
+  if (owned) return [`TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}), or the disk is read-only`];
+  if (isHome) return [`TC_CAUSE the home folder ${folder} belongs to another user (mode ${mode})`];
+  return [`TC_CAUSE ${folder} belongs to another user (owner ${owner}, mode ${mode})`];
 }
 
 function permissionFailure(error, action, target, opts) {
@@ -99,11 +79,8 @@ function npmFailure(stderr, opts) {
   }
   return new PermissionFailure(`permission denied: npm cannot write ${named ? shown(named) : "to its folders"} (${code})`, [
     named
-      ? `TC_CAUSE npm tried to write to ${shown(named)}, outside your home folder, so an npm setting points outside it`
-      : "TC_CAUSE npm was refused a write and didn't say where; an npm setting probably points outside your home folder",
-    "TC_FIX run: npm config get prefix && npm config get cache  (both should be inside your home folder)",
-    "TC_FIX if one isn't, set it to a folder inside your home, for example: npm config set cache \"$HOME/.npm\"",
-    "TC_FIX then run the same installer command again; it is safe to repeat",
+      ? `TC_CAUSE npm couldn't write to ${shown(named)}, which is outside the home folder`
+      : "TC_CAUSE npm couldn't write and didn't say where",
   ]);
 }
 
@@ -331,7 +308,7 @@ export function linkCommands(selected, input = {}) {
       if (!permissionError(error)) throw error;
       opts.log(`TC_NOT_LINKED ${names.join(",")} permission ${directory}`);
       for (const line of permissionLines(refusing(directory), opts)) opts.log(line);
-      opts.log("TC_FIX meanwhile, run the CLI by the absolute path on the TC_SELECTED line");
+      opts.log("TC_NOTE the CLI is installed and runs from the path on the TC_SELECTED line");
       return;
     }
   }
@@ -365,7 +342,7 @@ export function linkCommands(selected, input = {}) {
   }
   if (notLinked) {
     for (const line of permissionLines(notLinked, opts)) opts.log(line);
-    opts.log("TC_FIX meanwhile, run the CLI by the absolute path on the TC_SELECTED line");
+    opts.log("TC_NOTE the CLI is installed and runs from the path on the TC_SELECTED line");
   }
 }
 
