@@ -1,4 +1,4 @@
-// TC-3278: a skills folder the user cannot write stops the skill install with the folder and the exact fix.
+// TC-3278: a skills folder the user cannot write stops the skill install with the folder and the cause, and no fix.
 // Run: node --test scripts/install-skill-permissions.test.mjs
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -45,30 +45,36 @@ after(() => {
   rmSync(work, { recursive: true, force: true });
 });
 
-test("an unwritable ~/.agents names the folder, the chmod fix and that the CLI still works", { skip }, async () => {
+// What must never be printed: a fix line, a command, advice to ask someone, or an instruction to retry.
+const instructions = (out) => out.filter((line) => /SKILL_FIX|chmod|chown|icacls|sudo|ask the person|run this yourself|again|safe to repeat/.test(line));
+
+test("an unwritable ~/.agents names the folder and the cause, then says the CLI still works", { skip }, async () => {
   mkdirSync(agents, { recursive: true });
   chmodSync(agents, 0o555);
   const result = await run(home);
   assert.equal(result.code, 1);
   assert.match(result.out[0], /^SKILL_INSTALL_FAILED EACCES: permission denied, mkdir /);
-  assert.equal(result.out[1], `SKILL_FIX your user can't write to ${agents}; run this yourself in a terminal, not through an agent: chmod u+rwx '${agents}'   (if it belongs to another user: sudo chown -R "$USER" '${agents}')`);
-  assert.equal(result.out[2], "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.");
+  assert.equal(result.out[1], `SKILL_CAUSE ${agents} is read-only for your user (mode 555), or the disk is read-only`);
+  assert.equal(result.out[2], "The CLI works without the skill.");
+  assert.equal(result.out.length, 3);
+  assert.deepEqual(instructions(result.out), []);
   assert.equal(existsSync(join(agents, "skills")), false);
 });
 
-test("a skills folder outside the home, as with HOME=/nonexistent, gets no chmod or chown line", { skip }, async () => {
+test("a skills folder outside the home, as with HOME=/nonexistent, is reported as outside it, with no command", { skip }, async () => {
   const result = await run("/nonexistent");
   assert.equal(result.code, 1);
-  assert.equal(result.out[1], "SKILL_FIX your user can't write to /; ask the person who manages this computer to give your user write access to it");
-  assert.equal(result.out.some((line) => /chmod|chown|icacls/.test(line)), false);
+  assert.equal(result.out[1], "SKILL_CAUSE your user can't write to /, which is outside the home folder");
+  assert.equal(result.out[2], "The CLI works without the skill.");
+  assert.deepEqual(instructions(result.out), []);
 });
 
-test("a ~/.agents that is a link to a system folder gets no chmod or chown line", { skip }, async () => {
+test("a ~/.agents that is a link to a system folder is reported as outside the home, with no command", { skip }, async () => {
   const linked = join(work, "linked-home");
   mkdirSync(linked);
   symlinkSync("/usr", join(linked, ".agents"));
   const result = await run(linked);
   assert.equal(result.code, 1);
-  assert.equal(result.out[1], `SKILL_FIX your user can't write to ${join(linked, ".agents")}; ask the person who manages this computer to give your user write access to it`);
-  assert.equal(result.out.some((line) => /chmod|chown|icacls/.test(line)), false);
+  assert.equal(result.out[1], `SKILL_CAUSE your user can't write to ${join(linked, ".agents")}, which is outside the home folder`);
+  assert.deepEqual(instructions(result.out), []);
 });
