@@ -493,7 +493,7 @@ Both patterns read the secret inside a subshell, so the value never stays in you
 **Default:** one command, no file left behind. If a tool needs the value in a file only for that one run, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command.
 
 **A file that stays** is allowed when the owner asks for one, or when a tool or service can only read the secret from a file (for example a daemon's config or credentials file). Then:
-- Write it with `umask 077`, mode 0600, for your own account only. If another account needs the file, don't write it: tell the owner in one line, with no command, "I can write secret files only for my own account, so I didn't write <name> for <account>."
+- Write it with `umask 077`, mode 0600, owned by the account that will read it. For another account, use `sudo install -o <user> -m 600 /dev/stdin <path>`.
 - Pipe the value straight from `"$TC_BIN" --profile "$PROFILE" secrets get NAME --raw` into the file. Never print or echo it, and never pass it as a command-line argument.
 - Before writing, check the path isn't inside a git work tree, or is git-ignored there: `git -C "$(dirname <path>)" check-ignore -q <path>` must succeed, or `git -C "$(dirname <path>)" rev-parse` must fail.
 - Don't copy the file anywhere else.
@@ -520,7 +520,7 @@ else
 fi
 ```
 
-The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place.
+The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place. For another account, do the same with `sudo install -o <user> -m 600 /dev/stdin "$TMP"` and `sudo mv -f "$TMP" "$DEST"`.
 
 ## Exit codes and owner lines
 
