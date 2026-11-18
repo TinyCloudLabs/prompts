@@ -12,7 +12,7 @@ The preferred route is a persistent agent runtime that can install and run TinyC
 
 Use the active runtime's filesystem and shell. If it cannot install/run the CLI, use a supported [hosted MCP client](https://agents.tinycloud.xyz/connect) instead; a prompt cannot add missing execution or OAuth capability.
 
-**Primary TinyCloud references:** [CLI installation](https://agents.tinycloud.xyz/cli), [onboarding](https://agents.tinycloud.xyz/onboarding.md), [CLI skill](https://agents.tinycloud.xyz/skills/cli.md), and [CLI documentation](https://docs.tinycloud.xyz/cli). Claude Code uses `--agent claude-code`, OpenCode `--agent opencode`; other runtimes use `codex` and load `~/.agents/skills` through their own supported skill mechanism.
+**Primary TinyCloud references:** [CLI installation](https://agents.tinycloud.xyz/cli), [onboarding](https://agents.tinycloud.xyz/onboarding.md), [CLI skill](https://agents.tinycloud.xyz/skills/cli.md), and [CLI documentation](https://docs.tinycloud.xyz/cli). Use your own client's name with `--agent` (for example `--agent claude-code` or `--agent opencode`); other runtimes use `agents` and load `~/.agents/skills` through their own supported skill mechanism.
 
 This is agent-facing setup guidance, not an MCP directory listing or a claim of complete hosted parity.
 

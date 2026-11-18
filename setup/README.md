@@ -70,7 +70,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 ## Skills
 
-The pages install these for you. To install one yourself, replace `<skill>` and `<client>` (`claude-code`, `codex` or `opencode`; any other agent uses `codex`):
+The pages install these for you. To install one yourself, replace `<skill>` and `<client>` (`amp`, `claude-code`, `codex`, `copilot`, `cursor`, `gemini`, `omp`, `openclaw` or `opencode`; any other agent uses `agents`). Add `--scope project` to install for the current project only instead of for every folder on this computer account; the installer says which it did.
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js

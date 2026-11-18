@@ -109,10 +109,29 @@ To install a skill without a guide:
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
-node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>
+node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <client[,client…]|auto> [--scope user|project]
 ```
 
-The installer checks every file against `/skills/index.json` before writing anything, then swaps in the skill's folder: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/<name>` for Claude Code, `~/.agents/skills/<name>` for Codex and OpenCode. It refuses a skill name that isn't one plain folder name, any file path that could leave the folder, and any redirect, so every byte comes from the site it was served from. Installs of one skill take turns through a lock folder, `.<name>.lock`, broken only when its process has exited or it is older than any install takes. The old folder stays until the new one is in place and goes back if that fails; a later install restores it if the earlier one exited in between. Its tests: `node --test scripts/install-skill.test.mjs`.
+The installer checks every file against `/skills/index.json` before writing anything, then swaps in the skill's folder in each skills folder the named clients read (table below). `--scope user` (the default) installs for the whole computer account; `--scope project` installs into the project it runs in, found by the nearest `.git` above the current folder, else the current folder, and it refuses the home folder and the top of the disk. `--agent auto` installs for the clients whose own folder exists on this computer, and into the shared folder when it finds none. It prints one `SKILL_INSTALLED <name> <version> <folder>` line per folder, then one `SKILL_SCOPE` line saying who can use the skill and how to change that. It refuses a skill name that isn't one plain folder name, any file path that could leave the folder, and any redirect, so every byte comes from the site it was served from. Installs of one skill take turns through a lock folder, `.<name>.lock`, broken only when its process has exited or it is older than any install takes. The old folder stays until the new one is in place and goes back if that fails; a later install restores it if the earlier one exited in between. Its tests: `node --test scripts/install-skill.test.mjs scripts/install-skill-clients.test.mjs`.
+
+### Skill folders
+
+Every client reads `<folder>/<skill>/SKILL.md`. Most read the shared `.agents/skills` folder, so naming several of them installs one copy; Claude Code does not read it. Sources are each vendor's skills page; the rows marked "search" were taken from a search summary of the page and not yet read on it.
+
+| `--agent` | User folder | Project folder | Source |
+| --- | --- | --- | --- |
+| `claude-code` | `${CLAUDE_CONFIG_DIR:-~/.claude}/skills` (`CLAUDE_CONFIG_DIR` is not on the skills page) | `.claude/skills` | [Claude Code skills](https://code.claude.com/docs/en/skills) |
+| `codex` | `~/.agents/skills` | `.agents/skills` | [Codex skills](https://developers.openai.com/codex/skills) |
+| `gemini` | `~/.agents/skills` (alias of `~/.gemini/skills`) | `.agents/skills` (alias of `.gemini/skills`) | [Gemini CLI skills](https://geminicli.com/docs/cli/skills/) |
+| `cursor` | `~/.agents/skills` (also `~/.cursor/skills`) | `.agents/skills` (also `.cursor/skills`) | [Cursor skills](https://cursor.com/docs/skills) |
+| `opencode` | `~/.agents/skills` (also `~/.config/opencode/skills`) | `.agents/skills` (also `.opencode/skills`) | [OpenCode skills](https://opencode.ai/docs/skills/) |
+| `omp` | `~/.agents/skills` (also `~/.omp/agent/skills`) | `.agents/skills` (also `.omp/skills`) | omp's own `skills.md` (shipped with omp) |
+| `copilot` | `~/.agents/skills` (also `~/.copilot/skills`) | `.agents/skills` (also `.github/skills`) | search: [Copilot agent skills](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/customizations/agent-skills) |
+| `amp` | `~/.agents/skills` (also `~/.config/agents/skills`) | `.agents/skills` | search: [Amp agent skills](https://ampcode.com/news/agent-skills) |
+| `openclaw` | `~/.agents/skills` (also `~/.openclaw/skills`) | `.agents/skills` in the workspace | search: [OpenClaw skills](https://docs.openclaw.ai/tools/skills) |
+| `agents` | `~/.agents/skills` | `.agents/skills` | any other client that reads `.agents/skills`, including Hermes once its config lists that folder (`setup/connect/hermes.md`) |
+
+Windsurf, Goose, Cline, Zed and Kiro are not covered: add a row only after reading the vendor's page. Hermes reads `~/.hermes/skills` by default and the shared folder only when its `skills.external_dirs` lists it, so it has no row of its own.
 
 Courier inspects the complete installed skill before invoking an installer and preserves any mismatched/unrecognized local files. Its bare setup calls `/cli`, not generic account/app onboarding: Courier has a separate key and restricted owner approval. The guide's setup section is also embedded into the released skill overlays. Approval collection is a bounded wait that resumes the same request instead of requiring the owner to send an extra message.
 

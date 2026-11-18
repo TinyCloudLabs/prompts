@@ -47,7 +47,7 @@ Keep the owner's original request and any incoming invitation URL exactly as sup
 
 Install or reuse the Courier action skill; the current public manifest pins that **skill** to `0.5.2`. The usual location is `$HOME/.agents/skills/courier/SKILL.md` for Codex/OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Apply the complete-file preservation check above before installation.
 
-If the skill is missing, download and run the existing installer in separate calls below. Do not reinstall an exact match or overwrite a mismatch. Skip a download already completed in this run. `CLIENT` is `claude-code`, `codex` or `opencode`, as in [CLI setup](tinycloud.md).
+If the skill is missing, download and run the existing installer in separate calls below. Do not reinstall an exact match or overwrite a mismatch. Skip a download already completed in this run. `CLIENT` is your client's name from [CLI setup](tinycloud.md) (`claude-code`, `codex`, `opencode` and so on; `agents` for any other agent).
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
@@ -57,7 +57,7 @@ mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tin
 node "$HOME/.local/share/tinycloud/install.js" courier --agent CLIENT
 ```
 
-It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 0.5.2 <folder>`; any failure stops setup. Then read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). Only if your client is none of those three, read SKILL.md and start.md directly instead, and set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
+It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 0.5.2 <folder>`; any failure stops setup. Then read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). Only if your client is not one of the names in CLI setup, read SKILL.md and start.md directly instead, and set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
 
 ## Check the installed CLI
 

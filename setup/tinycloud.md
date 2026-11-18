@@ -22,7 +22,7 @@ This module installs and verifies the TinyCloud CLI, then attempts its optional 
 Before starting, retain all of the following from the caller:
 
 - the user's original task;
-- the selected client: `opencode`, `codex` or `claude-code` (any other agent: `codex`);
+- the selected client: `amp`, `claude-code`, `codex`, `copilot`, `cursor`, `gemini`, `omp`, `openclaw` or `opencode` (any other agent: `agents`);
 - the calling app guide and its exact return heading;
 - the action skill that guide installs, if it names one (for example `apps`, `courier` or `chat`), so the run call below installs it too.
 
@@ -32,7 +32,7 @@ After the checks below pass, return directly to that heading and continue the or
 
 Use Node.js **20 or later** (the CLI's own requirement) and npm, the same as the app guides that call this module.
 
-Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `claude-code` (any other agent: `codex`). Do not apply app-specific OpenCode restrictions here.
+Set `CLIENT` conceptually to the current agent client: `amp`, `claude-code`, `codex`, `copilot`, `cursor`, `gemini`, `omp`, `openclaw` or `opencode` (any other agent: `agents`). Do not apply app-specific OpenCode restrictions here.
 
 ## Install the CLI
 

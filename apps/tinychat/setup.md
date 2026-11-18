@@ -27,7 +27,7 @@ Do not run the separate OpenKey CLI setup. TinyChat does not invoke the standalo
 
 The app pack is pinned to `tinychat-retrieval@0.1.1-onboarding.25`, as served by `agents.tinycloud.xyz`. Inspect an existing same-named skill before replacing it. Reuse it only when its files match the `chat` entry in `https://agents.tinycloud.xyz/skills/index.json`. An earlier `tinychat-retrieval` version installed from this site or from tinycloud.chat is a replaceable mismatch. Do not overwrite an unrelated or locally modified skill. If an installed pack has uncertain provenance, return the conflict unless its replacement was explicitly approved.
 
-If the CLI setup's run call printed `SKILL_INSTALLED tinychat-retrieval 0.1.1-onboarding.25` in this conversation, the pack is installed: skip to loading it below. Otherwise, for a missing or replaceable app pack, substitute the current client's installer name (for example `claude-code`, `codex` or `opencode`) for `CLIENT` and run this as a sequential foreground install:
+If the CLI setup's run call printed `SKILL_INSTALLED tinychat-retrieval 0.1.1-onboarding.25` in this conversation, the pack is installed: skip to loading it below. Otherwise, for a missing or replaceable app pack, substitute the current client's installer name (for example `claude-code`, `codex`, `opencode` or `agents`) for `CLIENT` and run this as a sequential foreground install:
 
 ```sh
 mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
@@ -39,7 +39,7 @@ Then, as a separate shell call:
 node "$HOME/.local/share/tinycloud/install.js" chat --agent CLIENT
 ```
 
-The installer downloads the pack from `agents.tinycloud.xyz`, checks every file against the site's `/skills/index.json`, and prints `SKILL_INSTALLED tinychat-retrieval 0.1.1-onboarding.25 <folder>`. Anything else, including another version, means the install failed or doesn't match this guide: stop and report it. The usual installed directory is `$HOME/.agents/skills/tinychat-retrieval` for OpenCode and Codex or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Resolve it from the current terminal's `HOME` and `CLAUDE_CONFIG_DIR`. Load its `SKILL.md` once if it is not already loaded; do not search unrelated directories.
+The installer downloads the pack from `agents.tinycloud.xyz`, checks every file against the site's `/skills/index.json`, and prints `SKILL_INSTALLED tinychat-retrieval 0.1.1-onboarding.25 <folder>`. Anything else, including another version, means the install failed or doesn't match this guide: stop and report it. The usual installed directory is `$HOME/.agents/skills/tinychat-retrieval` for every client except Claude Code, or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Resolve it from the current terminal's `HOME` and `CLAUDE_CONFIG_DIR`. Load its `SKILL.md` once if it is not already loaded; do not search unrelated directories.
 
 The published files are the [skill](https://agents.tinycloud.xyz/skills/chat.md), [setup recovery](https://agents.tinycloud.xyz/skills/chat/references/setup.md), [meeting contract](https://agents.tinycloud.xyz/skills/chat/references/meetings.md) and [session handoff](https://agents.tinycloud.xyz/skills/chat/references/session-handoff.md). They are the files of TinyChat's released `0.1.1-onboarding.25` pack, unchanged.
 
@@ -122,7 +122,7 @@ Repeating the same install is idempotent; install a newly identified pack explic
 
 **Undo, for the owner.** Two steps:
 
-1. **Remove the skill:** delete its folder, `$HOME/.agents/skills/tinychat-retrieval` for Codex and OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Codex and OpenCode share `~/.agents/skills`, so removal there affects both.
+1. **Remove the skill:** delete its folder, `$HOME/.agents/skills/tinychat-retrieval` for every client except Claude Code or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Clients that read `~/.agents/skills` share it, so removal there affects all of them.
 2. **End access sooner, if you want:** every approval ends on its own after 30 days. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations.
 
 Neither step touches other skills or the shared `tinycloud-cli` skill.

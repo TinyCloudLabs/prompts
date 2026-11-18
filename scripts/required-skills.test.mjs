@@ -17,8 +17,9 @@ const sh = (text, heading) => text.split(heading)[1]?.match(/```sh\n([\s\S]*?)\n
 const onboardingGuide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
 const courierGuide = readFileSync(join(root, "setup/courier.md"), "utf8");
 const source = readFileSync(join(root, "scripts/install-skill.js"), "utf8");
-// Every client install.js installs for, read from its ROOTS table.
-const clients = [...source.match(/const ROOTS = \{([\s\S]*?)\n\};/)[1].matchAll(/^\s*"?([a-z-]+)"?:/gm)].map((m) => m[1]);
+// Every client and every skills folder install.js installs for, read from its CLIENTS and FOLDERS tables.
+const tableKeys = (name) => [...source.match(new RegExp(`const ${name} = \\{([\\s\\S]*?)\\n\\};`))[1].matchAll(/^  "?([a-z-]+)"?:/gm)].map((m) => m[1]);
+const clients = tableKeys("CLIENTS");
 const missing = (skill, step, page) =>
   `SKILL_MISSING ${skill}: run the "${step}" step at https://agents.tinycloud.xyz/${page} (it is required), then rerun this block\n`;
 
@@ -131,7 +132,7 @@ for (const [page, guard] of Object.entries(guarded)) {
   });
 
   test(`/${page}'s guarded block runs once install.js installs ${guard.skill} for any client`, async () => {
-    assert.deepEqual([...clients].sort(), ["claude-code", "codex", "opencode"], "a new install.js client needs the guards to check its folder");
+    assert.deepEqual(tableKeys("FOLDERS").sort(), ["claude", "shared"], "a new install.js skills folder needs the guards to check it");
     // install.js trims CLAUDE_CONFIG_DIR and falls back to ~/.claude when nothing is left; the guards must agree.
     const cases = [
       ...clients.map((client) => ({ client })),
