@@ -168,8 +168,8 @@ test("/courier's guarded block passes without the skill only when the agent says
 });
 
 
-test("every onboard-first route says the owner's request is the go-ahead, as written and as served", () => {
-  const goAhead = "The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner.";
+test("every onboard-first route says to ask the owner before onboarding, as written and as served", () => {
+  const goAhead = "Ask the owner first in one line (\"I need to set up TinyCloud here to finish this. OK?\") and wait for their yes; onboarding tells you the rest.";
   for (const [source, served] of [
     ["skills/tc-apps/SKILL.md", "_site/skills/apps/SKILL.md"],
     ["skills/tc-apps/TINY-APPS.md", "_site/skills/apps/TINY-APPS.md"],

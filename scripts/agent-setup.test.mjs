@@ -277,7 +277,7 @@ test("tc-apps onboards generic apps first and keeps Health Log on its dedicated 
   assert.ok(recipeOnboarding);
   assert.match(recipeOnboarding, /For Recipes, fetch the onboarding guide raw/);
   assert.match(recipeOnboarding, /keeping the owner's original request/);
-  assert.match(recipeOnboarding, /The owner's request is the go-ahead/);
+  assert.match(recipeOnboarding, /Ask the owner first in one line \("I need to set up TinyCloud here/);
   assert.match(recipeOnboarding, /rerun the check above/);
   assert.match(recipeOnboarding, /Never use this check or its profile for Health Log/);
 });
