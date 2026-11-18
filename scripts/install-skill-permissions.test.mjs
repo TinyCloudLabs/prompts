@@ -1,0 +1,53 @@
+// TC-3278: a skills folder the user cannot write stops the skill install with the folder and the exact fix.
+// Run: node --test scripts/install-skill-permissions.test.mjs
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { after, before, test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const skip = process.platform === "win32" || (typeof process.getuid === "function" && process.getuid() === 0);
+const work = mkdtempSync(join(realpathSync(tmpdir()), "install-skill-perm-"));
+const home = join(work, "home");
+const agents = join(home, ".agents");
+const body = "new";
+const sha256 = createHash("sha256").update(body).digest("hex");
+const server = createServer((req, res) => {
+  const served = {
+    "/skills/index.json": JSON.stringify({ skills: [{ short: "demo", name: "demo", version: "1.0.0", files: [{ path: "SKILL.md", url: "/skills/demo/SKILL.md", sha256 }] }] }),
+    "/skills/demo/SKILL.md": body,
+  }[req.url];
+  res.writeHead(served === undefined ? 404 : 200).end(served);
+});
+let installer;
+
+before(async () => {
+  await new Promise((done) => server.listen(0, "127.0.0.1", done));
+  const source = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
+  installer = join(work, "install.js");
+  writeFileSync(installer, source.replace(`const SITE = "https://agents.tinycloud.xyz";`, `const SITE = "http://127.0.0.1:${server.address().port}";`));
+});
+after(() => {
+  server.close();
+  try { chmodSync(agents, 0o755); } catch { /* never created */ }
+  rmSync(work, { recursive: true, force: true });
+});
+
+test("an unwritable ~/.agents names the folder, the chmod fix and that the CLI still works", { skip }, async () => {
+  mkdirSync(agents, { recursive: true });
+  chmodSync(agents, 0o555);
+  const run = await new Promise((done) =>
+    execFile(process.execPath, [installer, "demo", "--agent", "codex"], { env: { HOME: home, PATH: process.env.PATH } }, (error, stdout, stderr) => done({ code: error ? error.code : 0, stderr })),
+  );
+  assert.equal(run.code, 1);
+  const out = run.stderr.split("\n").filter(Boolean);
+  assert.match(out[0], /^SKILL_INSTALL_FAILED EACCES: permission denied, mkdir /);
+  assert.equal(out[1], `SKILL_FIX ${agents} refused the write; run yourself: chmod u+rwx "${agents}"   (if it belongs to another user: sudo chown -R "$USER" "${agents}")`);
+  assert.equal(out[2], "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.");
+  assert.equal(existsSync(join(agents, "skills")), false);
+});

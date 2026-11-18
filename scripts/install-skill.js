@@ -14,7 +14,7 @@
 // site it is served from, so a Pages preview installs the preview's skills.
 "use strict";
 const { createHash, randomBytes } = require("node:crypto");
-const { lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } = require("node:fs");
 const { homedir } = require("node:os");
 const { dirname, join, resolve, sep } = require("node:path");
 
@@ -187,7 +187,24 @@ async function main() {
   console.log(`SKILL_INSTALLED ${skill.name} ${skill.version} ${dest}`);
 }
 
+// A permission failure also names the folder that refused the write and the exact fix. The fix is for the owner
+// to run, never an agent through sudo. The CLI works without the skill, so setup goes on.
+function permissionFix(error) {
+  if (!["EACCES", "EPERM", "EROFS"].includes(error?.code) || typeof error.path !== "string") return [];
+  let folder = error.path;
+  while (!existsSync(folder) && dirname(folder) !== folder) folder = dirname(folder);
+  if (process.platform === "win32") {
+    return [`SKILL_FIX give your Windows user full control of ${folder}, in PowerShell: icacls "${folder}" /grant "$env:USERNAME:(OI)(CI)F" /T`, "SKILL_FIX then run the same command again; it is safe to repeat"];
+  }
+  const quoted = `"${folder.replace(/(["$`\\])/g, "\\$1")}"`;
+  return [
+    `SKILL_FIX ${folder} refused the write; run yourself: chmod u+rwx ${quoted}   (if it belongs to another user: sudo chown -R "$USER" ${quoted})`,
+    "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.",
+  ];
+}
+
 main().catch((error) => {
   console.error(`SKILL_INSTALL_FAILED ${error.message}`);
+  for (const line of permissionFix(error)) console.error(line);
   process.exitCode = 1;
 });

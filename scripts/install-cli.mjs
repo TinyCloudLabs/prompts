@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { accessSync, constants, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +15,63 @@ const options = (input = {}) => {
   const platform = input.platform || process.platform;
   return { ...input, env, platform, home: input.home || (platform === "win32" ? env.USERPROFILE || env.HOME : env.HOME) || homedir(), log: input.log || console.log };
 };
+
+// A permission problem stops with the path, the cause and the exact fix. The fix is for the owner to run;
+// an agent never retries it with sudo. After it, the installer is safe to run again and setup continues.
+const BLOCKED = ["EACCES", "EPERM", "EROFS"];
+const permissionError = (error) => BLOCKED.includes(error?.code);
+export class PermissionFailure extends Error {
+  constructor(message, lines) { super(message); this.name = "PermissionFailure"; this.lines = lines; }
+}
+const quoted = (file, platform) => (platform === "win32" ? `"${file}"` : `"${file.replace(/(["$`\\])/g, "\\$1")}"`);
+// The nearest folder at or above `file` that exists: the one that refused the write.
+const refusing = (file) => { let at = file; while (!existsSync(at) && path.dirname(at) !== at) at = path.dirname(at); return at; };
+
+export function permissionLines(folder, opts) {
+  if (opts.platform === "win32") {
+    return [
+      `TC_CAUSE your Windows user cannot write to ${folder}`,
+      `TC_FIX in PowerShell run: icacls ${quoted(folder, "win32")} /grant "$env:USERNAME:(OI)(CI)F" /T`,
+      "TC_FIX then run the same installer command again; it is safe to repeat",
+    ];
+  }
+  let owned = false;
+  let mode = "";
+  try { const info = statSync(folder); owned = info.uid === process.getuid?.(); mode = (info.mode & 0o777).toString(8); } catch { /* the cause line stays general */ }
+  const who = opts.env.USER || opts.env.LOGNAME || "your user";
+  return owned
+    ? [
+        `TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}) or sits on a read-only disk`,
+        `TC_FIX run yourself: chmod u+rwx ${quoted(folder)}`,
+        "TC_FIX if that is not allowed, the disk is read-only: free a writable home folder and run the installer as that user",
+        "TC_FIX then run the same installer command again; it is safe to repeat",
+      ]
+    : [
+        `TC_CAUSE ${folder} belongs to another user${mode ? ` (mode ${mode})` : ""}, often root after an earlier sudo run`,
+        `TC_FIX run yourself in a terminal, not through an agent: sudo chown -R "$USER" ${quoted(folder)}`,
+        "TC_FIX then run the same installer command again; it is safe to repeat",
+      ];
+}
+
+function permissionFailure(error, action, target, opts) {
+  return new PermissionFailure(`permission denied: cannot ${action} ${target} (${error.code})`, permissionLines(refusing(target), opts));
+}
+
+// npm said no. When it named a permission error, report the path it named; otherwise the failure stays "npm install failed".
+function npmFailure(stderr, opts) {
+  const code = stderr.match(/\b(EACCES|EPERM|EROFS)\b/)?.[1];
+  if (!code) return new Error("npm install failed");
+  const named = stderr.match(/^npm (?:error|ERR!) path (.+)$/m)?.[1]?.trim();
+  if (named && path.isAbsolute(named) && within(named, opts.home, opts.platform)) {
+    return new PermissionFailure(`permission denied: npm cannot write ${named} (${code})`, permissionLines(refusing(named), opts));
+  }
+  return new PermissionFailure(`permission denied: npm cannot write ${named || "to its folders"} (${code})`, [
+    `TC_CAUSE npm writes only under ${privatePrefix(opts)} and its cache; ${named ? `it named ${named}, outside your home` : "it did not name the path"}, so an npm setting points elsewhere`,
+    "TC_FIX run: npm config get prefix && npm config get cache  (both should be inside your home folder)",
+    "TC_FIX if one is not, set it inside your home, for example: npm config set cache \"$HOME/.npm\"",
+    "TC_FIX then run the same installer command again; it is safe to repeat",
+  ]);
+}
 
 const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?(?:\+.*)?$/;
 
@@ -234,7 +291,17 @@ export function linkCommands(selected, input = {}) {
   const windows = opts.platform === "win32";
   const directory = path.join(opts.home, ".local/bin");
   const onPath = (opts.env.PATH || opts.env.Path || "").split(windows ? ";" : ":").includes(directory);
-  if (windows || onPath) mkdirSync(directory, { recursive: true });
+  if (windows || onPath) {
+    try { mkdirSync(directory, { recursive: true }); }
+    catch (error) {
+      if (!permissionError(error)) throw error;
+      opts.log(`TC_NOT_LINKED ${names.join(",")} permission ${directory}`);
+      for (const line of permissionLines(refusing(directory), opts)) opts.log(line);
+      opts.log("TC_FIX until then use the absolute path named on the TC_SELECTED line");
+      return;
+    }
+  }
+  let notLinked = "";
   for (const name of names) {
     const destination = path.join(directory, name + (windows ? ".cmd" : ""));
     // Check every location, including Windows persistent PATH and Linux traffic control
@@ -258,8 +325,13 @@ export function linkCommands(selected, input = {}) {
       else symlinkSync(selected.bin, destination);
       opts.log(`TC_LINKED ${selected.version} ${destination}`);
     } catch (error) {
-      opts.log(`TC_CONFLICT ${name} link (${error.code || error.message})`);
+      if (permissionError(error)) { opts.log(`TC_NOT_LINKED ${name} permission ${destination}`); notLinked = directory; }
+      else opts.log(`TC_CONFLICT ${name} link (${error.code || error.message})`);
     }
+  }
+  if (notLinked) {
+    for (const line of permissionLines(notLinked, opts)) opts.log(line);
+    opts.log("TC_FIX until then use the absolute path named on the TC_SELECTED line");
   }
 }
 
@@ -301,13 +373,15 @@ export function installCli(input = {}) {
   let selected = keptCli(opts);
   if (!selected) {
     const prefix = privatePrefix(opts);
-    mkdirSync(prefix, { recursive: true });
+    try { mkdirSync(prefix, { recursive: true }); }
+    catch (error) { throw permissionError(error) ? permissionFailure(error, "create", prefix, opts) : error; }
     // --save-exact: the private package.json records the pin itself, as /cli's blocked-install fallback writes it.
     if (opts.platform === "win32") {
       powershell("& $env:TC_INSTALL_NPM install --prefix $env:TC_INSTALL_PREFIX --save-exact --no-audit --no-fund $env:TC_INSTALL_PACKAGE\nif ($LASTEXITCODE -ne 0) { throw 'npm install failed' }", { ...opts.env, TC_INSTALL_NPM: path.join(path.dirname(process.execPath), "npm.cmd"), TC_INSTALL_PREFIX: prefix, TC_INSTALL_PACKAGE: `@tinycloud/cli@${CLI_VERSION}` });
     } else {
-      const result = spawnSync("npm", ["install", "--prefix", prefix, "--save-exact", "--no-audit", "--no-fund", `@tinycloud/cli@${CLI_VERSION}`], { env: opts.env, stdio: "inherit" });
-      if (result.error || result.status !== 0) throw new Error("npm install failed");
+      const result = spawnSync("npm", ["install", "--prefix", prefix, "--save-exact", "--no-audit", "--no-fund", `@tinycloud/cli@${CLI_VERSION}`], { env: opts.env, stdio: ["inherit", "inherit", "pipe"], encoding: "utf8" });
+      if (result.stderr) process.stderr.write(result.stderr);
+      if (result.error || result.status !== 0) throw npmFailure(result.stderr || "", opts);
     }
     const bin = privateBin(opts);
     const version = versionOf(bin, opts);
@@ -352,6 +426,7 @@ if (process.argv[1] && real(process.argv[1]) === fileURLToPath(import.meta.url))
     else installCli();
   } catch (error) {
     console.error(`TC_INSTALL_FAILED ${error.message}`);
+    for (const line of error.lines || []) console.error(line);
     process.exitCode = 2;
   }
 }
