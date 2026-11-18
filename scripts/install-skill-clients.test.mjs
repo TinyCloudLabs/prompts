@@ -157,7 +157,7 @@ test("when a later folder fails, the failure line names the folders already inst
   assert.equal(result.code, 1);
   assert.deepEqual(installed(result), [join(home, ".claude", "skills", "demo")]);
   assert.ok(result.err[0].startsWith("SKILL_INSTALL_FAILED "), result.err[0]);
-  assert.ok(result.err[0].endsWith(` (already installed: ${join(home, ".claude", "skills", "demo")})`), result.err[0]);
+  assert.ok(result.err[0].endsWith(` (already installed in: ${join(home, ".claude", "skills", "demo")})`), result.err[0]);
 });
 
 test("auto installs for the clients whose folders exist, once per shared folder", async () => {

@@ -197,7 +197,7 @@ function assertOwnProject(project, root) {
   const me = process.getuid();
   for (let dir = root; ; dir = dirname(dir)) {
     if (existsSync(dir) && statSync(dir).uid !== me) {
-      throw new Error(`${dir} belongs to another account, so a project install there could be swapped after it is installed; use a project folder you own`);
+      throw new Error(`${dir} belongs to another account. Run a project install from a project folder you own.`);
     }
     if (dir === project || dirname(dir) === dir) break;
   }
@@ -336,7 +336,7 @@ function permissionFix(error) {
 
 main().catch((error) => {
   // A later folder can fail after an earlier one was replaced: say so, so no one reports it as not installed.
-  const already = updated.length === 0 ? "" : ` (already installed: ${updated.map(shown).join(", ")})`;
+  const already = updated.length === 0 ? "" : ` (already installed in: ${updated.map(shown).join(", ")})`;
   console.error(`SKILL_INSTALL_FAILED ${shown(String(error.message))}${already}`);
   for (const line of permissionFix(error)) console.error(line);
   process.exitCode = 1;
