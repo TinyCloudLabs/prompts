@@ -143,6 +143,18 @@ test("the home folder itself gets chmod only, never a recursive command", { skip
   assert.equal(out.some((line) => /chown|-R|\/T/.test(line)), false);
 });
 
+test("a missing ~/.local under a read-only home names the home folder with chmod only, never a recursive command", { skip }, () => {
+  const dir = home();
+  chmodSync(dir, 0o555);
+  locked.push(dir);
+  const result = install(dir, basePath);
+  assert.equal(result.status, 2);
+  const out = lines(result.stderr);
+  assert.equal(out[0], `TC_INSTALL_FAILED permission denied: cannot create ${join(dir, ".local/share/tinycloud/cli")} (EACCES)`);
+  assert.equal(commandLines(out)[0], `TC_FIX run this yourself: chmod u+rwx '${dir}'`);
+  assert.equal(out.some((line) => /chown|sudo|icacls| -R|\/T/.test(line)), false);
+});
+
 test("a path with quote, dollar, bang or parenthesis characters is single-quoted so the pasted line stays literal", { skip: windows }, () => {
   const dir = home();
   const odd = join(dir, "it's $(x) `y` !z");
