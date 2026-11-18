@@ -17,7 +17,7 @@
 // site it is served from, so a Pages preview installs the preview's skills.
 "use strict";
 const { createHash, randomBytes } = require("node:crypto");
-const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } = require("node:fs");
 const { homedir } = require("node:os");
 const { dirname, isAbsolute, join, relative: relativePath, resolve, sep } = require("node:path");
 
@@ -34,17 +34,18 @@ const FOLDERS = {
   },
   claude: { readers: "Claude Code", user: () => join(claudeConfigDir(), "skills"), project: (project) => join(project, ".claude", "skills") },
 };
-// For each client: the folder it reads, and the folder whose presence means it is installed (for "auto").
+// For each client, alphabetical (no client is the default): the folder it reads, and the folder whose presence
+// means it is installed (for "auto").
 const CLIENTS = {
+  amp: { folder: "shared", present: () => join(homedir(), ".config", "amp") },
   "claude-code": { folder: "claude", present: claudeConfigDir },
   codex: { folder: "shared", present: () => join(homedir(), ".codex") },
-  gemini: { folder: "shared", present: () => join(homedir(), ".gemini") },
-  cursor: { folder: "shared", present: () => join(homedir(), ".cursor") },
-  opencode: { folder: "shared", present: () => join(homedir(), ".config", "opencode") },
-  omp: { folder: "shared", present: () => join(homedir(), ".omp") },
   copilot: { folder: "shared", present: () => join(homedir(), ".copilot") },
-  amp: { folder: "shared", present: () => join(homedir(), ".config", "amp") },
+  cursor: { folder: "shared", present: () => join(homedir(), ".cursor") },
+  gemini: { folder: "shared", present: () => join(homedir(), ".gemini") },
+  omp: { folder: "shared", present: () => join(homedir(), ".omp") },
   openclaw: { folder: "shared", present: () => join(homedir(), ".openclaw") },
+  opencode: { folder: "shared", present: () => join(homedir(), ".config", "opencode") },
   // Any other client that reads .agents/skills.
   agents: { folder: "shared", present: null },
 };
@@ -180,10 +181,26 @@ function projectRoot() {
     }
     if (dirname(up) === up) break;
   }
-  if (project === resolve(homedir()) || dirname(project) === project) {
+  // Real paths, so a home reached through a link is still the home.
+  const real = (file) => { try { return realpathSync(file); } catch { return resolve(file); } };
+  if (real(project) === real(homedir()) || dirname(project) === project) {
     throw new Error("--scope project installs into one project: run it from inside that project's folder, not your home folder or the top of the disk");
   }
   return project;
+}
+
+// In a folder another account can write to (for example /tmp), that account could pre-create the skills folder
+// and swap the skill after it is installed. A project install refuses the project, or any folder already there
+// on the way down to the skills folder, when it belongs to another account.
+function assertOwnProject(project, root) {
+  if (typeof process.getuid !== "function") return;
+  const me = process.getuid();
+  for (let dir = root; ; dir = dirname(dir)) {
+    if (existsSync(dir) && statSync(dir).uid !== me) {
+      throw new Error(`${dir} belongs to another account, so a project install there could be swapped after it is installed; use a project folder you own`);
+    }
+    if (dir === project || dirname(dir) === dir) break;
+  }
 }
 
 // The folders to write, each with the clients that read it, in the order named.
@@ -249,6 +266,9 @@ async function installInto(root, skill, files) {
   return dest;
 }
 
+// Folders already replaced in this run.
+const updated = [];
+
 async function main() {
   const { want, agent, scope } = parseArgs(process.argv.slice(2));
   const project = scope === "project" ? projectRoot() : null;
@@ -270,14 +290,18 @@ async function main() {
   }
 
   for (const target of targets) {
+    if (scope === "project") assertOwnProject(project, target.root);
+  }
+  for (const target of targets) {
     const dest = await installInto(target.root, skill, files);
+    updated.push(dest);
     console.log(`SKILL_INSTALLED ${skill.name} ${skill.version} ${dest}`);
   }
   const readers = targets.map((t) => FOLDERS[t.folder].readers).join("; ");
   console.log(
     scope === "project"
       ? `SKILL_SCOPE project: only sessions started inside ${project} can use it (read by ${readers}). To install it for every folder on this computer account instead, run the installer again with --scope user.`
-      : `SKILL_SCOPE user: every session of this computer account can use it, in every folder (read by ${readers}). To install it for one project only, run the installer again from that project's folder with --scope project.`,
+      : `SKILL_SCOPE user: any session on this computer account can use it, in any folder (read by ${readers}). To install it for one project only, run the installer again from that project's folder with --scope project.`,
   );
 }
 
@@ -311,7 +335,9 @@ function permissionFix(error) {
 }
 
 main().catch((error) => {
-  console.error(`SKILL_INSTALL_FAILED ${shown(String(error.message))}`);
+  // A later folder can fail after an earlier one was replaced: say so, so no one reports it as not installed.
+  const already = updated.length === 0 ? "" : ` (already installed: ${updated.map(shown).join(", ")})`;
+  console.error(`SKILL_INSTALL_FAILED ${shown(String(error.message))}${already}`);
   for (const line of permissionFix(error)) console.error(line);
   process.exitCode = 1;
 });

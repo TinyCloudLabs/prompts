@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -72,7 +72,7 @@ for (const [client, folder] of Object.entries(USER_FOLDER)) {
     assert.equal(readFileSync(join(dest, "SKILL.md"), "utf8"), body);
     const scope = result.out.filter((line) => line.startsWith("SKILL_SCOPE "));
     assert.equal(scope.length, 1);
-    assert.match(scope[0], /^SKILL_SCOPE user: every session of this computer account can use it, in every folder \(read by /);
+    assert.match(scope[0], /^SKILL_SCOPE user: any session on this computer account can use it, in any folder \(read by /);
     assert.match(scope[0], /--scope project/);
   });
 }
@@ -135,6 +135,31 @@ test("--scope project refuses a project that is the home folder because home is 
   assert.equal(existsSync(join(home, ".agents")), false);
 });
 
+test("--scope project refuses the home folder when HOME is a link to it", async () => {
+  const link = join(work, `link-${n}`);
+  symlinkSync(home, link);
+  const result = await run(["--agent", "codex", "--scope", "project"], { cwd: home, env: { HOME: link } });
+  assert.equal(result.code, 1);
+  assert.match(result.err[0], /^SKILL_INSTALL_FAILED --scope project installs into one project/);
+  assert.equal(existsSync(join(home, ".agents")), false);
+});
+
+// A shared folder such as /tmp belongs to root: another account could pre-create .agents there and swap the skill.
+test("--scope project refuses a folder that belongs to another account", { skip: typeof process.getuid !== "function" || statSync("/tmp").uid === process.getuid() }, async () => {
+  const result = await run(["--agent", "codex", "--scope", "project"], { cwd: "/tmp" });
+  assert.equal(result.code, 1);
+  assert.match(result.err[0], /^SKILL_INSTALL_FAILED \/tmp(\/\.agents)? belongs to another account/);
+});
+
+test("when a later folder fails, the failure line names the folders already installed", async () => {
+  writeFileSync(join(home, ".agents"), "not a folder");
+  const result = await run(["--agent", "claude-code,codex"]);
+  assert.equal(result.code, 1);
+  assert.deepEqual(installed(result), [join(home, ".claude", "skills", "demo")]);
+  assert.ok(result.err[0].startsWith("SKILL_INSTALL_FAILED "), result.err[0]);
+  assert.ok(result.err[0].endsWith(` (already installed: ${join(home, ".claude", "skills", "demo")})`), result.err[0]);
+});
+
 test("auto installs for the clients whose folders exist, once per shared folder", async () => {
   mkdirSync(join(home, ".gemini"));
   mkdirSync(join(home, ".codex"));
@@ -169,7 +194,7 @@ test("an unknown client, a bad scope or a repeated flag fails with the usage lin
   for (const args of [["--agent", "notepad"], ["--agent", "codex", "--scope", "everywhere"], ["--agent", "codex", "--agent", "gemini"], ["--agent"], []]) {
     const result = await run(args);
     assert.equal(result.code, 1, args.join(" "));
-    assert.match(result.err[0], /^SKILL_INSTALL_FAILED (no client "notepad"\. )?usage: node install\.js <skill> --agent <claude-code\|codex\|gemini\|cursor\|opencode\|omp\|copilot\|amp\|openclaw\|agents\|auto>/, args.join(" "));
+    assert.match(result.err[0], /^SKILL_INSTALL_FAILED (no client "notepad"\. )?usage: node install\.js <skill> --agent <amp\|claude-code\|codex\|copilot\|cursor\|gemini\|omp\|openclaw\|opencode\|agents\|auto>/, args.join(" "));
     assert.equal(existsSync(join(home, ".agents")), false);
     assert.equal(existsSync(join(home, ".claude")), false);
   }

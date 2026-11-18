@@ -116,19 +116,19 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 ### Skill folders
 
-Every client reads `<folder>/<skill>/SKILL.md`. Most read the shared `.agents/skills` folder, so naming several of them installs one copy; Claude Code does not read it. Sources are each vendor's skills page; the rows marked "search" were taken from a search summary of the page and not yet read on it.
+Every client reads `<folder>/<skill>/SKILL.md`. Most read the shared `.agents/skills` folder, so naming several of them installs one copy; Claude Code does not read it. Sources are each vendor's skills page; rows marked "search" come from a search summary of that page.
 
 | `--agent` | User folder | Project folder | Source |
 | --- | --- | --- | --- |
+| `amp` | `~/.agents/skills` (also `~/.config/agents/skills`) | `.agents/skills` | search: [Amp agent skills](https://ampcode.com/news/agent-skills) |
 | `claude-code` | `${CLAUDE_CONFIG_DIR:-~/.claude}/skills` (`CLAUDE_CONFIG_DIR` is not on the skills page) | `.claude/skills` | [Claude Code skills](https://code.claude.com/docs/en/skills) |
 | `codex` | `~/.agents/skills` | `.agents/skills` | [Codex skills](https://developers.openai.com/codex/skills) |
-| `gemini` | `~/.agents/skills` (alias of `~/.gemini/skills`) | `.agents/skills` (alias of `.gemini/skills`) | [Gemini CLI skills](https://geminicli.com/docs/cli/skills/) |
-| `cursor` | `~/.agents/skills` (also `~/.cursor/skills`) | `.agents/skills` (also `.cursor/skills`) | [Cursor skills](https://cursor.com/docs/skills) |
-| `opencode` | `~/.agents/skills` (also `~/.config/opencode/skills`) | `.agents/skills` (also `.opencode/skills`) | [OpenCode skills](https://opencode.ai/docs/skills/) |
-| `omp` | `~/.agents/skills` (also `~/.omp/agent/skills`) | `.agents/skills` (also `.omp/skills`) | omp's own `skills.md` (shipped with omp) |
 | `copilot` | `~/.agents/skills` (also `~/.copilot/skills`) | `.agents/skills` (also `.github/skills`) | search: [Copilot agent skills](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/customizations/agent-skills) |
-| `amp` | `~/.agents/skills` (also `~/.config/agents/skills`) | `.agents/skills` | search: [Amp agent skills](https://ampcode.com/news/agent-skills) |
+| `cursor` | `~/.agents/skills` (also `~/.cursor/skills`) | `.agents/skills` (also `.cursor/skills`) | [Cursor skills](https://cursor.com/docs/skills) |
+| `gemini` | `~/.agents/skills` (alias of `~/.gemini/skills`) | `.agents/skills` (alias of `.gemini/skills`) | [Gemini CLI skills](https://geminicli.com/docs/cli/skills/) |
+| `omp` | `~/.agents/skills` (also `~/.omp/agent/skills`) | `.agents/skills` (also `.omp/skills`) | omp's own `skills.md` (shipped with omp) |
 | `openclaw` | `~/.agents/skills` (also `~/.openclaw/skills`) | `.agents/skills` in the workspace | search: [OpenClaw skills](https://docs.openclaw.ai/tools/skills) |
+| `opencode` | `~/.agents/skills` (also `~/.config/opencode/skills`) | `.agents/skills` (also `.opencode/skills`) | [OpenCode skills](https://opencode.ai/docs/skills/) |
 | `agents` | `~/.agents/skills` | `.agents/skills` | any other client that reads `.agents/skills`, including Hermes once its config lists that folder (`setup/connect/hermes.md`) |
 
 Windsurf, Goose, Cline, Zed and Kiro are not covered: add a row only after reading the vendor's page. Hermes reads `~/.hermes/skills` by default and the shared folder only when its `skills.external_dirs` lists it, so it has no row of its own.
