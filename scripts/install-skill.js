@@ -23,31 +23,35 @@ const { dirname, isAbsolute, join, relative: relativePath, resolve, sep } = requ
 
 const SITE = "https://agents.tinycloud.xyz";
 // The skill folders clients read (docs per client: README "Skill folders"). "shared" is the ".agents/skills"
-// convention; Claude Code does not read it, so it has its own folder. Hermes reads neither without its
-// own config, so it uses "agents" plus the config step in setup/connect/hermes.md.
+// convention, and every client except Claude Code gets that copy, because the setup guides read it. Claude Code
+// does not read it, so it has its own folder, and three other clients get a folder of their own as well: Hermes
+// reads ~/.hermes/skills (the shared folder only when its config lists it), Amp's documented user folder is
+// ~/.config/agents/skills, and OpenClaw reads the shared user folder only with its default state folder, so it
+// also gets a copy in its state folder's "skills". A folder with no `project` entry is not written in project scope.
 const claudeConfigDir = () => process.env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), ".claude");
+const openclawStateDir = () => process.env.OPENCLAW_STATE_DIR?.trim() || join(homedir(), ".openclaw");
 const FOLDERS = {
-  shared: {
-    readers: "Codex, Gemini CLI, Cursor, OpenCode, OMP, GitHub Copilot, Amp and OpenClaw",
-    user: () => join(homedir(), ".agents", "skills"),
-    project: (project) => join(project, ".agents", "skills"),
-  },
-  claude: { readers: "Claude Code", user: () => join(claudeConfigDir(), "skills"), project: (project) => join(project, ".claude", "skills") },
+  shared: { user: () => join(homedir(), ".agents", "skills"), project: (project) => join(project, ".agents", "skills") },
+  claude: { user: () => join(claudeConfigDir(), "skills"), project: (project) => join(project, ".claude", "skills") },
+  hermes: { user: () => join(homedir(), ".hermes", "skills"), project: (project) => join(project, ".hermes", "skills") },
+  amp: { user: () => join(homedir(), ".config", "agents", "skills"), project: (project) => join(project, ".agents", "skills") },
+  openclaw: { user: () => join(openclawStateDir(), "skills"), project: null },
 };
-// For each client, alphabetical (no client is the default): the folder it reads, and the folder whose presence
-// means it is installed (for "auto").
+// For each client, alphabetical (no client is the default): its name in messages, the folders it is installed
+// into, and the folder whose presence means it is installed (for "auto").
 const CLIENTS = {
-  amp: { folder: "shared", present: () => join(homedir(), ".config", "amp") },
-  "claude-code": { folder: "claude", present: claudeConfigDir },
-  codex: { folder: "shared", present: () => join(homedir(), ".codex") },
-  copilot: { folder: "shared", present: () => join(homedir(), ".copilot") },
-  cursor: { folder: "shared", present: () => join(homedir(), ".cursor") },
-  gemini: { folder: "shared", present: () => join(homedir(), ".gemini") },
-  omp: { folder: "shared", present: () => join(homedir(), ".omp") },
-  openclaw: { folder: "shared", present: () => join(homedir(), ".openclaw") },
-  opencode: { folder: "shared", present: () => join(homedir(), ".config", "opencode") },
+  amp: { label: "Amp", folders: ["shared", "amp"], present: () => join(homedir(), ".config", "amp") },
+  "claude-code": { label: "Claude Code", folders: ["claude"], present: claudeConfigDir },
+  codex: { label: "Codex", folders: ["shared"], present: () => join(homedir(), ".codex") },
+  copilot: { label: "GitHub Copilot", folders: ["shared"], present: () => join(homedir(), ".copilot") },
+  cursor: { label: "Cursor", folders: ["shared"], present: () => join(homedir(), ".cursor") },
+  gemini: { label: "Gemini CLI", folders: ["shared"], present: () => join(homedir(), ".gemini") },
+  hermes: { label: "Hermes", folders: ["shared", "hermes"], present: () => join(homedir(), ".hermes") },
+  omp: { label: "OMP", folders: ["shared"], present: () => join(homedir(), ".omp") },
+  openclaw: { label: "OpenClaw", folders: ["shared", "openclaw"], present: openclawStateDir },
+  opencode: { label: "OpenCode", folders: ["shared"], present: () => join(homedir(), ".config", "opencode") },
   // Any other client that reads .agents/skills.
-  agents: { folder: "shared", present: null },
+  agents: { label: "other clients that read .agents/skills", folders: ["shared"], present: null },
 };
 const USAGE = `usage: node install.js <skill> --agent <${Object.keys(CLIENTS).join("|")}|auto>[,…] [--scope user|project]`;
 // A skill name is one plain folder name; file paths are relative, "/"-separated,
@@ -203,7 +207,7 @@ function assertOwnProject(project, root) {
   }
 }
 
-// The folders to write, each with the clients that read it, in the order named.
+// The folders to write, each with the labels of the clients that read it, in the order named.
 function pickTargets(agent, scope, project) {
   const auto = agent === "auto";
   const names = auto ? Object.keys(CLIENTS).filter((n) => CLIENTS[n].present && existsSync(CLIENTS[n].present())) : agent.split(",");
@@ -211,9 +215,17 @@ function pickTargets(agent, scope, project) {
   const targets = [];
   for (const name of names) {
     if (!Object.hasOwn(CLIENTS, name)) throw new Error(`no client "${name}". ${USAGE}`);
-    const folder = CLIENTS[name].folder;
-    const root = resolve(scope === "project" ? FOLDERS[folder].project(project) : FOLDERS[folder].user());
-    if (!targets.some((t) => t.root === root)) targets.push({ root, folder });
+    for (const folder of CLIENTS[name].folders) {
+      const place = scope === "project" ? FOLDERS[folder].project : FOLDERS[folder].user;
+      if (place === null) continue;
+      const root = resolve(scope === "project" ? place(project) : place());
+      const target = targets.find((t) => t.root === root);
+      if (target) {
+        if (!target.readers.includes(CLIENTS[name].label)) target.readers.push(CLIENTS[name].label);
+      } else {
+        targets.push({ root, folder, readers: [CLIENTS[name].label] });
+      }
+    }
   }
   return targets;
 }
@@ -297,11 +309,11 @@ async function main() {
     updated.push(dest);
     console.log(`SKILL_INSTALLED ${skill.name} ${skill.version} ${dest}`);
   }
-  const readers = targets.map((t) => FOLDERS[t.folder].readers).join("; ");
+  const readers = targets.map((t) => t.readers.join(", ")).join("; ");
   console.log(
     scope === "project"
-      ? `SKILL_SCOPE project: only sessions started inside ${project} can use it (read by ${readers}). To install it for every folder on this computer account instead, run the installer again with --scope user.`
-      : `SKILL_SCOPE user: any session on this computer account can use it, in any folder (read by ${readers}). To install it for one project only, run the installer again from that project's folder with --scope project.`,
+      ? `SKILL_SCOPE project: only sessions started inside ${project} can use it (installed for ${readers}). To install it for every folder on this computer account instead, run the installer again with --scope user.`
+      : `SKILL_SCOPE user: any session on this computer account can use it, in any folder (installed for ${readers}). To install it for one project only, run the installer again from that project's folder with --scope project.`,
   );
 }
 

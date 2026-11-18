@@ -6,15 +6,7 @@ Use TinyCloud CLI when Hermes has a persistent terminal backend that can install
 
 ## Preferred CLI route
 
-Fetch [onboarding](https://agents.tinycloud.xyz/onboarding.md) raw and follow it without asking the owner to repeat the task. Use TinyCloud's `--agent agents` skill installation into `~/.agents/skills`.
-
-Hermes normally discovers skills in `~/.hermes/skills`. [Hermes documents external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills#external-skill-directories): merge this into `~/.hermes/config.yaml` without replacing existing entries, then confirm the skill appears in `hermes skills list` and load it with `skill_view`:
-
-```yaml
-skills:
-  external_dirs:
-    - ~/.agents/skills
-```
+Fetch [onboarding](https://agents.tinycloud.xyz/onboarding.md) raw and follow it without asking the owner to repeat the task. Use TinyCloud's `--agent hermes` skill installation: it installs into `~/.hermes/skills` (project scope: `.hermes/skills`), the folder [Hermes reads by default](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills), so Hermes's configuration needs no change. Confirm the skill appears in `hermes skills list` and load it with `skill_view`.
 
 Use the active Hermes profile/backend's home, not a different machine's path. Read the original installed skill; do not rewrite it into a Hermes imitation or copy credentials into a skill.
 

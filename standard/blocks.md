@@ -90,7 +90,7 @@ Then run it in a separate call for the relevant short name (`apps`, `secrets`, `
 node "$HOME/.local/share/tinycloud/install.js" apps --agent agents
 ```
 
-Use your own client's name instead of `agents` (`claude-code`, `codex`, `cursor`, `gemini`, `omp`, `opencode` and so on); `agents` is for any runtime that reads `~/.agents/skills`. Use the runtime-specific discovery instructions on this page. Read the installed `SKILL.md` and its task-relevant references before acting. Do not install every skill or switch to local stdio MCP merely to complete CLI onboarding.
+Use your own client's name instead of `agents` (`claude-code`, `codex`, `cursor`, `gemini`, `hermes`, `omp`, `opencode` and so on); `agents` is for any runtime that reads `~/.agents/skills`. Use the runtime-specific discovery instructions on this page. Read the installed `SKILL.md` and its task-relevant references before acting. Do not install every skill or switch to local stdio MCP merely to complete CLI onboarding.
 
 The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
 

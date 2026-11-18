@@ -8,7 +8,7 @@ Use TinyCloud CLI in the OpenClaw execution environment when it has a persistent
 
 Fetch [onboarding](https://agents.tinycloud.xyz/onboarding.md) raw and follow it in the active workspace/node, preserving the owner's request. Run the CLI and its skills on the same host; a skill present on the Gateway does not establish that its binary or sign-in exists on a paired node.
 
-Use `--agent openclaw` in TinyCloud's installer for `~/.agents/skills`. [OpenClaw's skill reference](https://docs.openclaw.ai/tools/skills) includes that personal root for the default state; a custom `OPENCLAW_STATE_DIR` can exclude it. For that case, configure `skills.load.extraDirs` to include the installed directory, preserving existing settings. Confirm the active agent can load the skill. Node-hosted skills have separate roots and execution hosts; follow [node skill instructions](https://docs.openclaw.ai/nodes/mcp-and-skills) rather than assuming Gateway paths work remotely.
+Use `--agent openclaw` in TinyCloud's installer. It installs into `~/.agents/skills`, which [OpenClaw's skill reference](https://docs.openclaw.ai/tools/skills) lists as a personal root for the default state, and also into `skills` inside OpenClaw's state folder (`~/.openclaw`, or `OPENCLAW_STATE_DIR` when set), which a custom state folder does not exclude. Confirm the active agent can load the skill. Node-hosted skills have separate roots and execution hosts; follow [node skill instructions](https://docs.openclaw.ai/nodes/mcp-and-skills) rather than assuming Gateway paths work remotely.
 
 ## Native remote MCP alternative
 

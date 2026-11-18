@@ -132,7 +132,8 @@ for (const [page, guard] of Object.entries(guarded)) {
   });
 
   test(`/${page}'s guarded block runs once install.js installs ${guard.skill} for any client`, async () => {
-    assert.deepEqual(tableKeys("FOLDERS").sort(), ["claude", "shared"], "a new install.js skills folder needs the guards to check it");
+    // The guards read the shared and Claude folders; amp, hermes and openclaw are extra copies, and every client but Claude Code also gets the shared one.
+    assert.deepEqual(tableKeys("FOLDERS").sort(), ["amp", "claude", "hermes", "openclaw", "shared"], "a new install.js skills folder needs the guards to check it");
     // install.js trims CLAUDE_CONFIG_DIR and falls back to ~/.claude when nothing is left; the guards must agree.
     const cases = [
       ...clients.map((client) => ({ client })),

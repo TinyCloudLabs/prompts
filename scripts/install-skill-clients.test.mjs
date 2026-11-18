@@ -49,30 +49,33 @@ after(() => {
   rmSync(work, { recursive: true, force: true });
 });
 
-// Where each client reads user skills, from its own docs (see README, "Skill folders").
-const USER_FOLDER = {
-  "claude-code": [".claude", "skills"],
-  codex: [".agents", "skills"],
-  gemini: [".agents", "skills"],
-  cursor: [".agents", "skills"],
-  opencode: [".agents", "skills"],
-  omp: [".agents", "skills"],
-  copilot: [".agents", "skills"],
-  amp: [".agents", "skills"],
-  openclaw: [".agents", "skills"],
-  agents: [".agents", "skills"],
+// Where each client reads user skills, from its own docs (see README, "Skill folders"). Every client but Claude Code
+// gets the shared copy, because the setup guides read it; Amp, Hermes and OpenClaw also get a folder of their own.
+const SHARED = [".agents", "skills"];
+const USER_FOLDERS = {
+  "claude-code": [[".claude", "skills"]],
+  codex: [SHARED],
+  gemini: [SHARED],
+  cursor: [SHARED],
+  opencode: [SHARED],
+  omp: [SHARED],
+  copilot: [SHARED],
+  amp: [SHARED, [".config", "agents", "skills"]],
+  hermes: [SHARED, [".hermes", "skills"]],
+  openclaw: [SHARED, [".openclaw", "skills"]],
+  agents: [SHARED],
 };
 
-for (const [client, folder] of Object.entries(USER_FOLDER)) {
-  test(`--agent ${client} installs for the user into ~/${folder.join("/")} and says so`, async () => {
+for (const [client, folders] of Object.entries(USER_FOLDERS)) {
+  test(`--agent ${client} installs for the user into ${folders.map((f) => `~/${f.join("/")}`).join(" and ")} and says so`, async () => {
     const result = await run(["--agent", client]);
-    const dest = join(home, ...folder, "demo");
+    const dests = folders.map((folder) => join(home, ...folder, "demo"));
     assert.equal(result.code, 0, result.err.join("\n"));
-    assert.deepEqual(installed(result), [dest]);
-    assert.equal(readFileSync(join(dest, "SKILL.md"), "utf8"), body);
+    assert.deepEqual(installed(result), dests);
+    for (const dest of dests) assert.equal(readFileSync(join(dest, "SKILL.md"), "utf8"), body);
     const scope = result.out.filter((line) => line.startsWith("SKILL_SCOPE "));
     assert.equal(scope.length, 1);
-    assert.match(scope[0], /^SKILL_SCOPE user: any session on this computer account can use it, in any folder \(read by /);
+    assert.match(scope[0], /^SKILL_SCOPE user: any session on this computer account can use it, in any folder \(installed for /);
     assert.match(scope[0], /--scope project/);
   });
 }
@@ -95,7 +98,34 @@ test("clients that share a folder get one copy; Claude Code gets its own", async
   assert.equal(result.code, 0, result.err.join("\n"));
   assert.deepEqual(installed(result), [join(home, ".claude", "skills", "demo"), join(home, ".agents", "skills", "demo")]);
   const scope = result.out.find((line) => line.startsWith("SKILL_SCOPE "));
-  assert.match(scope, /read by Claude Code; Codex, Gemini CLI, Cursor, OpenCode, OMP, GitHub Copilot, Amp and OpenClaw\)/);
+  assert.match(scope, /installed for Claude Code; Codex, Gemini CLI, OMP\)/);
+});
+
+test("OpenClaw gets the shared copy and a copy in its state folder, which OPENCLAW_STATE_DIR moves", async () => {
+  const result = await run(["--agent", "openclaw"]);
+  assert.deepEqual(installed(result), [join(home, ".agents", "skills", "demo"), join(home, ".openclaw", "skills", "demo")]);
+  const state = join(work, `openclaw-state-${n}`);
+  const moved = await run(["--agent", "openclaw"], { env: { OPENCLAW_STATE_DIR: state } });
+  assert.deepEqual(installed(moved), [join(home, ".agents", "skills", "demo"), join(state, "skills", "demo")]);
+});
+
+test("Amp's user folder is its own, and in a project it shares .agents/skills with the other clients", async () => {
+  const project = join(home, "proj");
+  mkdirSync(join(project, ".git"), { recursive: true });
+  const user = await run(["--agent", "amp,codex"]);
+  assert.deepEqual(installed(user), [join(home, ".agents", "skills", "demo"), join(home, ".config", "agents", "skills", "demo")]);
+  const inProject = await run(["--agent", "amp,codex", "--scope", "project"], { cwd: project });
+  assert.deepEqual(installed(inProject), [join(project, ".agents", "skills", "demo")]);
+  assert.match(inProject.out.find((line) => line.startsWith("SKILL_SCOPE ")), /installed for Amp, Codex\)/);
+});
+
+test("Hermes and OpenClaw copy only into folders the project scope can name", async () => {
+  const project = join(home, "proj");
+  mkdirSync(join(project, ".git"), { recursive: true });
+  const hermes = await run(["--agent", "hermes", "--scope", "project"], { cwd: project });
+  assert.deepEqual(installed(hermes), [join(project, ".agents", "skills", "demo"), join(project, ".hermes", "skills", "demo")]);
+  const openclaw = await run(["--agent", "openclaw", "--scope", "project"], { cwd: project });
+  assert.deepEqual(installed(openclaw), [join(project, ".agents", "skills", "demo")]);
 });
 
 test("--scope project installs into the project's folder, found by its .git above the current folder, and not into the home folder", async () => {
@@ -194,7 +224,7 @@ test("an unknown client, a bad scope or a repeated flag fails with the usage lin
   for (const args of [["--agent", "notepad"], ["--agent", "codex", "--scope", "everywhere"], ["--agent", "codex", "--agent", "gemini"], ["--agent"], []]) {
     const result = await run(args);
     assert.equal(result.code, 1, args.join(" "));
-    assert.match(result.err[0], /^SKILL_INSTALL_FAILED (no client "notepad"\. )?usage: node install\.js <skill> --agent <amp\|claude-code\|codex\|copilot\|cursor\|gemini\|omp\|openclaw\|opencode\|agents\|auto>/, args.join(" "));
+    assert.match(result.err[0], /^SKILL_INSTALL_FAILED (no client "notepad"\. )?usage: node install\.js <skill> --agent <amp\|claude-code\|codex\|copilot\|cursor\|gemini\|hermes\|omp\|openclaw\|opencode\|agents\|auto>/, args.join(" "));
     assert.equal(existsSync(join(home, ".agents")), false);
     assert.equal(existsSync(join(home, ".claude")), false);
   }
