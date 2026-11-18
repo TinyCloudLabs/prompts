@@ -26,7 +26,7 @@ In Claude, to avoid approving each record-writing tool call, go to **Settings â†
 
 Keep the owner's original request in this conversation and carry it out with the skill; don't ask the owner to send it again. Do not repeat onboarding or install another CLI. Generic apps keep the selected profile and reuse its existing grants; Health Log is the exception: it always uses its dedicated `agent-meal` profile and app-specific permission, even when onboarding is complete.
 
-**For generic apps only, onboard first when needed.** When the generic app access check returns `onboard-first` (no profile on this computer has an owner or a session), fetch https://agents.tinycloud.xyz/onboarding raw, as above, and follow it now, keeping the owner's original request. The owner's request is the go-ahead: don't stop to ask or explain first; onboarding tells you the one line to send the owner. It sends you back here; rerun the check and it reuses that access. Health Log follows its app-specific flow in `TINY-APPS.md` instead.
+**For generic apps only, onboard first when needed.** When the generic app access check returns `onboard-first` (no profile on this computer has an owner or a session), fetch https://agents.tinycloud.xyz/onboarding raw, as above, and follow it now, keeping the owner's original request. Ask the owner first in one line ("I need to set up TinyCloud here to finish this. OK?") and wait for their yes; onboarding tells you the rest. It sends you back here; rerun the check and it reuses that access. Health Log follows its app-specific flow in `TINY-APPS.md` instead.
 
 What is and isn't secret: [the list on the shared setup page](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 

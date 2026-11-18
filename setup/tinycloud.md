@@ -17,7 +17,7 @@ This module installs and verifies the TinyCloud CLI, then attempts its optional 
 
 {{std:read-raw}}
 
-**Upgrades go through this guide.** Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
+**Upgrades go through this guide.** Unless the owner already said yes, ask first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
 
 Before starting, retain all of the following from the caller:
 

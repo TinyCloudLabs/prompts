@@ -210,7 +210,8 @@ for (const block of blocks) {
 // the agent asks the owner before upgrading; never `tinycloud upgrade` or a global install.
 const UPGRADE = "Ask the owner first in one line (\"I need to update the TinyCloud CLI to finish this. OK?\") and wait for their yes.";
 const NEVER_UPGRADE = "Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.";
-const SKILL_STEP = "Installing the skill is part of the owner's request: don't ask first; at most one short line";
+const CLI_UPGRADE = "Unless the owner already said yes, ask first in one line (\"I need to update the TinyCloud CLI to finish this. OK?\") and wait for their yes.";
+const SKILL_STEP = "Ask the owner first in one line (\"I need to install the Courier skill to finish this. OK?\") and wait for their yes.";
 const surfaces = [
   { files: ["skills/tc-apps/SKILL.md", "_site/skills/apps/SKILL.md", "_site/skills/apps.md"], blk: "§1", stops: true },
   { files: ["setup/tc-apps.md", "_site/apps"], blk: "skill §1", stops: true },
@@ -259,7 +260,7 @@ test("every CLI rule but /onboarding's forbids a global, sudo or piped install, 
 
 test("/cli and every CLI_OLDER note say to ask the owner before upgrading and never `tinycloud upgrade`, as written and as served", () => {
   for (const file of ["setup/tinycloud.md", "_site/cli"]) {
-    assert.ok(readFileSync(join(root, file), "utf8").includes(`**Upgrades go through this guide.** ${UPGRADE} ${NEVER_UPGRADE}`), file);
+    assert.ok(readFileSync(join(root, file), "utf8").includes(`**Upgrades go through this guide.** ${CLI_UPGRADE} ${NEVER_UPGRADE}`), file);
   }
   for (const { files } of surfaces) {
     for (const file of files) {
@@ -272,13 +273,11 @@ test("/cli and every CLI_OLDER note say to ask the owner before upgrading and ne
   }
 });
 
-test("the required Courier skill's SKILL_MISSING note says installation needs no asking, as written and as served", () => {
-  for (const [file, line] of [
-    ["setup/courier.md", "Installing the Courier skill."], ["_site/courier", "Installing the Courier skill."],
-  ]) {
+test("the required Courier skill's SKILL_MISSING note says to ask the owner before installing it, as written and as served", () => {
+  for (const file of ["setup/courier.md", "_site/courier"]) {
     const notes = readFileSync(join(root, file), "utf8").split("\n").filter((l) => /^(- \*\*)?`SKILL_MISSING/.test(l));
     assert.equal(notes.length, 1, file);
-    assert.ok(notes[0].includes(`${SKILL_STEP} ("${line}").`), file);
+    assert.ok(notes[0].includes(SKILL_STEP), file);
   }
 });
 
