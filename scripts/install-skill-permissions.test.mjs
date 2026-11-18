@@ -26,6 +26,13 @@ const server = createServer((req, res) => {
 });
 let installer;
 
+const run = (homeDir) =>
+  new Promise((done) =>
+    execFile(process.execPath, [installer, "demo", "--agent", "codex"], { env: { HOME: homeDir, PATH: process.env.PATH } }, (error, stdout, stderr) =>
+      done({ code: error ? error.code : 0, out: stderr.split("\n").filter(Boolean) }),
+    ),
+  );
+
 before(async () => {
   await new Promise((done) => server.listen(0, "127.0.0.1", done));
   const source = readFileSync(join(ROOT, "scripts/install-skill.js"), "utf8");
@@ -41,13 +48,17 @@ after(() => {
 test("an unwritable ~/.agents names the folder, the chmod fix and that the CLI still works", { skip }, async () => {
   mkdirSync(agents, { recursive: true });
   chmodSync(agents, 0o555);
-  const run = await new Promise((done) =>
-    execFile(process.execPath, [installer, "demo", "--agent", "codex"], { env: { HOME: home, PATH: process.env.PATH } }, (error, stdout, stderr) => done({ code: error ? error.code : 0, stderr })),
-  );
-  assert.equal(run.code, 1);
-  const out = run.stderr.split("\n").filter(Boolean);
-  assert.match(out[0], /^SKILL_INSTALL_FAILED EACCES: permission denied, mkdir /);
-  assert.equal(out[1], `SKILL_FIX ${agents} refused the write; run yourself: chmod u+rwx "${agents}"   (if it belongs to another user: sudo chown -R "$USER" "${agents}")`);
-  assert.equal(out[2], "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.");
+  const result = await run(home);
+  assert.equal(result.code, 1);
+  assert.match(result.out[0], /^SKILL_INSTALL_FAILED EACCES: permission denied, mkdir /);
+  assert.equal(result.out[1], `SKILL_FIX ${agents} refused the write; run yourself: chmod u+rwx '${agents}'   (if it belongs to another user: sudo chown -R "$USER" '${agents}')`);
+  assert.equal(result.out[2], "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.");
   assert.equal(existsSync(join(agents, "skills")), false);
+});
+
+test("a skills folder outside the home, as with HOME=/nonexistent, gets no chmod or chown line", { skip }, async () => {
+  const result = await run("/nonexistent");
+  assert.equal(result.code, 1);
+  assert.equal(result.out[1], "SKILL_FIX / refused the write; ask the person who manages this computer to give your user write access to it");
+  assert.equal(result.out.some((line) => /chmod|chown|icacls/.test(line)), false);
 });

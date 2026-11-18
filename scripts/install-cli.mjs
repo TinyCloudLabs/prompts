@@ -23,38 +23,68 @@ const permissionError = (error) => BLOCKED.includes(error?.code);
 export class PermissionFailure extends Error {
   constructor(message, lines) { super(message); this.name = "PermissionFailure"; this.lines = lines; }
 }
-const quoted = (file, platform) => (platform === "win32" ? `"${file}"` : `"${file.replace(/(["$`\\])/g, "\\$1")}"`);
+const CONTROL = /[\u0000-\u001f\u007f]/;
+const shown = (text) => text.replace(/[\u0000-\u001f\u007f]/g, "?");
+// Single quotes keep `$`, backticks, `!` and `(` literal when the owner pastes a line into bash or PowerShell.
+const posixQuoted = (file) => `'${file.replace(/'/g, "'\\''")}'`;
+const powershellQuoted = (file) => `'${file.replace(/'/g, "''")}'`;
 // The nearest folder at or above `file` that exists: the one that refused the write.
 const refusing = (file) => { let at = file; while (!existsSync(at) && path.dirname(at) !== at) at = path.dirname(at); return at; };
 
+// A fix command is printed only for a folder strictly inside the owner's home (the home folder itself gets chmod
+// only, never a recursive command). Anywhere else, such as a system folder when HOME is missing, or a name with
+// control characters, the owner's administrator decides and no command is printed.
 export function permissionLines(folder, opts) {
-  if (opts.platform === "win32") {
+  const again = "TC_FIX then run the same installer command again; it is safe to repeat";
+  const windows = opts.platform === "win32";
+  const api = windows ? path.win32 : path;
+  const fold = (file) => (windows ? file.toLowerCase() : file);
+  const relative = api.relative(fold(api.resolve(opts.home)), fold(api.resolve(folder)));
+  const isHome = relative === "";
+  const inside = !isHome && !relative.startsWith("..") && !api.isAbsolute(relative);
+  if (CONTROL.test(folder) || (!inside && !isHome) || (windows && isHome)) {
+    const where = CONTROL.test(folder) ? " (its name has control characters)" : inside || isHome ? "" : ", which is outside your home folder";
+    return [
+      `TC_CAUSE your user cannot write to ${shown(folder)}${where}`,
+      "TC_FIX ask the person who manages this computer to give your user write access to it, or to install the CLI for you",
+      again,
+    ];
+  }
+  if (windows) {
     return [
       `TC_CAUSE your Windows user cannot write to ${folder}`,
-      `TC_FIX in PowerShell run: icacls ${quoted(folder, "win32")} /grant "$env:USERNAME:(OI)(CI)F" /T`,
-      "TC_FIX then run the same installer command again; it is safe to repeat",
+      `TC_FIX in PowerShell run: icacls ${powershellQuoted(folder)} /grant "\${env:USERNAME}:(OI)(CI)F" /T`,
+      again,
     ];
   }
   let owned = false;
   let mode = "";
   try { const info = statSync(folder); owned = info.uid === process.getuid?.(); mode = (info.mode & 0o777).toString(8); } catch { /* the cause line stays general */ }
   const who = opts.env.USER || opts.env.LOGNAME || "your user";
-  return owned
-    ? [
-        `TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}) or sits on a read-only disk`,
-        `TC_FIX run yourself: chmod u+rwx ${quoted(folder)}`,
-        "TC_FIX if that is not allowed, the disk is read-only: free a writable home folder and run the installer as that user",
-        "TC_FIX then run the same installer command again; it is safe to repeat",
-      ]
-    : [
-        `TC_CAUSE ${folder} belongs to another user${mode ? ` (mode ${mode})` : ""}, often root after an earlier sudo run`,
-        `TC_FIX run yourself in a terminal, not through an agent: sudo chown -R "$USER" ${quoted(folder)}`,
-        "TC_FIX then run the same installer command again; it is safe to repeat",
-      ];
+  if (owned) {
+    return [
+      `TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}) or sits on a read-only disk`,
+      `TC_FIX run yourself: chmod u+rwx ${posixQuoted(folder)}`,
+      "TC_FIX if that is not allowed, the disk is read-only: free a writable home folder and run the installer as that user",
+      again,
+    ];
+  }
+  if (isHome) {
+    return [
+      `TC_CAUSE your home folder ${folder} belongs to another user${mode ? ` (mode ${mode})` : ""}`,
+      "TC_FIX ask the person who manages this computer to give your user write access to it",
+      again,
+    ];
+  }
+  return [
+    `TC_CAUSE ${folder} belongs to another user${mode ? ` (mode ${mode})` : ""}, often root after an earlier sudo run`,
+    `TC_FIX run yourself in a terminal, not through an agent: sudo chown -R "$USER" ${posixQuoted(folder)}`,
+    again,
+  ];
 }
 
 function permissionFailure(error, action, target, opts) {
-  return new PermissionFailure(`permission denied: cannot ${action} ${target} (${error.code})`, permissionLines(refusing(target), opts));
+  return new PermissionFailure(`permission denied: cannot ${action} ${shown(target)} (${error.code})`, permissionLines(refusing(target), opts));
 }
 
 // npm said no. When it named a permission error, report the path it named; otherwise the failure stays "npm install failed".
@@ -63,10 +93,10 @@ function npmFailure(stderr, opts) {
   if (!code) return new Error("npm install failed");
   const named = stderr.match(/^npm (?:error|ERR!) path (.+)$/m)?.[1]?.trim();
   if (named && path.isAbsolute(named) && within(named, opts.home, opts.platform)) {
-    return new PermissionFailure(`permission denied: npm cannot write ${named} (${code})`, permissionLines(refusing(named), opts));
+    return new PermissionFailure(`permission denied: npm cannot write ${shown(named)} (${code})`, permissionLines(refusing(named), opts));
   }
-  return new PermissionFailure(`permission denied: npm cannot write ${named || "to its folders"} (${code})`, [
-    `TC_CAUSE npm writes only under ${privatePrefix(opts)} and its cache; ${named ? `it named ${named}, outside your home` : "it did not name the path"}, so an npm setting points elsewhere`,
+  return new PermissionFailure(`permission denied: npm cannot write ${named ? shown(named) : "to its folders"} (${code})`, [
+    `TC_CAUSE npm writes only under ${privatePrefix(opts)} and its cache; ${named ? `it named ${shown(named)}, outside your home` : "it did not name the path"}, so an npm setting points elsewhere`,
     "TC_FIX run: npm config get prefix && npm config get cache  (both should be inside your home folder)",
     "TC_FIX if one is not, set it inside your home, for example: npm config set cache \"$HOME/.npm\"",
     "TC_FIX then run the same installer command again; it is safe to repeat",

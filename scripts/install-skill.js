@@ -16,7 +16,7 @@
 const { createHash, randomBytes } = require("node:crypto");
 const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } = require("node:fs");
 const { homedir } = require("node:os");
-const { dirname, join, resolve, sep } = require("node:path");
+const { dirname, isAbsolute, join, relative: relativePath, resolve, sep } = require("node:path");
 
 const SITE = "https://agents.tinycloud.xyz";
 const ROOTS = {
@@ -188,23 +188,34 @@ async function main() {
 }
 
 // A permission failure also names the folder that refused the write and the exact fix. The fix is for the owner
-// to run, never an agent through sudo. The CLI works without the skill, so setup goes on.
+// to run, never an agent through sudo, and it is printed only for a folder strictly inside the owner's home (the
+// home folder itself gets chmod only). Elsewhere, or for a name with control characters, no command is printed.
+// The CLI works without the skill, so setup goes on.
+const CONTROL = /[\u0000-\u001f\u007f]/;
+const shown = (text) => text.replace(/[\u0000-\u001f\u007f]/g, "?");
 function permissionFix(error) {
   if (!["EACCES", "EPERM", "EROFS"].includes(error?.code) || typeof error.path !== "string") return [];
   let folder = error.path;
   while (!existsSync(folder) && dirname(folder) !== folder) folder = dirname(folder);
-  if (process.platform === "win32") {
-    return [`SKILL_FIX give your Windows user full control of ${folder}, in PowerShell: icacls "${folder}" /grant "$env:USERNAME:(OI)(CI)F" /T`, "SKILL_FIX then run the same command again; it is safe to repeat"];
+  const again = "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.";
+  const home = resolve(homedir());
+  const relative = relativePath(home, resolve(folder));
+  const isHome = relative === "";
+  const inside = relative !== "" && !relative.startsWith("..") && !isAbsolute(relative);
+  const windows = process.platform === "win32";
+  if (CONTROL.test(folder) || (!inside && !isHome) || (windows && isHome)) {
+    return [`SKILL_FIX ${shown(folder)} refused the write; ask the person who manages this computer to give your user write access to it`, again];
   }
-  const quoted = `"${folder.replace(/(["$`\\])/g, "\\$1")}"`;
-  return [
-    `SKILL_FIX ${folder} refused the write; run yourself: chmod u+rwx ${quoted}   (if it belongs to another user: sudo chown -R "$USER" ${quoted})`,
-    "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.",
-  ];
+  if (windows) {
+    return [`SKILL_FIX ${folder} refused the write; in PowerShell run: icacls '${folder.replace(/'/g, "''")}' /grant "\${env:USERNAME}:(OI)(CI)F" /T`, again];
+  }
+  const quoted = `'${folder.replace(/'/g, "'\\''")}'`;
+  const other = isHome ? "" : `   (if it belongs to another user: sudo chown -R "$USER" ${quoted})`;
+  return [`SKILL_FIX ${folder} refused the write; run yourself: chmod u+rwx ${quoted}${other}`, again];
 }
 
 main().catch((error) => {
-  console.error(`SKILL_INSTALL_FAILED ${error.message}`);
+  console.error(`SKILL_INSTALL_FAILED ${shown(String(error.message))}`);
   for (const line of permissionFix(error)) console.error(line);
   process.exitCode = 1;
 });
