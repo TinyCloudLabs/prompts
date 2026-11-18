@@ -231,10 +231,13 @@ test("feed skill is listed and its published relative reference resolves", () =>
   assert.match(published, /\]\(feed\/creating-a-post\.md\)/);
   const reference = readFileSync(join(site, "skills/feed/creating-a-post.md"), "utf8");
   const guide = readFileSync(join(site, "feed"), "utf8");
-  assert.equal(guide, reference.replace(
+  // The guide is the same text, with its links absolute and its version line under the read-raw line.
+  const { docs } = JSON.parse(readFileSync(join(site, "version.json"), "utf8"));
+  const [rawLine, ...rest] = reference.replace(
     "[creating-a-post.md](creating-a-post.md)",
     "[creating-a-post.md](https://agents.tinycloud.xyz/skills/feed/creating-a-post.md)",
-  ));
+  ).split("\n\n");
+  assert.equal(guide, [rawLine, `> Guide version: ${docs.commit} (${docs.date})`, ...rest].join("\n\n"));
 });
 
 test("/connect sends an agent that can run the CLI to /onboarding and gives each MCP app its own steps", () => {

@@ -15,6 +15,8 @@ import { marked } from "marked";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SITE = "https://agents.tinycloud.xyz";
 const PREVIEW = "https://abc.tinycloud-agents.pages.dev";
+// The production copy builds as Cloudflare Pages would, from this commit; the preview copy, outside git, says `local`.
+const COMMIT_SHA = "4f0c2e1d9b8a7c6f5e4d3c2b1a0f9e8d7c6b5a49";
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 const work = mkdtempSync(join(realpathSync(tmpdir()), "tc-preview-build-"));
 after(() => rmSync(work, { recursive: true, force: true }));
@@ -31,7 +33,7 @@ const build = async (name, env, edit) => {
 };
 let production, preview;
 before(async () => {
-  [production, preview] = await Promise.all([build("production", {}), build("preview", { CF_PAGES_BRANCH: "x", CF_PAGES_URL: PREVIEW })]);
+  [production, preview] = await Promise.all([build("production", { CF_PAGES_COMMIT_SHA: COMMIT_SHA }), build("preview", { CF_PAGES_BRANCH: "x", CF_PAGES_URL: PREVIEW })]);
 });
 
 const servedSkillFiles = (site) =>
@@ -73,7 +75,8 @@ test("a preview's skills send agents to the preview, not production, under match
   }
 });
 
-// Shared blocks are expanded from standard/blocks.md and expanded skills are listed as changed.
+// Shared blocks are expanded from standard/blocks.md and expanded skills are listed as changed. SKILL.md also
+// gains its version line under the read-raw line, so it is always listed.
 test("a production build serves the repository's skills byte for byte, pointing at production", () => {
   assert.ok(readFileSync(join(production, "skills/apps.md"), "utf8").includes(`${SITE}/onboarding`));
   assert.deepEqual(servedSkillFiles(production).filter((p) => readFileSync(join(production, p), "utf8").includes(PREVIEW)), []);
@@ -81,13 +84,20 @@ test("a production build serves the repository's skills byte for byte, pointing 
   const parts = readFileSync(join(root, "standard/blocks.md"), "utf8").split(/^<!-- std:([a-z][a-z0-9-]*) -->\n/m).slice(1);
   const blocks = new Map();
   for (let i = 0; i < parts.length; i += 2) blocks.set(parts[i], parts[i + 1].trim());
+  const { date } = JSON.parse(readFileSync(join(production, "version.json"), "utf8")).docs;
   for (const [short, dir] of [["apps", "tc-apps"], ["feed", "tinycloud-feed"], ["publish", "tc-publish"], ["secrets", "tc-secrets"]]) {
     const skill = index.skills.find((s) => s.short === short);
     const sources = skill.files.map((file) => [file, readFileSync(join(root, "skills", dir, file.path))]);
     const expanded = (body) => body.toString("utf8").replace(/^\{\{std:([a-z][a-z0-9-]*)\}\}$/gm, (_, name) => blocks.get(name));
-    assert.deepEqual(skill.changed, sources.filter(([, body]) => expanded(body) !== body.toString("utf8")).map(([file]) => file.path).sort(), short);
-    assert.ok(skill.changed.includes("SKILL.md"), short);
-    for (const [file, body] of sources) assert.ok(readFileSync(join(production, file.url)).equals(Buffer.from(expanded(body))), file.url);
+    const head = (text) => text.match(/^---\n[\s\S]*?\n---\n\n*/)[0] + rawLine(`${SITE}/skills/${short}.md`);
+    const served = (file, body) => {
+      const text = expanded(body);
+      if (file.path !== "SKILL.md") return text;
+      return head(text) + `> Skill version: ${skill.name} ${skill.version}, guides ${COMMIT_SHA.slice(0, 7)} (${date})\n\n` + text.slice(head(text).length);
+    };
+    const changed = sources.filter(([, body]) => expanded(body) !== body.toString("utf8")).map(([file]) => file.path);
+    assert.deepEqual(skill.changed, [...new Set([...changed, "SKILL.md"])].sort(), short);
+    for (const [file, body] of sources) assert.ok(readFileSync(join(production, file.url)).equals(Buffer.from(served(file, body))), file.url);
   }
 });
 
@@ -140,6 +150,30 @@ test("the owner-facing HTML pages leave the read-raw line out", () => {
     }
     // Each html page's rendered body still starts with its title.
     for (const page of ["onboarding", "connect"]) assert.match(readFileSync(join(site, `${page}.html`), "utf8"), /<main>\n<h1 id="[^"]+">/, page);
+  }
+});
+
+test("every served Markdown guide and SKILL.md names the version /version.json carries, under its read-raw line", () => {
+  for (const [site, commit] of [[production, COMMIT_SHA.slice(0, 7)], [preview, "local"]]) {
+    const version = JSON.parse(readFileSync(join(site, "version.json"), "utf8"));
+    assert.equal(version.docs.commit, commit, site);
+    assert.match(version.docs.date, /^\d{4}-\d{2}-\d{2}$/, site);
+    const { date } = version.docs;
+    const clients = readdirSync(join(site, "connect")).filter((name) => name.endsWith(".md")).map((name) => `connect/${name}`);
+    assert.equal(clients.length, 10, site);
+    for (const guide of [...GUIDES, ...clients]) {
+      assert.equal(readFileSync(join(site, guide), "utf8").split("\n\n")[1], `> Guide version: ${commit} (${date})`, `${site}/${guide}`);
+    }
+    const { skills } = JSON.parse(readFileSync(join(site, "skills/index.json"), "utf8"));
+    assert.deepEqual(version.skills, Object.fromEntries(skills.map((s) => [s.name, `${s.version} ${commit}`])), site);
+    for (const s of skills) {
+      for (const path of [`skills/${s.short}.md`, `skills/${s.short}/SKILL.md`]) {
+        assert.equal(afterFrontMatter(readFileSync(join(site, path), "utf8")).split("\n\n")[1], `> Skill version: ${s.name} ${s.version}, guides ${commit} (${date})`, `${site}/${path}`);
+      }
+    }
+    for (const page of readdirSync(site, { recursive: true }).filter((name) => name.endsWith(".html"))) {
+      assert.doesNotMatch(readFileSync(join(site, page), "utf8"), /Guide version: /, `${site}/${page}`);
+    }
   }
 });
 

@@ -25,6 +25,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/skills/<skill>/SHA256SUMS` | The sha256 of each of the skill's files, in `sha256sum -c` format, the same values as `index.json`; the `/apps` setup checks its downloads against it | generated |
 | `/skills/index.json` | Every skill's name, short name, version, description, source, changed files, and files with sha256 checksums | generated |
 | `/skills/install.js` | The installer the guides run | [`scripts/install-skill.js`](scripts/install-skill.js) |
+| `/version.json` | The content version: `docs` is the commit the site is built from and its date, `skills` maps each skill's name to its version and that commit. Every served Markdown guide carries `> Guide version: <commit> (<date>)` and every served `SKILL.md` `> Skill version: <name> <version>, guides <commit> (<date>)` under its read-raw line, so a problem report can name the text the agent followed. The rendered HTML leaves the line out. Outside git, without `CF_PAGES_COMMIT_SHA`, the commit is `local` | generated |
 
 The context app in `/apps` lets agents save and reuse the owner's low-sensitivity facts, preferences, decisions and handoffs.
 

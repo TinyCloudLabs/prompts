@@ -13,11 +13,14 @@
 // - /skills/index.json: each skill's name, version, description and files with
 //   sha256 checksums, which /skills/install.js checks before installing;
 // - _redirects: the earlier repository-path URLs, redirected to the short ones,
-//   and each Markdown guide's URL with .md added (/apps.md → /apps).
+//   and each Markdown guide's URL with .md added (/apps.md → /apps);
+// - /version.json: the content version (see COMMIT below) that every served
+//   guide and SKILL.md names under its read-raw line.
 // Other repository files are copied at their repository path. index.html,
 // llms.txt, llms-full.txt, robots.txt, sitemap.xml, _headers, the agent-skills
 // index, AI Catalog and website-only Poppy manifest are generated.
 // Fetches pinned skill tarballs. Run: npm ci && npm run build
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { isUtf8 } from "node:buffer";
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -91,6 +94,24 @@ const banner = (path, base = SITE, browserFetch = false) => browserFetch
   : `> **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with \`curl -fsSL ${base}/${path}\` and follow that text. Summaries drop the shell blocks you must run.\n\n`;
 const frontMatter = (text) => text.match(/^---\n[\s\S]*?\n---\n\n*/)?.[0] ?? "";
 const opensWithBanner = (text, path, browserFetch) => text.slice(frontMatter(text).length).startsWith(banner(path, BASE, browserFetch));
+
+// Content version. Every served Markdown guide carries `> Guide version: <commit> (<date>)`, and every served
+// SKILL.md `> Skill version: <name> <version>, guides <commit> (<date>)`, right under its read-raw line, so an
+// agent can say which text it followed when it reports a problem; /version.json carries the same values. The
+// commit pins every guide and every released skill, so the commit's date dates them all. Cloudflare Pages sets
+// CF_PAGES_COMMIT_SHA; a build outside git without it (the preview test's copy) says `local`, dated today.
+const git = (...args) => {
+  try {
+    return execFileSync("git", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return "";
+  }
+};
+const SHA = process.env.CF_PAGES_COMMIT_SHA || git("rev-parse", "HEAD");
+const COMMIT = SHA ? SHA.slice(0, 7) : "local";
+const DATE = (SHA && git("show", "-s", "--format=%cs", SHA)) || new Date().toISOString().slice(0, 10);
+const guideStamp = `> Guide version: ${COMMIT} (${DATE})\n\n`;
+const skillStamp = (name, version) => `> Skill version: ${name} ${version}, guides ${COMMIT} (${DATE})\n\n`;
 
 // Guides, by public URL. `redirectFrom` names other URLs that 301 to the page.
 // `html` adds a rendered page and a Markdown alternate, both from the same text.
@@ -519,18 +540,26 @@ async function loadSkill(skill) {
       return [path, Buffer.from(body.toString("utf8").replaceAll(SITE, BASE))];
     });
   }
-  const main = files.find(([path]) => path === "SKILL.md");
-  if (!main) throw new Error(`${skill.short}: no SKILL.md in ${skill.tarball || ""}${skill.dir}`);
-  const text = main[1].toString("utf8");
-  const { title, desc, front } = describe(text, skill.short);
+  const i = files.findIndex(([path]) => path === "SKILL.md");
+  if (i < 0) throw new Error(`${skill.short}: no SKILL.md in ${skill.tarball || ""}${skill.dir}`);
+  const raw = files[i][1].toString("utf8");
+  const { title, desc, front } = describe(raw, skill.short);
   const fmVersion = front.match(/^metadata:\s*\n(?:[ \t]+.*\n)*?[ \t]+version:\s*["']?([^"'\n]+)["']?/m)?.[1];
   if (fmVersion && skill.version && fmVersion !== skill.version) throw new Error(`${skill.short}: SKILL.md version ${fmVersion}, configured ${skill.version}`);
   const version = fmVersion || skill.version;
   if (!version) throw new Error(`${skill.short}: no metadata.version in SKILL.md and no configured version`);
+  const name = front.match(/^name:\s*(\S+)/m)?.[1] || posix.basename(skill.dir);
+  // The version line goes under the read-raw line; a SKILL.md without that line is reported after the build.
+  const head = frontMatter(raw) + banner(`skills/${skill.short}.md`, BASE);
+  const text = raw.startsWith(head) ? head + skillStamp(name, version) + raw.slice(head.length) : raw;
+  if (text !== raw) {
+    files[i] = ["SKILL.md", Buffer.from(text)];
+    changed.add("SKILL.md");
+  }
   return {
     ...skill,
     changed: [...changed].sort(),
-    name: front.match(/^name:\s*(\S+)/m)?.[1] || posix.basename(skill.dir),
+    name,
     version,
     title,
     desc,
@@ -577,8 +606,12 @@ write("agent-env.mjs", readFileSync(join(ROOT, "scripts/agent-env.mjs")));
 write("install-cli.mjs", readFileSync(join(ROOT, "scripts/install-cli.mjs")));
 
 const pages = PAGES.map((p) => {
-  const text = render(p.src);
-  write(p.html ? `${p.url}.md` : p.url, text);
+  const path = p.html ? `${p.url}.md` : p.url;
+  const rendered = render(p.src);
+  // The version line goes under the read-raw line; a guide without that line is reported below.
+  const lead = banner(path, BASE, p.browserFetch);
+  const text = rendered.startsWith(lead) ? lead + guideStamp + rendered.slice(lead.length) : rendered;
+  write(path, text);
   return { ...p, text, ...describe(text, p.url) };
 });
 const unusedStd = [...STD.keys()].filter((name) => !STD_USED.has(name));
@@ -626,6 +659,17 @@ write(
         ...(s.changed.length ? { changed: s.changed } : {}),
         files: s.files.map((f) => ({ path: f.path, url: f.url, size: f.body.length, sha256: sha256(f.body) })),
       })),
+    },
+    null,
+    2,
+  ) + "\n",
+);
+write(
+  "version.json",
+  JSON.stringify(
+    {
+      docs: { commit: COMMIT, date: DATE },
+      skills: Object.fromEntries(skills.map((s) => [s.name, `${s.version} ${COMMIT}`])),
     },
     null,
     2,
@@ -920,7 +964,7 @@ ${style}
 </head>
 <body>
   <main>
-${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE, p.browserFetch).length))}
+${markdownRenderer.parse(p.text.slice(banner(`${p.url}.md`, BASE, p.browserFetch).length + guideStamp.length))}
   </main>
 </body>
 </html>
