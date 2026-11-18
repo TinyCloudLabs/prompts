@@ -201,7 +201,7 @@ function assertOwnProject(project, root) {
   const me = process.getuid();
   for (let dir = root; ; dir = dirname(dir)) {
     if (existsSync(dir) && statSync(dir).uid !== me) {
-      throw new Error(`${dir} belongs to another account. Run a project install from a project folder you own.`);
+      throw new Error(`${dir} belongs to another account.`);
     }
     if (dir === project || dirname(dir) === dir) break;
   }
@@ -312,8 +312,8 @@ async function main() {
   const readers = targets.map((t) => t.readers.join(", ")).join("; ");
   console.log(
     scope === "project"
-      ? `SKILL_SCOPE project: only sessions started inside ${project} can use it (installed for ${readers}). To install it for every folder on this computer account instead, run the installer again with --scope user.`
-      : `SKILL_SCOPE user: any session on this computer account can use it, in any folder (installed for ${readers}). To install it for one project only, run the installer again from that project's folder with --scope project.`,
+      ? `SKILL_SCOPE project: only sessions started inside ${project} can use it (installed for ${readers}). --scope user installs it for every folder on this computer account.`
+      : `SKILL_SCOPE user: any session on this computer account can use it, in any folder (installed for ${readers}). --scope project installs it for one project only.`,
   );
 }
 

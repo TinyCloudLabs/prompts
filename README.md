@@ -116,7 +116,7 @@ The installer checks every file against `/skills/index.json` before writing anyt
 
 ### Skill folders
 
-Every client reads `<folder>/<skill>/SKILL.md`. Every client except Claude Code gets the shared `.agents/skills` copy (naming several clients installs it once), because the setup guides read it. Claude Code gets its own folder; Amp, Hermes and OpenClaw get a folder of their own as well. Sources are each vendor's skills page; a row marked `[INFERENCE]` has a folder we install into as a precaution without a vendor page that states it, and the page it rests on is named.
+Every client reads `<folder>/<skill>/SKILL.md`. Every client except Claude Code gets the shared `.agents/skills` copy (naming several clients installs it once), because the setup guides read it. Claude Code gets its own folder; Amp, Hermes and OpenClaw get a folder of their own as well. Sources are each vendor's skills page. Where a row lists a folder the vendor's page doesn't, the Source cell says why we install there.
 
 | `--agent` | User folder | Project folder | Source |
 | --- | --- | --- | --- |
@@ -126,9 +126,9 @@ Every client reads `<folder>/<skill>/SKILL.md`. Every client except Claude Code 
 | `copilot` | `~/.agents/skills` (also `~/.copilot/skills`) | `.agents/skills` (also `.github/skills`, `.claude/skills`) | [About agent skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills): project `.github/skills`, `.claude/skills` or `.agents/skills`; personal `~/.copilot/skills` or `~/.agents/skills` |
 | `cursor` | `~/.agents/skills` (also `~/.cursor/skills`) | `.agents/skills` (also `.cursor/skills`) | [Cursor skills](https://cursor.com/docs/skills) |
 | `gemini` | `~/.agents/skills` (alias of `~/.gemini/skills`) | `.agents/skills` (alias of `.gemini/skills`) | [Gemini CLI skills](https://geminicli.com/docs/cli/skills/) |
-| `hermes` | `~/.hermes/skills` (and the shared `~/.agents/skills`, read only if Hermes's `skills.external_dirs` lists it) | `.hermes/skills`, `.agents/skills` | [Hermes skills](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills): local skills in `~/.hermes/skills/`, project-local skills in `<project-root>/.hermes/skills/` or `<project-root>/.agents/skills/`. `[INFERENCE]` that a plain file copy is listed by `hermes skills list`: Hermes is not installed on the build machine, so it was not run |
+| `hermes` | `~/.hermes/skills` (and the shared `~/.agents/skills`, read only if Hermes's `skills.external_dirs` lists it) | `.hermes/skills`, `.agents/skills` | [Hermes skills](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills): local skills in `~/.hermes/skills/`, project-local skills in `<project-root>/.hermes/skills/` or `<project-root>/.agents/skills/`. We also install into `~/.hermes/skills` (project: `.hermes/skills`) so Hermes finds the skill without a configuration change |
 | `omp` | `~/.agents/skills` (also `~/.omp/agent/skills`) | `.agents/skills` (also `.omp/skills`) | omp's own `skills.md` (shipped with omp) |
-| `openclaw` | `~/.agents/skills` (default state folder only) and `${OPENCLAW_STATE_DIR:-~/.openclaw}/skills` | `.agents/skills` in the workspace | [OpenClaw skills](https://docs.openclaw.ai/tools/skills). `[INFERENCE]` for the state-folder copy: the page lists `~/.agents/skills` for the default state only, and we write the second copy so a custom state folder still finds it (read from a search summary of the page, not the page itself) |
+| `openclaw` | `~/.agents/skills` (default state folder only) and `${OPENCLAW_STATE_DIR:-~/.openclaw}/skills` | `.agents/skills` in the workspace | [OpenClaw skills](https://docs.openclaw.ai/tools/skills). The page lists `~/.agents/skills` for the default state folder only; we also install into the state folder's `skills` so a custom `OPENCLAW_STATE_DIR` still finds it |
 | `opencode` | `~/.agents/skills` (also `~/.config/opencode/skills`) | `.agents/skills` (also `.opencode/skills`) | [OpenCode skills](https://opencode.ai/docs/skills/) |
 | `agents` | `~/.agents/skills` | `.agents/skills` | any other client that reads `.agents/skills` |
 

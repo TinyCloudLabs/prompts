@@ -229,3 +229,16 @@ test("an unknown client, a bad scope or a repeated flag fails with the usage lin
     assert.equal(existsSync(join(home, ".claude")), false);
   }
 });
+
+test("the scope line and the another-account failure state facts and tell the agent to run nothing", async () => {
+  const user = await run(["--agent", "codex"]);
+  assert.equal(user.out.at(-1), "SKILL_SCOPE user: any session on this computer account can use it, in any folder (installed for Codex). --scope project installs it for one project only.");
+  const project = join(home, "proj");
+  mkdirSync(join(project, ".git"), { recursive: true });
+  const scoped = await run(["--agent", "codex", "--scope", "project"], { cwd: project });
+  assert.equal(scoped.out.at(-1), `SKILL_SCOPE project: only sessions started inside ${project} can use it (installed for Codex). --scope user installs it for every folder on this computer account.`);
+  if (typeof process.getuid === "function" && statSync("/tmp").uid !== process.getuid()) {
+    const refused = await run(["--agent", "codex", "--scope", "project"], { cwd: "/tmp" });
+    assert.match(refused.err[0], /^SKILL_INSTALL_FAILED \/tmp(\/\.agents)? belongs to another account\.$/);
+  }
+});
