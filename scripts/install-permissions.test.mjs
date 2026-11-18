@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +48,14 @@ test("an unwritable ~/.local stops the install naming the folder, the cause and 
   assert.equal(out[2], `TC_FIX run yourself: chmod u+rwx '${blocked}'`);
   assert.ok(out.includes("TC_FIX then run the same installer command again; it is safe to repeat"));
   assert.equal(existsSync(join(blocked, "share")), false);
+});
+
+test("a ~/.local that is a link to a system folder gets no command, since chmod would follow the link", { skip }, () => {
+  const dir = home();
+  symlinkSync("/usr", join(dir, ".local"));
+  const out = permissionLines(join(dir, ".local"), { platform: "linux", home: dir, env: {} });
+  assert.equal(out.some((line) => /chmod|chown|icacls/.test(line)), false);
+  assert.ok(out.some((line) => line.startsWith("TC_FIX ask the person who manages this computer")));
 });
 
 test("an npm permission error inside the home names npm's path and the fix for that folder", { skip }, () => {

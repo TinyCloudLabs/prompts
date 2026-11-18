@@ -39,7 +39,9 @@ export function permissionLines(folder, opts) {
   const windows = opts.platform === "win32";
   const api = windows ? path.win32 : path;
   const fold = (file) => (windows ? file.toLowerCase() : file);
-  const relative = api.relative(fold(api.resolve(opts.home)), fold(api.resolve(folder)));
+  // Real paths (symlinks resolved), so a ~/.local that links to a system folder gets no command.
+  const [target, base] = windows ? [folder, opts.home] : [real(folder) || folder, real(opts.home) || opts.home];
+  const relative = api.relative(fold(api.resolve(base)), fold(api.resolve(target)));
   const isHome = relative === "";
   const inside = !isHome && !relative.startsWith("..") && !api.isAbsolute(relative);
   if (CONTROL.test(folder) || (!inside && !isHome) || (windows && isHome)) {

@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -60,5 +60,15 @@ test("a skills folder outside the home, as with HOME=/nonexistent, gets no chmod
   const result = await run("/nonexistent");
   assert.equal(result.code, 1);
   assert.equal(result.out[1], "SKILL_FIX / refused the write; ask the person who manages this computer to give your user write access to it");
+  assert.equal(result.out.some((line) => /chmod|chown|icacls/.test(line)), false);
+});
+
+test("a ~/.agents that is a link to a system folder gets no chmod or chown line", { skip }, async () => {
+  const linked = join(work, "linked-home");
+  mkdirSync(linked);
+  symlinkSync("/usr", join(linked, ".agents"));
+  const result = await run(linked);
+  assert.equal(result.code, 1);
+  assert.equal(result.out[1], `SKILL_FIX ${join(linked, ".agents")} refused the write; ask the person who manages this computer to give your user write access to it`);
   assert.equal(result.out.some((line) => /chmod|chown|icacls/.test(line)), false);
 });

@@ -14,7 +14,7 @@
 // site it is served from, so a Pages preview installs the preview's skills.
 "use strict";
 const { createHash, randomBytes } = require("node:crypto");
-const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } = require("node:fs");
 const { homedir } = require("node:os");
 const { dirname, isAbsolute, join, relative: relativePath, resolve, sep } = require("node:path");
 
@@ -198,8 +198,10 @@ function permissionFix(error) {
   let folder = error.path;
   while (!existsSync(folder) && dirname(folder) !== folder) folder = dirname(folder);
   const again = "SKILL_FIX then run the same command again; it is safe to repeat. The CLI works without the skill.";
-  const home = resolve(homedir());
-  const relative = relativePath(home, resolve(folder));
+  // Real paths (symlinks resolved), so a folder that links out of the home gets no command.
+  const real = (file) => { try { return realpathSync(file); } catch { return resolve(file); } };
+  const home = real(homedir());
+  const relative = relativePath(home, real(folder));
   const isHome = relative === "";
   const inside = relative !== "" && !relative.startsWith("..") && !isAbsolute(relative);
   const windows = process.platform === "win32";
