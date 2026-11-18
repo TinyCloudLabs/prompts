@@ -98,3 +98,5 @@ The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth 
 ## If something went wrong
 
 Help the next agent avoid the same problem: [report it](https://feedback.tinycloud.xyz) using the [agent reporting instructions](https://feedback.tinycloud.xyz/agents.md). Ask the owner first, with a short summary of what happened and any attachments you'd send; send nothing without their OK, and never include personal data or secrets.
+
+In the report, include `content_version`: under `docs`, the commit and date from the Guide version line of the guide you followed; under `skills`, the version and commit from the Skill version line of each skill you used.
