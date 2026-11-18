@@ -152,7 +152,7 @@ test("--scope project without a .git uses the current folder", async () => {
 test("--scope project refuses the home folder, and writes nothing", async () => {
   const result = await run(["--agent", "codex", "--scope", "project"], { cwd: home });
   assert.equal(result.code, 1);
-  assert.match(result.err[0], /^SKILL_INSTALL_FAILED --scope project installs into one project: run it from inside that project's folder, not your home folder/);
+  assert.equal(result.err[0], `SKILL_INSTALL_FAILED --scope project found no project folder: ${home} is the home folder or the top of the disk.`);
   assert.equal(existsSync(join(home, ".agents")), false);
 });
 
@@ -170,7 +170,7 @@ test("--scope project refuses the home folder when HOME is a link to it", async 
   symlinkSync(home, link);
   const result = await run(["--agent", "codex", "--scope", "project"], { cwd: home, env: { HOME: link } });
   assert.equal(result.code, 1);
-  assert.match(result.err[0], /^SKILL_INSTALL_FAILED --scope project installs into one project/);
+  assert.match(result.err[0], /^SKILL_INSTALL_FAILED --scope project found no project folder: .* is the home folder or the top of the disk\.$/);
   assert.equal(existsSync(join(home, ".agents")), false);
 });
 

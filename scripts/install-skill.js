@@ -188,7 +188,7 @@ function projectRoot() {
   // Real paths, so a home reached through a link is still the home.
   const real = (file) => { try { return realpathSync(file); } catch { return resolve(file); } };
   if (real(project) === real(homedir()) || dirname(project) === project) {
-    throw new Error("--scope project installs into one project: run it from inside that project's folder, not your home folder or the top of the disk");
+    throw new Error(`--scope project found no project folder: ${project} is the home folder or the top of the disk.`);
   }
   return project;
 }
