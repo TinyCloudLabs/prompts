@@ -67,7 +67,7 @@ export function permissionLines(folder, opts) {
     return [
       `TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}) or sits on a read-only disk`,
       `TC_FIX run this yourself: chmod u+rwx ${posixQuoted(folder)}`,
-      "TC_FIX if chmod is refused, the disk is read-only: run the installer as a user whose home folder can be written",
+      "TC_FIX if chmod is refused, the disk is read-only: run the installer as a user who can write to their home folder",
       again,
     ];
   }
@@ -98,9 +98,11 @@ function npmFailure(stderr, opts) {
     return new PermissionFailure(`permission denied: npm cannot write ${shown(named)} (${code})`, permissionLines(refusing(named), opts));
   }
   return new PermissionFailure(`permission denied: npm cannot write ${named ? shown(named) : "to its folders"} (${code})`, [
-    `TC_CAUSE npm writes only under ${privatePrefix(opts)} and its cache; ${named ? `it named ${shown(named)}, outside your home` : "it did not name the path"}, so an npm setting points elsewhere`,
+    named
+      ? `TC_CAUSE npm tried to write to ${shown(named)}, outside your home folder, so an npm setting points outside it`
+      : "TC_CAUSE npm was refused a write and didn't say where; an npm setting probably points outside your home folder",
     "TC_FIX run: npm config get prefix && npm config get cache  (both should be inside your home folder)",
-    "TC_FIX if one is not, set it inside your home, for example: npm config set cache \"$HOME/.npm\"",
+    "TC_FIX if one isn't, set it to a folder inside your home, for example: npm config set cache \"$HOME/.npm\"",
     "TC_FIX then run the same installer command again; it is safe to repeat",
   ]);
 }
@@ -329,7 +331,7 @@ export function linkCommands(selected, input = {}) {
       if (!permissionError(error)) throw error;
       opts.log(`TC_NOT_LINKED ${names.join(",")} permission ${directory}`);
       for (const line of permissionLines(refusing(directory), opts)) opts.log(line);
-      opts.log("TC_FIX until then use the absolute path named on the TC_SELECTED line");
+      opts.log("TC_FIX meanwhile, run the CLI by the absolute path on the TC_SELECTED line");
       return;
     }
   }
@@ -363,7 +365,7 @@ export function linkCommands(selected, input = {}) {
   }
   if (notLinked) {
     for (const line of permissionLines(notLinked, opts)) opts.log(line);
-    opts.log("TC_FIX until then use the absolute path named on the TC_SELECTED line");
+    opts.log("TC_FIX meanwhile, run the CLI by the absolute path on the TC_SELECTED line");
   }
 }
 

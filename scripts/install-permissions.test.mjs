@@ -75,8 +75,9 @@ test("an npm permission error outside the home points at npm's prefix and cache 
   assert.equal(result.status, 2);
   const out = lines(result.stderr);
   assert.ok(out.includes("TC_INSTALL_FAILED permission denied: npm cannot write /usr/local/lib/node_modules (EACCES)"));
-  assert.ok(out.some((line) => line.startsWith("TC_CAUSE npm writes only under ") && line.includes("outside your home")));
+  assert.ok(out.includes("TC_CAUSE npm tried to write to /usr/local/lib/node_modules, outside your home folder, so an npm setting points outside it"));
   assert.ok(out.includes("TC_FIX run: npm config get prefix && npm config get cache  (both should be inside your home folder)"));
+  assert.ok(out.includes("TC_FIX if one isn't, set it to a folder inside your home, for example: npm config set cache \"$HOME/.npm\""));
   assert.equal(out.some((line) => /sudo/.test(line)), false, "no sudo advice for an npm setting");
 });
 
@@ -94,7 +95,7 @@ test("an unwritable ~/.local/bin leaves the CLI usable and prints TC_NOT_LINKED 
   const logged = link(dir);
   assert.equal(logged[0], `TC_NOT_LINKED tinycloud permission ${join(bin, "tinycloud")}`);
   assert.ok(logged.includes(`TC_FIX run this yourself: chmod u+rwx '${bin}'`));
-  assert.ok(logged.includes("TC_FIX until then use the absolute path named on the TC_SELECTED line"));
+  assert.ok(logged.includes("TC_FIX meanwhile, run the CLI by the absolute path on the TC_SELECTED line"));
   assert.equal(logged.some((line) => /TC_CONFLICT tinycloud/.test(line)), false);
   assert.deepEqual(readdirSync(bin), []);
 });
@@ -141,6 +142,18 @@ test("the home folder itself gets chmod only, never a recursive command", { skip
   const out = permissionLines(dir, linux(dir));
   assert.equal(out[1], `TC_FIX run this yourself: chmod u+rwx '${dir}'`);
   assert.equal(out.some((line) => /chown|-R|\/T/.test(line)), false);
+});
+
+test("a missing ~/.local under a read-only home names the home folder with chmod only, never a recursive command", { skip }, () => {
+  const dir = home();
+  chmodSync(dir, 0o555);
+  locked.push(dir);
+  const result = install(dir, basePath);
+  assert.equal(result.status, 2);
+  const out = lines(result.stderr);
+  assert.equal(out[0], `TC_INSTALL_FAILED permission denied: cannot create ${join(dir, ".local/share/tinycloud/cli")} (EACCES)`);
+  assert.equal(commandLines(out)[0], `TC_FIX run this yourself: chmod u+rwx '${dir}'`);
+  assert.equal(out.some((line) => /chown|sudo|icacls| -R|\/T/.test(line)), false);
 });
 
 test("a path with quote, dollar, bang or parenthesis characters is single-quoted so the pasted line stays literal", { skip: windows }, () => {
