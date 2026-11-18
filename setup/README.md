@@ -42,7 +42,7 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 ## Share an artifact: [/share](share.md)
 
-- **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first. Your agent shares with a link. To share with one person's email address, or with everyone at an email domain, use share.tinycloud.xyz. Every share expires, and your agent can revoke it.
+- **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first. To share with one person's email address, or with everyone at an email domain, use share.tinycloud.xyz. Every share expires, and your agent can revoke it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it, including running its installer. Share this with TinyCloud.`
 - **You approve:** the same OpenKey link as [/publish](publish.md), to let your agent publish to your share folders, for up to 30 days.
 - **Undo:** same as [/publish](publish.md#undo).

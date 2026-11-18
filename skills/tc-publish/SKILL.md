@@ -46,7 +46,7 @@ Run each block as one tool call. Replace every `'<…>'` placeholder before runn
 
 ## Ask before making a link
 
-This skill makes links only: anyone who has the link can open it. If the owner wants to share with one email address or a whole email domain, tell them to use share.tinycloud.xyz. Sharing with only the owner isn't available yet; if the owner asks for it, say so in one line.
+This skill makes links only: anyone who has the link can open it. If the owner wants to share with one email address or a whole email domain, tell them to use share.tinycloud.xyz. Sharing with only the owner isn't available; if the owner asks for it, say so in one line.
 
 Before every publish, ask the owner exactly: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer, and don't offer another place to publish or share it. Never decide on your own that content is shareable, and never publish without that yes.
 
