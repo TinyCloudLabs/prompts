@@ -108,6 +108,17 @@ test("a ~/.local that cannot hold a bin folder also ends in TC_NOT_LINKED instea
   assert.ok(logged.includes(`TC_FIX run this yourself: chmod u+rwx '${blocked}'`));
 });
 
+test("a ~/.local/bin that is a link to a system folder ends in TC_NOT_LINKED with no command, since chmod would follow the link", { skip }, () => {
+  const dir = home();
+  mkdirSync(join(dir, ".local"));
+  symlinkSync("/usr/bin", join(dir, ".local/bin"));
+  const logged = link(dir);
+  assert.ok(logged.some((line) => line.startsWith("TC_NOT_LINKED ")));
+  assert.equal(logged.some((line) => /chmod|chown|icacls|sudo/.test(line)), false);
+  assert.ok(logged.some((line) => line.startsWith("TC_FIX ask the person who manages this computer")));
+  assert.equal(existsSync("/usr/bin/tinycloud"), false, "nothing was written through the link");
+});
+
 const linux = (home) => ({ platform: "linux", home, env: {} });
 const commandLines = (out) => out.filter((line) => /chmod|chown|icacls/.test(line));
 
@@ -140,8 +151,9 @@ test("the home folder itself gets chmod only, never a recursive command", { skip
   chmodSync(dir, 0o555);
   locked.push(dir);
   const out = permissionLines(dir, linux(dir));
-  assert.equal(out[1], `TC_FIX run this yourself: chmod u+rwx '${dir}'`);
-  assert.equal(out.some((line) => /chown|-R|\/T/.test(line)), false);
+  const seen = () => JSON.stringify({ out, dir, umask: process.umask().toString(8), home: process.env.HOME, uid: process.getuid?.() });
+  assert.equal(out[1], `TC_FIX run this yourself: chmod u+rwx '${dir}'`, seen());
+  assert.equal(out.some((line) => /chown|-R|\/T/.test(line)), false, seen());
 });
 
 test("a missing ~/.local under a read-only home names the home folder with chmod only, never a recursive command", { skip }, () => {
