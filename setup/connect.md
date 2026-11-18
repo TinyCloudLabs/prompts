@@ -8,7 +8,7 @@ Keep your personal records, such as weight, workouts, goals and todos, in your o
 
 > Fetch https://agents.tinycloud.xyz/connect.md with curl and follow it, including running its installer. Set up TinyCloud.
 
-**For the assistant:** keep the owner's original request and continue it in this conversation. If you can install and run the TinyCloud CLI, use it: that's the preferred route. Otherwise, if you support remote MCP, connect the hosted server below. For an MCP agent, a link to this page alone is a setup request; give that app's steps without asking what the owner wants to do. Do not ask the owner to choose a different link or file format. The installer the prompt names is the CLI route's; an app that can only run code in a temporary sandbox doesn't run it, and connects through MCP instead.
+**For the assistant:** keep the owner's original request and continue it in this conversation. If you can install and run the TinyCloud CLI, use it: that's the preferred route. Otherwise, if you support remote MCP, connect the hosted server below. For an MCP agent given only this link, say in one line that it connects TinyCloud to this app, then give its steps; the owner does each one. Fetch `/connect.md` yourself if you need Markdown. The installer the prompt names is the CLI route's; an app that can only run code in a temporary sandbox doesn't run it, and connects through MCP instead.
 
 ## Agents that can run the CLI (preferred)
 

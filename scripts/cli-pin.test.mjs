@@ -207,8 +207,8 @@ for (const block of blocks) {
 }
 
 // The rule an agent reads first: run the block; only TC_OLDER means operator-selected;
-// upgrading is part of the owner's request; never `tinycloud upgrade` or a global install.
-const UPGRADE = "Upgrading the CLI is part of the owner's request: don't ask first; at most one short line (\"Updating the TinyCloud CLI.\").";
+// the agent asks the owner before upgrading; never `tinycloud upgrade` or a global install.
+const UPGRADE = "Ask the owner first in one line (\"I need to update the TinyCloud CLI to finish this. OK?\") and wait for their yes.";
 const NEVER_UPGRADE = "Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.";
 const SKILL_STEP = "Installing the skill is part of the owner's request: don't ask first; at most one short line";
 const surfaces = [
@@ -221,7 +221,7 @@ const surfaces = [
   { files: ["setup/onboarding.md", "_site/onboarding.md"], blk: "step 2", stops: true },
 ];
 const RULE = `**CLI rule (stable \`${CLI_VERSION}\`): `;
-test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, that upgrading needs no asking, and never to run `tinycloud upgrade`", () => {
+test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, to ask the owner before upgrading, and never to run `tinycloud upgrade`", () => {
   for (const { files, blk, stops } of surfaces) {
     for (const file of files) {
       const text = readFileSync(join(root, file), "utf8");
@@ -257,7 +257,7 @@ test("every CLI rule but /onboarding's forbids a global, sudo or piped install, 
   assert.deepEqual(served().filter((file) => readFileSync(join(root, file), "utf8").includes(OLD_NO_GLOBAL)).sort(), keep.sort());
 });
 
-test("/cli and every CLI_OLDER note say upgrading needs no asking and never `tinycloud upgrade`, as written and as served", () => {
+test("/cli and every CLI_OLDER note say to ask the owner before upgrading and never `tinycloud upgrade`, as written and as served", () => {
   for (const file of ["setup/tinycloud.md", "_site/cli"]) {
     assert.ok(readFileSync(join(root, file), "utf8").includes(`**Upgrades go through this guide.** ${UPGRADE} ${NEVER_UPGRADE}`), file);
   }

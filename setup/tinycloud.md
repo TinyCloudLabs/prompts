@@ -17,7 +17,7 @@ This module installs and verifies the TinyCloud CLI, then attempts its optional 
 
 {{std:read-raw}}
 
-**Upgrades go through this guide.** Upgrading the CLI is part of the owner's request: don't ask first; at most one short line ("Updating the TinyCloud CLI."). Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
+**Upgrades go through this guide.** Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
 
 Before starting, retain all of the following from the caller:
 
@@ -38,7 +38,7 @@ Set `CLIENT` conceptually to the current agent client: `opencode`, `codex` or `c
 
 Use the reusable platform-aware installer below. It respects process `TC_BIN` first, then a saved `TC_BIN` read by the data-only helper installed by [/agent](agent.md), then the private installation, then a CLI on PATH at `1.6.6` or newer. An operator selection is kept, never silently replaced; one older than `1.6.6` prints `TC_OLDER`. A `TC_BIN`, exported or saved, that points inside `~/.local/share/tinycloud/cli` (on Windows `%USERPROFILE%\.local\share\tinycloud\cli`) is the agent's own private copy, not an operator selection: it is upgraded like the private install and selected as `node_modules/.bin/tinycloud`. A private or PATH CLI older than `1.6.6` is not reused: the installer upgrades its own copy in `~/.local/share/tinycloud/cli` and leaves a PATH CLI untouched. A newer CLI is never downgraded. It never installs into npm's global prefix. When /agent's helper is installed, the installer also saves its own selection in `~/.config/tinycloud/agent.env`, the one saved CLI location every skill reads; it never rewrites an operator's `TC_BIN`.
 
-**Codex sandbox:** If Codex's default sandbox blocks the CLI install because it cannot access the network or write outside the workspace, rerun the same CLI installation shell call once using the Codex tool's escalation arguments: `sandbox_permissions: "require_escalated"`, justification `Install the TinyCloud CLI and core skill`, and `yield_time_ms: 30000`. If escalation is unavailable or that attempt fails, stop and report the installation error. Do not ask the owner to restart Codex or rerun `/cli`.
+**Codex sandbox:** If Codex's sandbox blocks the CLI install (network or writes outside the workspace), tell the owner ("Codex blocked the install. Please approve my request to install the TinyCloud CLI."), then rerun the same shell call once with `sandbox_permissions: "require_escalated"`, justification `Install the TinyCloud CLI and core skill`, and `yield_time_ms: 30000`. If the owner declines, escalation is unavailable or it fails, stop and report the error. Don't ask the owner to restart Codex or rerun `/cli`.
 
 Optional, for Codex in workspace-write mode: if you trust the project, start Codex with `codex -c sandbox_workspace_write.network_access=true`. Commands Codex runs can then reach [any website](https://learn.chatgpt.com/docs/agent-approvals-security#network-access) without asking, so you'll see fewer network prompts. Your other sandbox and approval settings stay the same.
 
