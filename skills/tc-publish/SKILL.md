@@ -28,7 +28,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 ```
@@ -62,7 +62,8 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
 OPERATOR_BIN=${TC_BIN:-}; [ -z "$OPERATOR_BIN" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$OPERATOR_BIN" "$HOME/.local/share/tinycloud/cli" || OPERATOR_BIN=
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
+[ "$TC_BIN" != "$HOME/.local/share/tinycloud/npx/tinycloud" ] || { mkdir -p "${TC_BIN%/*}" && printf '#!/bin/sh\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@1.8.0 tinycloud "$@"\n' > "$TC_BIN" && chmod 700 "$TC_BIN"; }
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -74,14 +75,15 @@ if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
     else echo "CLI_OLDER $TC_VERSION $TC_BIN: this CLI is older than this skill needs. Stop and tell the owner what it printed."; exit 1; fi
   fi
 fi
-if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; follow https://agents.tinycloud.xyz/connect or set TC_BIN"
-elif "$TC_BIN" onboard --help >/dev/null 2>&1 \
+if "$TC_BIN" onboard --help >/dev/null 2>&1 \
   && "$TC_BIN" auth login --help | grep -q -- '--expiry'; then echo CLI_OK
 else echo STALE; fi
 [ -z "$TC_VERSION" ] || printf '%s\n' "$TC_VERSION"
 ```
 
-If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/connect for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.8.0`, so stop and tell the owner what it printed.
+If no CLI is found, the check writes `~/.local/share/tinycloud/npx/tinycloud`, which runs the pinned CLI with `npx`, and uses it as `TC_BIN`.
+
+If the block prints `STALE`, follow https://agents.tinycloud.xyz/connect for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.8.0`, so stop and tell the owner what it printed.
 
 ## 2. Sign in — only when there is no live session
 
@@ -96,7 +98,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -129,7 +131,7 @@ ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -256,7 +258,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -289,7 +291,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
@@ -320,7 +322,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -341,7 +343,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 id='<share id you recorded>'
@@ -361,7 +363,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 id='<share id you recorded>'
@@ -388,7 +390,7 @@ if [ -r "$ENV_HELPER" ]; then
   [ -n "${TC_BIN:-}" ] || TC_BIN=$(node "$ENV_HELPER" get TC_BIN)
   [ -n "${TC_OWNER_EMAIL:-}" ] || TC_OWNER_EMAIL=$(node "$ENV_HELPER" get TC_OWNER_EMAIL)
 fi
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN TC_OWNER_EMAIL
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 python3 - "$STATE/last-url" "<summary line without the URL>" <<'PY' \
@@ -404,7 +406,7 @@ PY
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 cat "$STATE/last-url"
@@ -414,7 +416,7 @@ cat "$STATE/last-url"
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 
 rm -f "$STATE/last-url" "$STATE/received" "$STATE/receive.err" "$STATE/publish.json" "$STATE/publish.err" \
@@ -467,7 +469,7 @@ Before publishing HTML, check that it is self-contained. Any `src`, `href` or CS
 
 ```sh
 umask 077; STATE="${TC_PUBLISH_STATE:-$HOME/.local/state/tc-publish}"
-[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud); }; export TC_BIN
+[ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 FILE='<absolute path of the file>'
 

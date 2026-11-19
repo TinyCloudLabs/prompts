@@ -147,6 +147,7 @@ const RESOLVER = [
   '  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi',
   'fi',
   'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
+  `[ -x "$TC" ] || [ "\${TC_BIN+x}" = x ] || { TC="$HOME/.local/share/tinycloud/npx/tinycloud"; mkdir -p "\${TC%/*}" && printf '#!/bin/sh\\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@${CLI_VERSION} tinycloud "$@"\\n' > "$TC" && chmod 700 "$TC"; }`,
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
 const COURIER_CONNECT_RESOLVER = `[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow ${SITE}/connect for this client or set TC_BIN" >&2; exit 1; }`;

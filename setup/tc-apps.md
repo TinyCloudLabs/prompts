@@ -38,6 +38,8 @@ Run each block as one shell tool call. Use the same `TC_BIN` and `TC_HOME` as on
 
 If CLI onboarding has not completed in this conversation, read and follow https://agents.tinycloud.xyz/connect for the current client, then return here with the owner's original request. Preserve an operator-provided `TC_BIN`; a missing or broken override stops setup.
 
+If `TC_BIN` is unset and no CLI is found, skip the shared CLI setup: skill §1 writes a launcher that runs the pinned CLI with `npx` and prints its path. Use that path as `<TC_BIN>`.
+
 ## 2. Carry on with the skill
 
 Read and follow https://agents.tinycloud.xyz/skills/apps.md for the owner's request. Follow its linked references in order and keep `TC_APPS_STATE` unchanged.

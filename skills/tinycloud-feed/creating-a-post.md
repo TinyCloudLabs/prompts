@@ -17,7 +17,8 @@ B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/
 if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
 O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$P" || O=
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
-[ -x "$B" ] || B=$(command -v tinycloud) || { echo 'TC_NOT_FOUND: set up the CLI at https://agents.tinycloud.xyz/cli, then rerun this block'; exit 1; }
+[ -x "$B" ] || B=$(command -v tinycloud) || B="$HOME/.local/share/tinycloud/npx/tinycloud"
+[ "$B" != "$HOME/.local/share/tinycloud/npx/tinycloud" ] || { mkdir -p "${B%/*}" && printf '#!/bin/sh\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@1.8.0 tinycloud "$@"\n' > "$B" && chmod 700 "$B"; }
 V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
 if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.8.0; keeping this operator-selected CLI"
@@ -26,7 +27,7 @@ if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$
 fi
 ```
 
-- `TC_NOT_FOUND` → follow that shared guide and return here.
+- If no CLI is found, the check writes `~/.local/share/tinycloud/npx/tinycloud`, which runs the pinned CLI with `npx`, and uses it as `TC_BIN`.
 - `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: stop and tell the owner what it printed.
 - `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.8.0`, and stop.
 
