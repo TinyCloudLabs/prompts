@@ -9,7 +9,7 @@ Your agent publishes a document or web page from your computer to your own TinyC
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it. Share this with TinyCloud.`
 - You need a shell, Node.js 20 or later, and npm. An agent that can't run the TinyCloud CLI can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
 - **What it does:** asks you before it makes the link, publishes, and returns the link.
-- **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one OpenKey link your agent sends you. There's nothing to send back.
+- **You approve:** standing publish access to your share folders, for the duration you choose, up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one OpenKey link your agent sends you. There's nothing to send back.
 - **It asks first.** Anyone with the link can open it, so the agent makes one only after you say yes. If you say no, nothing is published and the file stays on your computer.
 - **Undo:** see [Undo](#undo).
 
@@ -54,7 +54,7 @@ Media type is inferred from the extension: `md`/`markdown`, `txt`, `html`/`htm`,
 
 ### 3. Publish, with an expiry
 
-Always pass `--expires` and tell the owner the date. Links use 24h unless the owner says otherwise. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
+Always pass `--expires` and tell the owner the date. Links use 24h unless the owner says otherwise. The value can't pass the signed session's end and can't be under 60 seconds (`SESSION_LIFETIME_EXCEEDED`). The owner's approval lasts for the duration they chose, up to 30 days ([CLI reference](https://agents.tinycloud.xyz/skills/cli/REFERENCE.md)).
 
 Publish only through the skill's §3 link block (`skills/tc-publish/SKILL.md`). It uses `--expires 24h` unless the owner asks otherwise; the `SESSION_LIFETIME_EXCEEDED` row in the skill's errors table covers an expiry past the session's end. Run EXACTLY that block; do not write your own `share publish` command.
 

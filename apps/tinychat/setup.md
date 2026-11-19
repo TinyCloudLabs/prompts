@@ -6,7 +6,7 @@
 
 - **What it does:** your agent answers questions about the meetings TinyChat has already synced, such as recaps, follow-ups and what was said, citing the transcript.
 - **Paste into any agent that can run the TinyCloud CLI** (for example Claude Code, Codex or OpenCode): `Fetch https://agents.tinycloud.xyz/chat with curl and follow it. How did my last meeting go?`
-- **You approve:** TinyCloud onboarding if this computer isn't set up yet, then at most one OpenKey link that lets your agent read your TinyChat meeting list and transcripts for 30 days. Send your agent the short code OpenKey shows.
+- **You approve:** TinyCloud onboarding if this computer isn't set up yet, then at most one OpenKey link that lets your agent read your TinyChat meeting list and transcripts for up to 30 days. Send your agent the short code OpenKey shows.
 - **Undo:** delete the skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. §6 below has both.
 
 ## For the agent
@@ -53,7 +53,7 @@ If the caller supplied separate app context with an `expectedOwner`, write it to
 
   In OpenCode, `tinychat_authorize` with no arguments returns the link, and `tinychat_authorize` with `code` takes the code.
 
-The owner can open the link on any device, their phone included. Each code works once and expires after 5 minutes; if it's refused, run `authorize` again and send the new link. The approval lets the agent read the owner's TinyChat meeting list and transcripts for 30 days.
+The owner can open the link on any device, their phone included. Each code works once and expires after 5 minutes; if it's refused, run `authorize` again and send the new link. The approval lets the agent read the owner's TinyChat meeting list and transcripts for up to 30 days.
 
 If the user requested setup or login only, stop at the ready result. Otherwise resume the original task now.
 
@@ -93,7 +93,7 @@ On a later visit, run the available helper's `prepare` again (in OpenCode, `tiny
 **Undo, for the owner.** Two steps:
 
 1. **Remove the skill:** delete its folder, `$HOME/.agents/skills/tinychat-retrieval` for Codex and OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tinychat-retrieval` for Claude Code. Codex and OpenCode share `~/.agents/skills`, so removal there affects both.
-2. **End access sooner, if you want:** every approval ends on its own after 30 days. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations.
+2. **End access sooner, if you want:** every approval ends on its own after the duration you chose, up to 30 days. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations.
 
 Neither step touches other skills or the shared `tinycloud-cli` skill.
 

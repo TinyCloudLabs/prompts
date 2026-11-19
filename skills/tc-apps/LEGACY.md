@@ -77,7 +77,7 @@ TC_BIN='<TC_BIN>'; umask 077
 
 - The first line must be `1.8.0` or newer. Otherwise follow the CLI-version rule in `SKILL.md` §1.
 - The list prints `"keys"` → you're signed in. The keys are the catalog: `<R>/catalog/<app>` for each app and `<R>/catalog/<app>/<kind>` for each of its kinds. `"keys": []` means there are no apps yet.
-- `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the 30 days are over) → §4.
+- `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the approval duration is over) → §4.
 - `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or more powerful sign-in, `--replace-session` or `tc space host`.
 - The last line is the fast copy's state (§7). Carry on whatever it says:
   - `"state": "present"` → the fast copy is signed in.
@@ -105,7 +105,7 @@ Its first line is `Approve on your phone: <link> (code <code>)`; the CLI needs a
 
 The message, with the link and code from that line:
 
-> Open <link> and approve the request on OpenKey. It should show the code <code>. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for 30 days. Approve it, then tell me.
+> Open <link> and approve the request on OpenKey. It should show the code <code>. It lets the agents on this computer keep your records under `xyz.tinycloud.agent-data/` for up to 30 days. Approve it, then tell me.
 
 When the command exits, its output ends with JSON:
 - `"authenticated": true` and `"declined": []` → run §3 again, then carry on with the request.
@@ -220,7 +220,7 @@ For example, with the shell, never the file-read tool:
 The CLI prints `{"error":{"code":…}}` on stderr. Branch on the code:
 - `NOT_FOUND` (exit 4) on `get` → there's no record there.
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED` or `PERMISSION_DENIED` → §4.
-- `ERROR` with "persisted SIWE is expired": the 30 days are over. For profile `agent-data` → §4; for `agent-data-sql` → `LEGACY-SQL.md` §7.
+- `ERROR` with "persisted SIWE is expired": the approval duration is over. For profile `agent-data` → §4; for `agent-data-sql` → `LEGACY-SQL.md` §7.
 - `AUTH_UNAUTHORIZED` → if the key starts with `xyz.tinycloud.agent-data/` and has no `?`, `#`, space or non-ASCII letter, the sign-in has expired or lost its scope: §4. Otherwise fix the key.
 - `NETWORK_ERROR` → TinyCloud didn't answer, even after `<TC_BIN>`'s own retries. Run the command once more. If it fails again, tell the owner that TinyCloud isn't reachable right now. Ignore the error's hint to switch profiles: the profiles are right.
 - `DEVICE_AUTH_EXPIRED` → nobody approved within 10 minutes. Tell the owner, and run §4 again only when they ask.

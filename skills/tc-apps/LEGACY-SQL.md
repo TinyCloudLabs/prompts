@@ -4,7 +4,7 @@ Part of the `tc-apps` skill's legacy mode: read `SKILL.md` and `LEGACY.md` first
 
 - **Profile:** `agent-data-sql`, separate from `agent-data`.
 - **Sign-in:** the agent runs the sign-in commands. The owner approves on OpenKey, then pastes the code back to the agent in chat; 1b finishes the sign-in.
-- **Lifetime:** 30 days.
+- **Lifetime:** the duration chosen at approval, up to 30 days.
 - **Reach:** the grant names one database, but TinyCloud's node also lets it open the space's other SQL databases. The owner accepted this. Always pass exactly `--db xyz.tinycloud.agent-data.index`, never a longer or different name.
 
 Run the blocks as `SKILL.md` says: literal `<TC_BIN>` and `<STATE>` from its §1, values filled into `'<…>'`. Keep the SQL in double quotes, exactly as written. Only `$` needs a backslash: write it `\$`, and leave `%` and every other character as it is. Put every option before `--`, and the SQL after it.
@@ -30,7 +30,7 @@ grep -o 'https*://[^ ]*/delegate?[^ ]*' "$STATE/sql-login.err" | head -n 1; grep
 
 - **The link, then `waiting for the code`** → expected: the CLI is waiting for the owner's code. After your answer, add, with `<N>` the number of records you just read:
 
-  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for 30 days. Approve, then paste the code back to me here in chat. I'll finish the sign-in.
+  > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for up to 30 days. Approve, then paste the code back to me here in chat. I'll finish the sign-in.
 
   If §3 showed the index `expired`, say instead: "The fast, searchable copy of your records needs a new approval; approvals last 30 days." Then give the same instructions.
 
@@ -164,7 +164,7 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
 
 ## 7. Lifetime and errors
 
-- **The index session lasts 30 days.** `LEGACY.md` §3's `context` shows `"state": "present"` while it's valid, and `"expired"` afterwards. While it's expired, writes mark kinds behind (§3), and reads use KV. The next time an answer needs many records, ask for a new approval with §1.
+- **The index session lasts for the duration chosen at approval, up to 30 days.** `LEGACY.md` §3's `context` shows `"state": "present"` while it's valid, and `"expired"` afterwards. While it's expired, writes mark kinds behind (§3), and reads use KV. The next time an answer needs many records, ask for a new approval with §1.
 - **`AUTH_UNAUTHORIZED` ending in `tinycloud.sql/schema`** → the owner unchecked the schema permission (§1b). Everything except §2 still works.
 - **`SQL_ERROR` "no such table" or "no such view"** → run §2, then §6 for every kind.
 - **`SQL_PERMISSION_DENIED`** → the statement type isn't allowed: rewrite it with `SELECT` or `WITH`.

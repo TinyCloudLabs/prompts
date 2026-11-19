@@ -8,7 +8,7 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 > Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it. Set me up with TinyCloud.
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
+- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for the time you choose on the approval screen, up to 30 days. The second lets it see which spaces and apps you have, read-only, for the time you choose on the approval screen, up to 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
@@ -85,7 +85,7 @@ Run it exactly as written; don't pipe it through `tail`, `head` or a filter; rea
 
 **Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.** The owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve, then tell me." Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval. Before the first link, say this text word for word:
 
-> I'll set up TinyCloud so I can act for you. OpenKey (openkey.so) is TinyCloud's sign-in service, where you approve my access. Your apps, like a todo list or meal log, keep their data in TinyCloud spaces you control. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days. Each approval names what it covers, and you can end it any time at account.tinycloud.xyz/delegations.
+> I'll set up TinyCloud so I can act for you. OpenKey (openkey.so) is TinyCloud's sign-in service, where you approve my access. Your apps, like a todo list or meal log, keep their data in TinyCloud spaces you control. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data; then let me see which spaces and apps you have, read-only. On each screen you choose how long the approval lasts, up to 30 days. Each approval names what it covers, and you can end it any time at account.tinycloud.xyz/delegations.
 
 When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message. When it shows a link you already sent, don't send it again; run the block again on the owner's next message. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
 
@@ -146,4 +146,4 @@ For this link-based `auth request --grant`, use the shared table's persistent-se
 
 ## Undo
 
-For the owner. Every approval ends on its own after 30 days. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations. `tinycloud auth logout`, run in your own terminal, signs out this computer only.
+For the owner. Every approval ends on its own at the time you chose on the approval screen. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations. `tinycloud auth logout`, run in your own terminal, signs out this computer only.
