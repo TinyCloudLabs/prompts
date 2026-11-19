@@ -561,7 +561,7 @@ Branch on `code`, never on the exit status alone: exit 8 means "still pending" o
 
 ## 6. Lifecycle
 
-- **Expiry:** the session lasts up to 30 days from approval. `"$TC_BIN" --profile "$PROFILE" context --json` shows `session.expiresAt`. Before it ends, renew by running §3b to §3d with the same names; the owner approves again.
+- **Expiry:** the session lasts for the time shown on the approval screen. `"$TC_BIN" --profile "$PROFILE" context --json` shows `session.expiresAt`. Before it ends, renew by running §3b to §3d with the same names; the owner approves again.
 - **More secrets:** run §2 for the new names, then §3b to §3d with the full list. A request that adds names and lasts at least as long needs no extra flag.
 - **Replace:** only the owner replaces a secret, in Secret Manager. When an existing secret doesn't work, give the owner the page from `"$TC_BIN" secrets manage <NAME> --no-open --json` (its `url`), say what failed, and stop.
 - **Stop reading:** `"$TC_BIN" --profile "$PROFILE" auth logout` clears the local session. The approval stays valid on TinyCloud until it expires, so tell the owner that.
@@ -574,6 +574,6 @@ Send **one** message. Fill in the placeholders, and keep only the paragraphs tha
 >
 > *(add link)* Add the missing ones here: <add link>. You enter each value on that page; names that are already in your vault show "Already in your vault". Never send a value to me.
 >
-> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for up to 30 days. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve; tell me when you're done. There's no code to send back.
+> *(approval link)* To let me read them, open <approval link> and sign in with the account that owns those secrets. It lets the `<profile>` profile on this machine read only those named secrets for the time shown on the approval screen. It also lets that profile decrypt with your default TinyCloud encryption network, which is how those secrets are opened. That decrypt permission isn't limited to these names, but this profile can only fetch the secrets named here. OpenKey also shows a required "Check your TinyCloud permissions" item. Leave every item ticked and approve; tell me when you're done. There's no code to send back.
 >
 > Only you can add or approve this. Only do it if you asked me for this just now.

@@ -102,7 +102,7 @@ Approve in the browser; the waiting CLI collects the result. There is no manual 
 
 Good to know:
 - **Your records stay the truth.** The index is only a copy, and the agent rebuilds the parts that fall behind.
-- **When the index expires** after 30 days, everything keeps working, more slowly, until you approve it again.
+- **When the index expires** after the duration chosen at approval, everything keeps working, more slowly, until you approve it again.
 - **Don't rely on the database name as a boundary.** The approval names one database, but TinyCloud's node can also open other SQL databases in the same space. The agent only ever uses that app's index.
 - **Approval is bound to the requesting CLI.** Keep the entire short URL intact; another device can open it, but the CLI that made the request verifies the result.
 

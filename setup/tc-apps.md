@@ -60,7 +60,7 @@ The skill's own codes come first; the shared table covers the rest. Its owner li
 
 ## Undo
 
-Access expires on the date shown at approval: onboarding and new app grants normally use 30 days; the older narrow Health Log grant uses 7 days. Revoke access at https://account.tinycloud.xyz/delegations to end it sooner. Local logout is not revocation.
+Access expires on the date shown at approval: onboarding and new app grants last up to 30 days; the older narrow Health Log grant uses 7 days. Revoke access at https://account.tinycloud.xyz/delegations to end it sooner. Local logout is not revocation.
 
 For the agent: identify the selected profile before undoing anything. A shared onboarding profile serves multiple apps: explain that scope before logging it out. Stop only still-running commands for that profile that you started in this conversation, using their recorded live sessions or PIDs, and observe their exit before logout; never kill by process name or pattern.
 

@@ -3,7 +3,7 @@
 Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read blocks and the errors. The context app keeps what the owner told an agent, so the next agent they use, in any client, can carry on without being told again: facts about them, how they like things done, decisions made in a task, and a short handoff at the end of a task.
 
 - **App:** `context`. Its key root is `xyz.tinycloud.tinyapps.context/` in the owner's `applications` space, written `<C>/` below.
-- **Profile and approval:** use the profile returned by `SKILL.md` §3's app-context check; it may reuse the selected onboarding profile or use `tinyapp-context` when scoped sign-in is needed. A scoped approval grants only `<C>/` and this app's exact discovery entry, `xyz.tinycloud.tinyapps.catalog/context/entry`, for 30 days.
+- **Profile and approval:** use the profile returned by `SKILL.md` §3's app-context check; it may reuse the selected onboarding profile or use `tinyapp-context` when scoped sign-in is needed. A scoped approval grants only `<C>/` and this app's exact discovery entry, `xyz.tinycloud.tinyapps.catalog/context/entry`, for up to 30 days.
 - **Layout:** always the new layout. Skip `SKILL.md` §1a's first line for this app; use the selected `TC_BIN` from `SKILL.md` §1.
 - **Who reads it:** every agent the owner uses, and any agent that reads the owner's context sends it to the company that runs its AI model. So it holds low-sensitivity facts and preferences only (§1).
 
@@ -78,7 +78,7 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 **What the list says:**
 - `"keys"` → read as above. `"keys": []` → nothing saved yet; don't mention it unless asked.
 - `PROFILE_NOT_FOUND` → the context app isn't approved on this computer. Before a first answer, carry on and say nothing. For a request that needs context, such as "remember …" or "what's my …", get its approval (`SKILL.md` §4 with `context`), then list again.
-- `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED`, or "persisted SIWE is expired" → the 30 days are over. Before a first answer: answer the request, then add one line, once per session: "Your TinyCloud context approval has ended; say "renew my context" when you want it back." For a request that needs context: `SKILL.md` §4 with `context`.
+- `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED`, or "persisted SIWE is expired" → the approval duration is over. Before a first answer: answer the request, then add one line, once per session: "Your TinyCloud context approval has ended; say "renew my context" when you want it back." For a request that needs context: `SKILL.md` §4 with `context`.
 - `SPACE_NOT_HOSTED` or `NETWORK_ERROR` → follow `SKILL.md` §1a, §3 and §8. Don't hold up a request that doesn't need context.
 
 **"Continue" or "pick up where I left off":** take the `handoff/` keys from the list. If the owner named the task, use the handoff whose slug matches it; otherwise get the newest: the keys sort by date, so get the ones with the latest date and use the one with the latest `at`. Say in one line which task you're picking up, then go on from its `next`.

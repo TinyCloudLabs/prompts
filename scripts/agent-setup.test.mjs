@@ -85,7 +85,7 @@ const cliOwnerIntro = `Send the owner this message, then the link:
 > I'll set up TinyCloud so I can act for you. You'll approve two screens in OpenKey, TinyCloud's sign-in service:
 > 1. Sign in, then let me read, change and delete your apps' data.
 > 2. Let me see which spaces and apps you have, read-only.
-> On each screen you choose how long the approval lasts, from one hour up to 30 days. You can end either approval at account.tinycloud.xyz/delegations.`;
+> On each screen you choose how long the approval lasts, up to 30 days. You can end either approval at account.tinycloud.xyz/delegations.`;
 const cliRouteOn = "When it prints `\"onboarded\": true` or `Onboarded:`, fetch the guide for the owner's request and follow it: records, meals, weight, workouts or todos, https://agents.tinycloud.xyz/apps; sharing, https://agents.tinycloud.xyz/share; publishing, https://agents.tinycloud.xyz/publish; API keys or secrets, https://agents.tinycloud.xyz/secrets; meetings, https://agents.tinycloud.xyz/chat; the Feed, https://agents.tinycloud.xyz/feed; another person's agent, https://agents.tinycloud.xyz/courier; anything else, https://agents.tinycloud.xyz/setup (skip its /onboarding step: that's done).";
 const existingClients = ["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes"];
 

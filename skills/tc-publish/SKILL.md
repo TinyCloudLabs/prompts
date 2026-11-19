@@ -117,7 +117,7 @@ rm -f "$STATE/context.json" "$STATE/context.err"
 - `SESSION: missing` / `expired` / `unknown-expiry` → run the sign-in below.
 - `SETUP_FAILED` → stop and report. Never run `profile delete`.
 
-**The sign-in.** Run it when there is no live session. It is one approval; later runs reuse the saved session, up to 30 days. The approval is tied to this profile's key, which the check above creates (`init --name "$PROFILE" --key-only`; say nothing to the owner about it), so use the same `--profile "$PROFILE"` in every call.
+**The sign-in.** Run it when there is no live session. It is one approval; later runs reuse the saved session for the duration chosen at approval, up to 30 days. The approval is tied to this profile's key, which the check above creates (`init --name "$PROFILE" --key-only`; say nothing to the owner about it), so use the same `--profile "$PROFILE"` in every call.
 
 The block writes the sign-in's permission list to `$STATE/share-publishing.json` (links only: the capability read OpenKey requires and the three share folders in `default`; no decryption, which links don't use) and starts `auth login`. `auth login` prints an OpenKey link on stderr, then keeps running, checking OpenKey every 2 seconds, until the owner approves. It never returns a pending result (it has no `--timeout`): it ends only with the approval or with an error. No code is involved; never ask the owner for one.
 
