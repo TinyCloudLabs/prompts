@@ -309,6 +309,33 @@ ${setup}`, { HOME: dir, PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin
   assert.doesNotMatch(renderedBlocks, /\bonboard\b/);
 });
 
+// test-ruling: TC-3278 whole-site install cleanup
+test("served Courier surfaces never route to /connect or invoke onboard from a shell block", () => {
+  const site = join(root, "_site");
+  const skillRoot = join(site, "skills/courier");
+  const surfaces = new Map([
+    ["courier", readFileSync(join(site, "courier"), "utf8")],
+    ["skills/courier.md", readFileSync(join(site, "skills/courier.md"), "utf8")],
+  ]);
+  for (const file of readdirSync(skillRoot, { recursive: true })) {
+    const path = join(skillRoot, file);
+    if (statSync(path).isFile()) surfaces.set(`skills/courier/${file}`, readFileSync(path, "utf8"));
+  }
+  const full = readFileSync(join(site, "llms-full.txt"), "utf8");
+  for (const source of ["courier", "skills/courier.md"]) {
+    const marker = `---\nSource: https://agents.tinycloud.xyz/${source}\n---\n`;
+    const section = full.split(marker)[1];
+    assert.ok(section, `llms-full: missing ${source}`);
+    surfaces.set(`llms-full:${source}`, section.split(/\n\n---\nSource: /)[0]);
+  }
+  for (const [name, text] of surfaces) {
+    assert.doesNotMatch(text, /\/connect(?:[./?#\s)]|$)/, `${name}: /connect route`);
+    for (const match of text.matchAll(/```(?:bash|sh|shell)\n([\s\S]*?)\n```/g)) {
+      assert.doesNotMatch(match[1], /\bonboard(?:\s|$)/, `${name}: onboard shell command`);
+    }
+  }
+});
+
 // Automatic pickup runs one exact pre-release of the standalone Courier through
 // npx's home prefix. The served page is read, so the test exercises the rendered pin.
 test("Courier automatic pickup runs the watcher's exact pinned Courier through npx", () => {

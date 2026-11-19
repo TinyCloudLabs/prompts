@@ -149,6 +149,8 @@ const RESOLVER = [
   'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+const COURIER_CONNECT_RESOLVER = `[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow ${SITE}/connect for this client or set TC_BIN" >&2; exit 1; }`;
+const COURIER_GUIDE_RESOLVER = `[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow ${SITE}/courier or set TC_BIN" >&2; exit 1; }`;
 // Courier's setup section is published inside its skill as well as this guide.
 const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
   .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
@@ -523,6 +525,7 @@ async function loadSkill(skill) {
     });
   }
   if (skill.short === "courier") {
+    let routeMatches = 0;
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
       let text = body.toString("utf8");
@@ -534,9 +537,15 @@ async function loadSkill(skill) {
           return block.replace(/\n/, `\n${RESOLVER}\n`).replace(commands, '$1"$TC"');
         });
       }
+      const matches = text.split(COURIER_CONNECT_RESOLVER).length - 1;
+      routeMatches += matches;
+      if (matches) text = text.replaceAll(COURIER_CONNECT_RESOLVER, COURIER_GUIDE_RESOLVER);
       if (text !== body.toString("utf8")) changed.add(path);
       return [path, Buffer.from(text)];
     });
+    if (routeMatches !== 1) {
+      throw new Error(`courier: served Markdown must contain the missing-CLI /connect route exactly once; found ${routeMatches}`);
+    }
   }
   if (BASE !== SITE) {
     files = files.map(([path, body]) => {
