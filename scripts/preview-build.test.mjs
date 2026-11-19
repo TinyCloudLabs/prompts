@@ -144,22 +144,22 @@ test("the owner-facing HTML pages leave the read-raw line out", () => {
 });
 
 
-// The set-up example is /onboarding's own prompt, word for word: the front page's first card, llms.txt's
-// first ability and its /onboarding guide entry.
-const SET_UP = (base) => `Fetch ${base}/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.`;
-test("the front page and llms.txt open with a set-up example, /onboarding's own prompt", () => {
-  assert.equal(SET_UP(SITE), "Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.");
+// The set-up example is /connect's own prompt, word for word: the front page's first card, llms.txt's
+// first ability and its /connect guide entry.
+const SET_UP = (base) => `Fetch ${base}/connect.md with curl and follow it. Set me up with TinyCloud.`;
+test("the front page and llms.txt open with /connect's set-up example", () => {
+  assert.equal(SET_UP(SITE), "Fetch https://agents.tinycloud.xyz/connect.md with curl and follow it. Set me up with TinyCloud.");
   for (const [site, base] of [[production, SITE], [preview, PREVIEW]]) {
     const prompt = SET_UP(base);
-    assert.ok(readFileSync(join(site, "onboarding.md"), "utf8").includes(`\n> ${prompt}\n`), `${base}/onboarding.md`);
+    assert.ok(readFileSync(join(site, "connect.md"), "utf8").includes(`\n> ${prompt}\n`), `${base}/connect.md`);
     const index = readFileSync(join(site, "index.html"), "utf8");
     const card = index.split('<ul class="abilities">\n')[1].split("</li>")[0];
-    assert.match(card, /<h3><a href="\/onboarding">Set up TinyCloud<\/a><\/h3>/, base);
+    assert.match(card, /<h3><a href="\/connect">Set up TinyCloud<\/a><\/h3>/, base);
     assert.ok(card.includes(`<p>Try: <code>${prompt}</code></p>`), `${base}/index.html: ${card}`);
     const llms = readFileSync(join(site, "llms.txt"), "utf8").split("\n");
     const firstAbility = llms[llms.indexOf("## Abilities") + 2];
-    assert.ok(firstAbility.startsWith(`- [Set up TinyCloud](${base}/onboarding): `) && firstAbility.endsWith(` Example prompt: "${prompt}"`), `${base}/llms.txt: ${firstAbility}`);
-    const guide = llms.find((line) => line.startsWith("- [") && line.includes(`](${base}/onboarding): `) && llms.indexOf(line) > llms.indexOf("## Guides"));
+    assert.ok(firstAbility.startsWith(`- [Set up TinyCloud](${base}/connect): `) && firstAbility.endsWith(` Example prompt: "${prompt}"`), `${base}/llms.txt: ${firstAbility}`);
+    const guide = llms.find((line) => line.startsWith("- [") && line.includes(`](${base}/connect): `) && llms.indexOf(line) > llms.indexOf("## Guides"));
     assert.ok(guide?.endsWith(` Example prompt: "${prompt}"`), `${base}/llms.txt: ${guide}`);
   }
 });

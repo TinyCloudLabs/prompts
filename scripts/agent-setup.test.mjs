@@ -76,6 +76,7 @@ test("published helper install refuses a linked directory or installed helper", 
   const dir = home();
   const target = join(dir, "other");
   mkdirSync(target, { mode: 0o755 });
+  chmodSync(target, 0o755);
   const config = join(dir, ".config");
   mkdirSync(config, { mode: 0o700 });
   symlinkSync(target, join(config, "tinycloud"));
@@ -237,23 +238,75 @@ test("feed skill is listed and its published relative reference resolves", () =>
   ));
 });
 
-test("/connect sends an agent that can run the CLI to /onboarding and gives each MCP app its own steps", () => {
-  const site = join(root, "_site");
-  const markdown = readFileSync(join(site, "connect.md"), "utf8");
-  const html = readFileSync(join(site, "connect.html"), "utf8");
-  const coding = markdown.split("\n## Agents that can run the CLI (preferred)\n")[1].split("\n## ChatGPT\n")[0];
-  assert.ok(coding.includes("Any agent that can install and run the TinyCloud CLI"));
-  for (const guide of ["onboarding", "apps", "secrets", "publish", "chat", "courier", "setup"]) {
-    assert.ok(coding.includes(`](https://agents.tinycloud.xyz/${guide})`), `Markdown routes to /${guide}`);
-    assert.ok(html.includes(`href="https://agents.tinycloud.xyz/${guide}"`), `HTML routes to /${guide}`);
+const minimalClients = new Map([
+  ["claude-code", { title: "Set up TinyCloud in Claude Code", use: "Use this page only in Claude Code." }],
+  ["codex", { title: "Set up TinyCloud in Codex", use: "Use this page only in Codex." }],
+  ["opencode", { title: "Set up TinyCloud in OpenCode", use: "Use this page only in OpenCode." }],
+  ["gemini-cli", { title: "Set up TinyCloud in Gemini CLI", use: "Use this page for Gemini CLI only. Antigravity is a different client." }],
+  ["grok-bot", { title: "Set up TinyCloud in Grok Bot", use: "Use this page only in Grok Bot with a persistent terminal." }],
+  ["cli", { title: "Set up TinyCloud in another CLI agent", use: "Use this page only in a CLI-capable agent without a named TinyCloud page." }],
+]);
+const existingClients = ["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes"];
+
+test("/connect is a short router to every named client page", () => {
+  const router = readFileSync(join(root, "_site/connect.md"), "utf8");
+  assert.ok(Buffer.byteLength(router) <= 4_500, `${Buffer.byteLength(router)} bytes`);
+  for (const client of [...minimalClients.keys()].filter((name) => name !== "cli").concat(existingClients)) {
+    assert.ok(router.includes(`https://agents.tinycloud.xyz/connect/${client}.md`), client);
   }
-  for (const [app, id] of [["Grok", "grok"], ["Grok Bot", "grok-bot"], ["Perplexity", "perplexity"], ["Gemini", "gemini"], ["Meta Muse", "meta-muse"]]) {
-    const section = markdown.split(`\n## ${app}\n`)[1]?.split("\n## ")[0];
-    assert.ok(section, `${app} section`);
-    assert.match(section, /`https:\/\/mcp\.tinycloud\.xyz\/mcp`/);
-    assert.match(section, /OAuth/);
-    assert.match(section, /\(#approve-access-and-continue\)/);
-    assert.match(html, new RegExp(`<h2 id="${id}">`));
+  assert.ok(router.includes("https://agents.tinycloud.xyz/connect/cli.md"));
+});
+
+test("root and /connect client links resolve to matching HTML and Markdown guides", () => {
+  const site = join(root, "_site");
+  const index = readFileSync(join(site, "index.html"), "utf8");
+  const router = readFileSync(join(site, "connect.md"), "utf8");
+  const clients = [...minimalClients.keys(), ...existingClients].sort();
+  const indexClients = [...index.matchAll(/href="\/connect\/([^"]+)"/g)].map((match) => match[1]).sort();
+  const routerClients = [...router.matchAll(/\]\(https:\/\/agents\.tinycloud\.xyz\/connect\/([a-z-]+)\.md\)/g)].map((match) => match[1]).sort();
+  assert.deepEqual(indexClients, clients);
+  assert.deepEqual(routerClients, clients);
+  for (const client of clients) {
+    const markdown = readFileSync(join(site, "connect", `${client}.md`), "utf8");
+    const html = readFileSync(join(site, "connect", `${client}.html`), "utf8");
+    const title = markdown.match(/^# (.+)$/m)?.[1];
+    assert.ok(title, `${client}: Markdown title`);
+    assert.ok(html.includes(`<h1 id=`) && html.includes(`>${title}</h1>`), `${client}: HTML title`);
+    assert.equal(
+      readFileSync(join(root, "functions/connect", `${client}.js`), "utf8"),
+      `import { htmlOrMarkdown } from "../../scripts/page-negotiation.mjs";\n\nexport const onRequest = htmlOrMarkdown("/connect/${client}");\n`,
+      `${client}: extensionless HTML handler`,
+    );
+  }
+});
+
+test("each new CLI page is a minimal progressive entry with validated literal commands", () => {
+  for (const [route, expected] of minimalClients) {
+    const text = readFileSync(join(root, "_site/connect", `${route}.md`), "utf8");
+    const nonblank = text.split("\n").filter((line) => line.trim());
+    assert.ok(nonblank.length <= 9, `${route}: ${nonblank.length} nonblank lines`);
+    assert.ok(Buffer.byteLength(text) <= 1_500, `${route}: ${Buffer.byteLength(text)} bytes`);
+    for (const line of [
+      `# ${expected.title}`,
+      expected.use,
+      "The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.",
+      "`npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.6.6 tinycloud onboard --timeout 1s`",
+      "Follow what it prints.",
+      "Wherever it says `tinycloud`, run `npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.6.6 tinycloud` instead.",
+      "Then continue the owner's request.",
+    ]) assert.ok(text.includes(`\n${line}\n`) || text.endsWith(`\n${line}\n`), `${route}: ${line}`);
+    const source = readFileSync(join(root, "setup/connect", `${route}.md`), "utf8");
+    assert.equal(source.split("@{{CLI_VERSION}}").length - 1, 2, `${route}: version token`);
+    assert.doesNotMatch(text.split("\n").slice(1).join("\n"), /\b(?:curl|sudo)\b|install\.js/, `${route}: install mechanics`);
+    if (route === "grok-bot") assert.ok(text.includes("Before you run anything, tell the owner that [Grok Bot shares command-line credentials across their Bots](https://docs.x.ai/grok-bot/computer-and-apps#one-computer-shared-by-all-your-bots)."));
+    assert.doesNotMatch(text, /\bPATH\b|\bpermissions?\b|--version|TC_ACTION|--check|install-cli|needs-install|blocked|retry/i, route);
+  }
+});
+
+test("hosted split pages route their CLI names to the new entry pages", () => {
+  for (const [hosted, cli] of new Map([["claude", "claude-code"], ["gemini", "gemini-cli"], ["grok", "grok-bot"]])) {
+    const text = readFileSync(join(root, "_site/connect", `${hosted}.md`), "utf8");
+    assert.ok(text.includes(`https://agents.tinycloud.xyz/connect/${cli}.md`), hosted);
   }
 });
 
@@ -312,14 +365,12 @@ test("a failed optional core-skill install is reported without blocking CLI onbo
   assert.match(result.stdout, /ONBOARD_READY/);
 });
 
-test("a full storage sends the owner to the storage page from /connect, tc-apps and tc-publish", () => {
+test("a full storage sends the owner to the storage page from tc-apps and tc-publish", () => {
   const site = join(root, "_site");
   const storage = "https://account.tinycloud.xyz/storage";
   const lines = (file) => readFileSync(join(site, file), "utf8").split("\n");
-  const approve = readFileSync(join(site, "connect.md"), "utf8").split("\n## Approve access and continue\n")[1].split("\n### ")[0];
   const errors = (file) => lines(file).slice(lines(file).indexOf("## 8. Errors"));
   for (const [file, rows] of [
-    ["connect.md", approve.split("\n")],
     ["skills/apps/SKILL.md", errors("skills/apps/SKILL.md")],
     ["skills/apps/LEGACY.md", errors("skills/apps/LEGACY.md")],
     ["skills/publish/SKILL.md", lines("skills/publish/SKILL.md")],
@@ -329,7 +380,7 @@ test("a full storage sends the owner to the storage page from /connect, tc-apps 
     assert.ok(row[0].includes(storage), file);
     assert.match(row[0], /[Dd]on't retry|Do not retry/, file);
   }
-  const guides = readdirSync(site, { recursive: true }).filter((file) => /^(connect\.md|skills\/(apps|publish|secrets|feed)\/.*\.md)$/.test(file));
+  const guides = readdirSync(site, { recursive: true }).filter((file) => /^skills\/(apps|publish|secrets|feed)\/.*\.md$/.test(file));
   assert.ok(guides.includes("skills/apps/QUICKSTART.md") && guides.includes("skills/publish/SKILL.md"));
   for (const file of guides) assert.doesNotMatch(readFileSync(join(site, file), "utf8"), /account\.tinycloud\.xyz\/billing/, file);
 });
@@ -844,10 +895,3 @@ test("Courier skill instructions retain the production invitation viewer origin"
   }
 });
 
-test("/connect's coding route sends context requests to /apps", () => {
-  const markdown = readFileSync(join(root, "_site", "connect.md"), "utf8");
-  const coding = markdown.split("\n## Agents that can run the CLI (preferred)\n")[1].split("\n## ChatGPT\n")[0];
-  const context = coding.split("\n").filter((line) => line.startsWith("**Context:**"));
-  assert.equal(context.length, 1);
-  assert.ok(context[0].includes("](https://agents.tinycloud.xyz/apps)"), context[0]);
-});

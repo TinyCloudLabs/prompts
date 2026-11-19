@@ -13,7 +13,7 @@ Claude web, Desktop and mobile use the hosted custom connector with OpenKey OAut
 
 For Team/Enterprise, the workspace owner may first need **Organization settings → Connectors → Add → Custom → Web**. Claude documents one custom connector for Free accounts. See [Claude's custom-connector instructions](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) and [OAuth behavior](https://claude.com/docs/connectors/building/authentication). This is a custom connector, not a claim of directory approval. Do not enable “Always allow” writing tools unless the owner wants that policy.
 
-**Claude Code:** fetch [CLI onboarding](https://agents.tinycloud.xyz/onboarding.md), not these chat-connector steps. Its task guides install skills with `--agent claude-code` into `~/.claude/skills` (or `CLAUDE_CONFIG_DIR`). Keep the original task and follow [CLI task routing](https://agents.tinycloud.xyz/connect/cli).
+**Claude Code:** fetch its [one-page quickstart](https://agents.tinycloud.xyz/connect/claude-code.md), not these chat-connector steps. Keep the original task.
 
 {{std:connect-hosted}}
 
