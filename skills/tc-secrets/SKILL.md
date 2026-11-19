@@ -493,7 +493,7 @@ Both patterns read the secret inside a subshell, so the value never stays in you
 **Default:** one command, no file left behind. If a tool needs the value in a file only for that one run, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command.
 
 **A file that stays** is allowed when the owner asks for one, or when a tool or service can only read the secret from a file (for example a daemon's config or credentials file). Then:
-- Write it with `umask 077`, mode 0600, owned by the account that will read it. You never run `sudo`. If another account must own the file, write nothing: give the owner the command under the example to run themselves.
+- Write it with `umask 077`, mode 0600, owned by the account that will read it. You never run `sudo`. If another account must own the file, write nothing and stop (see below).
 - Pipe the value straight from `"$TC_BIN" --profile "$PROFILE" secrets get NAME --raw` into the file. Never print or echo it, and never pass it as a command-line argument.
 - Before writing, check the path isn't inside a git work tree, or is git-ignored there: `git -C "$(dirname <path>)" check-ignore -q <path>` must succeed, or `git -C "$(dirname <path>)" rev-parse` must fail.
 - Don't copy the file anywhere else.
@@ -522,11 +522,9 @@ fi
 
 The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place.
 
-For another account, don't write the file and never run `sudo`. Send the owner this command to run in their own terminal. Fill in `<tinycloud>` (the path in `$TC_BIN`), `<profile>` (`$PROFILE`), `NAME` (the secret's name), `<user>` and `<path>`; the secret's value is never in it:
+For another account, don't write the file and never run `sudo`. Stop and tell the owner, filling in `<path>` and `<user>`:
 
-```sh
-( set -o pipefail; "<tinycloud>" --profile "<profile>" secrets get NAME --raw | sudo install -o <user> -m 600 /dev/stdin "<path>.tmp" ) && sudo mv -f "<path>.tmp" "<path>"
-```
+> I didn't write `<path>`. It has to belong to `<user>`, and this session can't create files for another account. Tell me if `<path>` can belong to this account instead, or choose another place for it.
 
 ## Exit codes and owner lines
 

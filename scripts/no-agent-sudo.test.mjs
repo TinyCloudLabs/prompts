@@ -1,5 +1,5 @@
-// An agent never runs sudo. The one fenced command that names it is the line the Secrets skill tells the agent to
-// send the owner for a key file another account must own; every other shell block in a skill or guide has none.
+// An agent never runs sudo, and no skill or guide shows a shell block that names it: where another account must own a
+// file, the Secrets skill says to stop and tell the owner.
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -16,7 +16,7 @@ function markdownFiles(dir) {
   });
 }
 
-// Fenced blocks as { before: the paragraph just above, body }.
+// The body of each fenced block.
 function fencedBlocks(text) {
   const blocks = [];
   const lines = text.split("\n");
@@ -24,29 +24,26 @@ function fencedBlocks(text) {
     if (!/^```/.test(lines[i])) continue;
     let end = i + 1;
     while (end < lines.length && !/^```/.test(lines[end])) end++;
-    let before = i - 1;
-    while (before >= 0 && lines[before].trim() === "") before--;
-    blocks.push({ before: lines[before] ?? "", body: lines.slice(i + 1, end).join("\n") });
+    blocks.push(lines.slice(i + 1, end).join("\n"));
     i = end;
   }
   return blocks;
 }
 
-test("the only shell block that names sudo is the command the Secrets skill has the agent send the owner", () => {
+test("no shell block in a skill or guide names sudo", () => {
   const found = [];
   for (const dir of ["skills", "setup", "standard"]) {
     for (const file of markdownFiles(join(ROOT, dir))) {
       for (const block of fencedBlocks(readFileSync(file, "utf8"))) {
-        if (/\bsudo\b/.test(block.body)) found.push({ file: relative(ROOT, file), ...block });
+        if (/\bsudo\b/.test(block)) found.push(relative(ROOT, file));
       }
     }
   }
-  assert.deepEqual(found.map((block) => block.file), ["skills/tc-secrets/SKILL.md"]);
-  assert.match(found[0].before, /Send the owner this command to run in their own terminal/);
-  assert.match(found[0].before, /never run `sudo`/);
+  assert.deepEqual(found, []);
 });
 
-test("the Secrets skill says the agent never runs sudo and points the other-account case at the owner", () => {
+test("the Secrets skill says the agent never runs sudo and, for another account's file, stops and tells the owner", () => {
   const skill = readFileSync(join(ROOT, "skills/tc-secrets/SKILL.md"), "utf8");
-  assert.match(skill, /You never run `sudo`\. If another account must own the file, write nothing: give the owner the command/);
+  assert.match(skill, /You never run `sudo`\. If another account must own the file, write nothing and stop \(see below\)\./);
+  assert.match(skill, /> I didn't write `<path>`\. It has to belong to `<user>`, and this session can't create files for another account\./);
 });
