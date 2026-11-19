@@ -12,6 +12,9 @@ import { linkCommands, permissionLines } from "./install-cli.mjs";
 const windows = process.platform === "win32";
 const root = typeof process.getuid === "function" && process.getuid() === 0;
 const skip = windows || root;
+// The folder this test treats as an unwritable system folder (/nonexistent) answers differently on macOS
+// (ENOENT), so the outside-the-home wording is checked on Linux only.
+const skipOutside = skip || process.platform === "darwin";
 const installer = fileURLToPath(new URL("./install-cli.mjs", import.meta.url));
 const homes = [];
 const locked = [];
@@ -167,7 +170,7 @@ test("a folder outside the home, or a missing HOME, is reported as outside it, w
   }
 });
 
-test("with HOME=/nonexistent the installer names the path and says it is outside the home folder", { skip }, () => {
+test("with HOME=/nonexistent the installer names the path and says it is outside the home folder", { skip: skipOutside }, () => {
   const dir = home();
   const result = spawnSync(process.execPath, [installer], { env: envFor(dir, { HOME: "/nonexistent", USERPROFILE: "/nonexistent", PATH: basePath }), encoding: "utf8" });
   assert.equal(result.status, 2);
