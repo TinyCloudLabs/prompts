@@ -309,7 +309,12 @@ async function main() {
     updated.push(dest);
     console.log(`SKILL_INSTALLED ${skill.name} ${skill.version} ${dest}`);
   }
-  const readers = targets.map((t) => t.readers.join(", ")).join("; ");
+  // Each client once: Amp, Hermes and OpenClaw have a folder of their own as well as the shared one.
+  const listed = new Set();
+  const readers = targets
+    .map((t) => t.readers.filter((label) => !listed.has(label) && listed.add(label)).join(", "))
+    .filter(Boolean)
+    .join("; ");
   console.log(
     scope === "project"
       ? `SKILL_SCOPE project: only sessions started inside ${project} can use it (installed for ${readers}). --scope user installs it for every folder on this computer account.`

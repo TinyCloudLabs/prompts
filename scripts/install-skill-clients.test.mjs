@@ -101,6 +101,17 @@ test("clients that share a folder get one copy; Claude Code gets its own", async
   assert.match(scope, /installed for Claude Code; Codex, Gemini CLI, OMP\)/);
 });
 
+test("a client with a folder of its own as well as the shared one is named once in the scope line", async () => {
+  for (const [agent, label] of [["amp", "Amp"], ["hermes", "Hermes"], ["openclaw", "OpenClaw"]]) {
+    const result = await run(["--agent", agent]);
+    assert.equal(result.code, 0, result.err.join("\n"));
+    const scope = result.out.find((line) => line.startsWith("SKILL_SCOPE "));
+    assert.ok(scope.includes(`(installed for ${label}). `), scope);
+  }
+  const mixed = await run(["--agent", "hermes,codex"]);
+  assert.ok(mixed.out.find((line) => line.startsWith("SKILL_SCOPE ")).includes("(installed for Hermes, Codex)."));
+});
+
 test("OpenClaw gets the shared copy and a copy in its state folder, which OPENCLAW_STATE_DIR moves", async () => {
   const result = await run(["--agent", "openclaw"]);
   assert.deepEqual(installed(result), [join(home, ".agents", "skills", "demo"), join(home, ".openclaw", "skills", "demo")]);
