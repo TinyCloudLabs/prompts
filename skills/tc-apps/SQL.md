@@ -152,7 +152,7 @@ Rebuild when §4 finds a kind behind, and for every kind after the first sign-in
 
 ## 7. Lifetime and errors
 
-- **The index session lasts for the duration chosen at approval, up to 30 days.** `SKILL.md` §3's `context` shows `"state": "present"` while it's valid, and `"expired"` afterwards. While it's expired, writes mark kinds behind (§3), and reads use KV. The next time an answer needs many records, ask for a new approval with §1.
+- **The index session lasts for the duration chosen at approval, up to 30 days.** `SKILL.md` §3's `context` shows `"state": "present"` while it's valid (`"renewed"` if its renewal is running: treat it the same), and `"expired"` afterwards. While it's expired, writes mark kinds behind (§3), and reads use KV. The next time an answer needs many records, ask for a new approval with §1.
 - **`AUTH_UNAUTHORIZED` ending in `tinycloud.sql/schema`** → the owner unchecked the schema permission (§1b). Everything except §2 still works.
 - **`SQL_ERROR` "no such table" or "no such view"** → run §2, then §6 for every kind.
 - **`SQL_PERMISSION_DENIED`** → the statement type isn't allowed: rewrite it with `SELECT` or `WITH`.

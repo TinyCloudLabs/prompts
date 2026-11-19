@@ -136,8 +136,9 @@ export function appContext(cli, app, { write = false, remove = false, sql = fals
     selectedHost ||= context.host;
     const selected = { profile: profile.name, ownerDid, host: context.host, spaceId: context.spaceId };
     const missing = missingPermissions(profile, context.spaceId, required);
-    if (!fallback?.ownerDid) fallback = { status: profile.authenticated && context.session?.state === "present" ? "grant-required" : "sign-in-required", ...selected, missing };
-    if (!profile.authenticated || context.session?.state !== "present" || missing.length) continue;
+    const live = ["present", "renewed"].includes(context.session?.state);
+    if (!fallback?.ownerDid) fallback = { status: profile.authenticated && live ? "grant-required" : "sign-in-required", ...selected, missing };
+    if (!profile.authenticated || !live || missing.length) continue;
     // Metadata is not proof of access. A failed read is not a reason to create
     // another profile or ask for a broader approval.
     if (sql) {

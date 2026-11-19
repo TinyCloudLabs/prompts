@@ -80,7 +80,7 @@ TC_BIN='<TC_BIN>'; umask 077
 - `PROFILE_NOT_FOUND`, `AUTH_REQUIRED`, `AUTH_EXPIRED`, `AUTH_UNAUTHORIZED` or `PERMISSION_DENIED` from the list, or `ERROR` with "persisted SIWE is expired" (the approval duration is over) → §4.
 - `SPACE_NOT_HOSTED` → a new account's `default` space is still being set up in the background after sign-in. Tell the owner "Your TinyCloud is still being set up…", then rerun only the command that failed, after 5, 10, 20, 40 and 60 seconds (about 2¼ minutes in all), stopping as soon as it succeeds. If it still fails, tell the owner plainly that their TinyCloud space isn't ready yet and to try again in a few minutes, and stop. Never make up a `/delegate` link, a second or more powerful sign-in, `--replace-session` or `tc space host`.
 - The last line is the fast copy's state (§7). Carry on whatever it says:
-  - `"state": "present"` → the fast copy is signed in.
+  - `"state": "present"` or `"renewed"` (its renewal is running) → the fast copy is signed in. Below, `present` means either.
   - `"state": "expired"` → it exists, but needs a new approval.
   - `PROFILE_NOT_FOUND` → there's no fast copy yet. That's normal, not an error.
 
