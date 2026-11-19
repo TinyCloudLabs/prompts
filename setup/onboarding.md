@@ -45,7 +45,7 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Read and follow https://agents.tinycloud.xyz/connect for the current client, then return to step 2 here. Keep the selected CLI command from that flow and replace `<TC_BIN>` in each shell block with it; separate tool calls need not share shell variables.
+**1. The CLI.** Read and follow https://agents.tinycloud.xyz/connect for the current client, then return to step 2 here. Keep the selected CLI command from that flow and replace `<TC_BIN>` in each shell block with it; separate tool calls don't need to share shell variables.
 
 ```sh
 TC='<TC_BIN>'
@@ -127,7 +127,7 @@ Fetch the guide for what the owner asked for yourself and follow it from the sta
 | Let you work with another person's agent | [/courier](courier.md) |
 | Something not listed here | The ability list at [/setup](README.md) |
 
-With MCP, use the connected TinyCloud tools for the goal. The hosted MCP has no meeting tools yet, so meetings use the CLI route. For meetings, or anything else the tools don't cover, tell the owner it needs an agent that can run the TinyCloud CLI.
+For meetings, or anything else the connected tools don't cover, tell the owner it needs an agent that can run the TinyCloud CLI.
 
 ### Asking for more later
 

@@ -36,7 +36,7 @@
 - Courier (`tinycloud courier …`): Courier 0.5.2 exits only 0, 1, 2 or 8; exit 6 is not a Courier code. Codes are command-specific; follow the Courier guide. For `init --request`, exit 0 may still create and print an approval link; follow every stderr `Next:` line by the shared relay rule, regardless of the exit code. For `init --wait`, exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.
 - Link-based CLI `auth request --grant` (without `--paste`) has no `--timeout` and blocks until the approval is resolved; it does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply. Send the complete short URL on its own line as soon as it appears; then wait for the owner's next message and read the command's final output. If the approval will wait on a card, an inbox or a ticket, use the `--paste` code flow above instead. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption.
 - TinyChat (`tinychat-retrieval`): it reports statuses, not these codes, and still asks for the code OpenKey shows. The TinyChat guide says how.
-- Installers and helper scripts (`install-cli.mjs`, `agent-env.mjs`, the apps skill's `.sh` helpers) have their own exit codes, listed where they run. For example, `layout.sh` exits 3 when `jq` is missing.
+- Helper scripts (`agent-env.mjs`, the apps skill's `.sh` helpers) have their own exit codes, listed where they run. For example, `layout.sh` exits 3 when `jq` is missing.
 
 <!-- std:connect-hosted -->
 ## Approve access, then finish the request
@@ -68,7 +68,7 @@ For `SPACE_NOT_HOSTED`, follow the [new-account guidance](https://agents.tinyclo
 <!-- std:connect-cli -->
 ## CLI route: continue with the right skill
 
-**Only for a runtime using the CLI route:** keep the original request, owner, profile and host. Fetch [onboarding](https://agents.tinycloud.xyz/onboarding.md) raw and follow it in this conversation, including its CLI installer and actual OpenKey approval links. Do not copy an old sign-in URL, request credentials in chat, overwrite an existing profile or broaden permissions to make a check pass. Existing grants are reused; missing task-specific access follows the relevant guide. If you chose the remote MCP alternative above, follow its hosted workflow instead of these installation steps.
+**Only for a runtime using the CLI route:** keep the original request, owner, profile and host. Fetch [onboarding](https://agents.tinycloud.xyz/onboarding.md) raw and follow it in this conversation, including its actual OpenKey approval links. Do not copy an old sign-in URL, request credentials in chat, overwrite an existing profile or broaden permissions to make a check pass. Existing grants are reused; missing task-specific access follows the relevant guide. If you chose the remote MCP alternative above, follow its hosted workflow instead of the CLI route.
 
 | Original request | Guide and skill |
 | --- | --- |

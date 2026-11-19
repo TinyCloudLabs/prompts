@@ -24,99 +24,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 Read and follow https://agents.tinycloud.xyz/connect for the current client, then return here with the owner's original task. Preserve an operator-provided `TC_BIN`; a missing or broken override stops setup. Do not change a conflicting `tc` or sign in yet.
 
-### 2. Non-secret owner defaults
-
-The file `~/.config/tinycloud/agent.env` holds only `TC_BIN`, `TC_OWNER_DID` and `TC_OWNER_EMAIL`. It is **data**, not shell code. Every skill call reads it through a fixed allowlist parser; process variables take precedence. `TC_AGENT_ENV` selects a different file on a multi-owner host. Role profiles and state directories are not shared defaults. `TC_HOME` is the *home root* to which the CLI appends `.tinycloud`.
-
-Install the parser from this page's pinned site build once. Preview builds rewrite the URL in the block to their own host. Do not replace an existing different file without the operator's consent. The download stays in a private temporary directory under the target directory; activation is an atomic rename of the exact file name, not `ln`'s directory-target behavior.
-
-```sh
-{ set +x; } 2>/dev/null; umask 077
-node --input-type=module - <<'NODE' || exit 1
-import { createHash } from "node:crypto";
-import { closeSync, constants, fchmodSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, isAbsolute, join } from "node:path";
-
-const dir = join(process.env.HOME, ".config/tinycloud");
-const source = "https://agents.tinycloud.xyz/agent-env.mjs";
-const pin = "14c83d53b18a4760e682599971cc12798d1cc09d1f85531f6ddfae3f21fe1587";
-const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const safeLocation = (saved) => {
-  const now = lstatSync(dir);
-  if (!now.isDirectory() || now.isSymbolicLink() || now.dev !== saved.dev || now.ino !== saved.ino) throw Error("changed directory");
-};
-try {
-  if (!isAbsolute(dir)) throw Error("relative home");
-  let parent = "/";
-  for (const part of dir.split("/").filter(Boolean)) {
-    parent = join(parent, part);
-    try { mkdirSync(parent, { mode: 0o700 }); }
-    catch (error) { if (error.code !== "EEXIST") throw error; }
-    const stat = lstatSync(parent);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error("linked directory");
-  }
-  const mode = lstatSync(dir);
-  if (mode.uid !== process.getuid() || (mode.mode & 0o777) !== 0o700) throw Error("unsafe directory");
-  // cwd pins the directory for relative rename and cleanup on macOS and Linux.
-  // A same-UID actor swapping a parent before chdir retains full user access (P3).
-  process.chdir(dir);
-  const saved = statSync(".");
-  let existing;
-  try { existing = openSync("agent-env.mjs", constants.O_RDONLY | constants.O_NOFOLLOW); }
-  catch (error) { if (error.code !== "ENOENT") throw error; }
-  if (existing !== undefined) {
-    try {
-      const stat = fstatSync(existing);
-      if (!stat.isFile() || stat.uid !== process.getuid() || (stat.mode & 0o777) !== 0o600 ||
-        hash(readFileSync(existing)) !== pin) throw Error("different helper");
-    } finally { closeSync(existing); }
-  } else {
-    const temp = basename(mkdtempSync(".agent-env."));
-    process.chdir(temp);
-    let activated = false;
-    try {
-      const response = await fetch(source);
-      if (!response.ok) throw Error("download failed");
-      const bytes = Buffer.from(await response.arrayBuffer());
-      if (hash(bytes) !== pin) throw Error("checksum mismatch");
-      const fd = openSync("helper", constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
-      try { fchmodSync(fd, 0o600); writeFileSync(fd, bytes); }
-      finally { closeSync(fd); }
-      // rename(2) replaces a late symlink entry itself, never its directory target.
-      renameSync("helper", "../agent-env.mjs");
-      activated = true;
-      safeLocation(saved);
-    } catch (error) {
-      if (activated) unlinkSync("../agent-env.mjs");
-      throw error;
-    } finally {
-      try { unlinkSync("helper"); } catch (error) { if (error.code !== "ENOENT") throw error; }
-      process.chdir("..");
-      rmdirSync(temp);
-    }
-  }
-  safeLocation(saved);
-} catch {
-  console.error("AGENT_ENV_HELPER_CONFLICT");
-  process.exitCode = 1;
-}
-NODE
-node "$HOME/.config/tinycloud/agent-env.mjs" set TC_BIN "${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
-```
-
-Check only the field needed for this task before asking: `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_OWNER_DID` for Secrets. Publish/share needs no owner field. Exit 1 means absent; exit 2 means invalid. Do not read the entire file.
-
-For **Secrets**, ask once for the address of the account that holds the requested secrets, as shown in Secret Manager, if no valid `TC_OWNER_DID` exists. Do not guess it. A reply from the owner resumes this same setup, not a fresh request. Use the parser with the owner-supplied value for that field only, never with a secret:
-
-```sh
-{ set +x; } 2>/dev/null; umask 077
-H="$HOME/.config/tinycloud/agent-env.mjs"
-node "$H" set TC_OWNER_DID 'did:pkh:eip155:1:0x<owner-address>'
-```
-
-Replace the example with the owner's answer. The parser writes a 0600 file in a 0700 directory, rejects secret-looking keys and never executes file content. Do not echo or copy `agent.env` into a transcript. If the owner doesn't provide the required identity, stop with one `NEEDS_OWNER` message naming the missing non-secret field, not a grant request.
-
-### 3. The one action guide
+### 2. The one action guide
 
 Read and follow exactly one page for the selected action, keeping the owner's original request:
 
@@ -134,6 +42,3 @@ The action skill's own codes come first; the shared table covers the rest, and i
 
 {{std:errors}}
 
-## Remove setup
-
-Remove `~/.config/tinycloud/agent-env.mjs` and `agent.env` (or the selected `TC_AGENT_ENV` file) if the operator no longer wants their non-secret defaults. Removing setup does not revoke any previously approved delegation, remove a local profile, or rotate a provider credential. Each action guide gives its separate local cleanup and revoke limitations.

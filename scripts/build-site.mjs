@@ -380,14 +380,6 @@ const ABILITIES = [
 ];
 
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
-// The setup guide pins the parser the agent installs. A stale pin would serve
-// a different executable than the one the guide tells agents to trust.
-const envHelperHash = sha256(readFileSync(join(ROOT, "scripts/agent-env.mjs")));
-const envGuide = readFileSync(join(ROOT, "setup/agent.md"), "utf8");
-const envPins = [...envGuide.matchAll(/(?:const pin = )"([a-f0-9]{64})"/g)].map((match) => match[1]);
-if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
-  throw new Error("setup/agent.md agent-env.mjs pin differs from served helper");
-}
 
 // Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
 // package's version (`@tinycloud/cli 1.6.6`, `@tinycloud/cli@1.6.6`) names the pin. Markdown is served as

@@ -45,7 +45,7 @@ Keep the owner's original request and any incoming invitation URL exactly as sup
 
 ## Read the Courier skill
 
-Read and follow this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md), then set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
+Read and follow the Courier [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md), then set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
 
 ## Check the CLI
 
@@ -75,7 +75,7 @@ done
 export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 ```
 
-`SKILL_MISSING courier` means the required skill has not been read: read the two files above, set `COURIER_SKILL=read`, then rerun the block. The other checks are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the CLI's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
+`SKILL_MISSING courier` means the required skill has not been read: read the two files above, set `COURIER_SKILL=read`, then rerun the block. The other checks are version/help probes only. The later commands use the CLI's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
 
 ## Incoming invitation takes priority
 

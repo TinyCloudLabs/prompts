@@ -2,25 +2,15 @@
 
 # Connect Hermes to TinyCloud
 
-Use TinyCloud CLI when Hermes has a persistent terminal backend that can install and run it. Keep skills, the selected CLI and the owner profile in that execution environment.
+Use TinyCloud CLI when Hermes has a persistent terminal backend that can run it. Keep the selected CLI and owner profile in that execution environment.
 
 ## Preferred CLI route
 
-Fetch [onboarding](https://agents.tinycloud.xyz/onboarding.md) raw and follow it without asking the owner to repeat the task. Use TinyCloud's `--agent codex` skill installation into `~/.agents/skills`.
-
-Hermes normally discovers skills in `~/.hermes/skills`. [Hermes documents external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills#external-skill-directories): merge this into `~/.hermes/config.yaml` without replacing existing entries, then confirm the skill appears in `hermes skills list` and load it with `skill_view`:
-
-```yaml
-skills:
-  external_dirs:
-    - ~/.agents/skills
-```
-
-Use the active Hermes profile/backend's home, not a different machine's path. Read the original installed skill; do not rewrite it into a Hermes imitation or copy credentials into a skill.
+Read and follow https://agents.tinycloud.xyz/connect for the current client without asking the owner to repeat the task.
 
 ## Native remote MCP alternative
 
-When CLI installation is unavailable but Hermes native HTTP OAuth is supported, merge the following into the active `~/.hermes/config.yaml`:
+When the CLI cannot run but Hermes native HTTP OAuth is supported, merge the following into the active `~/.hermes/config.yaml`:
 
 ```yaml
 mcp_servers:
