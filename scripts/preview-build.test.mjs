@@ -72,6 +72,17 @@ test("a preview's skills send agents to the preview, not production, under match
   }
 });
 
+// Repository-root files are public unless the builder excludes them explicitly.
+const ROOT_FILES_ALLOWED_IN_SITE = ["prompt.txt"];
+test("test-ruling: only explicitly allowed repository-root files reach the site", () => {
+  const rootFilesInSite = readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && existsSync(join(production, entry.name)))
+    .map((entry) => entry.name)
+    .sort();
+  assert.deepEqual(rootFilesInSite, ROOT_FILES_ALLOWED_IN_SITE);
+  assert.ok(!existsSync(join(production, "AGENTS.md")));
+});
+
 // Shared blocks are expanded from standard/blocks.md and expanded skills are listed as changed.
 test("a production build serves the repository's skills byte for byte, pointing at production", () => {
   assert.ok(readFileSync(join(production, "skills/apps.md"), "utf8").includes(`${SITE}/onboarding`));
