@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const skip = process.platform === "win32" || (typeof process.getuid === "function" && process.getuid() === 0);
+// /nonexistent and /usr answer differently on macOS (ENOENT, or a sealed system volume): the outside-the-home wording is checked on Linux only.
+const skipOutside = skip || process.platform === "darwin";
 const work = mkdtempSync(join(realpathSync(tmpdir()), "install-skill-perm-"));
 const home = join(work, "home");
 const agents = join(home, ".agents");
@@ -61,7 +63,7 @@ test("an unwritable ~/.agents names the folder and the cause, then says the CLI 
   assert.equal(existsSync(join(agents, "skills")), false);
 });
 
-test("a skills folder outside the home, as with HOME=/nonexistent, is reported as outside it, with no command", { skip }, async () => {
+test("a skills folder outside the home, as with HOME=/nonexistent, is reported as outside it, with no command", { skip: skipOutside }, async () => {
   const result = await run("/nonexistent");
   assert.equal(result.code, 1);
   assert.equal(result.out[1], "SKILL_CAUSE this user can't write to /, which is outside the home folder");
@@ -69,7 +71,7 @@ test("a skills folder outside the home, as with HOME=/nonexistent, is reported a
   assert.deepEqual(instructions(result.out), []);
 });
 
-test("a ~/.agents that is a link to a system folder is reported as outside the home, with no command", { skip }, async () => {
+test("a ~/.agents that is a link to a system folder is reported as outside the home, with no command", { skip: skipOutside }, async () => {
   const linked = join(work, "linked-home");
   mkdirSync(linked);
   symlinkSync("/usr", join(linked, ".agents"));
