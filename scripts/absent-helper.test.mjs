@@ -1,4 +1,5 @@
 // test-ruling: TC-3278 whole-site install cleanup
+// test-ruling: task-guide pinned npx fallback replaces the publish/apps missing-CLI expectations (2026-11-19)
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
@@ -54,8 +55,25 @@ const run = (script, fixture, extra = {}) => spawnSync("sh", ["-c", script], {
 });
 
 const calls = (fixture) => existsSync(fixture.calls) ? readFileSync(fixture.calls, "utf8") : "";
+const addNpx = (fixture) => {
+  const bin = join(fixture.dir, "bin");
+  mkdirSync(bin);
+  const npx = join(bin, "npx");
+  writeFileSync(npx, `#!/bin/sh
+echo "$*" >> ${JSON.stringify(fixture.calls)}
+shift 6
+case "$*" in
+  --version) echo 1.8.0 ;;
+  "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
+  "onboard --help") exit 0 ;;
+  "auth login --help") echo '--owner --expiry' ;;
+esac
+`, { mode: 0o700 });
+  return `${bin}:/usr/bin:/bin`;
+};
 
-test("publish preamble uses process variables without agent.env and reports a missing CLI", () => {
+
+test("publish preamble uses process variables without agent.env and falls back to the pinned npx command", () => {
   const script = block("skills/tc-publish/SKILL.md", "## 1. Check the CLI");
   const selected = fresh();
   const ok = run(script, selected, { TC_BIN: selected.cli, TC_OWNER_EMAIL: "owner@example.com" });
@@ -63,10 +81,12 @@ test("publish preamble uses process variables without agent.env and reports a mi
   assert.match(ok.stdout, /^CLI_OK$/m);
   assert.equal(calls(selected), "--version\nonboard --help\nauth login --help\n");
 
-  const missing = fresh();
-  const stopped = run(script, missing);
-  assert.equal(stopped.status, 0, stopped.stderr);
-  assert.match(stopped.stdout, /TC_NOT_FOUND/);
+  const fallback = fresh();
+  const used = run(script, fallback, { PATH: addNpx(fallback) });
+  assert.equal(used.status, 0, used.stderr);
+  assert.match(used.stdout, /^CLI_OK$/m);
+  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.8.0 tinycloud`;
+  assert.equal(calls(fallback), `${prefix} --version\n${prefix} onboard --help\n${prefix} auth login --help\n`);
 });
 
 test("Courier preamble uses process TC_BIN without agent.env and falls back to the pinned npx command", () => {
@@ -77,16 +97,7 @@ test("Courier preamble uses process TC_BIN without agent.env and falls back to t
   assert.equal(calls(selected), "--version\ncourier --help\n");
 
   const fallback = fresh();
-  const npx = join(fallback.dir, "npx");
-  writeFileSync(npx, `#!/bin/sh
-echo "$*" >> ${JSON.stringify(fallback.calls)}
-shift 6
-case "$*" in
-  --version) echo 1.8.0 ;;
-  "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
-esac
-`, { mode: 0o700 });
-  const used = run(script, fallback, { PATH: `${fallback.dir}:/usr/bin:/bin` });
+  const used = run(script, fallback, { PATH: addNpx(fallback) });
   assert.equal(used.status, 0, used.stderr);
   const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.8.0 tinycloud`;
   assert.equal(calls(fallback), `${prefix} --version\n${prefix} courier --help\n`);
@@ -101,7 +112,7 @@ test("onboarding uses its selected command without agent.env", () => {
   assert.match(result.stdout, /NEXT: onboarding is done/);
 });
 
-test("apps preamble uses process TC_BIN without agent.env and reports an unset CLI", () => {
+test("apps preamble uses process TC_BIN without agent.env and falls back to the pinned npx command", () => {
   const script = block("skills/tc-apps/SKILL.md", "## 1. Read the paths and the time");
   const selected = fresh();
   const ok = run(script, selected, { TC_BIN: selected.cli });
@@ -109,10 +120,12 @@ test("apps preamble uses process TC_BIN without agent.env and reports an unset C
   assert.match(ok.stdout, new RegExp(selected.cli.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(calls(selected), "--version\n");
 
-  const missing = fresh();
-  const stopped = run(script, missing);
-  assert.equal(stopped.status, 0, stopped.stderr);
-  assert.match(stopped.stdout, /^TC_BIN is unset$/m);
+  const fallback = fresh();
+  const used = run(script, fallback, { PATH: addNpx(fallback) });
+  assert.equal(used.status, 0, used.stderr);
+  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.8.0 tinycloud`;
+  assert.match(used.stdout, new RegExp(join(fallback.home, ".local/share/tinycloud/npx/tinycloud").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal(calls(fallback), `${prefix} --version\n`);
 });
 
 test("Secrets preamble uses process variables without agent.env and reports a missing owner DID", () => {

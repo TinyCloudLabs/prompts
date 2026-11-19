@@ -88,8 +88,7 @@ if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
     else echo "CLI_OLDER $TC_VERSION $TC_BIN: this CLI is older than this skill needs. Stop and tell the owner what it printed."; exit 1; fi
   fi
 fi
-if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; follow https://agents.tinycloud.xyz/connect or set TC_BIN"
-elif [ -x "$TC_BIN" ] && "$TC_BIN" secrets get --help 2>/dev/null | grep -q -- '--raw' \
+if [ -x "$TC_BIN" ] && "$TC_BIN" secrets get --help 2>/dev/null | grep -q -- '--raw' \
    && "$TC_BIN" auth login --help 2>/dev/null | grep -q -- '--owner' \
    && "$TC_BIN" secrets wait --help 2>/dev/null | grep -q -- '--timeout' \
    && "$TC_BIN" secrets request --help 2>/dev/null | grep -q -- '--requester'; then echo CLI_OK
@@ -101,7 +100,7 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 If no CLI is found, the check writes `~/.local/share/tinycloud/npx/tinycloud`, which runs the pinned CLI with `npx`, and uses it as `TC_BIN`.
 
 - `CLI_OK` and `OWNER_OK` → continue with §2.
-- `TC_NOT_FOUND` or `STALE` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/connect, then return to this same task.
+- `STALE` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/connect, then return to this same task.
 - `OWNER_UNSET` → `NEEDS_OWNER`: ask once for the account address shown in Secret Manager, set `TC_OWNER_DID` for every skill shell call, then return to this same task. Do not ask for a secret value or start a broad grant.
 - `CLI_OLDER <version> <path>` (the block stops before any other TinyCloud command) → the CLI is older than `1.8.0`: stop and tell the owner what it printed.
 - `TC_OLDER <version> <path>` → the operator selected that older CLI: keep it, tell the operator once that `1.8.0` is required, and continue with what this block reports. The line after `CLI_OK` or `STALE` is the CLI version.

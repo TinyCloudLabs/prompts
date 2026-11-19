@@ -118,7 +118,7 @@ test("no served guide sends an agent to /cli when TC_BIN is unset", () => {
   const agent = served("agent");
   assert.match(agent, /If `TC_BIN` is unset and no CLI is found, skip the shared CLI setup: the skill's first check writes a launcher that runs the pinned CLI with `npx`\./);
   assert.match(served("apps"), /If `TC_BIN` is unset and no CLI is found, skip the shared CLI setup: skill §1 writes a launcher/);
-  assert.match(served("courier"), /If there's no executable at all, skip the CLI setup: the next check writes a launcher/);
+  assert.match(served("courier"), /If no CLI is found, skip the CLI setup: the next check writes a launcher/);
 });
 
 test("every npx form in the served guides carries the pinned version and nothing resolves a moving tag", () => {
@@ -158,50 +158,24 @@ test("the launcher keeps the caller's folder, so relative paths in arguments sti
   assert.equal(pwds().at(-1), cwd);
 });
 
-// A project folder must not steer the launcher: its node_modules/@tinycloud/cli (at the pinned version, so npx would
-// accept it) and its .npmrc registry are both ignored. Needs the real npx and the npm registry; skipped without them.
-const real = (() => {
-  const dir = mkdtempSync(join(tmpdir(), "npx-real-"));
-  const found = spawnSync("/bin/sh", ["-c", "for c in npm npx; do command -v $c; done"], { encoding: "utf8" }).stdout.trim().split("\n");
-  if (found.length !== 2) return null;
-  symlinkSync(process.execPath, join(dir, "node"));
-  for (const path of found) symlinkSync(path, join(dir, path.split("/").at(-1)));
-  const probeHome = join(dir, "home");
-  const probeProject = join(dir, "project");
-  const probePkg = join(probeProject, "node_modules/@tinycloud/cli");
-  mkdirSync(probeHome);
-  mkdirSync(join(probePkg, "bin"), { recursive: true });
-  mkdirSync(join(probeProject, "node_modules/.bin"));
-  writeFileSync(join(probePkg, "package.json"), JSON.stringify({ name: "@tinycloud/cli", version: CLI_VERSION, bin: { tinycloud: "bin/t.js" } }));
-  writeFileSync(join(probePkg, "bin/t.js"), '#!/usr/bin/env node\nconsole.log("DECOY");\n');
-  chmodSync(join(probePkg, "bin/t.js"), 0o755);
-  symlinkSync("../@tinycloud/cli/bin/t.js", join(probeProject, "node_modules/.bin/tinycloud"));
-  writeFileSync(join(probeProject, "package.json"), '{"name":"project","version":"1.0.0"}\n');
-  writeFileSync(join(probeProject, ".npmrc"), "registry=http://127.0.0.1:9/\n");
-  const env = { ...process.env, HOME: probeHome, TMPDIR: dir, PATH: `${dir}:/usr/bin:/bin` };
-  const ping = spawnSync("npm", ["view", `@tinycloud/cli@${CLI_VERSION}`, "version"], { encoding: "utf8", timeout: 30000, env });
-  if (ping.status !== 0 || ping.stdout.trim() !== CLI_VERSION) return null;
-  const probe = spawnSync("npx", ["--prefix", dir, "-y", "-p", `@tinycloud/cli@${CLI_VERSION}`, "tinycloud", "--version"], { cwd: probeProject, encoding: "utf8", timeout: 120000, env });
-  return probe.status === 0 && probe.stdout.trim() === CLI_VERSION ? dir : null;
-})();
-
-test("a project's node_modules copy and .npmrc registry do not steer the launcher", { skip: real ? false : "needs npx and the npm registry" }, () => {
-  const dir = mkdtempSync(join(tmpdir(), "npx-decoy-"));
-  const home = join(dir, "home");
-  const project = join(dir, "project");
+test("a project-local CLI and registry do not steer the launcher", () => {
+  const { home, bin, calls } = sandbox();
+  const project = join(dirname(home), "project");
   const pkg = join(project, "node_modules/@tinycloud/cli");
-  mkdirSync(home);
   mkdirSync(join(pkg, "bin"), { recursive: true });
-  mkdirSync(join(project, "node_modules/.bin"));
   writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@tinycloud/cli", version: CLI_VERSION, bin: { tinycloud: "bin/t.js" } }));
   writeFileSync(join(pkg, "bin/t.js"), '#!/usr/bin/env node\nconsole.log("DECOY");\n');
   chmodSync(join(pkg, "bin/t.js"), 0o755);
-  symlinkSync("../@tinycloud/cli/bin/t.js", join(project, "node_modules/.bin/tinycloud"));
   writeFileSync(join(project, "package.json"), '{"name":"project","version":"1.0.0"}\n');
   writeFileSync(join(project, ".npmrc"), "registry=http://127.0.0.1:9/\n");
-  const env = { PATH: `${real}:/usr/bin:/bin`, HOME: home, TMPDIR: dir };
-  const first = spawnSync("/bin/sh", ["-c", firstBlock(served("skills/publish/SKILL.md"), "## 1. Check the CLI")], { cwd: project, env, encoding: "utf8", timeout: 120000 });
-  assert.match(first.stdout, /CLI_OK/, first.stdout + first.stderr);
-  const version = spawnSync(join(home, LAUNCHER), ["--version"], { cwd: project, env, encoding: "utf8", timeout: 120000 });
-  assert.equal(version.stdout.trim(), CLI_VERSION, version.stderr);
+  const env = { PATH: `${bin}:/usr/bin:/bin`, HOME: home, TMPDIR: dirname(home) };
+  const first = spawnSync("/bin/sh", ["-c", firstBlock(served("skills/publish/SKILL.md"), "## 1. Check the CLI")], { cwd: project, env, encoding: "utf8" });
+  assert.equal(first.status, 0, first.stderr);
+  assert.match(first.stdout, /CLI_OK/);
+  assert.doesNotMatch(first.stdout + first.stderr, /DECOY/);
+  assert.ok(calls().every((line) => line.startsWith(`--prefix ${home} -y -p @tinycloud/cli@${CLI_VERSION} tinycloud `)));
+  const version = spawnSync(join(home, LAUNCHER), ["--version"], { cwd: project, env, encoding: "utf8" });
+  assert.equal(version.status, 0, version.stderr);
+  assert.equal(version.stdout.trim(), CLI_VERSION);
 });
+

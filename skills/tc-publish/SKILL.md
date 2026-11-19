@@ -75,8 +75,7 @@ if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
     else echo "CLI_OLDER $TC_VERSION $TC_BIN: this CLI is older than this skill needs. Stop and tell the owner what it printed."; exit 1; fi
   fi
 fi
-if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; follow https://agents.tinycloud.xyz/connect or set TC_BIN"
-elif "$TC_BIN" onboard --help >/dev/null 2>&1 \
+if "$TC_BIN" onboard --help >/dev/null 2>&1 \
   && "$TC_BIN" auth login --help | grep -q -- '--expiry'; then echo CLI_OK
 else echo STALE; fi
 [ -z "$TC_VERSION" ] || printf '%s\n' "$TC_VERSION"
@@ -84,7 +83,7 @@ else echo STALE; fi
 
 If no CLI is found, the check writes `~/.local/share/tinycloud/npx/tinycloud`, which runs the pinned CLI with `npx`, and uses it as `TC_BIN`.
 
-If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/connect for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.8.0`, so stop and tell the owner what it printed.
+If the block prints `STALE`, follow https://agents.tinycloud.xyz/connect for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.8.0`, so stop and tell the owner what it printed.
 
 ## 2. Sign in — only when there is no live session
 
