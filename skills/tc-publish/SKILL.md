@@ -245,7 +245,7 @@ Publish only after the owner said yes to "Anyone with the link can open it. Make
 
 Always pass `--expires` — 24h unless the owner says otherwise — and always tell the owner the expiry. `SESSION_LIFETIME_EXCEEDED` handling: see the error table below.
 
-**HTML files and folders:** run the HTML check (end of this file) first. For a folder, run it on its `index.html`; ignore a flagged relative path only when it names a file inside the folder, because the CLI inlines that file. If it flags anything else, stop and ask the owner before publishing.
+**HTML files and folders:** run the HTML check (end of this file) first. For a folder, run it on its `index.html`; ignore a flagged path only when it is a plain relative path to a file inside the folder (no scheme, no leading `/`, and no part that starts with a dot, such as `..` or `.assets`), because the CLI inlines that file. If it flags anything else, stop and ask the owner before publishing.
 
 A folder with an `index.html` publishes as one self-contained page, which must be under 10 MiB.
 
