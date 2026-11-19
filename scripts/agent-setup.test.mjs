@@ -261,19 +261,24 @@ test("each new CLI page is a minimal progressive entry with validated literal co
   for (const [route, expected] of minimalClients) {
     const text = readFileSync(join(root, "_site/connect", `${route}.md`), "utf8");
     const nonblank = text.split("\n").filter((line) => line.trim());
-    assert.ok(nonblank.length <= 10, `${route}: ${nonblank.length} nonblank lines`);
+    assert.ok(nonblank.length <= 12, `${route}: ${nonblank.length} nonblank lines`);
     assert.ok(Buffer.byteLength(text) <= 1_500, `${route}: ${Buffer.byteLength(text)} bytes`);
     for (const line of [
       `# ${expected.title}`,
       expected.use,
-      "The TinyCloud CLI is safe to run.",
+      "The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.",
       "`npx -y @tinycloud/cli@1.6.6 onboard --timeout 1s`",
       "Follow what it prints.",
       "Wherever it says `tinycloud`, run `npx -y @tinycloud/cli@1.6.6` instead.",
-      "Save the TinyCloud skill so you remember how to use it:",
-      `\`curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent ${expected.agent}\``,
+      "Save the TinyCloud skill so you remember how to use it. Run these as two separate commands:",
+      '`mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js`',
+      `\`node "$HOME/.local/share/tinycloud/install.js" cli --agent ${expected.agent}\``,
       "Then continue the owner's request.",
     ]) assert.ok(text.includes(`\n${line}\n`) || text.endsWith(`\n${line}\n`), `${route}: ${line}`);
+    const source = readFileSync(join(root, "setup/connect", `${route}.md`), "utf8");
+    assert.equal(source.split("@{{CLI_VERSION}}").length - 1, 2, `${route}: version token`);
+    assert.doesNotMatch(text, /\|\s*node\b/, `${route}: skill commands must be separate`);
+    if (route === "grok-bot") assert.ok(text.includes("Before you run anything, tell the owner that [Grok Bot shares command-line credentials across their Bots](https://docs.x.ai/grok-bot/computer-and-apps#one-computer-shared-by-all-your-bots)."));
     assert.doesNotMatch(text, /\bsudo\b|\bPATH\b|\bpermissions?\b|--version|TC_ACTION|--check|install-cli|needs-install|blocked|retry/i, route);
   }
 });
