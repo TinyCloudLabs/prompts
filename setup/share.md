@@ -25,6 +25,8 @@ Use the skill's shell preamble and `TC_BIN` for every command. Don't call a bare
 
 The rest of this page is what to run once the skill's §1 and §2 are done, and the options the skill doesn't cover.
 
+A shared file must be at most 95 MiB.
+
 ### 1. Ask before making the link
 
 This skill makes links only: always pass `--to anyone`, never `email:`, `domain:` or `did:`. Before publishing, ask the owner in one line: "Anyone with the link can open it. Make a link?" Publish only after they say yes. If they say no, tell them it isn't published and the file stays on this computer, and don't offer another place to publish or share it. If they want to share with one email address or a whole email domain, tell them to use share.tinycloud.xyz. If they ask to share with only themselves, say that isn't available. Then ask the same question.

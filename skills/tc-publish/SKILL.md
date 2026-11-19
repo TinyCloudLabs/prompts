@@ -436,6 +436,12 @@ Branch on `code`, never on the exit status alone — exits 4, 5 and 6 each cover
 |---|---|---|
 | `AUTH_REQUIRED` | 3 | Session expired/invalid — return to §2 on the same profile (ignore the CLI's own `auth login`/`init` hint) |
 | `PERMISSION_DENIED` | 5 | Scope lacks the publishing permission — return to §2 once. If the new session gets the same error, stop and report; don't ask the owner to approve again |
+| `MAX_BYTES_EXCEEDED` | 7 | "Shared files can be up to 95 MiB. Use a smaller file or split it." |
+| `MAX_BYTES_EXCEEDED` | 7 | "These files add up to more than 95 MiB. Share fewer at once or use smaller files." |
+| `MAX_BYTES_EXCEEDED` | 7 | "This file is over the --max-bytes limit you set (<N> bytes). Use a smaller file or raise --max-bytes, up to 95 MiB." |
+| `MAX_BYTES_EXCEEDED` | 7 | "These files add up to more than the --max-bytes limit you set (<N> bytes). Share fewer at once or raise --max-bytes, up to 95 MiB." |
+| `MAX_BYTES_EXCEEDED` | 7 | "--max-bytes must be between 1 byte and 95 MiB." |
+| `MAX_BYTES_EXCEEDED` | 7 | `tinycloud share receive --max-bytes <N>`: shared content exceeds max-bytes |
 | `SESSION_LIFETIME_EXCEEDED` | 2 | Two cases, told apart by the message. **"requested share lifetime exceeds session expiry"** → the share would outlive the login: use a SHORTER `--expires` (session end minus 1 hour), never a longer one. If the session has under 1 hour left, tell the owner the login is about to end and ask them to renew the sign-in (see "Renewing" in §2). **"share expiry must be at least 60 seconds from now"** → use the smallest allowed value (`2m`), never beyond the session end minus 1 hour. |
 | `INVALID_EXPIRY` | 2 | `--expiry` outside 1 m–30 d |
 | `INVALID_ARGUMENT` | 2 | Bad option combination or missing input file — fix the command. |
