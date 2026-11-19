@@ -2,7 +2,7 @@
 
 # Connect Grok to TinyCloud
 
-Grok chat uses a custom hosted MCP connector with OpenKey OAuth. Grok Bot can instead use the CLI when its actual runtime can install and run it.
+Grok chat uses a custom hosted MCP connector with OpenKey OAuth. Grok Bot can instead use the CLI when its actual runtime can run it.
 
 ## Grok chat
 
@@ -14,7 +14,7 @@ On Grok Business/Enterprise, a team admin must provision the connector first. [x
 
 ## Grok Bot is runtime-dependent
 
-If Grok Bot has a persistent terminal that can install and run the CLI, fetch its [one-page quickstart](https://agents.tinycloud.xyz/connect/grok-bot.md). Otherwise use its native MCP-by-URL setup with `https://mcp.tinycloud.xyz/mcp` only if OAuth is available. If neither route is supported, state that limitation; do not ask for a token in chat. See [xAI's computer and apps reference](https://docs.x.ai/grok-bot/computer-and-apps).
+If Grok Bot has a persistent terminal that can run the CLI, fetch its [one-page quickstart](https://agents.tinycloud.xyz/connect/grok-bot.md). Otherwise use its native MCP-by-URL setup with `https://mcp.tinycloud.xyz/mcp` only if OAuth is available. If neither route is supported, state that limitation; do not ask for a token in chat. See [xAI's computer and apps reference](https://docs.x.ai/grok-bot/computer-and-apps).
 
 {{std:connect-hosted}}
 

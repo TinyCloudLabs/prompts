@@ -13,7 +13,7 @@ In Gemini Apps, add TinyCloud as a custom connected app using hosted MCP and Ope
 
 If **Custom apps** is missing, [Google's instructions](https://support.google.com/gemini/answer/17209137) currently specify a personal Google Account, age 18+, US location, English and Keep Activity enabled, not work/school accounts. Address the actual missing option rather than claiming every Google account supports it. Google currently requires confirmation for write actions. This is a custom app, not an official listing or evidence that a write succeeded.
 
-If the actual runtime is Gemini CLI with a persistent shell, use its [one-page quickstart](https://agents.tinycloud.xyz/connect/gemini-cli.md). Do not install the CLI in the Gemini Apps temporary code sandbox.
+If the actual runtime is Gemini CLI with a persistent shell, use its [one-page quickstart](https://agents.tinycloud.xyz/connect/gemini-cli.md).
 
 {{std:connect-hosted}}
 
