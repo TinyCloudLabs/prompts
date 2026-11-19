@@ -5,7 +5,7 @@
 ## For the owner
 
 - **What it does:** installs the standalone OpenKey CLI, `@openkey/cli` 0.1.5, into its own folder, `~/.local/share/tinycloud/openkey`. Only workflows that run `openkey` commands themselves need it; no other page on this site does. TinyCloud sign-ins and approvals go through [/onboarding](onboarding.md) and the TinyCloud CLI, not this tool.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/openkey with curl and follow it, including running its installer. Set up the OpenKey CLI.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/openkey with curl and follow it. Set up the OpenKey CLI.`
 - **You approve:** nothing. Installing it doesn't sign in.
 - **Undo:** delete the folder `~/.local/share/tinycloud/openkey`. If a workflow signed you in with it, ask your agent to run `openkey logout` first: it revokes the session and deletes `~/.openkey/credentials.json`.
 

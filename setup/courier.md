@@ -3,7 +3,7 @@
 # Courier: one link for your agent
 
 Give any agent this same link: **https://agents.tinycloud.xyz/courier**.
-If it needs a prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Set up Courier for my requested workflow.`
+If it needs a prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it. Set up Courier for my requested workflow.`
 
 The agent installs what it needs, sets Courier up and checks that it works. You approve one permission and choose who it connects to; you never run commands or share keys.
 

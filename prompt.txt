@@ -1,1 +1,1 @@
-Fetch https://agents.tinycloud.xyz/chat with curl and follow it, including running its installer. How did my last meeting go?
+Fetch https://agents.tinycloud.xyz/chat with curl and follow it. How did my last meeting go?

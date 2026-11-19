@@ -7,7 +7,7 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 ## For the owner
 
 - **What it does:** reuses the TinyCloud CLI from onboarding and installs the `tc-apps` skill for the supported agents found on this computer, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
 - **You approve:** Health Log always has its own app-specific permission, even if onboarding is complete. The agent reuses only a live Health Log grant on its dedicated profile; otherwise it sends an OpenKey link for that app. Health Log table creation may need a separate schema permission. A sign-in may show a short code to paste back in chat; the app-permission link needs no code or separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.

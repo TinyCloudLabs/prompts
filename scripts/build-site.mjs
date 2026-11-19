@@ -388,9 +388,8 @@ if (watchPinElsewhere.length) throw new Error(`${WATCH_TOKEN} belongs to setup/c
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
-// Every owner prompt names the guide to fetch raw and the installer it runs: Claude Code's auto mode
-// runs a downloaded installer when the owner's own prompt asked for it, and may refuse it otherwise.
-const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it, including running its installer. ${task}`;
+// Every owner prompt names the guide to fetch raw, then the task.
+const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it. ${task}`;
 const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task);
 
 function walk(dir) {
@@ -956,7 +955,7 @@ ${style}
 
     <h2>How it works</h2>
     <ol>
-      <li><strong>Paste a prompt.</strong> It links the ability's page, asks your agent to run its installer, and says what you want.</li>
+      <li><strong>Paste a prompt.</strong> It links the ability's page and says what you want.</li>
       <li><strong>Your agent reads the setup.</strong> It installs what it needs and shows you an OpenKey link, where you approve exactly what it may access.</li>
       <li><strong>It does the thing.</strong> Your agent finishes your request in the same conversation, with your data in your TinyCloud space.</li>
     </ol>
