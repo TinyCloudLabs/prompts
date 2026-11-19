@@ -290,9 +290,9 @@ test("each new CLI page is a minimal progressive entry with validated literal co
       `# ${expected.title}`,
       expected.use,
       "The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.",
-      "`npx -y @tinycloud/cli@1.6.6 onboard --timeout 1s`",
+      "`(cd \"$(mktemp -d)\" && npx -y @tinycloud/cli@1.6.6 onboard --timeout 1s)`",
       "Follow what it prints.",
-      "Wherever it says `tinycloud`, run `npx -y @tinycloud/cli@1.6.6` instead.",
+      "Wherever it says `tinycloud`, run `(cd \"$(mktemp -d)\" && npx -y @tinycloud/cli@1.6.6)` instead.",
       "Then continue the owner's request.",
     ]) assert.ok(text.includes(`\n${line}\n`) || text.endsWith(`\n${line}\n`), `${route}: ${line}`);
     const source = readFileSync(join(root, "setup/connect", `${route}.md`), "utf8");

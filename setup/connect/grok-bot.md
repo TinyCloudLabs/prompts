@@ -7,9 +7,9 @@ Before you run anything, tell the owner that [Grok Bot shares command-line crede
 
 The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.
 
-`npx -y @tinycloud/cli@{{CLI_VERSION}} onboard --timeout 1s`
+`(cd "$(mktemp -d)" && npx -y @tinycloud/cli@{{CLI_VERSION}} onboard --timeout 1s)`
 
 Follow what it prints.
-Wherever it says `tinycloud`, run `npx -y @tinycloud/cli@{{CLI_VERSION}}` instead.
+Wherever it says `tinycloud`, run `(cd "$(mktemp -d)" && npx -y @tinycloud/cli@{{CLI_VERSION}})` instead.
 
 Then continue the owner's request.
