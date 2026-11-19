@@ -79,6 +79,8 @@ const minimalClients = new Map([
   ["grok-bot", { title: "Set up TinyCloud in Grok Bot", use: "Use this page only in Grok Bot with a persistent terminal." }],
   ["cli", { title: "Set up TinyCloud in another CLI agent", use: "Use this page only in a CLI-capable agent without a named TinyCloud page." }],
 ]);
+const cliOwnerIntro = `Before you send the owner the first OpenKey link, tell them word for word: "I'll set up TinyCloud so I can act for you. OpenKey (openkey.so) is TinyCloud's sign-in service, where you approve my access. Your apps, like a todo list or meal log, keep their data in TinyCloud spaces you control. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days. Each approval names what it covers, and you can end it any time at account.tinycloud.xyz/delegations."`;
+const cliRouteOn = "When it prints `\"onboarded\": true` or `Onboarded:`, fetch the guide for the owner's request and follow it: records, meals, weight, workouts or todos, https://agents.tinycloud.xyz/apps; sharing, https://agents.tinycloud.xyz/share; publishing, https://agents.tinycloud.xyz/publish; API keys or secrets, https://agents.tinycloud.xyz/secrets; meetings, https://agents.tinycloud.xyz/chat; the Feed, https://agents.tinycloud.xyz/feed; another person's agent, https://agents.tinycloud.xyz/courier; anything else, https://agents.tinycloud.xyz/setup (skip its /onboarding step: that's done).";
 const existingClients = ["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes"];
 
 test("/connect is a short router to every named client page", () => {
@@ -118,22 +120,35 @@ test("each new CLI page is a minimal progressive entry with validated literal co
   for (const [route, expected] of minimalClients) {
     const text = readFileSync(join(root, "_site/connect", `${route}.md`), "utf8");
     const nonblank = text.split("\n").filter((line) => line.trim());
-    assert.ok(nonblank.length <= 9, `${route}: ${nonblank.length} nonblank lines`);
-    assert.ok(Buffer.byteLength(text) <= 1_500, `${route}: ${Buffer.byteLength(text)} bytes`);
+    assert.ok(nonblank.length <= 10, `${route}: ${nonblank.length} nonblank lines`);
+    assert.ok(Buffer.byteLength(text) <= 2_500, `${route}: ${Buffer.byteLength(text)} bytes`);
     for (const line of [
       `# ${expected.title}`,
       expected.use,
       "The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.",
+      cliOwnerIntro,
       "`npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.6.6 tinycloud onboard --timeout 1s`",
       "Follow what it prints.",
       "Wherever it says `tinycloud`, run `npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.6.6 tinycloud` instead.",
-      "Then continue the owner's request.",
+      cliRouteOn,
     ]) assert.ok(text.includes(`\n${line}\n`) || text.endsWith(`\n${line}\n`), `${route}: ${line}`);
     const source = readFileSync(join(root, "setup/connect", `${route}.md`), "utf8");
     assert.equal(source.split("@{{CLI_VERSION}}").length - 1, 2, `${route}: version token`);
     assert.doesNotMatch(text.split("\n").slice(1).join("\n"), /\b(?:curl|sudo)\b|install\.js/, `${route}: install mechanics`);
     if (route === "grok-bot") assert.ok(text.includes("Before you run anything, tell the owner that [Grok Bot shares command-line credentials across their Bots](https://docs.x.ai/grok-bot/computer-and-apps#one-computer-shared-by-all-your-bots)."));
     assert.doesNotMatch(text, /\bPATH\b|\bpermissions?\b|--version|TC_ACTION|--check|install-cli|needs-install|blocked|retry/i, route);
+  }
+});
+
+test("test-ruling: TC-3249 quickstart route-on", () => {
+  const intro = cliOwnerIntro;
+  const routeOn = cliRouteOn;
+  for (const route of minimalClients.keys()) {
+    const text = readFileSync(join(root, "_site/connect", `${route}.md`), "utf8");
+    assert.ok(text.includes(intro), `${route}: owner intro`);
+    assert.ok(text.includes(routeOn), `${route}: route-on guides`);
+    assert.ok(text.includes("https://agents.tinycloud.xyz/apps"), `${route}: apps link`);
+    assert.ok(!text.trimEnd().endsWith("Then continue the owner's request."), `${route}: bare ending`);
   }
 });
 
