@@ -2,7 +2,7 @@
 name: tc-secrets
 description: Read API keys and other secrets the owner keeps in TinyCloud Secrets, without exposing their values, and ask the owner to add a missing one. Use when a task needs a credential (for example ELEVENLABS_API_KEY) that the owner stores in TinyCloud, or when the owner asks you to use TinyCloud Secrets instead of env files.
 metadata:
-  version: "0.5.22"
+  version: "0.5.23"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/secrets.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -493,7 +493,7 @@ Both patterns read the secret inside a subshell, so the value never stays in you
 **Default:** one command, no file left behind. If a tool needs the value in a file only for that one run, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command.
 
 **A file that stays** is allowed when the owner asks for one, or when a tool or service can only read the secret from a file (for example a daemon's config or credentials file). Then:
-- Write it with `umask 077`, mode 0600, owned by the account that will read it. For another account, use `sudo install -o <user> -m 600 /dev/stdin <path>`.
+- Write it with `umask 077`, mode 0600, owned by the account that will read it. You never run `sudo`. If another account must own the file, write nothing and stop (see below).
 - Pipe the value straight from `"$TC_BIN" --profile "$PROFILE" secrets get NAME --raw` into the file. Never print or echo it, and never pass it as a command-line argument.
 - Before writing, check the path isn't inside a git work tree, or is git-ignored there: `git -C "$(dirname <path>)" check-ignore -q <path>` must succeed, or `git -C "$(dirname <path>)" rev-parse` must fail.
 - Don't copy the file anywhere else.
@@ -520,7 +520,11 @@ else
 fi
 ```
 
-The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place. For another account, do the same with `sudo install -o <user> -m 600 /dev/stdin "$TMP"` and `sudo mv -f "$TMP" "$DEST"`.
+The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place.
+
+For another account, don't write the file and never run `sudo`. Stop and tell the owner, filling in `<path>` and `<user>`:
+
+> I didn't write `<path>`. It has to belong to `<user>`, and this session can't create files for another account. Tell me if `<path>` can belong to this account instead, or choose another place for it.
 
 ## Exit codes and owner lines
 
