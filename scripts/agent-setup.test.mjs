@@ -193,6 +193,15 @@ test("tc-apps onboards generic apps first and keeps Health Log on its dedicated 
 });
 
 
+test("served setup pages keep code fences balanced", () => {
+  const pages = ["cli", "onboarding.md", "setup", "agent", "apps", "connect.md", "chat", "feed", "publish", "share", "secrets", "courier", "openkey"];
+  for (const page of pages) {
+    const source = readFileSync(join(root, "_site", page), "utf8");
+    const fences = source.match(/^ {0,3}(?:`{3,}|~{3,})/gm) ?? [];
+    assert.equal(fences.length % 2, 0, `${page}: unbalanced Markdown code fences`);
+  }
+});
+
 
 test("a full storage sends the owner to the storage page from tc-apps and tc-publish", () => {
   const site = join(root, "_site");
