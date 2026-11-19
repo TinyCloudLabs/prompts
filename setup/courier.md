@@ -21,6 +21,8 @@ Use Node.js 20 or later. Read the Courier skill below before running the selecti
 
 Run the selection check below. If the CLI is missing, the check uses the pinned CLI through `npx --prefix "$HOME"` for Courier's probes and setup. Don't run general onboarding: Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
 
+If there's no executable at all, skip the CLI setup: the next check writes a launcher that runs the pinned CLI with `npx` and uses it.
+
 Process `TC_BIN` wins. Preserve any operator-selected path. Without a process or saved `TC_BIN`, the pinned `npx` command becomes the selected CLI command. Carry the selected command into every later call.
 
 ```sh

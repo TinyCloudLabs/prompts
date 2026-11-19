@@ -9,7 +9,8 @@ TC=${TC_BIN:-}
 if [ -z "$TC" ]; then
   if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC=; }; fi
   [ -n "$TC" ] || TC="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
-  [ -x "$TC" ] || TC=$(command -v tinycloud) || exit 1
+  [ -x "$TC" ] || TC=$(command -v tinycloud) || TC="$HOME/.local/share/tinycloud/npx/tinycloud"
+  [ -x "$TC" ] || exit 1
 fi
 STATE="${TC_APPS_STATE:-$HOME/.local/state/tc-apps}"
 REVOKED=0

@@ -6,7 +6,8 @@ set -eu
 if [ -z "${TC_BIN:-}" ]; then
   if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC_BIN=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC_BIN=; }; fi
   [ -n "${TC_BIN:-}" ] || TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
-  [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || exit 1
+  [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"
+  [ -x "$TC_BIN" ] || exit 1
 fi
 DIR=${TC_APPS_STATE:-$HOME/.local/state/tc-apps}
 case "${1:-}" in

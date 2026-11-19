@@ -69,25 +69,24 @@ if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
 case "$B" in */tc) [ -x "${B%/tc}/tinycloud" ] && B="${B%/tc}/tinycloud" ;; esac
 O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$P" || O=
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
-[ -x "$B" ] || B=$(command -v tinycloud) || B=
-if [ -n "$B" ]; then printf '%s\n' "$B"; else echo 'TC_BIN is unset'; fi
+[ -x "$B" ] || B=$(command -v tinycloud) || B="$HOME/.local/share/tinycloud/npx/tinycloud"
+[ "$B" != "$HOME/.local/share/tinycloud/npx/tinycloud" ] || { mkdir -p "${B%/*}" && printf '#!/bin/sh\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@1.8.0 tinycloud "$@"\n' > "$B" && chmod 700 "$B"; }
+printf '%s\n' "$B"
 { [ -n "${TC_APPS_STATE:-}" ] && echo "$TC_APPS_STATE"; } || echo "$HOME/.local/state/tc-apps"
 date +%Y-%m-%dT%H:%M%z | sed 's/..$/:&/'
 date -u +%FT%TZ
-if [ -n "$B" ]; then
-  V=$("$B" --version); printf '%s\n' "$V"
-  if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
-    if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.8.0; keeping this operator-selected CLI"
-    else echo "CLI_OLDER $V $B: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
-    exit 1
-  fi
+V=$("$B" --version); printf '%s\n' "$V"
+if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.8.0; keeping this operator-selected CLI"
+  else echo "CLI_OLDER $V $B: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
+  exit 1
 fi
 ```
 
 It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per line. If the selected path is `tc` (the legacy alias, which prints a notice on every call), the check uses the `tinycloud` beside it instead, when there is one.
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id, for generic apps. Health Log instead uses its validated owner timezone and fresh clock from `healthlog-context.mjs` (`TINY-APPS.md` §4).
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
-- `TC_BIN is unset` → follow the shared CLI setup, then continue this request with the path from its `TC_SELECTED`. Do not install a second CLI.
+- If no CLI is found, the check writes `~/.local/share/tinycloud/npx/tinycloud`, which runs the pinned CLI with `npx`, and uses it as `TC_BIN`.
 - `CLI_OLDER <version> <path>` (the block stops) → the CLI is older than `1.8.0`: stop and tell the owner what it printed.
 - `TC_OLDER <version> <path>` (the block stops, or the CLI setup prints it) → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.8.0`, and stop. Don't replace it.
 

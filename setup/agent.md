@@ -24,6 +24,8 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 Read and follow https://agents.tinycloud.xyz/connect for the current client, then return here with the owner's original task. Preserve an operator-provided `TC_BIN`; a missing or broken override stops setup. Do not change a conflicting `tc` or sign in yet.
 
+If `TC_BIN` is unset and no CLI is found, skip the shared CLI setup: the skill's first check writes a launcher that runs the pinned CLI with `npx`. Otherwise follow the steps above.
+
 ### 2. The one action guide
 
 Read and follow exactly one page for the selected action, keeping the owner's original request:
