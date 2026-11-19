@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -96,6 +96,7 @@ test("selected directory links are rejected without changing their target", () =
   const home = fresh();
   const target = join(home, "other");
   mkdirSync(target, { mode: 0o755 });
+  chmodSync(target, 0o755); // mkdirSync's mode is masked by the umask
   symlinkSync(target, join(home, "selected"), windows ? "junction" : "dir");
   const selected = join(home, "selected/agent.env");
   const result = run(home, ["set", "TC_OWNER_EMAIL", "owner@example.com"], { TC_AGENT_ENV: selected });
