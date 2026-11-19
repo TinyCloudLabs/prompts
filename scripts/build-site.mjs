@@ -285,17 +285,13 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.5.2",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.5.2.tgz",
-    integrity: "sha512-j1zGbKVNyFgP206+ufyAaWsYn+qBXwc8OQGtbsQB8Ceq1NdQYq6iM5LyeqIeck7DNG+hp3LXHd9dbqU/HHpmMw==",
+    version: "0.7.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.7.0.tgz",
+    integrity: "sha512-7I3Bn2hkR5Imkx4mtJPSV9b36nS7G2w76LEt7me+PbCWlbCvHniAGkI8fb+bN8AfPaVCMjRGz4QjiP33AMO0Dg==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
       "SKILL.md": [
-        [
-          "Offer only `same-owner`, `anyone`, and `named` invitation modes.\nNamed recipients require an exact Courier `did:key` or a verified paired handle;\nemail addresses and decorative names are refused.",
-          "Offer exactly two invitation modes: `same-owner` and `anyone`.\nFollow the two-choice flow in the Courier guide, https://agents.tinycloud.xyz/courier.",
-        ],
         [
           /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
           "Courier uses its own COURIER_HOME and one restricted Courier approval; no general TinyCloud onboarding or CLI profile is required. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
@@ -311,8 +307,8 @@ const SKILLS = [
           "use courier join '<exact link>' --consent --wait 60 instead of creating or selecting another chat. Each call waits at most a minute; while the issuer hasn't finished pairing it exits 1 with [invite-pending], so retry the same join without asking me, at most 10 times in a row.",
         ],
         [
-          "Offer exactly these invitation choices: connect another agent of my same owner, invite anyone holding the link, or invite a named recipient. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone|named --consent. Named mode needs --recipient with an exact Courier did:key or a verified paired handle; an email address or display name is not verified and must not be substituted. Keep the issuer serving while the recipient joins. Give me the one handoff link. If serving is interrupted, resume courier invite serve <invitationId> for that same invitation.",
-          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.",
+          "Without an incoming link, run courier start to discover my accessible chats. Ask new versus existing only when it reports real ongoing chats. Show their subjects and session IDs. If there are none, continue with the new session returned by start. For an existing chat use courier start --session <id> and its --peer when supplied. For a new chat use courier start --new '<subject>'.\n\n\n",
+          "Without an incoming link, run courier start to discover my accessible chats. Ask new versus existing only when it reports real ongoing chats. Show their subjects and session IDs. If there are none, continue with the new session returned by start. For an existing chat use courier start --session <id> and its --peer when supplied. For a new chat use courier start --new '<subject>'.\n\nOffer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.\n\n",
         ],
       ],
     },
