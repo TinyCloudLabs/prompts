@@ -54,7 +54,7 @@ test("an unwritable ~/.agents names the folder and the cause, then says the CLI 
   const result = await run(home);
   assert.equal(result.code, 1);
   assert.match(result.out[0], /^SKILL_INSTALL_FAILED EACCES: permission denied, mkdir /);
-  assert.equal(result.out[1], `SKILL_CAUSE ${agents} is read-only for your user (mode 555), or the disk is read-only`);
+  assert.equal(result.out[1], `SKILL_CAUSE ${agents} is read-only for this user (mode 555), or the disk is read-only`);
   assert.equal(result.out[2], "The CLI works without the skill.");
   assert.equal(result.out.length, 3);
   assert.deepEqual(instructions(result.out), []);
@@ -64,7 +64,7 @@ test("an unwritable ~/.agents names the folder and the cause, then says the CLI 
 test("a skills folder outside the home, as with HOME=/nonexistent, is reported as outside it, with no command", { skip }, async () => {
   const result = await run("/nonexistent");
   assert.equal(result.code, 1);
-  assert.equal(result.out[1], "SKILL_CAUSE your user can't write to /, which is outside the home folder");
+  assert.equal(result.out[1], "SKILL_CAUSE this user can't write to /, which is outside the home folder");
   assert.equal(result.out[2], "The CLI works without the skill.");
   assert.deepEqual(instructions(result.out), []);
 });
@@ -75,6 +75,6 @@ test("a ~/.agents that is a link to a system folder is reported as outside the h
   symlinkSync("/usr", join(linked, ".agents"));
   const result = await run(linked);
   assert.equal(result.code, 1);
-  assert.equal(result.out[1], `SKILL_CAUSE your user can't write to ${join(linked, ".agents")}, which is outside the home folder`);
+  assert.equal(result.out[1], `SKILL_CAUSE this user can't write to ${join(linked, ".agents")}, which is outside the home folder`);
   assert.deepEqual(instructions(result.out), []);
 });
