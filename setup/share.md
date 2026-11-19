@@ -33,7 +33,7 @@ This skill makes links only: always pass `--to anyone`, never `email:`, `domain:
 
 ### 2. Pick the content
 
-The CLI publishes **files**, not folders. A directory fails with `MAX_BYTES_EXCEEDED` (observed on 1.2.3).
+A folder with an `index.html` publishes as one self-contained page, which must be under 10 MiB.
 
 | Content | What to publish | What the recipient sees |
 |---|---|---|

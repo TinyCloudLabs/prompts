@@ -135,10 +135,14 @@ When the task needs a permission not already granted, keep the same profile, hos
 
 ```sh
 TC='<TC_BIN>'
-"$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --no-popup --expiry 30d
+"$TC" auth request --cap 'tinycloud.kv:<space>:<path>:<actions>' --grant --timeout 60s --no-popup --expiry 30d
 ```
 
-For this link-based `auth request --grant`, use the shared table's persistent-session rule below. It has no `--timeout` and blocks until the approval is resolved; it does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply. Send the complete URL exactly as printed on its own line as soon as it appears, including everything after `#` (never retype or shorten it), with one line on what it allows and this line: "Open this link and approve; tell me when you're done." There's no code; never ask the owner for one. A request that covers more than one space prints one link per space; send each the same way. Then wait for the owner and read the command's final output: JSON with `"changed": true` means the grant is saved on this profile (`"changed": false` means it already had it; no link is printed then). If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command. It retrieves the result automatically; use the shared exit table when it finishes. Do not add `--paste`, which deliberately selects the older long-URL manual flow.
+For this link-based `auth request --grant`, send every URL complete, including everything after `#` (never retype or shorten it), with one line on what it allows and this line: "Open this link and approve; tell me when you're done." There's no code; never ask the owner for one. A request that covers more than one space prints one link per space; send each the same way.
+
+Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner's next message, rerun the identical command; it resumes the saved request. Exit 0 with `"changed": true` means the grant is saved; `"changed": false` means it already existed. `auth retry --last` doesn't find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid.
+
+Don't add `--paste`; it selects the manual code flow.
 
 ## Exit codes and owner lines
 
