@@ -271,8 +271,12 @@ const SKILLS = [
           "",
         ],
         [
-          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`.",
-          "To remove the CLI, follow the Undo steps at https://agents.tinycloud.xyz/cli: it is installed in a private prefix, not globally.",
+          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`. ",
+          "",
+        ],
+        [
+          "Removing the skill or CLI doesn't delete TinyCloud profiles or revoke data access.",
+          "Removing the skill doesn't delete TinyCloud profiles or revoke data access.",
         ],
       ],
     },
