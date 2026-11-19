@@ -219,6 +219,7 @@ test("Courier selection resolves saved TC_BIN before approval and preserves proc
     mkdirSync(dirname(saved), { recursive: true });
     executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.2" : "1.6.6"} ;; esac`);
     executable(override, 'case "$*" in --version) echo 1.6.6 ;; esac');
+    executable(join(bin, "npx"), `case "$*" in "--prefix ${dir} -y -p @tinycloud/cli@1.6.6 tinycloud --version") echo 1.6.6 ;; *) exit 90 ;; esac`);
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -268,8 +269,44 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     if (before) assert.deepEqual(readFileSync(selected), before);
     else assert.equal(existsSync(selected), false);
     assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
-    if (scenario !== "current") assert.match(result.stderr, /TC_NOT_FOUND|COURIER_CLI/);
+    if (scenario !== "current") assert.match(result.stderr, /TC_BIN_NOT_EXECUTABLE|COURIER_CLI/);
   }
+});
+// test-ruling: TC-3278 whole-site install cleanup
+test("Courier without TC_BIN uses the pinned home-prefix CLI for probes and setup without onboarding", () => {
+  const served = readFileSync(join(root, "_site/courier"), "utf8");
+  const beforeApproval = block(served, "## Before approval");
+  const cliCheck = block(served, "## Check the CLI");
+  const setup = block(served, "**1. Request the one Courier approval.**");
+  const dir = home();
+  const bin = join(dir, "bin");
+  const calls = join(dir, "npx-calls");
+  mkdirSync(bin);
+  executable(join(bin, "npx"), `
+printf '%s\\n' "$*" >> ${JSON.stringify(calls)}
+shift 6
+case "$*" in
+  --version) echo 1.6.6 ;;
+  "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
+  "courier init --request") echo '{"openkeyUrl":"https://openkey.so/a/test"}' ;;
+  *) exit 90 ;;
+esac`);
+  const result = shell(`COURIER_SKILL=read
+${beforeApproval}
+${cliCheck}
+${setup}`, { HOME: dir, PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin` });
+  assert.equal(result.status, 0, result.stderr);
+  const prefix = `--prefix ${dir} -y -p @tinycloud/cli@1.6.6 tinycloud`;
+  assert.deepEqual(readFileSync(calls, "utf8").trim().split("\n"), [
+    `${prefix} --version`,
+    `${prefix} --version`,
+    `${prefix} courier --help`,
+    `${prefix} courier init --request`,
+  ]);
+  assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
+  assert.doesNotMatch(readFileSync(calls, "utf8"), /\bonboard\b/);
+  const renderedBlocks = [...served.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]).join("\n");
+  assert.doesNotMatch(renderedBlocks, /\bonboard\b/);
 });
 
 // Automatic pickup runs one exact pre-release of the standalone Courier through

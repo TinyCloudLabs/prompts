@@ -19,9 +19,9 @@ Route by capability, not client name. If you can run shell commands, use the ste
 
 Use Node.js 20 or later. Read the Courier skill below before running the selection check.
 
-Run the selection check below. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client, then return here. Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
+Run the selection check below. If the CLI is missing, it selects the pinned CLI through `npx --prefix "$HOME"` for Courier's probes and setup; do not run general onboarding. Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
 
-Process `TC_BIN` wins. Preserve any operator-selected path. Without it, the later check uses the shared private CLI path and stops with `TC_NOT_FOUND` if that path is not executable. Carry the selected executable into every later call.
+Process `TC_BIN` wins. Preserve any operator-selected path. Without a process or saved `TC_BIN`, the pinned `npx` command becomes the selected CLI command. Carry the selected command into every later call.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -34,9 +34,13 @@ if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
 fi
 if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
-  TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
-  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
+  TC="$TC_BIN"
+else
+  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.6.6 tinycloud "$@"; }
+  TC=tc_courier_cli
 fi
+TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
 ```
 
 Keep the owner's original request and any incoming invitation URL exactly as supplied. Never ask for an owner key, hidden approval files, owner-run commands or hand-constructed grant JSON. Send approval and invitation URLs exactly as printed, only to their intended recipient.
@@ -49,7 +53,7 @@ Read and follow the Courier [`SKILL.md`](https://agents.tinycloud.xyz/skills/cou
 
 ## Check the CLI
 
-After reading the skill, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks CLI `1.6.6` or newer and the Courier subcommands this guide uses.
+After reading the skill, use Node.js 20 or later. This block preserves a process or saved `TC_BIN`; otherwise it selects the pinned `npx` command. It checks CLI `1.6.6` or newer and the Courier subcommands this guide uses.
 
 Run this in the same shell as the later commands:
 
@@ -64,8 +68,13 @@ if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
   if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :
   else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi
 fi
-TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
-[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
+if [ "${TC_BIN+x}" = x ]; then
+  [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
+  TC="$TC_BIN"
+else
+  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.6.6 tinycloud "$@"; }
+  TC=tc_courier_cli
+fi
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
 if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
@@ -172,7 +181,7 @@ Run it exactly as written; don't pipe it through `tail`, `head` or a filter; rea
   - **`[no-space]`, and stderr says OpenKey is still setting up the space** ("OpenKey is still setting up your TinyCloud "agents" space", or "space is still being set up by OpenKey"): the approval was saved and the owner's space isn't ready yet. Run `"$TC" courier init --resume` as its own call (it waits up to a minute); if it reports the same, run it again in a minute. Do not ask for another approval. If it still reports it after a few minutes, send the owner exactly "I can't set up Courier right now. Please ask me again later." and stop.
   - **`[no-space]`, and stderr says the space is not set up** ("Your TinyCloud "agents" space is not set up … Courier will not create it", or "space is missing"): OpenKey's Auto-Sign is off, so nothing hosts the owner's `agents` space, and `--resume` can't fix it. Ignore stderr's Share-view and `space host` advice and its "No new approval is needed". Run step 1 once, and send its new link with exactly this line, once: "Your TinyCloud space isn't set up yet. Please turn on "Account bootstrap auto-sign" in your OpenKey settings (https://openkey.so/dashboard/settings), then open this new link and approve, then tell me." Then run this step: with Auto-Sign on, OpenKey sets the space up while the owner approves. If this case comes back, don't send that line again: send the owner exactly "I couldn't set up Courier this time. Tell me if you'd like me to try again." and stop.
   - **A printed fix, for `[approval-unreadable]` and `[profile-permissions]`:** run only a `chmod` command that stderr prints after "Fix it with", exactly as printed, once, and only if its path is inside `$COURIER_HOME`. Then rerun the command that reported the code, once. If the `chmod` fails or the same code comes back, send the owner exactly "I couldn't set up Courier this time. Tell me if you'd like me to try again." and stop; otherwise go by its result.
-  - **`[approval-unreadable]`:** the saved request is kept, and nothing changed. Use the printed fix. If the fix is `mv <file> <file>.newer` instead, a newer Courier saved the request: never run the `mv`. Send the owner exactly "My Courier is older than the one that started this setup. I need to update it before we can continue; shall I?" If they say no, stop without another message. If they say yes, read and follow https://agents.tinycloud.xyz/connect for the current client, then run this step again once. If it reports `[approval-unreadable]` again, send the owner exactly "I couldn't update Courier far enough to continue. Please ask me again after TinyCloud's next update." and stop; otherwise go by its result. Never run any other fix: send the "I couldn't set up Courier this time" line and stop.
+  - **`[approval-unreadable]`:** the saved request is kept, and nothing changed. Use the printed fix. If the fix is `mv <file> <file>.newer` instead, a newer Courier saved the request: never run the `mv`. Send the owner exactly "My Courier is older than the one that started this setup. I need to update it before we can continue; shall I?" If they say no, stop without another message. If they say yes, wait for the operator to supply a newer process `TC_BIN`, then run this step again once; do not run onboarding for this recovery. If it reports `[approval-unreadable]` again, send the owner exactly "I couldn't update Courier far enough to continue. Please ask me again after TinyCloud's next update." and stop; otherwise go by its result. Never run any other fix: send the "I couldn't set up Courier this time" line and stop.
   - **`[profile-permissions]`:** use the printed fix. If stderr prints no `chmod` after "Fix it with", or its path is outside `$COURIER_HOME`, send the owner exactly "I couldn't set up Courier this time. Tell me if you'd like me to try again." and stop.
   - **`[approval-rejected]` or `[approval-unavailable]` on exit 1:** the saved request is kept. Run the same `"$TC" courier init --wait --timeout 60s` again in a minute; do not create or send a new link. This follows the error's instruction to run `courier init --wait` again.
   - If either code recurs the same way three times, send the owner exactly "I can't set up Courier right now. Please ask me again later." and stop.

@@ -69,17 +69,27 @@ test("publish preamble uses process variables without agent.env and reports a mi
   assert.match(stopped.stdout, /TC_NOT_FOUND/);
 });
 
-test("Courier preamble uses process TC_BIN without agent.env and stops when no CLI is available", () => {
+test("Courier preamble uses process TC_BIN without agent.env and falls back to the pinned npx command", () => {
   const script = `COURIER_SKILL=read\n${block("setup/courier.md", "## Check the CLI")}`;
   const selected = fresh();
   const ok = run(script, selected, { TC_BIN: selected.cli });
   assert.equal(ok.status, 0, ok.stderr);
   assert.equal(calls(selected), "--version\ncourier --help\n");
 
-  const missing = fresh();
-  const stopped = run(script, missing);
-  assert.notEqual(stopped.status, 0);
-  assert.match(stopped.stderr, /TC_NOT_FOUND/);
+  const fallback = fresh();
+  const npx = join(fallback.dir, "npx");
+  writeFileSync(npx, `#!/bin/sh
+echo "$*" >> ${JSON.stringify(fallback.calls)}
+shift 6
+case "$*" in
+  --version) echo 1.6.6 ;;
+  "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
+esac
+`, { mode: 0o700 });
+  const used = run(script, fallback, { PATH: `${fallback.dir}:/usr/bin:/bin` });
+  assert.equal(used.status, 0, used.stderr);
+  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.6.6 tinycloud`;
+  assert.equal(calls(fallback), `${prefix} --version\n${prefix} courier --help\n`);
 });
 
 test("onboarding uses its selected command without agent.env", () => {
