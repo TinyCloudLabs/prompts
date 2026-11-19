@@ -2,7 +2,7 @@
 
 # TinyCloud for your agent
 
-Give your AI agent abilities that keep your data in your own TinyCloud space. Agents that can install and run the TinyCloud CLI use it; others that support remote MCP connect through /connect. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.
+Give your AI agent abilities that keep your data in your own TinyCloud space. Agents that can run the TinyCloud CLI use it; others that support remote MCP connect through /connect. Each ability has one page. Every page says what it does, the one prompt or command to run, what you'll be asked to approve, and how to undo it.
 
 **Access and privacy:** agents get only the scopes you approve, and you can end access at any time. The node that hosts your space can read ordinary records so it can serve them; the Data Vault encrypts values on your device first. Hosted MCP handles what it passes in readable form, and the connected assistant receives what it reads and can keep a copy. See [Security and trust](https://docs.tinycloud.xyz/concepts/security-and-trust) for key custody, TEEs and encryption.
 
@@ -10,73 +10,64 @@ Give your AI agent abilities that keep your data in your own TinyCloud space. Ag
 
 The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting tools yet; meetings use the CLI route.
 
-**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md): it installs the CLI and signs the owner in. Health Log always asks for its own permission, even after onboarding. Other personal apps reuse your onboarding access when it covers the task, and ask only for what's missing.
+**Agents:** the owner sent you this page, maybe with a request. Start with [/onboarding](onboarding.md), then continue the owner's request. Health Log always asks for its own permission, even after onboarding. Other personal apps reuse your onboarding access when it covers the task, and ask only for what's missing.
 
 ## Personal records: [/apps](tc-apps.md)
 
 - **What it does:** your agent logs, tracks and looks up anything you keep records of, like meals, weight, workouts or todos, and organises them into apps as you go.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-- **You approve:** Health Log always asks for its own permission, even if you've finished onboarding; installing it may also ask for permission to create its tables. Other personal apps can reuse your onboarding access when it covers the task.
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
+- **You approve:** Health Log always asks for its own permission, even if you've finished onboarding; setting it up may also ask for permission to create its tables. Other personal apps can reuse your onboarding access when it covers the task.
 - **Undo:** the end of [the page](tc-apps.md#undo) lists the commands.
 
 ## TinyCloud One Feed: [/feed](https://agents.tinycloud.xyz/feed)
 
 - **What it does:** you connect your agent to your TinyCloud One Feed once; it then posts the cards you asked for there, and reads your answers.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/feed with curl and follow it, including running its installer. Post the updates I ask for to my TinyCloud One Feed.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/feed with curl and follow it. Post the updates I ask for to my TinyCloud One Feed.`
 - **You approve:** after [/onboarding](onboarding.md), one OpenKey link that lets your agent set up your TinyCloud One Feed and connect agents to it for 30 days. It uses the CLI selected by [/cli](tinycloud.md), `1.6.6`.
 - **Undo:** ask your agent to disconnect it: that revokes the agent's grant, and can also remove its cards from TinyCloud One ([§8 of the page](https://agents.tinycloud.xyz/feed#8-disconnect)).
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
 
 - **What it does:** your agent answers questions about your TinyChat meetings: recaps, follow-ups and what was said, with references to the transcript.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/chat with curl and follow it, including running its installer. How did my last meeting go?`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/chat with curl and follow it. How did my last meeting go?`
 - **You approve:** after [/onboarding](onboarding.md), at most one OpenKey link that lets your agent read your TinyChat meetings for 30 days. TinyChat also needs the code OpenKey shows, pasted back to your agent.
 - **Undo:** delete the `tinychat-retrieval` skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. [§6 of the page](../apps/tinychat/setup.md#6-return-hand-off-update-or-remove) has both.
 
 ## Publish and share: [/publish](publish.md)
 
 - **What it does:** your agent publishes a document or web page from your computer and sends you a link that anyone who has it can open. It asks you before it makes one.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it, including running its installer. Publish this report and send me a link.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/publish with curl and follow it. Publish this report and send me a link.`
 - **You approve:** its own single OpenKey approval to let your agent publish to your share folders, for up to 30 days. When the agent sends the link in the chat, there's nothing to send back.
 - **Undo:** clearing the local login is not owner revocation. Link revocation has the limits on [the page](publish.md#undo).
 
 ## Share an artifact: [/share](share.md)
 
 - **What it does:** your agent publishes a document or web page from your computer to your TinyCloud and gives you a link. Anyone with the link can open it, so your agent asks you first. To share with one person's email address, or with everyone at an email domain, use share.tinycloud.xyz. Every share expires, and your agent can revoke it.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it, including running its installer. Share this with TinyCloud.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it. Share this with TinyCloud.`
 - **You approve:** the same OpenKey link as [/publish](publish.md), to let your agent publish to your share folders, for up to 30 days.
 - **Undo:** same as [/publish](publish.md#undo).
 
 ## Secrets: [/secrets](secrets.md)
 
 - **What it does:** your agent uses API keys you keep in TinyCloud Secrets, following instructions to keep values out of the conversation. The authorized agent or MCP runtime still receives the values it uses. If a key is missing, it sends you a link to add it.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it, including running its installer. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
 - **You approve:** a Secret Manager link to add a missing key, and one OpenKey link to let your agent read the keys it names, for 30 days. When the agent sends the link in the chat, there's nothing to send back.
 - **Undo:** `auth logout` is local only; [the page](secrets.md#undo) explains the distinction.
 
 ## Agent-to-agent threads: [/courier](courier.md)
 
 - **What it does:** your agent and a colleague's agent send each other requests and answers over TinyCloud, inside rules you set.
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Set up Courier for this task.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/courier with curl and follow it. Set up Courier for this task.`
 - **You approve:** a separate OpenKey grant for Courier's own key to keep messages and state in your `agents` space, for 30 days, and each pairing.
 - **Undo:** `courier revoke` currently removes local peer state; older access lasts to expiry. [The page](courier.md#undo) explains the limits.
 
 ## Building blocks
 
 - [/onboarding](onboarding.md): the one setup. Signs you in and gives the starting grant. Personal records reuse it; the other abilities each ask for their own approval too.
-- [/agent](agent.md): installs the one skill for Secrets, publish/share or Courier, after /onboarding.
-- [/cli](tinycloud.md): installs the CLI and attempts the optional core skill. Does not grant access.
-- [/openkey](openkey.md): installs the standalone OpenKey CLI, for workflows that need it. No page here uses it. Nothing to approve.
+- [/agent](agent.md): sends the agent to the one action page needed for Secrets, publish/share or Courier, after /onboarding.
+- [/cli](tinycloud.md): routes command-line agents to their client quickstart. Does not grant access.
+- [/openkey](openkey.md): runs the pinned standalone OpenKey CLI for workflows that explicitly need it. No page here uses it. Nothing to approve.
 
 ## Skills
 
-The pages install these for you. To install one yourself, replace `<skill>` and `<client>` (`claude-code`, `codex` or `opencode`; any other agent uses `codex`):
-
-```sh
-mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
-node "$HOME/.local/share/tinycloud/install.js" <skill> --agent <client>
-```
-
-`<skill>` is `apps`, `feed`, `chat`, `publish`, `secrets`, `courier` or `cli`, from the pages above, or `mcp`. The installer checks every file against [`/skills/index.json`](https://agents.tinycloud.xyz/skills/index.json) and prints `SKILL_INSTALLED <name> <version> <folder>`. To read a skill, open `/skills/<skill>.md`, for example [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md); its files, exactly as installed, are under `/skills/<skill>/`. To remove one, delete its folder.
-
-`mcp` is the skill that goes with the TinyCloud MCP server (`@tinycloud/mcp` 0.9.0), for agents that already run that server. Agents that support remote MCP connect to the hosted server at `https://mcp.tinycloud.xyz/mcp` instead and sign in with OpenKey; [`/connect`](https://agents.tinycloud.xyz/connect) has the steps. Install it with the line above and `mcp` as `<skill>`; read it at [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md).
+Read and follow the page for the action you need. Published skill files are under `/skills/`; for example, read [`/skills/feed.md`](https://agents.tinycloud.xyz/skills/feed.md) for Feed and [`/skills/mcp.md`](https://agents.tinycloud.xyz/skills/mcp.md) for the TinyCloud MCP server.

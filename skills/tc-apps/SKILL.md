@@ -78,7 +78,7 @@ if [ -n "$B" ]; then
   V=$("$B" --version); printf '%s\n' "$V"
   if printf '%s\n' "$V" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
     if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.6; keeping this operator-selected CLI"
-    else echo "CLI_OLDER $V $B: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
+    else echo "CLI_OLDER $V $B: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
     exit 1
   fi
 fi
@@ -88,7 +88,7 @@ It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per l
 - `<NOW>` is this computer's local date, time and UTC offset, e.g. `2026-10-06T18:30+02:00`. Use it for "today", and for the time in an id, for generic apps. Health Log instead uses its validated owner timezone and fresh clock from `healthlog-context.mjs` (`TINY-APPS.md` §4).
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
 - `TC_BIN is unset` → follow the shared CLI setup, then continue this request with the path from its `TC_SELECTED`. Do not install a second CLI.
-- `CLI_OLDER <version> <path>` (the block stops) → the CLI is older than `1.6.6`: follow the shared CLI setup at https://agents.tinycloud.xyz/cli once, which upgrades a CLI the agent installed, then run §1 again. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. Run no other `tinycloud` command until §1 passes.
+- `CLI_OLDER <version> <path>` (the block stops) → the CLI is older than `1.6.6`: stop and tell the owner what it printed.
 - `TC_OLDER <version> <path>` (the block stops, or the CLI setup prints it) → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Don't replace it.
 
 ## 1a. Which layout does this app use?

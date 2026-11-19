@@ -21,13 +21,13 @@ O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=proces
 V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
 if printf '%s\n' "$V" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.6; keeping this operator-selected CLI"
-  else echo "CLI_OLDER $V $B: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
+  else echo "CLI_OLDER $V $B: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
   exit 1
 fi
 ```
 
 - `TC_NOT_FOUND` → follow that shared guide and return here.
-- `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: follow the shared guide once (it upgrades a CLI the agent installed), then run the check again. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
+- `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: stop and tell the owner what it printed.
 - `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop.
 
 ## 2. Choose a token and a label

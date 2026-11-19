@@ -78,20 +78,6 @@ For `SPACE_NOT_HOSTED`, follow the [new-account guidance](https://agents.tinyclo
 | Publish or share a document/page | [Publish](https://agents.tinycloud.xyz/publish) or [share](https://agents.tinycloud.xyz/share), with `tc-publish` (`publish`). Make the link only with the owner's permission. |
 | Meeting recap, follow-ups or transcript search | [TinyChat meetings](https://agents.tinycloud.xyz/chat), with `tinychat-retrieval` (`chat`). |
 
-The task guide is the authority for installing its skill, permissions and cleanup; fetch it yourself rather than asking the owner to paste another link. The [skill index](https://agents.tinycloud.xyz/skills/index.json) lists versions, files and checksums. If a needed skill is not installed by that guide, download the installer in one tool call:
-
-```sh
-mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
-```
-
-Then run it in a separate call for the relevant short name (`apps`, `secrets`, `publish`, `chat`, `cli`):
-
-```sh
-node "$HOME/.local/share/tinycloud/install.js" apps --agent codex
-```
-
-Use `claude-code` for Claude Code, `opencode` for OpenCode and `codex` for other runtimes. The latter installs into `~/.agents/skills`; use the runtime-specific discovery instructions on this page. Read the installed `SKILL.md` and its task-relevant references before acting. Do not install every skill or switch to local stdio MCP merely to complete CLI onboarding.
-
 The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
 
 <!-- std:connect-feedback -->

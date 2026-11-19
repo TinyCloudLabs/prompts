@@ -6,8 +6,8 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 
 ## For the owner
 
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it, including running its installer. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
-- Your agent follows [the shared setup](agent.md) for this task: it installs the pinned CLI into the shared private prefix, records your account DID as a non-secret owner default, installs the Secrets skill, then continues the same request. If it doesn't know the DID of your Secrets account, give it the address shown in Secret Manager; do not send it an API key.
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
+- Your agent follows [the shared setup](agent.md), records your account DID as a non-secret owner default, reads the Secrets skill, then continues the same request. If it doesn't know the DID of your Secrets account, give it the address shown in Secret Manager; do not send it an API key.
 - **You approve:** a Secret Manager `/request` link if a name is missing and a separate OpenKey request when the agent needs read access. The current read grant includes network-wide decrypt authority, not only the named secret. Check the exact items; you may decline any item. Then tell your agent you're done; there's no code to send back, and never send a value.
 - **Undo:** `auth logout` clears only the agent's local session. Its grant remains valid until expiry or owner revocation; a provider key already read may require rotation.
 
@@ -15,7 +15,7 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 
 {{std:read-raw}}
 
-Keep the owner's request, read [setup/agent.md](agent.md), select **Secrets** and follow its steps. Install only `tc-secrets`; choose a role-and-purpose-specific `TC_SECRETS_PROFILE` rather than silently sharing `api-keys`. Once setup is ready, read the installed skill's `SKILL.md` with the shell reads in [/agent](agent.md), never the file-read tool, and continue the original task from §1 in this conversation. Missing CLI or owner DID is `NEEDS_SETUP`, not a reason to request a value in chat or a broad grant.
+Keep the owner's request, read [setup/agent.md](agent.md), select **Secrets** and follow its steps. Choose a role-and-purpose-specific `TC_SECRETS_PROFILE` rather than silently sharing `api-keys`. Read and follow https://agents.tinycloud.xyz/skills/secrets.md, then continue the original task in this conversation. Missing CLI or owner DID is `NEEDS_SETUP`, not a reason to request a value in chat or a broad grant.
 
 ## Exit codes and owner lines
 

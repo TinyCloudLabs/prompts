@@ -26,7 +26,7 @@ const section = (file, heading) => {
 
 const OLDER = "1.5.1";
 const PASSING = [CLI_VERSION, "1.6.7", "1.7.0", "1.6.10", "1.7.0-beta.1"];
-const cliOlder = (bin) => `CLI_OLDER ${OLDER} ${bin}: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block`;
+const cliOlder = (bin) => `CLI_OLDER ${OLDER} ${bin}: this CLI is older than this skill needs. Stop and tell the owner what it printed.`;
 const tcOlder = (bin) => `TC_OLDER ${OLDER} ${bin} is older than the pinned ${CLI_VERSION}; keeping this operator-selected CLI`;
 
 // `stops`: an operator's older TC_BIN also stops the block (owner notice); otherwise the block continues to its feature probes.
@@ -206,15 +206,13 @@ for (const block of blocks) {
   });
 }
 
-// The rule an agent reads first: run the block; only TC_OLDER means operator-selected;
-// the agent asks the owner before upgrading; never `tinycloud upgrade` or a global install.
+// The rule an agent reads first still directs upgrades through /cli; every CLI_OLDER note stops and reports.
+const STOP = "stop and tell the owner what it printed.";
 const UPGRADE = "Ask the owner first in one line (\"I need to update the TinyCloud CLI to finish this. OK?\") and wait for their yes.";
 const NEVER_UPGRADE = "Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.";
-const CLI_UPGRADE = "Unless the owner already said yes, ask first in one line (\"I need to update the TinyCloud CLI to finish this. OK?\") and wait for their yes.";
-const SKILL_STEP = "Ask the owner first in one line (\"I need to install the Courier skill to finish this. OK?\") and wait for their yes.";
+const SKILL_STEP = "set `COURIER_SKILL=read`";
 const surfaces = [
   { files: ["skills/tc-apps/SKILL.md", "_site/skills/apps/SKILL.md", "_site/skills/apps.md"], blk: "§1", stops: true },
-  { files: ["setup/tc-apps.md", "_site/apps"], blk: "skill §1", stops: true },
   { files: ["skills/tc-secrets/SKILL.md", "_site/skills/secrets/SKILL.md", "_site/skills/secrets.md"], blk: "§1", stops: false },
   { files: ["skills/tc-publish/SKILL.md", "_site/skills/publish/SKILL.md", "_site/skills/publish.md"], blk: "§1", stops: false },
   { files: ["skills/tinycloud-feed/SKILL.md", "_site/skills/feed/SKILL.md", "_site/skills/feed.md"], blk: "the check", stops: true },
@@ -257,22 +255,19 @@ test("every CLI rule but /onboarding's ends with the own-copy sentence, and none
   assert.deepEqual(served().filter((file) => REMOVED_INSTALL_SENTENCES.some((removed) => readFileSync(join(root, file), "utf8").includes(removed))), []);
 });
 
-test("/cli and every CLI_OLDER note say to ask the owner before upgrading and never `tinycloud upgrade`, as written and as served", () => {
-  for (const file of ["setup/tinycloud.md", "_site/cli"]) {
-    assert.ok(readFileSync(join(root, file), "utf8").includes(`**Upgrades go through this guide.** ${CLI_UPGRADE} ${NEVER_UPGRADE}`), file);
-  }
+test("every CLI_OLDER note says to stop and tell the owner, as written and as served", () => {
   for (const { files } of surfaces) {
     for (const file of files) {
       // The prose that tells the agent what to do with a CLI_OLDER line (not the rule, not the block).
       const notes = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.includes("CLI_OLDER <version> <path>") && !line.startsWith("**CLI rule"));
       if (file === "setup/tc-apps.md" || file === "_site/apps") { assert.equal(notes.length, 0, file); continue; }
       assert.equal(notes.length, 1, file);
-      assert.ok(notes[0].includes(`${UPGRADE} ${NEVER_UPGRADE}`), file);
+      assert.ok(notes[0].toLowerCase().includes(STOP), file);
     }
   }
 });
 
-test("the required Courier skill's SKILL_MISSING note says to ask the owner before installing it, as written and as served", () => {
+test("the required Courier skill's SKILL_MISSING note points to the directly read skill, as written and as served", () => {
   for (const file of ["setup/courier.md", "_site/courier"]) {
     const notes = readFileSync(join(root, file), "utf8").split("\n").filter((l) => /^(- \*\*)?`SKILL_MISSING/.test(l));
     assert.equal(notes.length, 1, file);

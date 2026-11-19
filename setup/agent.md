@@ -2,7 +2,7 @@
 
 # Set up a TinyCloud action for your agent
 
-Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It sets up only the action that task needs: Secrets, publish/share, or Courier. Setup installs the pinned CLI (or uses an operator-provided `TC_BIN`), attempts the optional core skill, and installs one action skill. Follow [/onboarding](onboarding.md) first if TinyCloud isn't set up yet. Each of these actions then asks for its own approval: the owner approves one OpenKey link. When the agent sends that link in the chat, there's nothing to send back.
+Give your agent one task and this page: `https://agents.tinycloud.xyz/agent`. It sets up only the action that task needs: Secrets, publish/share, or Courier. Follow [/onboarding](onboarding.md) first if TinyCloud isn't set up yet. Each action asks for its own approval: the owner approves one OpenKey link. When the agent sends that link in the chat, there's nothing to send back.
 
 ## For the agent
 
@@ -22,9 +22,7 @@ Before a new approval, tell the owner in one line what it's for. Call it "permis
 
 ### 1. CLI
 
-Follow [the shared CLI setup](tinycloud.md) with its caller contract, then return here. New installs and older agent-owned installs in `~/.local/share/tinycloud/cli` use `@tinycloud/cli@1.6.6`; an operator-selected CLI is kept. Preserve the operator's `TC_BIN`; a missing or broken selected binary stops setup instead of being replaced. If the setup printed `TC_OLDER` (an operator-selected CLI older than `1.6.6`): for Courier, tell the owner in one line that it is older than the required `1.6.6`, and stop; Secrets and publish/share continue, and their skill's §1 feature check decides. Do not change a conflicting `tc`. If your client denies installation/persistence, stop and ask the owner to allow it, giving them this reply to send: "Go ahead: download the TinyCloud CLI installer from agents.tinycloud.xyz." Do not switch installation methods. Do not sign in yet.
-
-Give the CLI setup the selected action (`secrets`, `publish` or `courier`) as its action skill, so its one run call installs that skill too and step 3 is already done.
+Read and follow https://agents.tinycloud.xyz/connect for the current client, then return here with the owner's original task. Preserve an operator-provided `TC_BIN`; a missing or broken override stops setup. Do not change a conflicting `tc` or sign in yet.
 
 ### 2. Non-secret owner defaults
 
@@ -118,75 +116,17 @@ node "$H" set TC_OWNER_DID 'did:pkh:eip155:1:0x<owner-address>'
 
 Replace the example with the owner's answer. The parser writes a 0600 file in a 0700 directory, rejects secret-looking keys and never executes file content. Do not echo or copy `agent.env` into a transcript. If the owner doesn't provide the required identity, stop with one `NEEDS_OWNER` message naming the missing non-secret field, not a grant request.
 
-### 3. The one action skill
+### 3. The one action guide
 
-If the CLI setup's run call printed `SKILL_INSTALLED` for this action's skill in this conversation (`tc-secrets`, `tc-publish` or `courier`), skip to reading it below. Otherwise install **only** the skill for the selected action using the site's checksum-checking installer (which reads `/skills/index.json`): `secrets`, `publish` or `courier`. Inspect a same-named existing skill before replacement; stop if it is unrelated or locally modified. Replace `<action>` and `<client>` with the selected values:
+Read and follow exactly one page for the selected action, keeping the owner's original request:
 
-```sh
-mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
-```
+- Secrets: https://agents.tinycloud.xyz/secrets
+- Publish or share: https://agents.tinycloud.xyz/publish
+- Courier: https://agents.tinycloud.xyz/courier
 
-Then, as a separate shell call:
+Continue the original task in this conversation without asking for it again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` for every skill shell call; do not silently use or share the `api-keys` default.
 
-```sh
-node "$HOME/.local/share/tinycloud/install.js" <action> --agent <client>
-```
-
-Read its installed `SKILL.md` with the shell, never your client's file-read tool: the skill folder (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/<skill>/` for Claude Code, `$HOME/.agents/skills/<skill>/` for Codex/OpenCode) is outside the project, and Claude Code asks the owner before its file-read tool opens a file there, while a shell read goes ahead. Run the shell calls for your skill below, in order; together they are the whole file, and each part is short enough to show in full. If your client still saves an output to a file, read that saved file, not the skill.
-
-Secrets (`tc-secrets`), three calls:
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/SKILL.md" "$HOME/.agents/skills/tc-secrets/SKILL.md"; do if [ -f "$f" ]; then sed '/^## 3\. Consent/,$d' "$f"; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/SKILL.md" "$HOME/.agents/skills/tc-secrets/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## 3\. Consent/,$p' "$f" | sed '/^## 4\. Use a secret$/,$d'; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-secrets/SKILL.md" "$HOME/.agents/skills/tc-secrets/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## 4\. Use a secret$/,$p' "$f"; break; fi; done
-```
-
-Publish and share (`tc-publish`), three calls:
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md" "$HOME/.agents/skills/tc-publish/SKILL.md"; do if [ -f "$f" ]; then sed '/^## 2\. Sign in/,$d' "$f"; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md" "$HOME/.agents/skills/tc-publish/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## 2\. Sign in/,$p' "$f" | sed '/^## 3\. Publish/,$d'; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-publish/SKILL.md" "$HOME/.agents/skills/tc-publish/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## 3\. Publish/,$p' "$f"; break; fi; done
-```
-
-Courier (`courier`), three calls, then its `start.md` in one call when the skill sends you there:
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md" "$HOME/.agents/skills/courier/SKILL.md"; do if [ -f "$f" ]; then sed '/^## Set up Courier once$/,$d' "$f"; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md" "$HOME/.agents/skills/courier/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## Set up Courier once$/,$p' "$f" | sed '/^## Guided start$/,$d'; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md" "$HOME/.agents/skills/courier/SKILL.md"; do if [ -f "$f" ]; then sed -n '/^## Guided start$/,$p' "$f"; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then sed '/^## Set up Courier once$/,$d' "$f"; break; fi; done
-```
-
-```sh
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/start.md" "$HOME/.agents/skills/courier/start.md"; do if [ -f "$f" ]; then sed -n '/^## Set up Courier once$/,$p' "$f"; break; fi; done
-```
-
-Continue the original task **in this conversation** at the skill's first check, without asking for the task again. For Secrets, select a role-and-purpose-specific profile (for example `voiceover-reader`) and set `TC_SECRETS_PROFILE` to it for **every** skill shell call; do not silently use or share the `api-keys` default. The skill checks access before requesting approval and sends one owner message when access is needed.
-
-If the owner only asked for setup, report which CLI and skill are ready, and which non-secret owner field still needs an answer; do not start an approval. If the task asks for a different capability, use its own setup page.
+If the owner only asked for setup, report which action is ready and which non-secret owner field still needs an answer; do not start an approval. If the task asks for a different capability, use its own setup page.
 
 ## Exit codes and owner lines
 
