@@ -1,29 +1,68 @@
-// Installs one TinyCloud agent skill from agents.tinycloud.xyz for one client.
+// Installs one TinyCloud agent skill from agents.tinycloud.xyz for the agent clients you name.
 // Every file is checked against its sha256 in /skills/index.json before anything
 // is written, then the skill folder is replaced as a whole.
 //
 //   mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
-//   node "$HOME/.local/share/tinycloud/install.js" <skill> --agent <claude-code|codex|opencode>
+//   node "$HOME/.local/share/tinycloud/install.js" <skill> --agent <client[,client…]|auto> [--scope user|project]
 //
 // <skill> is a short name from /skills/index.json (apps, secrets, publish, cli,
-// courier, chat, mcp) or the skill's own name (tc-apps, …). Claude Code skills go
-// into ${CLAUDE_CONFIG_DIR:-~/.claude}/skills, Codex and OpenCode skills into
-// ~/.agents/skills. Prints "SKILL_INSTALLED <name> <version> <folder>" on success
-// and "SKILL_INSTALL_FAILED <reason>" (exit 1) otherwise.
+// courier, chat, mcp) or the skill's own name (tc-apps, …). Each client reads skills from
+// the folders in the table below; most read the shared ".agents/skills" folder, so naming several
+// of them installs one copy. --scope user (the default) installs for the whole computer account;
+// --scope project installs into the project the command runs in. "auto" picks the clients that
+// have a folder on this computer, or the shared folder when it finds none.
+// Prints "SKILL_INSTALLED <name> <version> <folder>" for each folder and one "SKILL_SCOPE …"
+// line saying who can see it, and "SKILL_INSTALL_FAILED <reason>" (exit 1) otherwise.
 // The site build serves this file as /skills/install.js with SITE set to the
 // site it is served from, so a Pages preview installs the preview's skills.
 "use strict";
 const { createHash, randomBytes } = require("node:crypto");
-const { lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } = require("node:fs");
 const { homedir } = require("node:os");
 const { dirname, join, resolve, sep } = require("node:path");
 
 const SITE = "https://agents.tinycloud.xyz";
-const ROOTS = {
-  "claude-code": join(process.env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), ".claude"), "skills"),
-  codex: join(homedir(), ".agents", "skills"),
-  opencode: join(homedir(), ".agents", "skills"),
+// The skill folders clients read and the clients that read them. This is scripts/skill-clients.json, copied
+// here because the installer is served and run as one file (a test keeps the copy equal to the file). "shared"
+// is the ".agents/skills" convention, and every client except Claude Code gets that copy, because the setup
+// guides read it. Claude Code does not read it, so it has its own folder, and three other clients get a folder
+// of their own as well: Hermes reads ~/.hermes/skills (the shared folder only when its config lists it), Amp's
+// documented user folder is ~/.config/agents/skills, and OpenClaw reads the shared user folder only with its
+// default state folder, so it also gets a copy in its state folder's "skills". A folder with a null `project`
+// is not written in project scope. "present" is the folder whose presence means the client is installed (for
+// "auto"). Paths: "~/" is the home folder; "{VAR|default}" is the trimmed environment variable when it is not
+// empty, else the default; project paths start at the project folder.
+// BEGIN skill-clients.json
+const TABLE = {
+  "folders": {
+    "shared": { "user": "~/.agents/skills", "project": ".agents/skills" },
+    "claude": { "user": "{CLAUDE_CONFIG_DIR|~/.claude}/skills", "project": ".claude/skills" },
+    "hermes": { "user": "~/.hermes/skills", "project": ".hermes/skills" },
+    "amp": { "user": "~/.config/agents/skills", "project": ".agents/skills" },
+    "openclaw": { "user": "{OPENCLAW_STATE_DIR|~/.openclaw}/skills", "project": null }
+  },
+  "clients": {
+    "amp": { "label": "Amp", "folders": ["shared", "amp"], "present": "~/.config/amp" },
+    "claude-code": { "label": "Claude Code", "folders": ["claude"], "present": "{CLAUDE_CONFIG_DIR|~/.claude}" },
+    "codex": { "label": "Codex", "folders": ["shared"], "present": "~/.codex" },
+    "copilot": { "label": "GitHub Copilot", "folders": ["shared"], "present": "~/.copilot" },
+    "cursor": { "label": "Cursor", "folders": ["shared"], "present": "~/.cursor" },
+    "gemini": { "label": "Gemini CLI", "folders": ["shared"], "present": "~/.gemini" },
+    "hermes": { "label": "Hermes", "folders": ["shared", "hermes"], "present": "~/.hermes" },
+    "omp": { "label": "OMP", "folders": ["shared"], "present": "~/.omp" },
+    "openclaw": { "label": "OpenClaw", "folders": ["shared", "openclaw"], "present": "{OPENCLAW_STATE_DIR|~/.openclaw}" },
+    "opencode": { "label": "OpenCode", "folders": ["shared"], "present": "~/.config/opencode" },
+    "agents": { "label": "other clients that read .agents/skills", "folders": ["shared"], "present": null }
+  }
 };
+// END skill-clients.json
+const { folders: FOLDERS, clients: CLIENTS } = TABLE;
+// A path from the table: the environment overrides filled in, then "~/" or an absolute path.
+const tablePath = (template) => {
+  const filled = template.replace(/\{([A-Z_]+)\|([^}]*)\}/g, (_, name, fallback) => process.env[name]?.trim() || fallback);
+  return filled === "~" || filled.startsWith("~/") ? resolve(homedir(), filled.slice(2)) : resolve(filled);
+};
+const USAGE = `usage: node install.js <skill> --agent <${Object.keys(CLIENTS).join("|")}|auto>[,…] [--scope user|project]`;
 // A skill name is one plain folder name; file paths are relative, "/"-separated,
 // and stay inside the skill's folder.
 const SKILL_NAME = /^[a-z0-9][a-z0-9-]*$/;
@@ -121,30 +160,101 @@ async function lock(path, skill) {
   }
 }
 
-async function main() {
-  const [want, flag, agent, ...extra] = process.argv.slice(2);
-  if (!want || flag !== "--agent" || !Object.hasOwn(ROOTS, agent) || extra.length) {
-    throw new Error("usage: node install.js <skill> --agent claude-code|codex|opencode");
+// `<skill> --agent <clients|auto> [--scope user|project]`, in either order.
+function parseArgs(argv) {
+  const args = { want: undefined, agent: undefined, scope: undefined };
+  for (let i = 0; i < argv.length; i++) {
+    const flag = argv[i];
+    if (flag === "--agent" || flag === "--scope") {
+      const key = flag.slice(2);
+      const value = argv[++i];
+      if (args[key] !== undefined || value === undefined || value.startsWith("--")) throw new Error(USAGE);
+      args[key] = value;
+    } else if (flag.startsWith("--") || args.want !== undefined) {
+      throw new Error(USAGE);
+    } else {
+      args.want = flag;
+    }
   }
-  const { skills } = await (await get("/skills/index.json")).json();
-  const skill = skills.find((s) => s.short === want || s.name === want);
-  if (!skill) throw new Error(`no skill "${want}"; see ${SITE}/skills/index.json`);
-  if (typeof skill.name !== "string" || !SKILL_NAME.test(skill.name)) throw new Error(`unsafe skill name "${skill.name}"`);
+  if (!args.want || !args.agent) throw new Error(USAGE);
+  const scope = args.scope ?? "user";
+  if (scope !== "user" && scope !== "project") throw new Error(USAGE);
+  return { want: args.want, agent: args.agent, scope };
+}
 
-  const root = resolve(ROOTS[agent]);
+// The folder the person is working in as a project: the nearest folder above the current one with a
+// ".git" in it. The search stops at the home folder, and at the first folder that belongs to another account
+// (for example /tmp), without reading what is in it, so a ".git" outside the person's own folders is never the
+// project. With none found, the install refuses: it can't tell which folder is the project. A project install
+// never goes into the home folder or the top of the disk, where it would be visible to everything for this account.
+function projectRoot() {
+  const cwd = resolve(process.cwd());
+  // Real paths, so a home reached through a link is still the home.
+  const real = (file) => { try { return realpathSync(file); } catch { return resolve(file); } };
+  const home = real(homedir());
+  const me = typeof process.getuid === "function" ? process.getuid() : null;
+  const homeRefusal = (folder) => new Error(`--scope project found no project folder: ${folder} is the home folder or the top of the disk.`);
+  let project = null;
+  for (let up = cwd; ; up = dirname(up)) {
+    if (me !== null && existsSync(up) && statSync(up).uid !== me) throw new Error(`${up} belongs to another account.`);
+    if (existsSync(join(up, ".git"))) {
+      project = up;
+      break;
+    }
+    if (real(up) === home) {
+      if (up === cwd) throw homeRefusal(up);
+      break;
+    }
+    if (dirname(up) === up) break;
+  }
+  if (project !== null && (real(project) === home || dirname(project) === project)) throw homeRefusal(project);
+  if (project === null) throw new Error(`--scope project found no project folder: there is no .git in ${cwd} or any folder above it.`);
+  return project;
+}
+
+// In a folder another account can write to (for example /tmp), that account could pre-create the skills folder
+// and swap the skill after it is installed. A project install refuses the project, or any folder already there
+// on the way down to the skills folder, when it belongs to another account.
+function assertOwnProject(project, root) {
+  if (typeof process.getuid !== "function") return;
+  const me = process.getuid();
+  for (let dir = root; ; dir = dirname(dir)) {
+    if (existsSync(dir) && statSync(dir).uid !== me) {
+      throw new Error(`${dir} belongs to another account.`);
+    }
+    if (dir === project || dirname(dir) === dir) break;
+  }
+}
+
+// The folders to write, each with the labels of the clients that read it, in the order named.
+function pickTargets(agent, scope, project) {
+  const auto = agent === "auto";
+  const names = auto ? Object.keys(CLIENTS).filter((n) => CLIENTS[n].present && existsSync(tablePath(CLIENTS[n].present))) : agent.split(",");
+  if (auto && names.length === 0) names.push("agents");
+  const targets = [];
+  for (const name of names) {
+    if (!Object.hasOwn(CLIENTS, name)) throw new Error(`no client "${name}". ${USAGE}`);
+    for (const folder of CLIENTS[name].folders) {
+      const place = scope === "project" ? FOLDERS[folder].project : FOLDERS[folder].user;
+      if (place === null) continue;
+      const root = scope === "project" ? resolve(project, place) : tablePath(place);
+      const target = targets.find((t) => t.root === root);
+      if (target) {
+        if (!target.readers.includes(CLIENTS[name].label)) target.readers.push(CLIENTS[name].label);
+      } else {
+        targets.push({ root, folder, readers: [CLIENTS[name].label] });
+      }
+    }
+  }
+  return targets;
+}
+
+// Replaces one skill folder inside one skills folder and returns the skill's folder.
+async function installInto(root, skill, files) {
   const dest = join(root, skill.name);
   const stage = join(root, `.${skill.name}.installing-${TAG}`);
   const backup = join(root, `.${skill.name}.previous-${TAG}`);
   const lockDir = join(root, `.${skill.name}.lock`);
-
-  const files = [];
-  for (const file of skill.files) {
-    checkPath(stage, file.path);
-    const body = Buffer.from(await (await get(file.url)).arrayBuffer());
-    const sha256 = createHash("sha256").update(body).digest("hex");
-    if (sha256 !== file.sha256) throw new Error(`${SITE}${file.url}: sha256 ${sha256}, index.json says ${file.sha256}`);
-    files.push([file.path, body]);
-  }
 
   // Everything below changes the skills folder, one install of this skill at a time.
   mkdirSync(root, { recursive: true });
@@ -184,10 +294,60 @@ async function main() {
   } finally {
     if (lockOwner(lockDir) === `${process.pid} ${TAG}`) rmSync(lockDir, { recursive: true, force: true });
   }
-  console.log(`SKILL_INSTALLED ${skill.name} ${skill.version} ${dest}`);
+  return dest;
 }
 
+// Folders already replaced in this run.
+const updated = [];
+
+async function main() {
+  const { want, agent, scope } = parseArgs(process.argv.slice(2));
+  const project = scope === "project" ? projectRoot() : null;
+  const targets = pickTargets(agent, scope, project);
+  const { skills } = await (await get("/skills/index.json")).json();
+  const skill = skills.find((s) => s.short === want || s.name === want);
+  if (!skill) throw new Error(`no skill "${want}"; see ${SITE}/skills/index.json`);
+  if (typeof skill.name !== "string" || !SKILL_NAME.test(skill.name)) throw new Error(`unsafe skill name "${skill.name}"`);
+
+  // Check every file once, whatever the folders: a path that stays inside one skill folder stays inside all.
+  const base = resolve(sep, "skill");
+  const files = [];
+  for (const file of skill.files) {
+    checkPath(base, file.path);
+    const body = Buffer.from(await (await get(file.url)).arrayBuffer());
+    const sha256 = createHash("sha256").update(body).digest("hex");
+    if (sha256 !== file.sha256) throw new Error(`${SITE}${file.url}: sha256 ${sha256}, index.json says ${file.sha256}`);
+    files.push([file.path, body]);
+  }
+
+  for (const target of targets) {
+    if (scope === "project") assertOwnProject(project, target.root);
+  }
+  for (const target of targets) {
+    const dest = await installInto(target.root, skill, files);
+    updated.push(dest);
+    console.log(`SKILL_INSTALLED ${skill.name} ${skill.version} ${shown(dest)}`);
+  }
+  // Each client once: Amp, Hermes and OpenClaw have a folder of their own as well as the shared one.
+  const listed = new Set();
+  const readers = targets
+    .map((t) => t.readers.filter((label) => !listed.has(label) && listed.add(label)).join(", "))
+    .filter(Boolean)
+    .join("; ");
+  console.log(
+    scope === "project"
+      ? `SKILL_SCOPE project: only sessions started inside ${shown(project)} can use it (installed for ${readers}). --scope user installs it for every folder on this computer account.`
+      : `SKILL_SCOPE user: any session on this computer account can use it, in any folder (installed for ${readers}). --scope project installs it for one project only.`,
+  );
+}
+
+// Control characters in a name (C0 and C1, line and paragraph separators, bidi and zero-width marks) are shown as
+// "?" so an odd folder name can't change what the output says or forge a line of it.
+const shown = (text) => text.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/g, "?");
+
 main().catch((error) => {
-  console.error(`SKILL_INSTALL_FAILED ${error.message}`);
+  // A later folder can fail after an earlier one was replaced: say so, so no one reports it as not installed.
+  const already = updated.length === 0 ? "" : ` (already installed in: ${updated.map(shown).join(", ")})`;
+  console.error(`SKILL_INSTALL_FAILED ${shown(String(error.message))}${already}`);
   process.exitCode = 1;
 });
