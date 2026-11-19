@@ -138,6 +138,10 @@ const upstreamResolver = (bin) => [
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
 const UPSTREAM_RESOLVERS = [upstreamResolver("tc"), upstreamResolver("tinycloud")];
+// The CLI lookup is written once, in the Courier guide; the skills take it from there, so the two cannot drift.
+const COURIER_GUIDE = readFileSync(join(ROOT, "setup/courier.md"), "utf8");
+const LOOKUP = COURIER_GUIDE.match(/^TC="\$\{TC_BIN-[^\n]*\n\[ "\$\{TC_BIN\+x\}" = x \][^\n]*$/m)?.[0];
+if (!LOOKUP) throw new Error("setup/courier.md: the two lines that find the CLI (TC=… and the npm fallback) are missing");
 const RESOLVER = [
   '{ set +x; } 2>/dev/null; umask 077',
   'ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"',
@@ -146,12 +150,11 @@ const RESOLVER = [
   '  if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :',
   '  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi',
   'fi',
-  'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
-  '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
+  LOOKUP,
   '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
 // Courier's setup section is published inside its skill as well as this guide.
-const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
+const courierSetup = COURIER_GUIDE
   .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
 if (!courierSetup) throw new Error("Courier guide is missing executable remote setup.");
 const COURIER_SETUP = `## Set up Courier once\n${expandStd(courierSetup.trim(), "setup/courier.md")}`;
