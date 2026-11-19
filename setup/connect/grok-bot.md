@@ -12,10 +12,4 @@ The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.
 Follow what it prints.
 Wherever it says `tinycloud`, run `npx -y @tinycloud/cli@{{CLI_VERSION}}` instead.
 
-Save the TinyCloud skill so you remember how to use it. Run these as two separate commands:
-
-`mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js`
-
-`node "$HOME/.local/share/tinycloud/install.js" cli --agent codex`
-
 Then continue the owner's request.
