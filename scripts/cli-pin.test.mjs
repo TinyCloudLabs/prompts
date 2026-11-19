@@ -240,22 +240,21 @@ test("every CLI rule says to run the block first, that only TC_OLDER means opera
   }
 });
 
-// A fetch summary turned "No global installation, second beta CLI, …" into "don't
-// install a second CLI", and the agent didn't upgrade. /onboarding keeps that
-// sentence so its owner-facing HTML stays byte-identical; its step 2 stops on CLI_OLDER itself.
-const NO_GLOBAL = "Don't install the CLI globally, with `sudo`, or by piping a download into a shell; /cli installs and upgrades the agent's own copy.";
-const OLD_NO_GLOBAL = "second beta CLI";
-test("every CLI rule but /onboarding's forbids a global, sudo or piped install, not a second CLI, as written and as served", () => {
+// The CLI rule ends with one install sentence. /onboarding's rule has none: its step 2 stops on CLI_OLDER itself, and no
+// guide or skill names `sudo`.
+const OWN_COPY = "/cli installs and upgrades the agent's own copy of the CLI.";
+const REMOVED_INSTALL_SENTENCES = ["second beta CLI", "Don't install the CLI globally, with `sudo`, or by piping a download into a shell"];
+test("every CLI rule but /onboarding's ends with the own-copy sentence, and none names sudo, as written and as served", () => {
   for (const { files } of surfaces) {
     for (const file of files) {
       const [rule] = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith(RULE));
       const onboarding = file.endsWith("onboarding.md");
-      assert.equal(rule.includes(`${NO_GLOBAL}**`), !onboarding, file);
-      assert.equal(rule.includes(OLD_NO_GLOBAL), onboarding, file);
+      assert.equal(rule.includes(`${OWN_COPY}**`), !onboarding, file);
+      assert.doesNotMatch(rule, /sudo/i, file);
+      for (const removed of REMOVED_INSTALL_SENTENCES) assert.ok(!rule.includes(removed), file);
     }
   }
-  const keep = ["setup/onboarding.md", "_site/onboarding.md", "_site/llms-full.txt"];
-  assert.deepEqual(served().filter((file) => readFileSync(join(root, file), "utf8").includes(OLD_NO_GLOBAL)).sort(), keep.sort());
+  assert.deepEqual(served().filter((file) => REMOVED_INSTALL_SENTENCES.some((removed) => readFileSync(join(root, file), "utf8").includes(removed))), []);
 });
 
 test("/cli and every CLI_OLDER note say to ask the owner before upgrading and never `tinycloud upgrade`, as written and as served", () => {
