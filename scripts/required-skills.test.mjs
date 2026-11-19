@@ -27,7 +27,7 @@ function fresh() {
   writeFileSync(tc, `#!/bin/sh
 echo "$*" >> ${JSON.stringify(join(dir, "calls"))}
 case "$*" in
-  --version) echo 1.6.6 ;;
+  --version) echo 1.8.0 ;;
   "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' '  join link --consent' ;;
   "onboard --timeout 1s") echo '{"onboarded": true}' ;;
 esac

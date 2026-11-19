@@ -70,7 +70,7 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tinycloud-feed` | `feed` | [`skills/tinycloud-feed`](skills/tinycloud-feed), in this repository |
 | `tc-publish` | `publish` | [`skills/tc-publish`](skills/tc-publish), in this repository |
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
-| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.6.6`](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.6) (js-sdk), with the overlays below |
+| `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.8.0`](https://www.npmjs.com/package/@tinycloud/cli/v/1.8.0) (js-sdk), with the overlays below |
 | `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.5.2`](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.2) (js-sdk), with changes (below) |
 | `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.25`](https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz), unchanged |
 | `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.9.0`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) (js-sdk), with the onboarding-profile overlay below |
@@ -122,7 +122,7 @@ Courier inspects the complete installed skill before invoking an installer and p
 
 | Component | Pin | Owner/source |
 | --- | --- | --- |
-| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.6.6` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.6.6) |
+| TinyCloud CLI and `tinycloud-cli` skill | `@tinycloud/cli@1.8.0` | [npm package](https://www.npmjs.com/package/@tinycloud/cli/v/1.8.0) |
 | Courier for the automatic-pickup watcher only | `COURIER_WATCH_VERSION` in [`scripts/build-site.mjs`](scripts/build-site.mjs), a pre-release of `@tinycloud/courier` | `/courier` installs it in `~/.local/share/tinycloud/courier-watch` when the owner asks for automatic pickup; the pinned CLI is untouched. Temporary: once the pinned CLI's own Courier has `watch --agent-cli`, delete it and its `{{COURIER_WATCH_VERSION}}` token and make that section run `"$TC" courier` |
 | `courier` skill | `@tinycloud/courier@0.5.2` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.5.2) |
 | `mcp` skill | `@tinycloud/mcp@0.9.0` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) |

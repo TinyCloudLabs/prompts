@@ -8,7 +8,7 @@ For agents. TinyCloud One reads each connected agent's cards from two SQL databa
 
 ## 1. Check the CLI
 
-**CLI rule (stable `1.6.6`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI: the check prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
+**CLI rule (stable `1.8.0`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.8.0`, and stop. Any other older CLI: the check prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
 
 The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
 
@@ -19,8 +19,8 @@ O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=proces
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || { echo 'TC_NOT_FOUND: set up the CLI at https://agents.tinycloud.xyz/cli, then rerun this block'; exit 1; }
 V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
-if printf '%s\n' "$V" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
-  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.6.6; keeping this operator-selected CLI"
+if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+  if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.8.0; keeping this operator-selected CLI"
   else echo "CLI_OLDER $V $B: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
   exit 1
 fi
@@ -28,7 +28,7 @@ fi
 
 - `TC_NOT_FOUND` → follow that shared guide and return here.
 - `CLI_OLDER <version> <path>` → the check stopped before any other TinyCloud command: stop and tell the owner what it printed.
-- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop.
+- `TC_OLDER <version> <path>` → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.8.0`, and stop.
 
 ## 2. Choose a token and a label
 
@@ -52,7 +52,7 @@ tinycloud --profile '<OWNER_PROFILE>' auth request --cap 'tinycloud.sql:applicat
 
 Output `"changed": false` means the owner already approved it: go on to c. Otherwise, `auth request --grant` has no `--timeout` and blocks until the approval is resolved. This command does not return a pending-link result. Run it in a persistent shell session that streams stderr and stays alive while you reply. As soon as the short URL appears on stderr, send the owner this line, word for word and in no words of your own: "This lets this agent manage your TinyCloud One Feed's agent list, read and change every card and answer in it, and get notified of changes, for 30 days." Then send the complete URL on its own line, followed by: "Open this link and approve, then tell me." Then wait for the owner's next message and read the command's final output. In a live conversation, do not add `--paste`. If the approval will instead wait on a card, an inbox or a ticket, use the `--paste` code flow: with no code on stdin the command prints the link and stops at `PASTE_CODE_MISSING` instead of waiting, so no process has to stay alive; put that same line and the link only where just the owner sees them (their own card or inbox, never a shared ticket, issue, channel or public comment), and when the owner sends the code straight back to you (chat or their own card, never a public comment), run the same command with the code on stdin, then check with `tinycloud --profile '<OWNER_PROFILE>' auth whoami --json` that `ownerDid` is the owner you expected, and stop if it differs. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not run it as a one-shot command or rerun blindly after interruption. On an operator's `local-owner-key` profile there is no link; add `--yes` instead.
 
-<!-- Maintainers: the reason line above describes step b's broad grant: SQL read, write and schema on `home_feed` (the agent registry) and on every `feed/` database (all cards and answers), plus notifications of changes, for 30 days (`--expiry 30d`). The narrow per-agent grant is step c. If step b's expiry or permissions change, change this line with them. OpenKey's own "Reason provided by" text is the CLI's fixed string (`@tinycloud/cli@1.6.6` has no reason flag on `auth request`), so this line is what the owner reads in the chat or on the card. -->
+<!-- Maintainers: the reason line above describes step b's broad grant: SQL read, write and schema on `home_feed` (the agent registry) and on every `feed/` database (all cards and answers), plus notifications of changes, for 30 days (`--expiry 30d`). The narrow per-agent grant is step c. If step b's expiry or permissions change, change this line with them. OpenKey's own "Reason provided by" text is the CLI's fixed string (`@tinycloud/cli@1.8.0` has no reason flag on `auth request`), so this line is what the owner reads in the chat or on the card. -->
 
 **c. Connect.** This creates both databases, gives the agent's DID exactly read and write on its own output database, read on its responses database and notifications of new answers, then lists the agent in your Feed. Keep `--expiry 30d`: without it the agent's access ends after 24 hours. It can't outlast the approval from b.
 

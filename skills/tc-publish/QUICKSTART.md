@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-publish` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.6.6`; https://agents.tinycloud.xyz/connect sets it up for the current client. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: an older CLI that fails it prints `STALE`.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.8.0`; https://agents.tinycloud.xyz/connect sets it up for the current client. An older CLI the operator selected is kept, and the skill's feature probe is authoritative: an older CLI that fails it prints `STALE`.
 
 ## 0. Operator setup (once, not run by the agent)
 
