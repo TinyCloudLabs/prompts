@@ -6,9 +6,9 @@ Use this page only in Claude Code.
 
 The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.
 
-`(cd "$(mktemp -d)" && npx -y @tinycloud/cli@{{CLI_VERSION}} onboard --timeout 1s)`
+`npx --prefix "$HOME" -y -p @tinycloud/cli@{{CLI_VERSION}} tinycloud onboard --timeout 1s`
 
 Follow what it prints.
-Wherever it says `tinycloud`, run `(cd "$(mktemp -d)" && npx -y @tinycloud/cli@{{CLI_VERSION}})` instead.
+Wherever it says `tinycloud`, run `npx --prefix "$HOME" -y -p @tinycloud/cli@{{CLI_VERSION}} tinycloud` instead.
 
 Then continue the owner's request.
