@@ -257,6 +257,29 @@ test("/connect is a short router to every named client page", () => {
   assert.ok(router.includes("https://agents.tinycloud.xyz/connect/cli.md"));
 });
 
+test("root and /connect client links resolve to matching HTML and Markdown guides", () => {
+  const site = join(root, "_site");
+  const index = readFileSync(join(site, "index.html"), "utf8");
+  const router = readFileSync(join(site, "connect.md"), "utf8");
+  const clients = [...minimalClients.keys(), ...existingClients].sort();
+  const indexClients = [...index.matchAll(/href="\/connect\/([^"]+)"/g)].map((match) => match[1]).sort();
+  const routerClients = [...router.matchAll(/\]\(https:\/\/agents\.tinycloud\.xyz\/connect\/([a-z-]+)\.md\)/g)].map((match) => match[1]).sort();
+  assert.deepEqual(indexClients, clients);
+  assert.deepEqual(routerClients, clients);
+  for (const client of clients) {
+    const markdown = readFileSync(join(site, "connect", `${client}.md`), "utf8");
+    const html = readFileSync(join(site, "connect", `${client}.html`), "utf8");
+    const title = markdown.match(/^# (.+)$/m)?.[1];
+    assert.ok(title, `${client}: Markdown title`);
+    assert.ok(html.includes(`<h1 id=`) && html.includes(`>${title}</h1>`), `${client}: HTML title`);
+    assert.equal(
+      readFileSync(join(root, "functions/connect", `${client}.js`), "utf8"),
+      `import { htmlOrMarkdown } from "../../scripts/page-negotiation.mjs";\n\nexport const onRequest = htmlOrMarkdown("/connect/${client}");\n`,
+      `${client}: extensionless HTML handler`,
+    );
+  }
+});
+
 test("each new CLI page is a minimal progressive entry with validated literal commands", () => {
   for (const [route, expected] of minimalClients) {
     const text = readFileSync(join(root, "_site/connect", `${route}.md`), "utf8");
