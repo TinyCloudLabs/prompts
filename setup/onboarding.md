@@ -6,9 +6,11 @@ Use this page only in an agent that can run commands.
 
 The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.
 
-`npx -y @tinycloud/cli@{{CLI_VERSION}} onboard --timeout 1s`
+`npx --prefix "$HOME" -y -p @tinycloud/cli@{{CLI_VERSION}} tinycloud onboard --timeout 1s`
 
-Follow what it prints.
-Wherever it says `tinycloud`, run `npx -y @tinycloud/cli@{{CLI_VERSION}}` instead.
+If the operator set `TC_BIN`, run `"$TC_BIN" onboard --timeout 1s` instead.
+Follow what it prints. If it exits with an error, follow the exit-code table at https://agents.tinycloud.xyz/agent#exit-codes-and-owner-lines.
+Wherever it says `tinycloud`, run `npx --prefix "$HOME" -y -p @tinycloud/cli@{{CLI_VERSION}} tinycloud` instead, or `"$TC_BIN"` if it is set.
+If your client blocks the command, don't run it another way.
 
 When the CLI says setup is ready, continue the owner's original request.
