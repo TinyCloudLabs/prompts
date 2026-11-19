@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -189,11 +189,14 @@ test("--scope project refuses the home folder when HOME is a link to it", async 
   assert.equal(existsSync(join(home, ".agents")), false);
 });
 
-// A shared folder such as /tmp belongs to root: another account could pre-create .agents there and swap the skill.
-test("--scope project refuses a folder that belongs to another account", { skip: typeof process.getuid !== "function" || statSync("/tmp").uid === process.getuid() }, async () => {
+// A shared folder such as /tmp has no .git above it, so --scope project refuses it before anything is written. (A .git
+// pre-created there by another account would meet the "belongs to another account" check, which needs a second account
+// to set up and is not run here.)
+test("--scope project in a shared folder such as /tmp refuses, and writes nothing", async () => {
   const result = await run(["--agent", "codex", "--scope", "project"], { cwd: "/tmp" });
   assert.equal(result.code, 1);
-  assert.match(result.err[0], /^SKILL_INSTALL_FAILED \/tmp(\/\.agents)? belongs to another account/);
+  assert.match(result.err[0], /^SKILL_INSTALL_FAILED (--scope project found no project folder: there is no \.git in (\/private)?\/tmp or any folder above it\.|(\/private)?\/tmp(\/\.agents)? belongs to another account)/);
+  assert.deepEqual(installed(result), []);
 });
 
 test("when a later folder fails, the failure line names the folders already installed", async () => {
@@ -245,15 +248,14 @@ test("an unknown client, a bad scope or a repeated flag fails with the usage lin
   }
 });
 
-test("the scope line and the another-account failure state facts and tell the agent to run nothing", async () => {
+test("the scope line and the shared-folder refusal state facts and tell the agent to run nothing", async () => {
   const user = await run(["--agent", "codex"]);
   assert.equal(user.out.at(-1), "SKILL_SCOPE user: any session on this computer account can use it, in any folder (installed for Codex). --scope project installs it for one project only.");
   const project = join(home, "proj");
   mkdirSync(join(project, ".git"), { recursive: true });
   const scoped = await run(["--agent", "codex", "--scope", "project"], { cwd: project });
   assert.equal(scoped.out.at(-1), `SKILL_SCOPE project: only sessions started inside ${project} can use it (installed for Codex). --scope user installs it for every folder on this computer account.`);
-  if (typeof process.getuid === "function" && statSync("/tmp").uid !== process.getuid()) {
-    const refused = await run(["--agent", "codex", "--scope", "project"], { cwd: "/tmp" });
-    assert.match(refused.err[0], /^SKILL_INSTALL_FAILED \/tmp(\/\.agents)? belongs to another account\.$/);
-  }
+  const shared = await run(["--agent", "codex", "--scope", "project"], { cwd: "/tmp" });
+  assert.equal(shared.code, 1);
+  assert.match(shared.err[0], /^SKILL_INSTALL_FAILED (--scope project found no project folder|(\/private)?\/tmp(\/\.agents)? belongs to another account)/);
 });
