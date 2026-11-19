@@ -209,11 +209,10 @@ function permissionCause(error) {
   const isHome = relative === "";
   const inside = !isHome && !relative.startsWith("..") && !isAbsolute(relative);
   const windows = process.platform === "win32";
-  const who = (windows ? process.env.USERNAME : process.env.USER || process.env.LOGNAME) || "your user";
   const done = "The CLI works without the skill.";
-  if (CONTROL.test(folder)) return [`SKILL_CAUSE ${who} can't write to ${shown(folder)}; its name has control characters`, done];
-  if (!inside && !isHome) return [`SKILL_CAUSE ${who} can't write to ${folder}, which is outside the home folder`, done];
-  if (windows) return [`SKILL_CAUSE Windows user ${who} can't write to ${folder}`, done];
+  if (CONTROL.test(folder)) return [`SKILL_CAUSE this user can't write to ${shown(folder)}; its name has control characters`, done];
+  if (!inside && !isHome) return [`SKILL_CAUSE this user can't write to ${folder}, which is outside the home folder`, done];
+  if (windows) return [`SKILL_CAUSE this Windows user can't write to ${folder}`, done];
   let owned = false;
   let mode = "";
   let owner = "";
@@ -222,8 +221,8 @@ function permissionCause(error) {
     owned = info.uid === process.getuid?.();
     mode = (info.mode & 0o777).toString(8);
     owner = ownerName(info.uid);
-  } catch { return [`SKILL_CAUSE ${who} can't write to ${folder}`, done]; }
-  if (owned) return [`SKILL_CAUSE ${folder} is read-only for ${who} (mode ${mode}), or the disk is read-only`, done];
+  } catch { return [`SKILL_CAUSE this user can't write to ${folder}`, done]; }
+  if (owned) return [`SKILL_CAUSE ${folder} is read-only for this user (mode ${mode}), or the disk is read-only`, done];
   if (isHome) return [`SKILL_CAUSE the home folder ${folder} belongs to another user (mode ${mode})`, done];
   return [`SKILL_CAUSE ${folder} belongs to another user (owner ${owner}, mode ${mode})`, done];
 }
