@@ -153,11 +153,15 @@ test("--scope project installs into the project's folder, found by its .git abov
   assert.match(scope, /--scope user/);
 });
 
-test("--scope project without a .git uses the current folder", async () => {
+test("--scope project with no .git above the current folder refuses, and writes nothing", async () => {
   const folder = join(home, "notes");
   mkdirSync(folder);
   const result = await run(["--agent", "opencode", "--scope", "project"], { cwd: folder });
-  assert.deepEqual(installed(result), [join(folder, ".agents", "skills", "demo")]);
+  assert.equal(result.code, 1);
+  assert.equal(result.err[0], `SKILL_INSTALL_FAILED --scope project found no project folder: there is no .git in ${folder} or any folder above it.`);
+  assert.deepEqual(installed(result), []);
+  assert.equal(existsSync(join(folder, ".agents")), false);
+  assert.equal(existsSync(join(home, ".agents")), false);
 });
 
 test("--scope project refuses the home folder, and writes nothing", async () => {

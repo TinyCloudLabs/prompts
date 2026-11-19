@@ -174,13 +174,16 @@ function parseArgs(argv) {
 }
 
 // The folder the person is working in as a project: the nearest folder above the current one with a
-// ".git" in it, else the current folder. A project install never goes into the home folder or the top of the
-// disk, where it would be visible to everything for this account.
+// ".git" in it. With none, the install refuses: it can't tell which folder is the project. A project install
+// never goes into the home folder or the top of the disk, where it would be visible to everything for this account.
 function projectRoot() {
-  let project = resolve(process.cwd());
-  for (let up = project; ; up = dirname(up)) {
+  const cwd = resolve(process.cwd());
+  let project = cwd;
+  let found = false;
+  for (let up = cwd; ; up = dirname(up)) {
     if (existsSync(join(up, ".git"))) {
       project = up;
+      found = true;
       break;
     }
     if (dirname(up) === up) break;
@@ -190,6 +193,7 @@ function projectRoot() {
   if (real(project) === real(homedir()) || dirname(project) === project) {
     throw new Error(`--scope project found no project folder: ${project} is the home folder or the top of the disk.`);
   }
+  if (!found) throw new Error(`--scope project found no project folder: there is no .git in ${cwd} or any folder above it.`);
   return project;
 }
 
