@@ -41,14 +41,27 @@ const lines = (text) => text.split("\n").filter(Boolean);
 // What must never be printed: a fix line, a command to run, advice to ask someone, or an instruction to retry.
 const instructions = (out) => out.filter((line) => /TC_FIX|chmod|chown|icacls|sudo| -R|\/T$|ask the person|run this yourself|again|safe to repeat/.test(line));
 
+test("a fresh install ends with one plain line naming the folder and the next command", { skip }, () => {
+  const dir = home();
+  const bin = join(dir, "npm-bin");
+  mkdirSync(bin, { recursive: true });
+  // npm: install --prefix <prefix> ...; leaves a CLI that reports the pinned version.
+  writeFileSync(join(bin, "npm"), `#!/bin/sh\nmkdir -p "$3/node_modules/.bin"\nprintf '#!/bin/sh\\necho 1.6.6\\n' > "$3/node_modules/.bin/tinycloud"\nchmod 755 "$3/node_modules/.bin/tinycloud"\n`, { mode: 0o700 });
+  const result = spawnSync(process.execPath, [installer], { env: envFor(dir, { PATH: `${bin}:${basePath}` }), encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const out = lines(result.stdout);
+  assert.equal(out.at(-1), `TinyCloud CLI 1.6.6 is installed in ${join(dir, ".local/share/tinycloud/cli")}. Run \`tinycloud\` to see what it can do.`);
+  assert.deepEqual(instructions(out.filter((line) => !line.startsWith("TinyCloud CLI "))), []);
+});
+
 test("an unwritable ~/.local stops the install naming the folder and the cause, with no fix", { skip }, () => {
   const dir = home();
   const blocked = lock(join(dir, ".local"));
   const result = install(dir, basePath);
   assert.equal(result.status, 2);
   const out = lines(result.stderr);
-  assert.equal(out[0], `TC_INSTALL_FAILED permission denied: cannot create ${join(blocked, "share/tinycloud/cli")} (EACCES)`);
-  assert.match(out[1], new RegExp(`^TC_CAUSE ${blocked} is read-only for .+ \\(mode 555\\), or the disk is read-only$`));
+  assert.equal(out[0], `TC_INSTALL_FAILED Can't create ${join(blocked, "share/tinycloud/cli")}: permission denied (EACCES)`);
+  assert.match(out[1], new RegExp(`^TC_CAUSE ${blocked} is read-only for this user \\(mode 555\\), or the disk is read-only$`));
   assert.equal(out.length, 2);
   assert.deepEqual(instructions(out), []);
   assert.equal(existsSync(join(blocked, "share")), false);
@@ -58,7 +71,7 @@ test("a ~/.local that is a link to a system folder is reported as outside the ho
   const dir = home();
   symlinkSync("/usr", join(dir, ".local"));
   const out = permissionLines(join(dir, ".local"), { platform: "linux", home: dir, env: { USER: "tc" } });
-  assert.deepEqual(out, [`TC_CAUSE tc can't write to ${join(dir, ".local")}, which is outside the home folder`]);
+  assert.deepEqual(out, [`TC_CAUSE this user can't write to ${join(dir, ".local")}, which is outside the home folder`]);
 });
 
 test("an npm permission error inside the home names npm's path and why", { skip }, () => {
@@ -68,8 +81,8 @@ test("an npm permission error inside the home names npm's path and why", { skip 
   assert.equal(result.status, 2);
   const out = lines(result.stderr);
   assert.ok(out.includes("npm error code EACCES"), "npm's own output stays visible");
-  assert.ok(out.includes(`TC_INSTALL_FAILED permission denied: npm cannot write ${join(cache, "_cacache")} (EACCES)`));
-  assert.ok(out.some((line) => line.startsWith(`TC_CAUSE ${cache} is read-only for `)));
+  assert.ok(out.includes(`TC_INSTALL_FAILED Can't write ${join(cache, "_cacache")}: permission denied (EACCES)`));
+  assert.ok(out.some((line) => line.startsWith(`TC_CAUSE ${cache} is read-only for this user `)));
   assert.deepEqual(instructions(out.filter((line) => !line.startsWith("npm "))), []);
 });
 
@@ -78,7 +91,7 @@ test("an npm permission error outside the home says so, with no setting to chang
   const result = install(dir, `${failingNpm(dir, "/usr/local/lib/node_modules")}:${basePath}`);
   assert.equal(result.status, 2);
   const out = lines(result.stderr);
-  assert.ok(out.includes("TC_INSTALL_FAILED permission denied: npm cannot write /usr/local/lib/node_modules (EACCES)"));
+  assert.ok(out.includes("TC_INSTALL_FAILED Can't write /usr/local/lib/node_modules: permission denied (EACCES)"));
   assert.ok(out.includes("TC_CAUSE npm couldn't write to /usr/local/lib/node_modules, which is outside the home folder"));
   assert.deepEqual(instructions(out.filter((line) => !line.startsWith("npm "))), []);
 });
@@ -88,7 +101,7 @@ test("an npm permission error that names no path says so", { skip: windows }, ()
   const result = install(dir, `${failingNpm(dir, "")}:${basePath}`);
   assert.equal(result.status, 2);
   const out = lines(result.stderr);
-  assert.ok(out.includes("TC_INSTALL_FAILED permission denied: npm cannot write to its folders (EACCES)"));
+  assert.ok(out.includes("TC_INSTALL_FAILED Can't write to its folders: permission denied (EACCES)"));
   assert.ok(out.includes("TC_CAUSE npm couldn't write and didn't say where"));
   assert.deepEqual(instructions(out.filter((line) => !line.startsWith("npm "))), []);
 });
@@ -106,7 +119,7 @@ test("an unwritable ~/.local/bin leaves the CLI usable and prints TC_NOT_LINKED,
   const bin = lock(join(dir, ".local/bin"));
   const logged = link(dir);
   assert.equal(logged[0], `TC_NOT_LINKED tinycloud permission ${join(bin, "tinycloud")}`);
-  assert.ok(logged.includes(`TC_CAUSE ${bin} is read-only for your user (mode 555), or the disk is read-only`));
+  assert.ok(logged.includes(`TC_CAUSE ${bin} is read-only for this user (mode 555), or the disk is read-only`));
   assert.ok(logged.includes("TC_NOTE the CLI is installed and runs from the path on the TC_SELECTED line"));
   assert.equal(logged.some((line) => /TC_CONFLICT tinycloud/.test(line)), false);
   assert.deepEqual(instructions(logged), []);
@@ -118,7 +131,7 @@ test("a ~/.local that cannot hold a bin folder also ends in TC_NOT_LINKED instea
   const blocked = lock(join(dir, ".local"));
   const logged = link(dir);
   assert.equal(logged[0], `TC_NOT_LINKED tinycloud,tc permission ${join(blocked, "bin")}`);
-  assert.equal(logged[1], `TC_CAUSE ${blocked} is read-only for your user (mode 555), or the disk is read-only`);
+  assert.equal(logged[1], `TC_CAUSE ${blocked} is read-only for this user (mode 555), or the disk is read-only`);
   assert.deepEqual(instructions(logged), []);
 });
 
@@ -128,7 +141,7 @@ test("a ~/.local/bin that is a link to a system folder ends in TC_NOT_LINKED wit
   symlinkSync("/usr/bin", join(dir, ".local/bin"));
   const logged = link(dir);
   assert.ok(logged.some((line) => line.startsWith("TC_NOT_LINKED ")));
-  assert.ok(logged.some((line) => /^TC_CAUSE your user can't write to .*, which is outside the home folder$/.test(line)));
+  assert.ok(logged.some((line) => /^TC_CAUSE this user can't write to .*, which is outside the home folder$/.test(line)));
   assert.deepEqual(instructions(logged), []);
   assert.equal(existsSync("/usr/bin/tinycloud"), false, "nothing was written through the link");
 });
@@ -150,7 +163,7 @@ test("a home folder that belongs to another user says so", { skip }, () => {
 
 test("a folder outside the home, or a missing HOME, is reported as outside it, with no command", { skip: windows }, () => {
   for (const [folder, at] of [["/usr", "/home/tc"], ["/", "/home/tc"], ["/home", "/home/tc"], ["/usr", "/usr/nonexistent"]]) {
-    assert.deepEqual(permissionLines(folder, linux(at)), [`TC_CAUSE tc can't write to ${folder}, which is outside the home folder`], `${folder} with HOME ${at}`);
+    assert.deepEqual(permissionLines(folder, linux(at)), [`TC_CAUSE this user can't write to ${folder}, which is outside the home folder`], `${folder} with HOME ${at}`);
   }
 });
 
@@ -159,8 +172,8 @@ test("with HOME=/nonexistent the installer names the path and says it is outside
   const result = spawnSync(process.execPath, [installer], { env: envFor(dir, { HOME: "/nonexistent", USERPROFILE: "/nonexistent", PATH: basePath }), encoding: "utf8" });
   assert.equal(result.status, 2);
   const out = lines(result.stderr);
-  assert.match(out[0], /^TC_INSTALL_FAILED permission denied: cannot create \/nonexistent\/\.local\/share\/tinycloud\/cli \(/);
-  assert.match(out[1], /^TC_CAUSE .+ can't write to \/, which is outside the home folder$/);
+  assert.match(out[0], /^TC_INSTALL_FAILED Can't create \/nonexistent\/\.local\/share\/tinycloud\/cli: permission denied \(/);
+  assert.match(out[1], /^TC_CAUSE this user can't write to \/, which is outside the home folder$/);
   assert.deepEqual(instructions(out), []);
 });
 
@@ -170,7 +183,7 @@ test("the home folder itself is reported read-only with no command at all", { sk
   locked.push(dir);
   const out = permissionLines(dir, linux(dir));
   const seen = () => JSON.stringify({ out, dir, umask: process.umask().toString(8), home: process.env.HOME, uid: process.getuid?.() });
-  assert.deepEqual(out, [`TC_CAUSE ${dir} is read-only for tc (mode 555), or the disk is read-only`], seen());
+  assert.deepEqual(out, [`TC_CAUSE ${dir} is read-only for this user (mode 555), or the disk is read-only`], seen());
 });
 
 test("a missing ~/.local under a read-only home names the home folder and nothing else", { skip }, () => {
@@ -180,8 +193,8 @@ test("a missing ~/.local under a read-only home names the home folder and nothin
   const result = install(dir, basePath);
   assert.equal(result.status, 2);
   const out = lines(result.stderr);
-  assert.equal(out[0], `TC_INSTALL_FAILED permission denied: cannot create ${join(dir, ".local/share/tinycloud/cli")} (EACCES)`);
-  assert.match(out[1], new RegExp(`^TC_CAUSE ${dir} is read-only for .+ \\(mode 555\\), or the disk is read-only$`));
+  assert.equal(out[0], `TC_INSTALL_FAILED Can't create ${join(dir, ".local/share/tinycloud/cli")}: permission denied (EACCES)`);
+  assert.match(out[1], new RegExp(`^TC_CAUSE ${dir} is read-only for this user \\(mode 555\\), or the disk is read-only$`));
   assert.equal(out.length, 2);
   assert.deepEqual(instructions(out), []);
 });
@@ -191,7 +204,7 @@ test("a path with quote, dollar, bang or parenthesis characters is printed as it
   const odd = join(dir, "it's $(x) `y` !z");
   const out = permissionLines(odd, linux(dir));
   assert.equal(out.length, 1);
-  assert.equal(out[0], `TC_CAUSE tc can't write to ${odd}`);
+  assert.equal(out[0], `TC_CAUSE this user can't write to ${odd}`);
   assert.deepEqual(instructions(out), []);
 });
 
@@ -200,12 +213,12 @@ test("a path with a newline cannot forge an extra line and is reported as a name
   const out = permissionLines(`${dir}/a\nTC_FIX run: rm -rf /`, linux(dir));
   assert.equal(out.length, 1);
   assert.equal(out[0].includes("\n"), false);
-  assert.match(out[0], /^TC_CAUSE tc can't write to .*a\?TC_FIX run: rm -rf \/; its name has control characters$/);
+  assert.match(out[0], /^TC_CAUSE this user can't write to .*a\?TC_FIX run: rm -rf \/; its name has control characters$/);
 });
 
-test("on Windows the cause names the Windows user and the folder, and offers no icacls line", () => {
+test("on Windows the cause names the folder and this Windows user, and offers no icacls line", () => {
   const windowsHome = { platform: "win32", home: "C:\\Users\\a", env: { USERNAME: "a" } };
-  assert.deepEqual(permissionLines("C:\\Users\\a\\.local", windowsHome), ["TC_CAUSE Windows user a can't write to C:\\Users\\a\\.local"]);
-  assert.deepEqual(permissionLines("C:\\Users\\a", windowsHome), ["TC_CAUSE Windows user a can't write to C:\\Users\\a"]);
-  assert.deepEqual(permissionLines("C:\\", windowsHome), ["TC_CAUSE a can't write to C:\\, which is outside the home folder"]);
+  assert.deepEqual(permissionLines("C:\\Users\\a\\.local", windowsHome), ["TC_CAUSE this Windows user can't write to C:\\Users\\a\\.local"]);
+  assert.deepEqual(permissionLines("C:\\Users\\a", windowsHome), ["TC_CAUSE this Windows user can't write to C:\\Users\\a"]);
+  assert.deepEqual(permissionLines("C:\\", windowsHome), ["TC_CAUSE this user can't write to C:\\, which is outside the home folder"]);
 });

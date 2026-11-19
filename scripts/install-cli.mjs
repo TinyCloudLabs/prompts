@@ -47,10 +47,9 @@ export function permissionLines(folder, opts) {
   const relative = api.relative(fold(api.resolve(base)), fold(api.resolve(target)));
   const isHome = relative === "";
   const inside = !isHome && !relative.startsWith("..") && !api.isAbsolute(relative);
-  const who = (windows ? opts.env.USERNAME : opts.env.USER || opts.env.LOGNAME) || "your user";
-  if (CONTROL.test(folder)) return [`TC_CAUSE ${who} can't write to ${shown(folder)}; its name has control characters`];
-  if (!inside && !isHome) return [`TC_CAUSE ${who} can't write to ${folder}, which is outside the home folder`];
-  if (windows) return [`TC_CAUSE Windows user ${who} can't write to ${folder}`];
+  if (CONTROL.test(folder)) return [`TC_CAUSE this user can't write to ${shown(folder)}; its name has control characters`];
+  if (!inside && !isHome) return [`TC_CAUSE this user can't write to ${folder}, which is outside the home folder`];
+  if (windows) return [`TC_CAUSE this Windows user can't write to ${folder}`];
   let owned = false;
   let mode = "";
   let owner = "";
@@ -59,14 +58,14 @@ export function permissionLines(folder, opts) {
     owned = info.uid === process.getuid?.();
     mode = (info.mode & 0o777).toString(8);
     owner = ownerName(info.uid);
-  } catch { return [`TC_CAUSE ${who} can't write to ${folder}`]; }
-  if (owned) return [`TC_CAUSE ${folder} is read-only for ${who} (mode ${mode}), or the disk is read-only`];
+  } catch { return [`TC_CAUSE this user can't write to ${folder}`]; }
+  if (owned) return [`TC_CAUSE ${folder} is read-only for this user (mode ${mode}), or the disk is read-only`];
   if (isHome) return [`TC_CAUSE the home folder ${folder} belongs to another user (mode ${mode})`];
   return [`TC_CAUSE ${folder} belongs to another user (owner ${owner}, mode ${mode})`];
 }
 
 function permissionFailure(error, action, target, opts) {
-  return new PermissionFailure(`permission denied: cannot ${action} ${shown(target)} (${error.code})`, permissionLines(refusing(target), opts));
+  return new PermissionFailure(`Can't ${action} ${shown(target)}: permission denied (${error.code})`, permissionLines(refusing(target), opts));
 }
 
 // npm said no. When it named a permission error, report the path it named; otherwise the failure stays "npm install failed".
@@ -75,9 +74,9 @@ function npmFailure(stderr, opts) {
   if (!code) return new Error("npm install failed");
   const named = stderr.match(/^npm (?:error|ERR!) path (.+)$/m)?.[1]?.trim();
   if (named && path.isAbsolute(named) && within(named, opts.home, opts.platform)) {
-    return new PermissionFailure(`permission denied: npm cannot write ${shown(named)} (${code})`, permissionLines(refusing(named), opts));
+    return new PermissionFailure(`Can't write ${shown(named)}: permission denied (${code})`, permissionLines(refusing(named), opts));
   }
-  return new PermissionFailure(`permission denied: npm cannot write ${named ? shown(named) : "to its folders"} (${code})`, [
+  return new PermissionFailure(`Can't write ${named ? shown(named) : "to its folders"}: permission denied (${code})`, [
     named
       ? `TC_CAUSE npm couldn't write to ${shown(named)}, which is outside the home folder`
       : "TC_CAUSE npm couldn't write and didn't say where",
@@ -415,8 +414,9 @@ export function installCli(input = {}) {
   linkCommands(selected, opts);
   if (opts.platform === "win32") {
     try { repairWindowsPath(opts); }
-    catch (error) { opts.log(`TC_PATH_FAILED ${error.message}`); opts.log('After fixing registry permissions, rerun the downloaded Node installer with --repair-path'); throw error; }
+    catch (error) { opts.log(`TC_PATH_FAILED ${error.message}`); throw error; }
   }
+  if (selected.source === "installed") opts.log(`TinyCloud CLI ${selected.version} is installed in ${privatePrefix(opts)}. Run \`tinycloud\` to see what it can do.`);
   return selected;
 }
 

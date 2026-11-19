@@ -101,7 +101,7 @@ For each command name:
 - `TC_CONFLICT <name> other` means another executable or a different CLI installation owns the name. It is not replaced or shadowed; use `TC_BIN` instead. Shell-local aliases/functions are outside a child process's visibility: inspect `Get-Command tinycloud,tc -All` in PowerShell or `command -v tinycloud tc` in your Unix shell if resolution differs.
 - `TC_CONFLICT <name> no-path` is Unix-only. Add `export PATH="$HOME/.local/bin:$PATH"` to your shell profile (`~/.bashrc`, `~/.zshrc` or `~/.profile`), open a new terminal, start your agent from it, and rerun this module. The rerun still leaves unrelated commands alone.
 - `TC_CONFLICT <name> link` means the destination could not be created. Report the conflict and use the selected absolute path.
-- `TC_INSTALL_FAILED` means selection, installation, verification or the Windows PATH update failed. Stop and report the actual error; do not retry with `sudo`, administrator privileges or another CLI version.
+- `TC_INSTALL_FAILED` means selection, installation, verification or the Windows PATH update failed. Stop and report the actual error.
 
 ### If the client blocks the installer
 
@@ -154,7 +154,7 @@ if ($LASTEXITCODE -eq 0) {
 
 In the next call, run the second PowerShell block under [Install the CLI](#install-the-cli) again: it reruns the downloaded installer, which selects the install, then installs the skills as there.
 
-Then read its output as above. If the owner replies anything else, or either call is blocked or fails, stop and report it to the owner in one line. Don't ask again or retry, and don't use `sudo`, administrator privileges, a global install or another version.
+Then read its output as above. If the owner replies anything else, or either call is blocked or fails, stop and report it to the owner in one line. Don't ask again or retry.
 
 ### Windows PATH and recovery
 
