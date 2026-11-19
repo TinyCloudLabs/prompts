@@ -1,0 +1,10 @@
+{
+  "classification": "actual CLI and disposable node; synthetic OpenKey callback signing, not human onboarding",
+  "cliVersion": "0.10.0",
+  "binarySha256": "a8f8ffca029f5cf7baa10fac53baf18b0dbd709ae3ecbfa2b93420c3238425e8",
+  "checks": [
+    "actual CLI scoped login and additional grant accepted synthetic callback proof; initial live application registry is empty",
+    "exact SQL read+schema permits CREATE; read+write permits INSERT but server denies CREATE; sibling KV and registry writes denied"
+  ],
+  "initialApplicationCount": 0
+}

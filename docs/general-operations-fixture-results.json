@@ -1,0 +1,15 @@
+{
+  "classification": "actual CLI and local node; synthetic proof consent; not human OpenKey acceptance",
+  "cliVersion": "0.10.0",
+  "binarySha256": "a8f8ffca029f5cf7baa10fac53baf18b0dbd709ae3ecbfa2b93420c3238425e8",
+  "checks": [
+    "isolated loopback node started",
+    "two distinct apps registered with v2 knowledge and different storage contracts",
+    "actual CLI live registry discovery and canonical normalization recovered both app manifests and v2 roots",
+    "SQL create, ID-based reconciliation, conditional correction, deletion and exact readback passed",
+    "KV create, edit, exact readback, delete and verified absence passed",
+    "server denied sibling access, reader SQL and KV writes, and operator schema creation"
+  ],
+  "baselineRowsPreserved": true,
+  "retained": true
+}

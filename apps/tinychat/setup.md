@@ -6,7 +6,7 @@ Keep the user's original request and current client throughout setup. Setup is a
 
 ## 1. Complete shared TinyCloud prerequisites
 
-Follow [`setup/tinycloud.md`](../../setup/tinycloud.md) with the current client and record this guide's [install heading](#2-install-the-tinychat-retrieval-skill) as the return location. Reuse valid installations as that module directs. When it finishes, return here and continue immediately.
+Follow [`setup/tinycloud.md`](../../setup/tinycloud.md), including its [client discovery step](../../setup/tinycloud.md#optional-client-discovery) for this app's `tc-cli` prerequisite, with the current client and record this guide's [install heading](#2-install-the-tinychat-retrieval-skill) as the return location. Reuse valid installations as that module directs. When it finishes, return here and continue immediately.
 
 Do not run the separate OpenKey CLI setup. TinyChat does not invoke the standalone `openkey` binary, and an OpenKey CLI login does not grant TinyCloud app permissions.
 

@@ -1,0 +1,10 @@
+{
+  "classification": "fresh Codex hosted read-only regression after generic routing",
+  "completedCommands": 19,
+  "liveRegistry": true,
+  "schemaRead": true,
+  "readQuery": true,
+  "protectedReaderUnchanged": true,
+  "matchesPreviouslyIndependentlyVerifiedMeansAndDifference": true,
+  "coverageAndCounts": true
+}
