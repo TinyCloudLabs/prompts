@@ -115,7 +115,7 @@ test("the CLI 1.6.3 table matches the approval exits, including one-line error r
   assert.match(courier, /`init --request`, exit 0 may still create and print an approval link/);
   assert.match(courier, /follow every stderr `Next:` line by the shared relay rule, regardless of the exit code/);
   assert.match(courier, /`init --wait`, exit 8 is pending only when stdout contains a non-empty `pending\.approvalUrl`/);
-  assert.match(courier, /Courier 0\.5\.2 exits only 0, 1, 2 or 8; exit 6 is not a Courier code/);
+  assert.match(courier, /Courier 0\.7\.0 exits only 0, 1, 2 or 8; exit 6 is not a Courier code/);
   const courierGuide = read("setup/courier.md");
   const waitAgain = courierGuide.split("Any other non-zero exit is an error:")[1].split("\n  - **A refused grant:")[0];
   assert.match(waitAgain, /\[approval-rejected\].*\[approval-unavailable\].*exit 1/s);
@@ -125,28 +125,22 @@ test("the CLI 1.6.3 table matches the approval exits, including one-line error r
   assert.doesNotMatch(waitAgain, /exit 6/i);
 });
 
-test("blocking auth request guidance covers every authored surface that invokes it", () => {
-  const surfaces = [
-    ["feed skill", read("skills/tinycloud-feed/SKILL.md")],
-    ["feed post guide", read("skills/tinycloud-feed/creating-a-post.md")],
-    ["served feed skill", served("skills/feed/SKILL.md")],
-    ["served feed guide", served("feed")],
+const GRANT_PENDING_BLOCK =
+  'Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner\'s next message, rerun the identical command; it resumes the saved request. Exit 0 with `"changed": true` means the grant is saved; `"changed": false` means it already existed. `auth retry --last` doesn\'t find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid.';
+
+test("seven grant-request surfaces copy the CLI 1.8.0 pending block byte-for-byte", () => {
+  const copies = [
     ["onboarding", read("setup/onboarding.md")],
-    ["served onboarding", served("onboarding.md")],
     ["tc-apps", read("skills/tc-apps/SKILL.md")],
     ["tc-apps SQL", read("skills/tc-apps/SQL.md")],
-    ["served tc-apps SQL", served("skills/apps/SQL.md")],
-    ["served tc-apps", served("skills/apps/SKILL.md")],
+    ["feed skill", read("skills/tinycloud-feed/SKILL.md")],
+    ["feed post guide", read("skills/tinycloud-feed/creating-a-post.md")],
     ["CLI skill", served("skills/cli/SKILL.md")],
     ["CLI auth reference", served("skills/cli/AUTH.md")],
   ];
-  for (const [name, text] of surfaces) {
-    assert.match(text, /auth request/);
-    assert.match(text, /has no `--timeout`/);
-    assert.match(text, /blocks until the approval is resolved/);
-    assert.match(text, /pending-link result/);
-    assert.match(text, /persistent shell session that streams stderr and stays alive while you reply/);
-    assert.match(text, /If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow/);
+  assert.equal(read("standard/blocks.md").split(GRANT_PENDING_BLOCK).length - 1, 1, "shared block");
+  for (const [name, text] of copies) {
+    assert.equal(text.split(GRANT_PENDING_BLOCK).length - 1, 1, name);
   }
 });
 test("tc-apps catalog keeps request artifacts separate from the blocking app grant", () => {
@@ -231,9 +225,12 @@ exit 90
 const EXIT_EXCEPTIONS = {
   "setup/onboarding.md": "the guide's exit-8 pending-link instructions; shared block owns error decisions",
   "setup/courier.md": "Courier has its own exits: 0, 8, 2 and 1 with [code], including `[approval-expired]`",
-  "skills/tc-apps/SKILL.md": "data commands: kv put --if-none-match exits 5 KV_ALREADY_EXISTS; layout.sh exits 3 when jq is missing",
+  "skills/tc-apps/SKILL.md": "grant requests exit 8 while pending; data commands have their own codes",
+  "skills/tc-apps/SQL.md": "grant requests exit 8 while pending",
   "skills/tc-publish/SKILL.md": "the publish sign-in's exit 3 and 8 handling, and share commands (3 AUTH_REQUIRED session, 5 PERMISSION_DENIED scope)",
   "skills/tc-secrets/SKILL.md": "secrets sign-in (3 APPROVAL_*_EXPIRED, 8 APPROVAL_*_UNAVAILABLE), reads (3 AUTH_REQUIRED, 5 PERMISSION_DENIED) and secrets wait (8 still missing)",
+  "skills/tinycloud-feed/SKILL.md": "grant requests exit 8 while pending",
+  "skills/tinycloud-feed/creating-a-post.md": "grant requests exit 8 while pending",
 };
 const EXIT_MENTION = /\b[Ee]xit(?:s|ed| code| status)?:?\s*`?[358]\b|\(exit [358]\)|TC_EXIT: [358]|\| *`?[358]`? *\||\bexits? [358]\b|exit-[358]\b|\brc `?[358]\b/;
 const prose = (text) => text.replace(/^```[\s\S]*?^```$/gm, "");

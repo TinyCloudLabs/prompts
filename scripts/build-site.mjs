@@ -176,7 +176,11 @@ const SKILLS = [
       "SKILL.md": [
         [
           /^Need more than onboarding grants\? Ask once[^\n]*$/m,
-          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d`. This command has no `--timeout` or pending-link result and blocks until the approval is resolved; run it in a persistent shell session that streams stderr and stays alive while you reply. Send the complete short URL on its own line as soon as it appears, then wait for the owner and read the final output. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not use a one-shot call or rerun blindly after interruption. See [AUTH.md](AUTH.md).",
+          "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --timeout 60s --no-popup --expiry 30d`. Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner's next message, rerun the identical command; it resumes the saved request. Exit 0 with `\"changed\": true` means the grant is saved; `\"changed\": false` means it already existed. `auth retry --last` doesn't find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid. See [AUTH.md](AUTH.md).",
+        ],
+        [
+          "each for 30 days",
+          "each for the time the owner chooses, up to 30 days",
         ],
         [
           "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
@@ -195,7 +199,7 @@ const SKILLS = [
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
-          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d` (or `--manifest FILE --grant --no-popup`). This command has no `--timeout` or pending-link result and blocks until the approval is resolved; run it in a persistent shell session that streams stderr and stays alive while you reply. Send the actual short URL on its own line as soon as it appears, then wait for the owner and read the final output; use the shared exit table when it finishes. If your shell tool cannot keep this process alive while you reply, stop and ask for a supported flow; do not use a one-shot call or rerun blindly after interruption. The explicit `--paste` fallback described below still uses a long manual-code URL; do not select it for normal mobile or chat approvals.",
+          "Keep the user's existing profiles and onboarding grant. Request only missing permissions with `tinycloud auth request --cap SPEC --grant --timeout 60s --no-popup --expiry 30d` (or `--manifest FILE --grant --timeout 60s --no-popup`). Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner's next message, rerun the identical command; it resumes the saved request. Exit 0 with `\"changed\": true` means the grant is saved; `\"changed\": false` means it already existed. `auth retry --last` doesn't find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid. The explicit `--paste` fallback described below is only for an approval that waits on a card, an inbox or a ticket.",
         ],
         [
           "The owner approves a scoped paste login whose manifest names the secrets.",

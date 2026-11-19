@@ -247,6 +247,8 @@ Always pass `--expires` — 24h unless the owner says otherwise — and always t
 
 **HTML files:** run the HTML check (end of this file) first. If it doesn't print `SELF_CONTAINED`, stop and ask the owner before publishing.
 
+A folder with an `index.html` publishes as one self-contained page, which must be under 10 MiB.
+
 **File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`); the link shows that stored name.
 
 Run EXACTLY this block; do not write your own `share publish` command.
