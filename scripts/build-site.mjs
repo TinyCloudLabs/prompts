@@ -267,6 +267,10 @@ const SKILLS = [
           "",
         ],
         [
+          "## Update\n\nRun the install again. It installs the versions agents.tinycloud.xyz serves, which change only when the site's pins change; it never follows an npm dist-tag.\n\n",
+          "",
+        ],
+        [
           "To remove the CLI, run `npm uninstall --global @tinycloud/cli`.",
           "To remove the CLI, follow the Undo steps at https://agents.tinycloud.xyz/cli: it is installed in a private prefix, not globally.",
         ],
