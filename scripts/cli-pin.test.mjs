@@ -206,10 +206,9 @@ for (const block of blocks) {
   });
 }
 
-// The rule an agent reads first still directs upgrades through /cli; every CLI_OLDER note stops and reports.
+// The rule an agent reads first distinguishes operator-selected CLIs and stops on CLI_OLDER without upgrade instructions.
 const STOP = "stop and tell the owner what it printed.";
-const UPGRADE = "Ask the owner first in one line (\"I need to update the TinyCloud CLI to finish this. OK?\") and wait for their yes.";
-const NEVER_UPGRADE = "Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.";
+const NO_UPGRADE = "Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.";
 const SKILL_STEP = "set `COURIER_SKILL=read`";
 const surfaces = [
   { files: ["skills/tc-apps/SKILL.md", "_site/skills/apps/SKILL.md", "_site/skills/apps.md"], blk: "§1", stops: true },
@@ -220,7 +219,7 @@ const surfaces = [
   { files: ["setup/onboarding.md", "_site/onboarding.md"], blk: "step 2", stops: true },
 ];
 const RULE = `**CLI rule (stable \`${CLI_VERSION}\`): `;
-test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, to ask the owner before upgrading, and never to run `tinycloud upgrade`", () => {
+test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, and that CLI_OLDER stops without upgrade instructions", () => {
   for (const { files, blk, stops } of surfaces) {
     for (const file of files) {
       const text = readFileSync(join(root, file), "utf8");
@@ -228,31 +227,40 @@ test("every CLI rule says to run the block first, that only TC_OLDER means opera
       assert.equal(rules.length, 1, file);
       const [rule] = rules;
       assert.match(rule, /before any other (TinyCloud )?command|run step 2's block as written/, file);
-      assert.ok(rule.includes(`Only a \`TC_OLDER\` line from ${blk}`), file);
+      assert.ok(rule.includes(`Only a \`TC_OLDER\` line from ${blk} means`), file);
       assert.ok(rule.includes(stops ? `tell the owner in one line that it is older than the required \`${CLI_VERSION}\`, and stop.` : `keep it, tell the operator once that \`${CLI_VERSION}\` is required, and continue with what ${blk} reports.`), file);
-      assert.ok(rule.includes(`Any other older CLI is yours, including one on \`PATH\` or linked from \`~/.local/bin\`: ${blk} prints \`CLI_OLDER\``), file);
-      assert.ok(rule.includes(`${UPGRADE} ${NEVER_UPGRADE}`), file);
+      assert.ok(rule.includes(`Any other older CLI: ${blk} prints \`CLI_OLDER\`; stop and tell the owner what it printed.`), file);
+      assert.ok(rule.includes(NO_UPGRADE), file);
       assert.match(rule, /[Dd]on't judge who installed the CLI yourself/, file);
       assert.doesNotMatch(text, /operator-selected CLI is kept|older CLI the operator selected is kept/, file);
     }
   }
 });
 
-// The CLI rule ends with one install sentence. /onboarding's rule has none: its step 2 stops on CLI_OLDER itself, and no
-// guide or skill names `sudo`.
-const OWN_COPY = "/cli installs and upgrades the agent's own copy of the CLI.";
-const REMOVED_INSTALL_SENTENCES = ["second beta CLI", "Don't install the CLI globally, with `sudo`, or by piping a download into a shell"];
-test("every CLI rule but /onboarding's ends with the own-copy sentence, and none names sudo, as written and as served", () => {
+// No CLI rule retains install or upgrade directions; no guide or skill names `sudo`.
+const REMOVED_INSTALL_SENTENCES = [
+  "second beta CLI",
+  "Don't install the CLI globally, with `sudo`, or by piping a download into a shell",
+  "Any other older CLI is yours",
+  "Ask the owner first in one line",
+  "the guide's installer (/cli) handles upgrades",
+  "/cli installs and upgrades",
+  " or /cli means",
+];
+test("every CLI rule omits install and upgrade directions and sudo, as written and as served", () => {
   for (const { files } of surfaces) {
     for (const file of files) {
       const [rule] = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith(RULE));
-      const onboarding = file.endsWith("onboarding.md");
-      assert.equal(rule.includes(`${OWN_COPY}**`), !onboarding, file);
       assert.doesNotMatch(rule, /sudo/i, file);
       for (const removed of REMOVED_INSTALL_SENTENCES) assert.ok(!rule.includes(removed), file);
     }
   }
-  assert.deepEqual(served().filter((file) => REMOVED_INSTALL_SENTENCES.some((removed) => readFileSync(join(root, file), "utf8").includes(removed))), []);
+  for (const file of served()) {
+    const rules = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith(RULE));
+    for (const rule of rules) {
+      for (const removed of REMOVED_INSTALL_SENTENCES) assert.ok(!rule.includes(removed), file);
+    }
+  }
 });
 
 test("every CLI_OLDER note says to stop and tell the owner, as written and as served", () => {

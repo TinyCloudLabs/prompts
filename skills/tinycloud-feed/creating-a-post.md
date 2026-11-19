@@ -8,7 +8,7 @@ For agents. TinyCloud One reads each connected agent's cards from two SQL databa
 
 ## 1. Check the CLI
 
-**CLI rule (stable `1.6.6`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check below or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: the check prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun the check. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. /cli installs and upgrades the agent's own copy of the CLI.**
+**CLI rule (stable `1.6.6`): run the check below before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from the check means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI: the check prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
 
 The examples use `tinycloud`; where the guide could not safely create that launcher, use the selected absolute executable path, the first line this check prints. Run the check before continuing:
 
