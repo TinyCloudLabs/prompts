@@ -11,7 +11,7 @@ metadata:
 
 The owner stores secrets in TinyCloud Secrets (secrets.tinycloud.xyz). You read only the names they approved, through a CLI profile the owner authorizes with OpenKey. When a secret is missing, you send the owner a link where they add it themselves. You never see, ask for, or store a secret value in the conversation.
 
-**CLI rule (stable `1.6.6`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 means the operator chose an older CLI: keep it, tell the operator once that `1.6.6` is required, and continue with what §1 reports. Any other older CLI: §1 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
+**CLI rule (stable `1.8.0`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 means the operator chose an older CLI: keep it, tell the operator once that `1.8.0` is required, and continue with what §1 reports. Any other older CLI: §1 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
 
 Use process variables for `TC_BIN` and `TC_OWNER_DID`; process variables win. Never source a local data file as shell code.
 - `TC_BIN`: absolute path to the TinyCloud CLI; otherwise use the shared private installation or `tinycloud` on `PATH`, never bare `tc`.
@@ -82,8 +82,8 @@ PROFILE="${TC_SECRETS_PROFILE:-api-keys}"
 TC_VERSION=
 if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
   TC_VERSION=$("$TC_BIN" --version)
-  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
-    if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.6.6; keeping this operator-selected CLI"
+  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+    if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.8.0; keeping this operator-selected CLI"
     else echo "CLI_OLDER $TC_VERSION $TC_BIN: this CLI is older than this skill needs. Stop and tell the owner what it printed."; exit 1; fi
   fi
 fi
@@ -100,8 +100,8 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 - `CLI_OK` and `OWNER_OK` → continue with §2.
 - `TC_NOT_FOUND` or `STALE` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/connect, then return to this same task.
 - `OWNER_UNSET` → `NEEDS_OWNER`: ask once for the account address shown in Secret Manager, set `TC_OWNER_DID` for every skill shell call, then return to this same task. Do not ask for a secret value or start a broad grant.
-- `CLI_OLDER <version> <path>` (the block stops before any other TinyCloud command) → the CLI is older than `1.6.6`: stop and tell the owner what it printed.
-- `TC_OLDER <version> <path>` → the operator selected that older CLI: keep it, tell the operator once that `1.6.6` is required, and continue with what this block reports. The line after `CLI_OK` or `STALE` is the CLI version.
+- `CLI_OLDER <version> <path>` (the block stops before any other TinyCloud command) → the CLI is older than `1.8.0`: stop and tell the owner what it printed.
+- `TC_OLDER <version> <path>` → the operator selected that older CLI: keep it, tell the operator once that `1.8.0` is required, and continue with what this block reports. The line after `CLI_OK` or `STALE` is the CLI version.
 
 If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tinycloud` command.
 

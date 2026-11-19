@@ -31,7 +31,7 @@ const fresh = () => {
   writeFileSync(cli, `#!/bin/sh
 echo "$*" >> ${JSON.stringify(calls)}
 case "$*" in
-  --version) echo 1.6.6 ;;
+  --version) echo 1.8.0 ;;
   "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
   "onboard --timeout 1s") echo '{"onboarded":true}' ;;
   "onboard --help") exit 0 ;;
@@ -82,13 +82,13 @@ test("Courier preamble uses process TC_BIN without agent.env and falls back to t
 echo "$*" >> ${JSON.stringify(fallback.calls)}
 shift 6
 case "$*" in
-  --version) echo 1.6.6 ;;
+  --version) echo 1.8.0 ;;
   "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
 esac
 `, { mode: 0o700 });
   const used = run(script, fallback, { PATH: `${fallback.dir}:/usr/bin:/bin` });
   assert.equal(used.status, 0, used.stderr);
-  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.6.6 tinycloud`;
+  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.8.0 tinycloud`;
   assert.equal(calls(fallback), `${prefix} --version\n${prefix} courier --help\n`);
 });
 

@@ -166,9 +166,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.6.6",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.6.6.tgz",
-    integrity: "sha512-QrwAyX9M9jsGb2PqD0hkxBnLyudG/XhoPE9WP82vKfGx7T9Zl/upFZnRkK/49fs5uPU6K+z8dzisGiY5hwYRWQ==",
+    version: "1.8.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.8.0.tgz",
+    integrity: "sha512-xu6+If50KGY+AXb2spSWUNFpjn5aYp7g7KWK0VaOxwK4iFf+u2yYDpqroUY+/Y8jU6GrlmBK+7OrICTDBhKjQg==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -183,14 +183,14 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.6`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.8.0`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
         [
-          "Shares live in the owner's `default` space, so publish from a dedicated profile with one paste sign-in. Send the owner the link and pass their code to the CLI exactly as sent:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d\n```",
+          "Shares live in the owner's `default` space, so publish from a dedicated profile. The sign-in prints one approval link on stderr; send it to the owner, and the command finishes on its own once they approve (no code to paste back). It lasts 7 days, so the links it publishes can keep their 7-day life:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --manifest builtin:share-publishing --no-popup\n```",
           "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background (or an interactive session) with stdout and stderr going to files, never as a foreground tool call: it waits for the owner. Send the owner the complete `https://openkey.so/a/…` link exactly as printed on its own line on stderr, including everything after `#`; never retype or shorten it; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.6.6 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.8.0 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -227,7 +227,7 @@ const SKILLS = [
       ],
       "REFERENCE.md": [
         [
-          "tinycloud auth request --cap SPEC --grant --paste --expiry 30d   # more access: ask once\n",
+          "tinycloud auth request --cap SPEC --grant --no-popup   # more access: ask once, send the owner the link\n",
           "tinycloud auth request --cap SPEC --grant --no-popup --expiry 30d > request.out 2> request.err < /dev/null &   # more access: ask once, in the background\n",
         ],
         [
@@ -243,7 +243,7 @@ const SKILLS = [
           "tinycloud --profile agent auth login --method openkey --no-popup --manifest agent.json --owner did:pkh:eip155:1:0xOWNER > login.out 2> login.err < /dev/null &\n# in the background: send the owner the complete https://openkey.so/a/… link from login.err exactly as printed (including everything after `#`; never retype or shorten it); it exits 0 once they approve\n",
         ],
         [
-          "`tinycloud init --name publisher --key-only`, then `tinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d`.",
+          "`tinycloud init --name publisher --key-only`, then `tinycloud --profile publisher auth login --manifest builtin:share-publishing --no-popup` and send the owner the approval link it prints.",
           "`tinycloud init --name publisher --key-only`, then, in the background, `tinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d` with the four-entry manifest in [SKILL.md](SKILL.md); send the owner the complete link it prints exactly as printed, including everything after `#`.",
         ],
       ],
@@ -392,7 +392,7 @@ const ABILITIES = [
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 
 // Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
-// package's version (`@tinycloud/cli 1.6.6`, `@tinycloud/cli@1.6.6`) names the pin. Markdown is served as
+// package's version (`@tinycloud/cli 1.8.0`, `@tinycloud/cli@1.8.0`) names the pin. Markdown is served as
 // written, so each spells the pin out and must spell the installer's. Text may instead write {{CLI_VERSION}},
 // which render() fills in from install-cli.mjs (as /cli's blocked-install line and fallback commands do).
 const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));
