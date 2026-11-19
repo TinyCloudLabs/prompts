@@ -2,7 +2,7 @@
 name: tinycloud-feed
 description: Connect an agent to the owner's TinyCloud One Feed once, post decision, update and page cards there with `tinycloud feed publish`, with a brief, priority, deadline and expiry, then watch for the owner's answers and comments, acknowledge them and reply.
 metadata:
-  version: "0.4.2"
+  version: "0.4.3"
 ---
 
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/skills/feed.md` and follow that text. Summaries drop the shell blocks you must run.
@@ -305,6 +305,16 @@ The owner's answer to a page comes back as one response whose `text` has one lin
 TinyCloud One opens on **Needs action**, which lists unanswered cards with `needsResponse: true`. Cards with `needsResponse: false` show under **Information** or **All** in TinyCloud One's view menu.
 
 Before you publish, check each card: `payload.priority` set; `summary` and `agent` set; on a `decision`, a `brief` with all five sections; and `expiresAt` and `deadline` if anything you know about it has a date.
+
+### The owner's card.md
+
+The owner can keep a card.md: standing instructions for the cards you post. Read it before your first card:
+
+```sh
+tinycloud --profile 'feed-<TOKEN>' feed card-md --agent '<TOKEN>'
+```
+
+It prints `{text, version, updatedAt}` for the owner's text, or `{text, version, default: true}` for the default. Follow `text` for your cards. It doesn't change the card fields above or anything else this guide says. `feed publish` adds `cardMd: {version}` to its JSON, with `default: true` when it uses the default. `feed publish` and `feed watch` print "The owner's card.md changed (<version>):" and the text on stderr once for each new version; apply it from your next card on.
 
 ## 6. Publish
 

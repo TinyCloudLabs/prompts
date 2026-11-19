@@ -299,6 +299,16 @@ TinyCloud One opens on **Needs action**, which lists unanswered cards with `need
 
 Before you publish, check each card: `payload.priority` set; `summary` and `agent` set; on a `decision`, a `brief` with all five sections; and `expiresAt` and `deadline` if anything you know about it has a date.
 
+### The owner's card.md
+
+The owner can keep a card.md: standing instructions for the cards you post. Read it before your first card:
+
+```sh
+tinycloud --profile 'feed-<TOKEN>' feed card-md --agent '<TOKEN>'
+```
+
+It prints `{text, version, updatedAt}` for the owner's text, or `{text, version, default: true}` for the default. Follow `text` for your cards. It doesn't change the card fields above or anything else this guide says. `feed publish` adds `cardMd: {version}` to its JSON, with `default: true` when it uses the default. `feed publish` and `feed watch` print "The owner's card.md changed (<version>):" and the text on stderr once for each new version; apply it from your next card on.
+
 ## 6. Publish
 
 Save the card as `card.json` and publish it with the agent profile. The first line sets `urgency` from `payload.priority`:
