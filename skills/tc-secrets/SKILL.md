@@ -11,8 +11,6 @@ metadata:
 
 The owner stores secrets in TinyCloud Secrets (secrets.tinycloud.xyz). You read only the names they approved, through a CLI profile the owner authorizes with OpenKey. When a secret is missing, you send the owner a link where they add it themselves. You never see, ask for, or store a secret value in the conversation.
 
-**CLI rule (stable `1.6.6`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.6.6` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. /cli installs and upgrades the agent's own copy of the CLI.**
-
 Owner defaults may come from `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host). The preamble reads it as data through the pinned `agent-env.mjs` installed by [setup/agent.md](https://agents.tinycloud.xyz/agent); process variables win. The file may contain only `TC_BIN`, `TC_OWNER_DID` and `TC_OWNER_EMAIL`. Never source it as shell code.
 - `TC_BIN`: absolute path to the TinyCloud CLI; otherwise use the shared private installation or `tinycloud` on `PATH`, never bare `tc`.
 - `TC_OWNER_DID`: the owner's `did:pkh:eip155:1:0x…`. Ask for it in setup if missing.
@@ -100,7 +98,7 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 - `CLI_OK` and `OWNER_OK` → continue with §2.
 - `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/agent for the pinned private install or the owner's non-secret DID, then return to this same task. Do not ask for a secret value or start a broad grant.
 - `CLI_OLDER <version> <path>` (the block stops before any other TinyCloud command) → the CLI the agent installed is older than `1.6.6`: follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
-- `TC_OLDER <version> <path>` → the operator selected that older CLI: keep it, tell the operator once that `1.6.6` is required, and continue with what this block reports. The line after `CLI_OK` or `STALE` is the CLI version.
+- The line after `CLI_OK` or `STALE` is the CLI version.
 
 If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tinycloud` command.
 
@@ -493,7 +491,7 @@ Both patterns read the secret inside a subshell, so the value never stays in you
 **Default:** one command, no file left behind. If a tool needs the value in a file only for that one run, write it with `umask 077` inside `$STATE`, use it in the same command, and delete it in that command.
 
 **A file that stays** is allowed when the owner asks for one, or when a tool or service can only read the secret from a file (for example a daemon's config or credentials file). Then:
-- Write it with `umask 077`, mode 0600, owned by the account that will read it. You never run `sudo`. If another account must own the file, write nothing and stop (see below).
+- Write it with `umask 077`, mode 0600, owned by the account that will read it.
 - Pipe the value straight from `"$TC_BIN" --profile "$PROFILE" secrets get NAME --raw` into the file. Never print or echo it, and never pass it as a command-line argument.
 - Before writing, check the path isn't inside a git work tree, or is git-ignored there: `git -C "$(dirname <path>)" check-ignore -q <path>` must succeed, or `git -C "$(dirname <path>)" rev-parse` must fail.
 - Don't copy the file anywhere else.
@@ -521,10 +519,6 @@ fi
 ```
 
 The value goes to a temporary file next to `$DEST` and replaces it only after a complete, non-empty read, so a failed rewrite leaves the previous file in place.
-
-For another account, don't write the file and never run `sudo`. Stop and tell the owner, filling in `<path>` and `<user>`:
-
-> I didn't write `<path>`. It has to belong to `<user>`, and this session can't create files for another account. Tell me if `<path>` can belong to this account instead, or choose another place for it.
 
 ## Exit codes and owner lines
 

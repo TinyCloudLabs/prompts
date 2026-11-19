@@ -27,8 +27,6 @@ No shell profile to edit, variables to set or client to restart. The agent reads
 
 | Client | What to expect |
 |---|---|
-| Claude Code | It can ask you to confirm a step. Reply in chat naming the step your agent explains: [Confirming a step in Claude Code](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). |
-| Codex | Approve the install escalation in chat if its sandbox asks. The agent installs the CLI and skill. |
 | OpenCode | The agent reads the installed skill for this request without a restart. Paste the setup link again in a future conversation if needed. |
 
 Claude Code and Codex may also ask whether you trust a folder.

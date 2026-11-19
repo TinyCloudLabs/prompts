@@ -8,8 +8,6 @@ Your agent keeps your records, like meals, weight, workouts, goals or todos, in 
 
 - **What it does:** reuses the TinyCloud CLI from onboarding and installs the `tc-apps` skill for the supported agents found on this computer, then carries out your request. For a meal, weight or recipe, TinyCloud's own app for it (Health Log or Recipes) logs it.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.`
-  - **Claude Code:** it may stop before it installs the skill. Reply "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." See [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). It may also ask you to allow reading the skill and starting the approval helper; allow each one before its timer runs out.
-  - **Codex:** approve the CLI and skill installation when Codex requests it. If its sandbox blocks a step, follow the shared CLI guide's blocked-install instructions.
 - **You approve:** Health Log always has its own app-specific permission, even if onboarding is complete. The agent reuses only a live Health Log grant on its dedicated profile; otherwise it sends an OpenKey link for that app. Health Log table creation may need a separate schema permission. A sign-in may show a short code to paste back in chat; the app-permission link needs no code or separate terminal.
 - **Undo:** see [Undo](#undo).
 - **Health Log account and date:** nothing to set or confirm. The agent saves the account after you sign in. It uses the page-saved timezone when available, otherwise its host's local IANA zone, else UTC. If the account you approve is not the one this computer was set up with, the agent says so in one line.
@@ -38,11 +36,9 @@ Run each block as one shell tool call. Use the same `TC_BIN` and `TC_HOME` as on
 
 ## 1. Reuse the CLI
 
-Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation, with `apps` as the action skill, so its one run call also installs this guide's skill. It checks Node.js 20 or later with npm. It installs the pinned release, `1.6.6`, or upgrades the agent's own older copy to it. Preserve an operator-provided `TC_BIN`; a missing or broken override is an explicit error, not permission to replace it. If it prints `TC_OLDER`, the operator selected a CLI older than `1.6.6`: tell the owner in one line that it is older than the required `1.6.6`, and stop. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
+Follow [the shared CLI setup](tinycloud.md) only if it has not already completed in this conversation, with `apps` as the action skill, so its one run call also installs this guide's skill. It checks Node.js 20 or later with npm. It installs the pinned release, `1.6.6`, or upgrades the agent's own older copy to it. Preserve an operator-provided `TC_BIN`; a missing or broken override is an explicit error, not permission to replace it. If Node.js or npm is missing or too old, stop and ask the owner to install or update it; do not install Node.js yourself.
 
 Copy the selected absolute executable path from `TC_SELECTED` as `<TC_BIN>`. Use that one path for catalog apps, generic apps, legacy records and migrations. Later conversations find the same CLI the way every TinyCloud skill does: process `TC_BIN`, then the selection in `~/.config/tinycloud/agent.env`, then the shared private install. The old separate beta installation is no longer used. Preserve its files and the owner's profiles; do not delete older installs as part of setup.
-
-**CLI rule (stable `1.6.6`): after this step, run skill §1's block (see §3 below) before any other TinyCloud command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from skill §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: skill §1 prints `CLI_OLDER`; follow the shared CLI setup once, even if it already ran in this conversation, and rerun skill §1. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. /cli installs and upgrades the agent's own copy of the CLI.**
 
 ## 2. Install the skill for each agent
 
@@ -92,8 +88,6 @@ Require `SKILL_INSTALLED tc-apps 0.4.5 <folder>` (or a newer skill) for each tar
 Keep `TC_APPS_STATE` unchanged. Do not sign in during installation; the installed skill checks the actual task's access first.
 
 If something goes wrong:
-- **Codex:** its default sandbox can block network access and writes outside the workspace. Use the client's documented approval flow for the installation. If escalation is unavailable or network access is blocked, tell the owner in one line to type `/permissions`, choose "Ask for approval", and send the request again. Don't send terminal commands or ask the owner to restart.
-- **Claude Code (or your client) denies a step or asks to confirm it:** show the owner the step and what it does, then ask them to reply naming that step, as in [Confirming a step in Claude Code](#if-claude-code-still-blocks-it). Run it again only once they agree. Don't edit settings or run it another way.
 - **A command, download or checksum check fails:** stop and report the error. Don't retry with other options, in another folder or from another source.
 
 Continue only after the installer has printed `SKILL_INSTALLED tc-apps 0.4.5` (or a newer version) for every target.
@@ -152,21 +146,10 @@ for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-
 
 When the owner answers:
 - **Yes** → run the same block with `add '<client>'` in place of `status '<client>'`. It adds one line, ending with `<!-- tinycloud-context -->`, at the end of each agent's instructions file, and changes no other line; it prints each file it changed. Never edit those files yourself.
-  - **Codex:** the files are outside the workspace, so run it with `sandbox_permissions: "require_escalated"` and the justification "Add the TinyCloud context line to your agents' instructions".
   - It prints `could not change`, or your client blocks the step → don't run it another way. Give the owner the command for their own terminal: `for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" add '<client>'; break; fi; done`.
   - Then, if the context app isn't approved on this computer yet (`CONTEXT.md` §3's list prints `PROFILE_NOT_FOUND`), get its approval: skill §4 with `context` and `Context`. Tell the owner in one line which files changed.
 - **No** → run the same block with `decline` in place of `status '<client>'`. If the context app is approved on this computer, also save `preference/session-check`, "No session check", as `CONTEXT.md` §4 says, without a line to the owner. Don't ask again.
 - Anything else → don't ask again in this conversation.
-
-<a id="if-claude-code-still-blocks-it"></a>
-
-## Confirming a step in Claude Code
-
-Claude Code can ask you to confirm a step before it runs. Reply with the step, for example: "Go ahead: install the tc-apps skill from agents.tinycloud.xyz." Name the step, because a reply without it may not be enough.
-
-**For coding agents:** when Claude Code denies a step or asks the owner to confirm it, show them the step and the exact "Go ahead: …" reply from above for them to send, then wait for their answer.
-
-What you approve, and how to undo it, in one place for owners: https://agents.tinycloud.xyz/onboarding#undo.
 
 ## Moving records from an earlier version
 

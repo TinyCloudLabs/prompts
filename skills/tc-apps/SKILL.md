@@ -9,8 +9,6 @@ metadata:
 
 # Personal apps in TinyCloud
 
-**CLI rule (stable `1.6.6`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. /cli installs and upgrades the agent's own copy of the CLI.**
-
 **Not onboarded yet? Onboard first for generic apps.** When a generic app access check returns `onboard-first`, fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. Ask the owner first in one line ("I need to set up TinyCloud here to finish this. OK?") and wait for their yes; onboarding tells you the rest. Then rerun that check and continue from its result. Health Log is the exception: always use its dedicated `agent-meal` profile and app-specific permission in `TINY-APPS.md`, even when onboarding is complete.
 
 **What is and isn't secret:** a permission slip (a delegation or a grant file) and the code OpenKey shows after you approve are fine to paste, share and store. Private keys, session keys, the files in `~/.tinycloud`, API keys and secret values, and the part of a share link after `#` stay private. Full list: <https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret>.
@@ -89,7 +87,6 @@ It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per l
 - `<UTC>` is the clock's time in UTC, from `date -u +%FT%TZ`, e.g. `2026-10-06T16:30:12Z`. It is what a record's `at` holds when the record is about right now. Never write a time from memory or an estimate: a time you didn't read from the clock or get from the owner is wrong. An id uses the local `<NOW>` and a "now" `at` uses UTC, on purpose: near local midnight the id's date and the `at` date can differ, and that is correct.
 - `TC_BIN is unset` → follow the shared CLI setup, then continue this request with the path from its `TC_SELECTED`. Do not install a second CLI.
 - `CLI_OLDER <version> <path>` (the block stops) → the CLI is older than `1.6.6`: follow the shared CLI setup at https://agents.tinycloud.xyz/cli once, which upgrades a CLI the agent installed, then run §1 again. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. Run no other `tinycloud` command until §1 passes.
-- `TC_OLDER <version> <path>` (the block stops, or the CLI setup prints it) → the operator selected that older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Don't replace it.
 
 ## 1a. Which layout does this app use?
 
