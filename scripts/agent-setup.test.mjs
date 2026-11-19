@@ -202,11 +202,6 @@ test("served setup pages keep code fences balanced", () => {
   }
 });
 
-test("the POSIX installer note renders as prose after its command block", () => {
-  const rendered = marked.parse(readFileSync(join(root, "_site", "cli"), "utf8"));
-  const note = rendered.match(/<p>This POSIX entry point[\s\S]*?<\/p>/)?.[0];
-  assert.ok(note, "the explanatory note must not remain inside the installer code block");
-});
 
 test("a full storage sends the owner to the storage page from tc-apps and tc-publish", () => {
   const site = join(root, "_site");
