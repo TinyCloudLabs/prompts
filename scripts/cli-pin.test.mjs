@@ -222,7 +222,7 @@ const surfaces = [
   { files: ["setup/onboarding.md", "_site/onboarding.md"], blk: "step 2", stops: true },
 ];
 const RULE = `**CLI rule (stable \`${CLI_VERSION}\`): `;
-test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, to ask the owner before upgrading, and never to run `tinycloud upgrade`", () => {
+test("every CLI rule says to run the block first, that only TC_OLDER means operator-selected, and to ask the owner before upgrading", () => {
   for (const { files, blk, stops } of surfaces) {
     for (const file of files) {
       const text = readFileSync(join(root, file), "utf8");
@@ -233,28 +233,42 @@ test("every CLI rule says to run the block first, that only TC_OLDER means opera
       assert.ok(rule.includes(`Only a \`TC_OLDER\` line from ${blk}`), file);
       assert.ok(rule.includes(stops ? `tell the owner in one line that it is older than the required \`${CLI_VERSION}\`, and stop.` : `keep it, tell the operator once that \`${CLI_VERSION}\` is required, and continue with what ${blk} reports.`), file);
       assert.ok(rule.includes(`Any other older CLI is yours, including one on \`PATH\` or linked from \`~/.local/bin\`: ${blk} prints \`CLI_OLDER\``), file);
-      assert.ok(rule.includes(`${UPGRADE} ${NEVER_UPGRADE}`), file);
+      assert.ok(rule.includes(UPGRADE), file);
       assert.match(rule, /[Dd]on't judge who installed the CLI yourself/, file);
       assert.doesNotMatch(text, /operator-selected CLI is kept|older CLI the operator selected is kept/, file);
     }
   }
 });
 
-// The CLI rule ends with one install sentence. /onboarding's rule has none: its step 2 stops on CLI_OLDER itself, and no
-// guide or skill names `sudo`.
+// The CLI rule has one install sentence: /cli installs and upgrades the agent's own copy. Every rule has it but
+// /onboarding's, whose step 2 handles CLI_OLDER itself. No rule has the removed "never run `tinycloud upgrade`…" sentence,
+// and no guide or skill tells the agent to run sudo, a global install or a piped install.
 const OWN_COPY = "/cli installs and upgrades the agent's own copy of the CLI.";
-const REMOVED_INSTALL_SENTENCES = ["second beta CLI", "Don't install the CLI globally, with `sudo`, or by piping a download into a shell"];
-test("every CLI rule but /onboarding's ends with the own-copy sentence, and none names sudo, as written and as served", () => {
+const REMOVED_INSTALL_SENTENCES = ["second beta CLI", "Don't install the CLI globally, with `sudo`, or by piping a download into a shell", NEVER_UPGRADE];
+test("every CLI rule but /onboarding's contains the own-copy sentence; /onboarding's contains neither it nor the removed one, as written and as served", () => {
   for (const { files } of surfaces) {
     for (const file of files) {
       const [rule] = readFileSync(join(root, file), "utf8").split("\n").filter((line) => line.startsWith(RULE));
       const onboarding = file.endsWith("onboarding.md");
-      assert.equal(rule.includes(`${OWN_COPY}**`), !onboarding, file);
-      assert.doesNotMatch(rule, /sudo/i, file);
+      assert.equal(rule.includes(OWN_COPY), !onboarding, file);
       for (const removed of REMOVED_INSTALL_SENTENCES) assert.ok(!rule.includes(removed), file);
     }
   }
-  assert.deepEqual(served().filter((file) => REMOVED_INSTALL_SENTENCES.some((removed) => readFileSync(join(root, file), "utf8").includes(removed))), []);
+  assert.deepEqual(served().filter((file) => REMOVED_INSTALL_SENTENCES.slice(0, 2).some((removed) => readFileSync(join(root, file), "utf8").includes(removed))), []);
+});
+
+// Command shapes, not prose: a `sudo` command, a global install with npm, pnpm, yarn or bun, or a download piped into a shell.
+const AGENT_RUN_SHAPES = [
+  [/(^|[\s`;&|(])sudo\s/m, "a sudo command"],
+  [/\b(npm|pnpm|bun)\s+(install|i|add)\b[^\n]*(\s-g\b|--global\b)|\b(npm|pnpm|bun)\s+(-g|--global)\b/, "a global install"],
+  [/\byarn\s+global\b/, "a global install"],
+  [/\|\s*(sudo\s+)?(ba|z|da)?sh\b/, "a download piped into a shell"],
+];
+test("no guide or skill tells the agent to run sudo, a global install or a piped install, as written and as served", () => {
+  for (const file of served()) {
+    const text = readFileSync(join(root, file), "utf8");
+    for (const [shape, what] of AGENT_RUN_SHAPES) assert.doesNotMatch(text, shape, `${file}: ${what}`);
+  }
 });
 
 test("/cli and every CLI_OLDER note say to ask the owner before upgrading and never `tinycloud upgrade`, as written and as served", () => {
