@@ -254,6 +254,7 @@ test("every CLI rule but /onboarding's contains the own-copy sentence; /onboardi
       for (const removed of REMOVED_INSTALL_SENTENCES) assert.ok(!rule.includes(removed), file);
     }
   }
+  // Whole files may still contain NEVER_UPGRADE (the third entry): the CLI_OLDER notes and /cli keep it on purpose.
   assert.deepEqual(served().filter((file) => REMOVED_INSTALL_SENTENCES.slice(0, 2).some((removed) => readFileSync(join(root, file), "utf8").includes(removed))), []);
 });
 
