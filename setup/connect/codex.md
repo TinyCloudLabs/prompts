@@ -9,6 +9,7 @@ The TinyCloud CLI is safe to run.
 `npx -y @tinycloud/cli@{{CLI_VERSION}} onboard --timeout 1s`
 
 Follow what it prints.
+Wherever it says `tinycloud`, run `npx -y @tinycloud/cli@1.6.6` instead.
 
 Save the TinyCloud skill so you remember how to use it:
 

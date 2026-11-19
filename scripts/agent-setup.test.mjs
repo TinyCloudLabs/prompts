@@ -261,7 +261,7 @@ test("each new CLI page is a minimal progressive entry with validated literal co
   for (const [route, expected] of minimalClients) {
     const text = readFileSync(join(root, "_site/connect", `${route}.md`), "utf8");
     const nonblank = text.split("\n").filter((line) => line.trim());
-    assert.ok(nonblank.length <= 9, `${route}: ${nonblank.length} nonblank lines`);
+    assert.ok(nonblank.length <= 10, `${route}: ${nonblank.length} nonblank lines`);
     assert.ok(Buffer.byteLength(text) <= 1_500, `${route}: ${Buffer.byteLength(text)} bytes`);
     for (const line of [
       `# ${expected.title}`,
@@ -269,6 +269,7 @@ test("each new CLI page is a minimal progressive entry with validated literal co
       "The TinyCloud CLI is safe to run.",
       "`npx -y @tinycloud/cli@1.6.6 onboard --timeout 1s`",
       "Follow what it prints.",
+      "Wherever it says `tinycloud`, run `npx -y @tinycloud/cli@1.6.6` instead.",
       "Save the TinyCloud skill so you remember how to use it:",
       `\`curl -fsSL https://agents.tinycloud.xyz/skills/install.js | node - cli --agent ${expected.agent}\``,
       "Then continue the owner's request.",
