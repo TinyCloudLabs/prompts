@@ -94,6 +94,27 @@ for (const { name, file, heading } of CHECKS) {
   });
 }
 
+test("apps and feed checks stop on process and saved broken CLI overrides", () => {
+  const checks = CHECKS.filter(({ name }) => ["apps", "feed skill", "feed page"].includes(name));
+  for (const { name, file, heading } of checks) {
+    for (const source of ["process", "saved"]) {
+      const { home, run, calls } = sandbox();
+      const broken = join(home, "broken-tinycloud");
+      const env = source === "process" ? { TC_BIN: broken } : {};
+      if (source === "saved") {
+        const config = join(home, ".config/tinycloud");
+        mkdirSync(config, { recursive: true });
+        writeFileSync(join(config, "agent-env.mjs"), `console.log(${JSON.stringify(broken)});\n`);
+      }
+      const result = run(firstBlock(served(file), heading), env);
+      assert.equal(result.status, 1, `${name} ${source}: ${result.stdout}${result.stderr}`);
+      assert.equal(result.stderr.trim(), `TC_NOT_FOUND: ${broken} is not executable; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN`);
+      assert.equal(existsSync(join(home, LAUNCHER)), false, `${name} ${source}: launcher`);
+      assert.deepEqual(calls(), [], `${name} ${source}: npx calls`);
+    }
+  }
+});
+
 test("a later block's preamble finds the launcher when no CLI is installed", () => {
   const { home, run } = sandbox();
   const text = served("skills/publish/SKILL.md");

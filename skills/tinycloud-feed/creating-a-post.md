@@ -16,6 +16,7 @@ The examples use `tinycloud`; where the guide could not safely create that launc
 B=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"; P="$HOME/.local/share/tinycloud/cli"
 if [ -z "$B" ] && [ -r "$H" ]; then B=$(node "$H" get TC_BIN) || B=; fi
 O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$P" || O=
+[ -z "$B" ] || [ -x "$B" ] || { echo "TC_NOT_FOUND: $B is not executable; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || B="$HOME/.local/share/tinycloud/npx/tinycloud"
 [ "$B" != "$HOME/.local/share/tinycloud/npx/tinycloud" ] || { mkdir -p "${B%/*}" && printf '#!/bin/sh\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@1.8.0 tinycloud "$@"\n' > "$B" && chmod 700 "$B"; }
