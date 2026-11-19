@@ -132,6 +132,7 @@ Courier inspects the complete installed skill before invoking an installer and p
 ## Release checklist
 
 - Update the matrix: re-run each flow, then record the new counts, the date and the versions in [`matrix/interactions.json`](matrix/interactions.json). It is not published on the site; `scripts/matrix.mjs` renders it for private use. A value is `null` until a real QA run measured it, and every number needs `measured_on` and `run_ref`.
+- Merging to `main` publishes the site (see [Source and deployment boundary](#source-and-deployment-boundary)): review before you merge, and check the served page after.
 
 ## Other files
 
@@ -145,6 +146,8 @@ The owning repositories remain authoritative for executable code and their skill
 ## Source and deployment boundary
 
 The site is deployed from `main` through Cloudflare Pages (project `tinycloud-agents`) and serves `_site/`. Its build command is set in the Cloudflare Pages project settings, not this repository; set it to `npm ci --ignore-scripts --no-audit --no-fund && node scripts/build-site.mjs` with output directory `_site`. `functions/` holds the Pages Functions. Other branches get preview builds, where every `https://agents.tinycloud.xyz` URL in the guides, in every served skill's text files (`/skills/<short>.md`, `/skills/<short>/…`, with `/skills/index.json` checksums taken after the rewrite and the files listed as `changed`), and the installer's own site, point at the preview, so a branch's guides install that branch's skills and its skills send agents back to that branch's guides. Production builds are unaffected. TinyChat's own production entry point at `https://tinycloud.chat/agents/setup.md` and its versioned app pack are separate and unchanged.
+
+A merge to `main` is a release. Cloudflare Pages builds every push to `main` and promotes that build to production at `https://agents.tinycloud.xyz` by itself, usually within 10–20 minutes; there is no separate upload or release step. So all review (text, security and tests) happens before the merge. After each merge, check one served line per change on the production site, with a cache-busting query string. To undo a change, revert its commit on `main`, or roll production back to the previous deployment in Cloudflare Pages.
 
 Run `npm ci --ignore-scripts --no-audit --no-fund`, then `npm run build` locally. The lockfile pins the build-time Markdown renderer and heading-link extension. CI installs those dependencies before its existing checks. Configure the Pages project build command above to perform the same install before running the site builder. Neither the package manifests nor `node_modules` are published.
 
