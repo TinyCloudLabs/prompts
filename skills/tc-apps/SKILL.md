@@ -42,7 +42,7 @@ If a catalog app owns the domain, follow its fast path in `TINY-APPS.md`. Health
 An app is in one of two layouts, selected by §1a. **New layout:** records live in the owner's `applications` space under `xyz.tinycloud.tinyapps.<app>/`, with an app catalog and discovery entry. §3 reuses the selected onboarding profile when its current permissions cover the task; otherwise it checks an existing app-scoped profile for the same owner and host. Request only missing access. **Legacy mode:** records stay in `default` under `xyz.tinycloud.agent-data/`, through `LEGACY.md`, until the owner requests and verifies a move (§9). Never move or delete records merely to reuse a CLI.
 
 Operator-set, never change or unset:
-- `TC_BIN`: the selected absolute TinyCloud CLI path. Without it, §1 uses the selection saved in `~/.config/tinycloud/agent.env` (read through /agent's data-only helper), then the shared private install, then `tinycloud` on `PATH`, like every TinyCloud skill. The same executable handles every layout. Never resolve a bare `tc`: it may be the Linux traffic-control tool.
+- `TC_BIN`: the selected absolute TinyCloud CLI path. Without it, §1 uses the shared private CLI, then `tinycloud` on `PATH`. The same executable handles every layout. Never resolve a bare `tc`: it may be the Linux traffic-control tool.
 - `TC_PROFILE` and `TC_HOST`: explicit profile and host selections, when set. Never switch away from them to avoid a permission error.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_APPS_STATE`: this skill's state folder. Default `$HOME/.local/state/tc-apps`.

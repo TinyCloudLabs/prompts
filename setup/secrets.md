@@ -7,7 +7,7 @@ Your agent uses API keys and other secrets you keep in TinyCloud Secrets (secret
 ## For the owner
 
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/secrets with curl and follow it. Turn this script into a voiceover with ElevenLabs. Get the key from TinyCloud.`
-- Your agent follows [the shared setup](agent.md), records your account DID as a non-secret owner default, reads the Secrets skill, then continues the same request. If it doesn't know the DID of your Secrets account, give it the address shown in Secret Manager; do not send it an API key.
+- Your agent follows [the shared setup](agent.md), keeps your account DID only for this conversation, reads the Secrets skill, then continues the same request. If it doesn't know the DID of your Secrets account, give it the address shown in Secret Manager; do not send it an API key.
 - **You approve:** a Secret Manager `/request` link if a name is missing and a separate OpenKey request when the agent needs read access. The current read grant includes network-wide decrypt authority, not only the named secret. Check the exact items; you may decline any item. Then tell your agent you're done; there's no code to send back, and never send a value.
 - **Undo:** `auth logout` clears only the agent's local session. Its grant remains valid until expiry or owner revocation; a provider key already read may require rotation.
 
@@ -25,7 +25,7 @@ Secrets signs in with an OpenKey link, so the shared table covers that sign-in's
 
 ## Undo
 
-- **Local session:** if you approved the agent, `"$TC_BIN" --profile "$TC_SECRETS_PROFILE" auth logout` clears that profile's session on this computer. Set `TC_BIN` to your private CLI path (or read it with `node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN`), and use the actual role-specific `TC_SECRETS_PROFILE`. This does **not** revoke the grant or erase a value already read; the grant lasts until expiry or owner revocation. `PROFILE_NOT_FOUND` means this profile never signed in.
+- **Local session:** if you approved the agent, `"$TC_BIN" --profile "$TC_SECRETS_PROFILE" auth logout` clears that profile's session on this computer. Set `TC_BIN` to the CLI executable selected for this conversation, and use the actual role-specific `TC_SECRETS_PROFILE`. This does **not** revoke the grant or erase a value already read; the grant lasts until expiry or owner revocation. `PROFILE_NOT_FOUND` means this profile never signed in.
 - **The agent's key:** the skill creates a local profile, `${TC_SECRETS_PROFILE:-api-keys}`, holding a key that your approval is for. It never deletes profiles itself. Optional: remove it with `"$TC_BIN" profile delete "${TC_SECRETS_PROFILE:-api-keys}"`; this succeeds even if the profile was never created. If it reports `PROFILE_DELETE_DEFAULT`, that profile is the default:
   - if you have another (`"$TC_BIN" profile list`), make that the default with `"$TC_BIN" profile switch <other>` and delete again;
   - if it's your only profile, delete the whole profile store, `${TC_HOME:-$HOME}/.tinycloud`. Deleting just the profile's folder would leave it named as the default.

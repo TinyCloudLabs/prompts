@@ -21,7 +21,7 @@ Use Node.js 20 or later. Read the Courier skill below before running the selecti
 
 Run the selection check below. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client, then return here. Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
 
-Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. Preserve any operator-selected path. A missing or incompatible selection blocks setup rather than silently switching binaries. Carry the selected executable into every later call.
+Process `TC_BIN` wins. Preserve any operator-selected path. Without it, the later check uses the shared private CLI path and stops with `TC_NOT_FOUND` if that path is not executable. Carry the selected executable into every later call.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077

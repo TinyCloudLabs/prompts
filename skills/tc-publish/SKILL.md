@@ -15,7 +15,7 @@ Publish a file from the owner's TinyCloud space and return a link. The agent hol
 
 With an operator's older CLI (`TC_OLDER`), §1's feature probe is authoritative — trust it over the version string.
 
-Operator defaults `TC_BIN` and `TC_OWNER_EMAIL` come from process variables first, then `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host), read as data through the pinned parser installed by [setup/agent.md](https://agents.tinycloud.xyz/agent). Never source the data file. `TC_HOME` (CLI home root) and `TC_PUBLISH_STATE` (this skill's state, default `$HOME/.local/state/tc-publish`) stay role-specific. Without `TC_BIN`, use the shared private CLI or `tinycloud` on `PATH`, never bare `tc`.
+Set `TC_BIN` and `TC_OWNER_EMAIL` as process variables when needed; process variables win. `TC_HOME` (CLI home root) and `TC_PUBLISH_STATE` (this skill's state, default `$HOME/.local/state/tc-publish`) stay role-specific. Without `TC_BIN`, use the shared private CLI or `tinycloud` on `PATH`, never bare `tc`.
 
 ## Shell preamble — required
 
@@ -74,14 +74,14 @@ if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
     else echo "CLI_OLDER $TC_VERSION $TC_BIN: this CLI is older than this skill needs. Stop and tell the owner what it printed."; exit 1; fi
   fi
 fi
-if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/publish or set TC_BIN"
+if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; follow https://agents.tinycloud.xyz/connect or set TC_BIN"
 elif "$TC_BIN" onboard --help >/dev/null 2>&1 \
   && "$TC_BIN" auth login --help | grep -q -- '--expiry'; then echo CLI_OK
 else echo STALE; fi
 [ -z "$TC_VERSION" ] || printf '%s\n' "$TC_VERSION"
 ```
 
-If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/agent for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.6.6`, so stop and tell the owner what it printed.
+If the block prints `TC_NOT_FOUND` or `STALE`, follow https://agents.tinycloud.xyz/connect for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.6.6`, so stop and tell the owner what it printed.
 
 ## 2. Sign in — only when there is no live session
 

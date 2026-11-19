@@ -4,7 +4,7 @@
 # Usage: sh owner-undo.sh
 # If it prints an OpenKey link, send it to the owner (no code comes back). Profiles that don't exist are skipped quietly.
 set -u
-# The same CLI as every TinyCloud skill: process TC_BIN, then /agent's agent.env, then the shared private install, then `tinycloud` on PATH.
+# The same CLI as every TinyCloud skill: process TC_BIN, then an existing helper's saved value, then the shared private install, then `tinycloud` on PATH.
 TC=${TC_BIN:-}
 if [ -z "$TC" ]; then
   if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC=; }; fi

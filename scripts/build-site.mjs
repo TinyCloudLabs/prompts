@@ -974,7 +974,7 @@ ${style}
 
     <h2>How it works</h2>
     <ol>
-      <li><strong>Paste a prompt.</strong> It links the ability's page, asks your agent to run its installer, and says what you want.</li>
+      <li><strong>Paste a prompt.</strong> It links the ability's page and says what you want.</li>
       <li><strong>Your agent reads the setup.</strong> It installs what it needs and shows you an OpenKey link, where you approve exactly what it may access.</li>
       <li><strong>It does the thing.</strong> Your agent finishes your request in the same conversation, with your data in your TinyCloud space.</li>
     </ol>

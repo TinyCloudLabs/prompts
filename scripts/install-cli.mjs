@@ -315,7 +315,7 @@ export function installCli(input = {}) {
     selected = { bin, version, source: "installed" };
   }
   opts.log(`TC_SELECTED ${JSON.stringify(selected)}`);
-  // One saved location: where /agent installed its data-only helper, agent.env names the agent's own
+  // One saved location: when an existing data-only helper is available, agent.env can name the agent's own
   // selection for later sessions. An operator selection (process or saved TC_BIN) is never rewritten, and a
   // process TC_BIN, even one demoted to the private install, leaves agent.env alone: it may hold an operator's path.
   const helper = path.join(opts.home, ".config/tinycloud/agent-env.mjs");
