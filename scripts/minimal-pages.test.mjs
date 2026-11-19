@@ -39,7 +39,7 @@ for (const { source, served } of PAGES) {
 
   test(`${source} keeps the blocked-command rule and the exit-code table link`, () => {
     const text = body(source);
-    assert.ok(text.includes("If your client blocks the command, don't run it another way."));
+    assert.ok(text.includes("If your client blocks the command, stop and tell the owner. Don't run it another way."));
     assert.ok(text.includes("https://agents.tinycloud.xyz/agent#exit-codes-and-owner-lines"));
   });
 
