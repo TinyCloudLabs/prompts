@@ -50,7 +50,7 @@ OpenKey's device flow (the code you approve on your phone, used by `tc-publish`)
 
 At the `openkey.so/a/…` link, the owner signs in with their passkey and picks their key. The page then shows:
 
-- the node (`https://tee.node.tinycloud.xyz`);
+- the node (`https://node.tinycloud.xyz`);
 - "Returned to: Requesting CLI";
 - the expiry;
 - each capability: "Read secret values" and "Decrypt protected data" (both marked Sensitive), plus the required "Check your TinyCloud permissions".
