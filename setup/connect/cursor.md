@@ -2,13 +2,11 @@
 
 # Connect Cursor to TinyCloud
 
-Use the TinyCloud CLI from Cursor Agent when it can install and run commands in a persistent workspace. A remote MCP configuration is an alternative, not an official marketplace listing.
+Use the TinyCloud CLI from Cursor Agent when it can run commands in a persistent workspace. A remote MCP configuration is an alternative, not an official marketplace listing.
 
 ## Cursor Agent: preferred CLI route
 
-Fetch [onboarding](https://agents.tinycloud.xyz/onboarding.md) raw and follow it with the owner's original task. Cursor's terminal/workspace must permit the installer and network access. A temporary code runner without persistent command execution does not meet that requirement.
-
-Use the task guide's `--agent codex` selection: it installs into `~/.agents/skills`, which [Cursor discovers locally](https://cursor.com/docs/skills). Local skills are not automatically copied to Cloud Agents or remote workers. Install and read the relevant skill in the actual execution environment, or use Cursor's documented project/sync mechanism without putting credentials in the repository. Do not assume a successful local install proves the cloud agent can see it.
+Read and follow https://agents.tinycloud.xyz/connect for the current client with the owner's original task. Cursor's terminal/workspace must permit persistent command execution and network access. A temporary code runner without persistent command execution does not meet that requirement.
 
 ## Remote MCP alternative
 

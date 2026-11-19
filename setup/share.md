@@ -6,9 +6,9 @@ Your agent publishes a document or web page from your computer to your own TinyC
 
 ## For the owner
 
-- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it, including running its installer. Share this with TinyCloud.`
+- **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/share with curl and follow it. Share this with TinyCloud.`
 - You need a shell, Node.js 20 or later, and npm. An agent that can't run the TinyCloud CLI can't publish: have it write the document, save it as Markdown, and create the share yourself on share.tinycloud.xyz.
-- **What it does:** installs the pinned TinyCloud CLI and the `tc-publish` skill, asks you before it makes the link, publishes, and returns the link.
+- **What it does:** asks you before it makes the link, publishes, and returns the link.
 - **You approve:** standing publish access to your share folders, for up to 30 days. Setup alone grants nothing. Publishing has its own single approval, separate from /onboarding: the first time, you approve one OpenKey link your agent sends you. There's nothing to send back.
 - **It asks first.** Anyone with the link can open it, so the agent makes one only after you say yes. If you say no, nothing is published and the file stays on your computer.
 - **Undo:** see [Undo](#undo).
@@ -19,7 +19,7 @@ Your agent publishes a document or web page from your computer to your own TinyC
 
 **Send links exactly as printed.** Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.
 
-Keep the owner's request, then read [setup/agent.md](agent.md), select **publish/share** and follow its steps: it installs the pinned CLI (or uses the owner's `TC_BIN`) and only the `tc-publish` skill. Then read the installed `tc-publish` `SKILL.md` with the shell reads in [/agent](agent.md), never the file-read tool, and continue in this conversation: its §1 checks the CLI, §2 gets the owner's approval, §3-§6 publish, verify and report. Never make a link without asking (step 1).
+Keep the owner's request, then read [setup/agent.md](agent.md), select **publish/share** and follow its steps. Read and follow https://agents.tinycloud.xyz/skills/publish.md, then continue in this conversation: its §1 checks the CLI, §2 gets the owner's approval, and §3-§6 publish, verify and report. Never make a link without asking (step 1).
 
 Use the skill's shell preamble and `TC_BIN` for every command. Don't call a bare `tc` (on Linux it is often the system traffic-control tool).
 

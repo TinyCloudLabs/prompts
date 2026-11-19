@@ -127,11 +127,11 @@ const PAGES = [
 // files' checksums are taken.
 // `checkCli`: the build fails unless every served file of the skill runs the
 // CLI through RESOLVER (Markdown) or defaultTc() (scripts), so it works with
-// /cli's private install in ~/.local/share/tinycloud/cli: no other global npm
-// lookup, no bare `tc` command in a shell code block, no script defaulting to `tc`.
-// The released Courier skill preamble uses one of these exact resolvers. Keep the
-// site's data-only operator selection behavior in every served Markdown file.
-// The CLI skill has none since 1.5.0: its examples run `tinycloud` from the PATH.
+// /cli's private install in ~/.local/share/tinycloud/cli: no global npm lookup,
+// no bare `tc` command in a shell code block, no script defaulting to `tc`.
+// The released Courier skill preamble uses one of these exact upstream
+// resolvers. Keep the site's data-only operator selection behavior in every
+// served Markdown file.
 const upstreamResolver = (bin) => [
   `TC="\${TC_BIN:-$HOME/.local/share/tinycloud/cli/node_modules/.bin/${bin}}"   # TC_BIN, else where agents.tinycloud.xyz/cli installs it`,
   `[ -n "\${TC_BIN:-}" ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/${bin}"   # else a global npm install`,
@@ -147,9 +147,10 @@ const RESOLVER = [
   '  else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi',
   'fi',
   'TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"',
-  '[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"',
-  '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; install the CLI from https://agents.tinycloud.xyz/cli or set TC_BIN" >&2; exit 1; }',
+  '[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }',
 ].join("\n");
+const COURIER_CONNECT_RESOLVER = `[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow ${SITE}/connect for this client or set TC_BIN" >&2; exit 1; }`;
+const COURIER_GUIDE_RESOLVER = `[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; follow ${SITE}/courier or set TC_BIN" >&2; exit 1; }`;
 // Courier's setup section is published inside its skill as well as this guide.
 const courierSetup = readFileSync(join(ROOT, "setup/courier.md"), "utf8")
   .split("\n## Set up Courier once\n")[1]?.split("\n## ")[0];
@@ -182,7 +183,7 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.6`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.6`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
         [
           "Shares live in the owner's `default` space, so publish from a dedicated profile with one paste sign-in. Send the owner the link and pass their code to the CLI exactly as sent:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d\n```",
@@ -252,8 +253,32 @@ const SKILLS = [
           "mkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code",
         ],
         [
-          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`.",
-          "To remove the CLI, follow the Undo steps at https://agents.tinycloud.xyz/cli: it is installed in a private prefix, not globally.",
+          "To install this skill, or `courier` for `tinycloud courier`, without the guide:\n\n```bash\nmkdir -p \"$HOME/.local/share/tinycloud\" && curl -fsSL -o \"$HOME/.local/share/tinycloud/install.js\" https://agents.tinycloud.xyz/skills/install.js\nnode \"$HOME/.local/share/tinycloud/install.js\" cli --agent claude-code\nnode \"$HOME/.local/share/tinycloud/install.js\" courier --agent claude-code\n```\n\n",
+          "",
+        ],
+        [
+          "Follow https://agents.tinycloud.xyz/onboarding. It installs the pinned TinyCloud CLI and this skill.",
+          "Follow https://agents.tinycloud.xyz/onboarding.",
+        ],
+        [
+          "`--agent` takes, for example, `claude-code`, `codex` or `opencode`; for other agents, copy the folder into that agent's skills directory. Skills go into `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/<name>` for Claude Code and `~/.agents/skills/<name>` for Codex and OpenCode, which share that folder. The installer checks every file against https://agents.tinycloud.xyz/skills/index.json before it writes anything, and prints `SKILL_INSTALLED <name> <version> <folder>`. Start a new session for the client to discover the skill.",
+          "Start a new session for the client to discover the skill.",
+        ],
+        [
+          "The core skill was renamed from `tc-cli` to `tinycloud-cli`. If an existing installer selects `--skill tc-cli`, change that selector to `--skill tinycloud-cli` when adopting this release. Remove the old `tc-cli` skill folder after installing the renamed skill so clients do not load both; the executable compatibility alias does not restore the old skill selector.\n\n",
+          "",
+        ],
+        [
+          "## Update\n\nRun the install again. It installs the versions agents.tinycloud.xyz serves, which change only when the site's pins change; it never follows an npm dist-tag.\n\n",
+          "",
+        ],
+        [
+          "To remove the CLI, run `npm uninstall --global @tinycloud/cli`. ",
+          "",
+        ],
+        [
+          "Removing the skill or CLI doesn't delete TinyCloud profiles or revoke data access.",
+          "Removing the skill doesn't delete TinyCloud profiles or revoke data access.",
         ],
       ],
     },
@@ -297,9 +322,21 @@ const SKILLS = [
     tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz",
     integrity: "sha512-o+kAbwivfO7kKQUyoaOlrYIREX7RUpb8X91SeBa/SjQkP01PcpmIei5n8N6B15UaFu8ftrajjgRt2eeUxtjG2Q==",
     dir: "package",
-    // No `changes`: since 0.1.1-onboarding.25 the pack runs TC_BIN, else the
-    // `tinycloud` that /onboarding installs, else `tinycloud` on PATH. Never `tc`.
     checkCli: true,
+    changes: {
+      "SKILL.md": [
+        [
+          /^In OpenCode, the installed \*\*tinychat_setup\*\*[\s\S]*?use `scripts\/setup\.mjs` and `scripts\/consume\.mjs` like any other agent\.$/m,
+          "In OpenCode, already-loaded **tinychat_setup**, **tinychat_authorize**, **tinychat_meetings** and **tinychat_handoff** tools are the normal path. If those tools are absent, use `scripts/setup.mjs` and `scripts/consume.mjs` like any other agent.",
+        ],
+      ],
+      "references/setup.md": [
+        [
+          /^## Optional OpenCode adapter\n\n[\s\S]*?(?=\n## Retrieval runtime recovery)/m,
+          "## Optional OpenCode adapter\n\nUse the `tinychat_*` tools when the OpenCode adapter is already loaded. If those tools are absent, use `setup.mjs` and `consume.mjs` like any other agent.\n",
+        ],
+      ],
+    },
   },
   {
     short: "mcp",
@@ -353,14 +390,6 @@ const ABILITIES = [
 ];
 
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
-// The setup guide pins the parser the agent installs. A stale pin would serve
-// a different executable than the one the guide tells agents to trust.
-const envHelperHash = sha256(readFileSync(join(ROOT, "scripts/agent-env.mjs")));
-const envGuide = readFileSync(join(ROOT, "setup/agent.md"), "utf8");
-const envPins = [...envGuide.matchAll(/(?:const pin = )"([a-f0-9]{64})"/g)].map((match) => match[1]);
-if (envPins.length !== 1 || envPins[0] !== envHelperHash) {
-  throw new Error("setup/agent.md agent-env.mjs pin differs from served helper");
-}
 
 // Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
 // package's version (`@tinycloud/cli 1.6.6`, `@tinycloud/cli@1.6.6`) names the pin. Markdown is served as
@@ -388,9 +417,9 @@ if (watchPinElsewhere.length) throw new Error(`${WATCH_TOKEN} belongs to setup/c
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
-// The setup router carries no installer mechanics. Existing task guides retain their owner-approved prompts.
-const ownerPrompt = (path, task, installer = true) => `Fetch ${url(path)} with curl and follow it${installer ? ", including running its installer" : ""}. ${task}`;
-const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task, !a.minimal);
+// Web text carries no installer mechanics.
+const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it. ${task}`;
+const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task);
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -496,6 +525,7 @@ async function loadSkill(skill) {
     });
   }
   if (skill.short === "courier") {
+    let routeMatches = 0;
     files = files.map(([path, body]) => {
       if (!path.endsWith(".md")) return [path, body];
       let text = body.toString("utf8");
@@ -507,9 +537,15 @@ async function loadSkill(skill) {
           return block.replace(/\n/, `\n${RESOLVER}\n`).replace(commands, '$1"$TC"');
         });
       }
+      const matches = text.split(COURIER_CONNECT_RESOLVER).length - 1;
+      routeMatches += matches;
+      if (matches) text = text.replaceAll(COURIER_CONNECT_RESOLVER, COURIER_GUIDE_RESOLVER);
       if (text !== body.toString("utf8")) changed.add(path);
       return [path, Buffer.from(text)];
     });
+    if (routeMatches !== 1) {
+      throw new Error(`courier: served Markdown must contain the missing-CLI /connect route exactly once; found ${routeMatches}`);
+    }
   }
   if (BASE !== SITE) {
     files = files.map(([path, body]) => {
@@ -950,13 +986,13 @@ ${style}
   <main>
     <h1>Give your agent abilities</h1>
     <p>${esc(desc)}</p>
-    <p>Works with any agent that can install and run the TinyCloud CLI (Node.js 20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
+    <p>Works with any agent that can run the TinyCloud CLI (Node.js 20 or later), and with agents that support remote MCP through <a href="/connect">/connect</a>.</p>
     <p>Everything starts at <a href="/onboarding"><code>${esc(url("onboarding"))}</code></a>. <a href="/setup">/setup</a> lists what each ability does, what to paste, what you approve and how to undo it.</p>
 
     <h2>How it works</h2>
     <ol>
-      <li><strong>Paste a prompt.</strong> It links the ability's page, asks your agent to run its installer, and says what you want.</li>
-      <li><strong>Your agent reads the setup.</strong> It installs what it needs and shows you an OpenKey link, where you approve exactly what it may access.</li>
+      <li><strong>Paste a prompt.</strong> It links the ability's page and says what you want.</li>
+      <li><strong>Your agent reads the setup.</strong> It shows you an OpenKey link, where you approve exactly what it may access.</li>
       <li><strong>It does the thing.</strong> Your agent finishes your request in the same conversation, with your data in your TinyCloud space.</li>
     </ol>
 
@@ -971,7 +1007,7 @@ ${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<co
     </ul>
 
     <h2>Skills</h2>
-    <p>The guides install these for you. Each links to its <code>SKILL.md</code>.</p>
+    <p>Each links to its <code>SKILL.md</code>.</p>
     <ul>
 ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
@@ -991,7 +1027,7 @@ write(
 // Every released CLI/Courier Markdown block has the persisted-selection
 // resolver; no upstream process/private/global-only resolver may survive.
 // Other checked skills use their own explicit CLI selection. On a preview, the
-// resolvers' install URL points at the preview, like the rest of the skill.
+// resolver's setup URL points at the preview, like the rest of the skill.
 const servedResolver = RESOLVER.replaceAll(SITE, BASE);
 const servedUpstream = UPSTREAM_RESOLVERS.map((resolver) => resolver.replaceAll(SITE, BASE));
 const SCRIPT_TC = /\bexecutable\s*=\s*['"]tc['"]|\b(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)\(\s*['"]tc\b|\breturn\s+['"]tc['"]/;
@@ -1000,11 +1036,11 @@ const wrongCli = skills
   .flatMap((s) =>
     s.files.flatMap((f) => {
       const text = f.body.toString("utf8");
-      const lookups = text.split("npm prefix --global").length - 1;
       const upstream = servedUpstream.some((resolver) => text.includes(resolver));
+      const globalLookup = text.includes("npm prefix --global");
       const bare = (text.match(SHELL_BLOCK) || []).some((block) => new RegExp(BARE_TC.source, "m").test(block));
       const scriptDefault = /\.m?js$/.test(f.path) && SCRIPT_TC.test(text);
-      return !upstream && lookups === text.split(servedResolver).length - 1 && !bare && !scriptDefault ? [] : [f.url];
+      return !upstream && !globalLookup && !bare && !scriptDefault ? [] : [f.url];
     }),
   );
 if (wrongCli.length) throw new Error(`skill files that don't run the CLI through TC_BIN and the private install:\n  ${wrongCli.join("\n  ")}`);

@@ -11,11 +11,11 @@ metadata:
 
 The owner stores secrets in TinyCloud Secrets (secrets.tinycloud.xyz). You read only the names they approved, through a CLI profile the owner authorizes with OpenKey. When a secret is missing, you send the owner a link where they add it themselves. You never see, ask for, or store a secret value in the conversation.
 
-**CLI rule (stable `1.6.6`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 or /cli means the operator chose an older CLI: keep it, tell the operator once that `1.6.6` is required, and continue with what §1 reports. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: §1 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun §1. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded. /cli installs and upgrades the agent's own copy of the CLI.**
+**CLI rule (stable `1.6.6`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 means the operator chose an older CLI: keep it, tell the operator once that `1.6.6` is required, and continue with what §1 reports. Any other older CLI: §1 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
 
-Owner defaults may come from `~/.config/tinycloud/agent.env` (or `TC_AGENT_ENV` on a multi-owner host). The preamble reads it as data through the pinned `agent-env.mjs` installed by [setup/agent.md](https://agents.tinycloud.xyz/agent); process variables win. The file may contain only `TC_BIN`, `TC_OWNER_DID` and `TC_OWNER_EMAIL`. Never source it as shell code.
+Use process variables for `TC_BIN` and `TC_OWNER_DID`; process variables win. Never source a local data file as shell code.
 - `TC_BIN`: absolute path to the TinyCloud CLI; otherwise use the shared private installation or `tinycloud` on `PATH`, never bare `tc`.
-- `TC_OWNER_DID`: the owner's `did:pkh:eip155:1:0x…`. Ask for it in setup if missing.
+- `TC_OWNER_DID`: the owner's `did:pkh:eip155:1:0x…`. If it is missing, ask the owner once for the address shown in Secret Manager, then set it for every skill shell call.
 - `TC_HOME`: the CLI profile store. Optional.
 - `TC_SECRETS_PROFILE`: the profile name. Default `api-keys`.
 - `TC_SECRETS_STATE`: this skill's state directory. Default `$HOME/.local/state/tc-secrets`.
@@ -84,10 +84,10 @@ if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
   TC_VERSION=$("$TC_BIN" --version)
   if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
     if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.6.6; keeping this operator-selected CLI"
-    else echo "CLI_OLDER $TC_VERSION $TC_BIN: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; exit 1; fi
+    else echo "CLI_OLDER $TC_VERSION $TC_BIN: this CLI is older than this skill needs. Stop and tell the owner what it printed."; exit 1; fi
   fi
 fi
-if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; install it from https://agents.tinycloud.xyz/secrets or set TC_BIN"
+if [ -z "$TC_BIN" ]; then echo "TC_NOT_FOUND: no TinyCloud CLI; follow https://agents.tinycloud.xyz/connect or set TC_BIN"
 elif [ -x "$TC_BIN" ] && "$TC_BIN" secrets get --help 2>/dev/null | grep -q -- '--raw' \
    && "$TC_BIN" auth login --help 2>/dev/null | grep -q -- '--owner' \
    && "$TC_BIN" secrets wait --help 2>/dev/null | grep -q -- '--timeout' \
@@ -98,8 +98,9 @@ printf '%s\n' "${TC_OWNER_DID:-unset}" | grep -qE '^did:pkh:eip155:[0-9]+:0x[0-9
 ```
 
 - `CLI_OK` and `OWNER_OK` → continue with §2.
-- `TC_NOT_FOUND`, `STALE` or `OWNER_UNSET` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/agent for the pinned private install or the owner's non-secret DID, then return to this same task. Do not ask for a secret value or start a broad grant.
-- `CLI_OLDER <version> <path>` (the block stops before any other TinyCloud command) → the CLI the agent installed is older than `1.6.6`: follow https://agents.tinycloud.xyz/cli once (it upgrades that CLI) and run this block again. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
+- `TC_NOT_FOUND` or `STALE` → `NEEDS_SETUP`: follow https://agents.tinycloud.xyz/connect, then return to this same task.
+- `OWNER_UNSET` → `NEEDS_OWNER`: ask once for the account address shown in Secret Manager, set `TC_OWNER_DID` for every skill shell call, then return to this same task. Do not ask for a secret value or start a broad grant.
+- `CLI_OLDER <version> <path>` (the block stops before any other TinyCloud command) → the CLI is older than `1.6.6`: stop and tell the owner what it printed.
 - `TC_OLDER <version> <path>` → the operator selected that older CLI: keep it, tell the operator once that `1.6.6` is required, and continue with what this block reports. The line after `CLI_OK` or `STALE` is the CLI version.
 
 If the owner asked only whether the CLI works or is usable, this block is the whole check. Report what it printed and stop: don't run §2, don't try a secret name, and don't run any other `tinycloud` command.

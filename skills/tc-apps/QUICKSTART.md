@@ -7,7 +7,7 @@ Your agent keeps what you tell it in your own TinyCloud storage, in apps it crea
 - **Apps grow on demand.** A new kind of record, or a new detail, is added when you first mention it, without a migration.
 - **Any agent can carry on.** A new conversation in Claude Code, Codex or OpenCode finds every app and how it's stored, without being told.
 
-Claude Code, Codex and OpenCode need Node.js 20 or later with npm. Reuse the CLI selected during onboarding, `1.6.6`: new installs and older agent-owned installs get it; an operator-selected older CLI stops setup with a one-line notice. There is no separate app CLI or beta installation.
+Claude Code, Codex and OpenCode need Node.js 20 or later with npm. Read and follow https://agents.tinycloud.xyz/connect for the current client, then return here. There is no separate app CLI.
 
 Never share private keys or session files. Approval links also contain request material: send the complete link only to the approving owner, never to a URL shortener. See [What is and isn't secret](https://agents.tinycloud.xyz/agent#what-is-and-isnt-secret).
 
@@ -15,21 +15,21 @@ Never share private keys or session files. Approval links also contain request m
 
 Add the setup link to your first request:
 
-> Fetch https://agents.tinycloud.xyz/apps with curl and follow it, including running its installer. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
+> Fetch https://agents.tinycloud.xyz/apps with curl and follow it. Log this meal in my TinyCloud: breakfast, two eggs and a slice of toast, about 350 kcal.
 
 The agent follows the setup at [`agents.tinycloud.xyz/apps`](https://agents.tinycloud.xyz/apps), then carries on with your request in the same conversation:
-1. It checks Node.js and npm. If either is missing, or Node.js is older than 20, it stops and tells you; it doesn't install them.
-2. It reuses the CLI from shared setup, or installs (or upgrades) one private copy in `~/.local/share/tinycloud/cli`. Unrelated commands on PATH are preserved.
-3. It installs the skill for your user, so every project folder sees it: `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/tc-apps/` for Claude Code, `~/.agents/skills/tc-apps/` for Codex and OpenCode.
+1. It checks Node.js and npm. If either is missing, or Node.js is older than 20, it stops and tells you.
+2. It reads and follows https://agents.tinycloud.xyz/connect for the current client, then returns to this request.
+3. It reads and follows https://agents.tinycloud.xyz/skills/apps.md for the request.
 4. Health Log always asks for its own permission, even if you've finished onboarding. Other apps reuse access you've already approved when it covers what they need, and ask only for what's missing.
 
-No shell profile to edit, variables to set or client to restart. The agent reads the installed skill directly. In a future conversation that has not discovered it, paste the setup link again; the agent uses the installed files and carries on.
+No shell profile to edit, variables to set or client to restart. In a future conversation, paste the setup link again; the agent follows the current pages and carries on.
 
 | Client | What to expect |
 |---|---|
 | Claude Code | It can ask you to confirm a step. Reply in chat naming the step your agent explains: [Confirming a step in Claude Code](https://agents.tinycloud.xyz/apps#if-claude-code-still-blocks-it). |
-| Codex | Approve the install escalation in chat if its sandbox asks. The agent installs the CLI and skill. |
-| OpenCode | The agent reads the installed skill for this request without a restart. Paste the setup link again in a future conversation if needed. |
+| Codex | The agent follows the Codex quickstart, then continues the request. |
+| OpenCode | The agent follows the OpenCode quickstart, then continues the request. |
 
 Claude Code and Codex may also ask whether you trust a folder.
 
@@ -113,7 +113,7 @@ Good to know:
 - **Lifetime:** normally 30 days. The short link's request expiry is separate from the resulting grant's expiry.
 - **Stopping:** revocation through https://account.tinycloud.xyz/delegations ends the grant. Local `auth logout` clears only that profile's local session. A shared onboarding profile serves multiple apps; the agent explains that before logging it out.
 
-  To uninstall too, ask the agent in chat to remove this skill's install, state and skill folders. Your records stay in TinyCloud.
+  To remove local app state, ask the agent in chat to remove this skill's state folder. Your records stay in TinyCloud.
 
 ## Why it works this way
 
@@ -130,4 +130,3 @@ Good to know:
 - When your TinyCloud storage is full, saves fail with `STORAGE_QUOTA_EXCEEDED` or `STORAGE_LIMIT_REACHED` and nothing is saved; your records are still readable. The agent tells you and doesn't retry. To keep saving, upgrade at https://account.tinycloud.xyz/storage; deleting records doesn't free space yet.
 - Two agents changing the same kind's description in the same few seconds can lose one change; the next agent re-adds it.
 - `tinycloud-explorer` doesn't show these apps yet.
-- Claude Code doesn't read `~/.agents/skills`, so the setup copies the skill into the folder of each agent it finds. An agent you install after the setup doesn't have the skill until you run the setup again in any agent. OpenCode reads both folders and logs a duplicate-name warning; the two copies are the same.

@@ -3,9 +3,9 @@
 # Courier: one link for your agent
 
 Give any agent this same link: **https://agents.tinycloud.xyz/courier**.
-If it needs a prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it, including running its installer. Set up Courier for my requested workflow.`
+If it needs a prompt: `Fetch https://agents.tinycloud.xyz/courier with curl and follow it. Set up Courier for my requested workflow.`
 
-The agent installs what it needs, sets Courier up and checks that it works. You approve one permission and choose who it connects to; you never run commands or share keys.
+The agent reads the Courier skill, sets Courier up and checks that it works. You approve one permission and choose who it connects to; you never run commands or share keys.
 
 ## For the agent
 
@@ -15,13 +15,13 @@ Keep the owner's original task and any incoming invitation exactly as given. A b
 
 Route by capability, not client name. If you can run shell commands, use the steps below. If you can't, stop and tell the owner that Courier needs an agent that can run the TinyCloud CLI: the hosted TinyCloud MCP has no Courier tools yet, so don't ask for connector permissions instead.
 
-## Before installation or approval
+## Before approval
 
-Use Node.js 20 or later. Inspect existing Courier skill files **before** calling any installer. Compare the complete installed file set and hashes with the `courier` entry in `https://agents.tinycloud.xyz/skills/index.json`; reuse an exact match. If an existing Courier skill was modified or isn't a published one, keep it, tell the owner what differs and stop. The installer replaces whole folders; it does not protect local edits for you.
+Use Node.js 20 or later. Read the Courier skill below before running the selection check.
 
-Run the selection check below. Then use [CLI setup](tinycloud.md) only for the missing executable, with no action-skill argument; install/reuse Courier through this page's separate skill step after the preservation check. Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
+Run the selection check below. If the CLI is missing, the check uses the pinned CLI through `npx --prefix "$HOME"` for Courier's probes and setup. Don't run general onboarding: Courier has its own restricted approval and needs **no general TinyCloud onboarding, CLI profile, applications grant or account-registry grant** solely to use Courier.
 
-Process `TC_BIN` wins; otherwise the helper reads the saved value from `agent.env`. A saved path inside the managed private install belongs to that installer and may be upgraded there. Preserve any other operator-selected path. A missing or incompatible selection blocks setup rather than silently switching binaries. Carry the selected executable into every later call.
+Process `TC_BIN` wins. Preserve any operator-selected path. Without a process or saved `TC_BIN`, the pinned `npx` command becomes the selected CLI command. Carry the selected command into every later call.
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
@@ -34,34 +34,26 @@ if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
 fi
 if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
-  TC_VERSION=$("$TC_BIN" --version) || { echo "COURIER_CLI_FAILED: $TC_BIN" >&2; exit 1; }
-  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC_BIN reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
+  TC="$TC_BIN"
+else
+  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.6.6 tinycloud "$@"; }
+  TC=tc_courier_cli
 fi
+TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
 ```
 
 Keep the owner's original request and any incoming invitation URL exactly as supplied. Never ask for an owner key, hidden approval files, owner-run commands or hand-constructed grant JSON. Send approval and invitation URLs exactly as printed, only to their intended recipient.
 
 **One Courier approval when needed:** Courier keeps its own key and restricted grant in `$COURIER_HOME` (default `~/.courier`), separately from any TinyCloud CLI profile. Reuse a ready setup and preserve its identity.
 
-## Install the Courier skill
+## Read the Courier skill
 
-Install or reuse the Courier action skill; the current public manifest pins that **skill** to `0.5.2`. The usual location is `$HOME/.agents/skills/courier/SKILL.md` for Codex/OpenCode or `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/courier/SKILL.md` for Claude Code. Apply the complete-file preservation check above before installation.
+Read and follow the Courier [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md), then set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
 
-If the skill is missing, download and run the existing installer in separate calls below. Do not reinstall an exact match or overwrite a mismatch. Skip a download already completed in this run. `CLIENT` is `claude-code`, `codex` or `opencode`, as in [CLI setup](tinycloud.md).
+## Check the CLI
 
-```sh
-mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" https://agents.tinycloud.xyz/skills/install.js
-```
-
-```sh
-node "$HOME/.local/share/tinycloud/install.js" courier --agent CLIENT
-```
-
-It replaces only the `courier` skill folder and prints `SKILL_INSTALLED courier 0.5.2 <folder>`; any failure stops setup. Then read this preview's [`SKILL.md`](https://agents.tinycloud.xyz/skills/courier/SKILL.md) and [`start.md`](https://agents.tinycloud.xyz/skills/courier/start.md). Only if your client is none of those three, read SKILL.md and start.md directly instead, and set `COURIER_SKILL=read` in the shell that runs the check below. This step does not sign in or request a grant.
-
-## Check the installed CLI
-
-After installation, use Node.js 20 or later. This block resolves the process or saved `TC_BIN`, preserves it, and checks CLI `1.6.6` or newer and the Courier subcommands this guide uses.
+After reading the skill, use Node.js 20 or later. This block preserves a process or saved `TC_BIN`; otherwise it selects the pinned `npx` command. It checks CLI `1.6.6` or newer and the Courier subcommands this guide uses.
 
 Run this in the same shell as the later commands:
 
@@ -69,16 +61,20 @@ Run this in the same shell as the later commands:
 { set +x; } 2>/dev/null; umask 077
 CLAUDE_DIR=${CLAUDE_CONFIG_DIR-}; CLAUDE_DIR=${CLAUDE_DIR#"${CLAUDE_DIR%%[![:space:]]*}"}; CLAUDE_DIR=${CLAUDE_DIR%"${CLAUDE_DIR##*[![:space:]]}"}
 [ "${COURIER_SKILL-}" = read ] || [ -f "${CLAUDE_DIR:-$HOME/.claude}/skills/courier/SKILL.md" ] || [ -f "$HOME/.agents/skills/courier/SKILL.md" ] ||
-  { echo 'SKILL_MISSING courier: run the "Install the Courier skill" step at https://agents.tinycloud.xyz/courier (it is required), then rerun this block' >&2; exit 1; }
+  { echo 'SKILL_MISSING courier: read https://agents.tinycloud.xyz/skills/courier/SKILL.md and start.md, set COURIER_SKILL=read, then rerun this block' >&2; exit 1; }
 ENV_HELPER="$HOME/.config/tinycloud/agent-env.mjs"
 [ ! -L "$ENV_HELPER" ] || { echo AGENT_ENV_HELPER_CONFLICT >&2; exit 1; }
 if [ "${TC_BIN+x}" != x ] && [ -r "$ENV_HELPER" ]; then
   if TC_BIN=$(node "$ENV_HELPER" get TC_BIN); then :
   else status=$?; [ "$status" -eq 1 ] || exit "$status"; unset TC_BIN; fi
 fi
-TC="${TC_BIN-$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud}"
-[ "${TC_BIN+x}" = x ] || [ -x "$TC" ] || ! command -v npm >/dev/null || TC="$(npm prefix --global)/bin/tinycloud"
-[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; use the CLI setup or ask the operator" >&2; exit 1; }
+if [ "${TC_BIN+x}" = x ]; then
+  [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
+  TC="$TC_BIN"
+else
+  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.6.6 tinycloud "$@"; }
+  TC=tc_courier_cli
+fi
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
 if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.6.6 or newer; binary left unchanged" >&2; exit 1; fi
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
@@ -88,7 +84,7 @@ done
 export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 ```
 
-`SKILL_MISSING courier` means the required skill isn't installed: install it as in [Install the Courier skill](#install-the-courier-skill), then rerun the block. Ask the owner first in one line ("I need to install the Courier skill to finish this. OK?") and wait for their yes. The other checks are version/help probes only. The preview origin selects the invitation viewer, not a Courier API sandbox. The later commands use the installed package's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
+`SKILL_MISSING courier` means the required skill has not been read: read the two files above, set `COURIER_SKILL=read`, then rerun the block. The other checks are version/help probes only. The later commands use the CLI's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
 
 ## Incoming invitation takes priority
 
@@ -185,7 +181,7 @@ Run it exactly as written; don't pipe it through `tail`, `head` or a filter; rea
   - **`[no-space]`, and stderr says OpenKey is still setting up the space** ("OpenKey is still setting up your TinyCloud "agents" space", or "space is still being set up by OpenKey"): the approval was saved and the owner's space isn't ready yet. Run `"$TC" courier init --resume` as its own call (it waits up to a minute); if it reports the same, run it again in a minute. Do not ask for another approval. If it still reports it after a few minutes, send the owner exactly "I can't set up Courier right now. Please ask me again later." and stop.
   - **`[no-space]`, and stderr says the space is not set up** ("Your TinyCloud "agents" space is not set up … Courier will not create it", or "space is missing"): OpenKey's Auto-Sign is off, so nothing hosts the owner's `agents` space, and `--resume` can't fix it. Ignore stderr's Share-view and `space host` advice and its "No new approval is needed". Run step 1 once, and send its new link with exactly this line, once: "Your TinyCloud space isn't set up yet. Please turn on "Account bootstrap auto-sign" in your OpenKey settings (https://openkey.so/dashboard/settings), then open this new link and approve, then tell me." Then run this step: with Auto-Sign on, OpenKey sets the space up while the owner approves. If this case comes back, don't send that line again: send the owner exactly "I couldn't set up Courier this time. Tell me if you'd like me to try again." and stop.
   - **A printed fix, for `[approval-unreadable]` and `[profile-permissions]`:** run only a `chmod` command that stderr prints after "Fix it with", exactly as printed, once, and only if its path is inside `$COURIER_HOME`. Then rerun the command that reported the code, once. If the `chmod` fails or the same code comes back, send the owner exactly "I couldn't set up Courier this time. Tell me if you'd like me to try again." and stop; otherwise go by its result.
-  - **`[approval-unreadable]`:** the saved request is kept, and nothing changed. Use the printed fix. If the fix is `mv <file> <file>.newer` instead, a newer Courier saved the request: never run the `mv`. Send the owner exactly "My Courier is older than the one that started this setup. I need to update it before we can continue; shall I?" If they say no, stop without another message. If they say yes, update the CLI with [Install the CLI](https://agents.tinycloud.xyz/cli#install-the-cli): download `install-cli.sh` and run it as written there, and check the version it reports. Then run this step again, once. If it reports `[approval-unreadable]` again, send the owner exactly "I couldn't update Courier far enough to continue. Please ask me again after TinyCloud's next update." and stop; otherwise go by its result. Never run any other fix: send the "I couldn't set up Courier this time" line and stop.
+  - **`[approval-unreadable]`:** the saved request is kept, and nothing changed. Use the printed fix. If the fix is `mv <file> <file>.newer` instead, a newer Courier saved the request: never run the `mv`. Send the owner exactly "My Courier is older than the one that started this setup, so it needs an update before we can continue." Then wait for the operator to supply a newer process `TC_BIN`, and run this step again once; don't run onboarding for this recovery. If it reports `[approval-unreadable]` again, send the owner exactly "I couldn't update Courier far enough to continue. Please ask me again after TinyCloud's next update." and stop; otherwise go by its result. Never run any other fix: send the "I couldn't set up Courier this time" line and stop.
   - **`[profile-permissions]`:** use the printed fix. If stderr prints no `chmod` after "Fix it with", or its path is outside `$COURIER_HOME`, send the owner exactly "I couldn't set up Courier this time. Tell me if you'd like me to try again." and stop.
   - **`[approval-rejected]` or `[approval-unavailable]` on exit 1:** the saved request is kept. Run the same `"$TC" courier init --wait --timeout 60s` again in a minute; do not create or send a new link. This follows the error's instruction to run `courier init --wait` again.
   - If either code recurs the same way three times, send the owner exactly "I can't set up Courier right now. Please ask me again later." and stop.
@@ -339,46 +335,28 @@ fi
 
 Ask your question once, exactly, with your CLI's product name and the owner's own words for the peer (for example "your other agent"), not its handle. Continue only on a yes; on anything else, skip the rest of this section.
 
-**2. Install the watcher's Courier.** Automatic pickup needs a newer Courier than the one inside the TinyCloud CLI the guides install. This block installs exactly `@tinycloud/courier@{{COURIER_WATCH_VERSION}}`, a pre-release, in a folder of its own that only the watcher uses; your TinyCloud CLI and everything else stay as they are, and you keep using `"$TC" courier` in this conversation.
-
-```sh
-{ set +x; } 2>/dev/null; umask 077
-WATCH_PREFIX="$HOME/.local/share/tinycloud/courier-watch"
-WATCH="$WATCH_PREFIX/node_modules/.bin/courier"
-if [ -x "$WATCH" ] && [ "$("$WATCH" --version)" = "{{COURIER_WATCH_VERSION}}" ]; then echo "WATCH_OK $WATCH"
-elif npm install --prefix "$WATCH_PREFIX" --save-exact --no-audit --no-fund @tinycloud/courier@{{COURIER_WATCH_VERSION}} >/dev/null && "$WATCH" --help | grep -q -e '--agent-cli'; then echo "WATCH_OK $WATCH"
-else echo WATCH_INSTALL_FAILED; fi
-```
-
-- `WATCH_OK <path>`: continue.
-- `WATCH_INSTALL_FAILED`: report the error npm printed and skip the rest of this section.
-
-Do not start a watcher with the TinyCloud CLI itself instead: when two of the owner's agents watch at once, its older watchers stop each other.
-
-**3. Install and start the service.** Set `WATCH_DIR` to the directory the owner works with you in (not inside `$COURIER_HOME`), then run this in the same shell. It puts the watcher's Courier first on the service's `PATH`, because the watcher's prompt tells you to run `courier …` and that must be this one:
+**2. Start the watcher's Courier.** Automatic pickup needs `@tinycloud/courier@{{COURIER_WATCH_VERSION}}`, a pre-release, while this conversation keeps using `"$TC" courier`. Set `WATCH_DIR` to the directory the owner works with you in (not inside `$COURIER_HOME`), then run this in the same shell:
 
 ```sh
 { set +x; } 2>/dev/null; umask 077
 : "${WATCH_DIR:?Set the directory you work in}"
 export COURIER_HOME="${COURIER_HOME:-$HOME/.courier}"
-WATCH="$HOME/.local/share/tinycloud/courier-watch/node_modules/.bin/courier"
-[ -x "$WATCH" ] || { echo "WATCH_MISSING: run step 2 first" >&2; exit 1; }
 case "$(uname -s)" in Darwin) INSTALL=--install-launchd ;; Linux) INSTALL=--install-systemd ;; *) echo WATCH_NO_SERVICE >&2; exit 1 ;; esac
 for UNIT in "$HOME/.config/systemd/user/courier-watch.service" "$HOME/Library/LaunchAgents/xyz.tinycloud.courier.watch.plist"; do
   if [ -f "$UNIT" ] && ! grep -q -F "$COURIER_HOME" "$UNIT"; then echo "WATCH_TAKEN $UNIT" >&2; exit 1; fi
 done
-PATH="$(dirname "$WATCH"):$PATH"; export PATH
 if [ "${AGENT_CMD+x}" = x ]; then
   [ -z "${HOME_FILE-}" ] || [ -f "$HOME/$HOME_FILE" ] || { echo "WATCH_LOGIN_MISSING $HOME_FILE" >&2; exit 1; }
-  "$WATCH" watch --wake exec --unguarded --agent-cli --exec "$AGENT_CMD" ${HOME_FILE:+--home-file "$HOME_FILE"} --cwd "$WATCH_DIR" "$INSTALL"
+  set -- watch --wake exec --unguarded --agent-cli --exec "$AGENT_CMD" ${HOME_FILE:+--home-file "$HOME_FILE"} --cwd "$WATCH_DIR" "$INSTALL"
 else
-  "$WATCH" watch --wake claude --cwd "$WATCH_DIR" "$INSTALL"
+  set -- watch --wake claude --cwd "$WATCH_DIR" "$INSTALL"
 fi
+npx --prefix "$HOME" -y -p @tinycloud/courier@{{COURIER_WATCH_VERSION}} courier "$@"
 ```
 
-It prints `Installed <file>. Logs: <log file>`. On Linux it also prints a `loginctl enable-linger` line: run that command as printed, so the watcher keeps running after the owner logs out; if it fails, tell the owner in one line and continue. `WATCH_TAKEN <file>` means another agent's Courier already owns this computer account's watcher service: leave it alone, tell the owner "Another agent on this computer account already has automatic pickup, so I haven't set mine up." and stop. `WATCH_LOGIN_MISSING`, or a `--home-file` refusal from the watcher, means it cannot reach your model login: send the owner step 1's line for a failed check and stop. `WATCH_NO_SERVICE` means this system has no supported service manager: tell the owner "Automatic pickup isn't available on this system yet." and stop. Any other error: report it and stop; do not retry in a loop.
+It prints `Installed <file>. Logs: <log file>`. On Linux it also prints a `loginctl enable-linger` line: run that command as printed, so the watcher keeps running after the owner logs out; if it fails, tell the owner in one line and continue. `WATCH_TAKEN <file>` means another agent's Courier already owns this computer account's watcher service: leave it alone, tell the owner "Another agent on this computer account already has automatic pickup, so I haven't set mine up." and stop. `WATCH_LOGIN_MISSING`, or a `--home-file` refusal from the watcher, means it cannot reach your model login: send the owner step 1's line for a failed check and stop. `WATCH_NO_SERVICE` means this system has no supported service manager: tell the owner "Automatic pickup isn't available on this computer." and stop. Any other error: report it and stop; do not retry in a loop.
 
-**4. Check that it runs.**
+**3. Check that it runs.**
 
 ```sh
 LOG="${COURIER_HOME:-$HOME/.courier}/watch.log"; N=0

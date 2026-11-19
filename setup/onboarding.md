@@ -6,7 +6,7 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 **Paste into your agent:**
 
-> Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it, including running its installer. Set me up with TinyCloud.
+> Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it. Set me up with TinyCloud.
 
 - **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for 30 days. The second lets it see which spaces and apps you have, read-only, for 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
@@ -28,7 +28,7 @@ The person you are talking to is the **owner**. Onboarding sets up three things 
 
 Pick the route for where you run:
 
-- **You can install and run the TinyCloud CLI**, on the owner's computer or in your own workspace: follow [CLI](#cli). This is the preferred route.
+- **You can run the TinyCloud CLI**, on the owner's computer or in your own workspace: follow [CLI](#cli). This is the preferred route.
 - **Otherwise, if you support remote MCP** (for example ChatGPT, Claude, Gemini, Grok or Perplexity): follow [MCP](#mcp).
 
 ### Principles
@@ -45,14 +45,14 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Follow [the CLI setup](tinycloud.md) with its caller contract, then return to step 2 here. It installs the `tinycloud` command and attempts the optional `tinycloud-cli` skill in one download call and one run call. If it reports `TC_SKILL_STATUS unavailable`, continue onboarding with the selected CLI; the command does not depend on the skill. If a guide sent you here, give the CLI setup that guide's action skill too (`apps` for /apps, `courier` for /courier, `chat` for /chat), so the same run call installs it. Replace `<TC_BIN>` in each shell block with the selected absolute executable path; separate tool calls need not share shell variables.
+**1. The CLI.** Read and follow https://agents.tinycloud.xyz/connect for the current client, then return to step 2 here. Keep the selected CLI command from that flow and replace `<TC_BIN>` in each shell block with it; separate tool calls don't need to share shell variables.
 
 ```sh
 TC='<TC_BIN>'
 "$TC" onboard --help | grep -qF -- --timeout && echo ONBOARD_READY
 ```
 
-**CLI rule (stable `1.6.6`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 or /cli means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI is yours, including one on `PATH` or linked from `~/.local/bin`: step 2 prints `CLI_OLDER`; follow https://agents.tinycloud.xyz/cli once and rerun step 2. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades. A newer CLI is never downgraded.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
+**CLI rule (stable `1.6.6`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.6.6`, and stop. Any other older CLI: step 2 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
 
 **2. Run onboarding.** It asks for both approvals, step 1 first, then step 2. It uses the selected default profile, or `TC_PROFILE` if set. Run this in the foreground, as its own shell call. Each run prints the pending link and exits, unless the owner has already approved; a rerun resumes the same link, and a resumed run can spend up to about 10 seconds checking the approval:
 
@@ -64,7 +64,7 @@ if printf '%s\n' "$V" | awk -F. -v p=1.6.6 '{split(p,q,".");for(i=1;i<4;i++){n=$
   if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; fi
   [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$HOME/.local/share/tinycloud/cli" || O=
   if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.6.6; keeping this operator-selected CLI"
-  else M="CLI_OLDER $V $TC: run the CLI setup at https://agents.tinycloud.xyz/cli (it upgrades a CLI the agent installed), then rerun this block"; fi
+  else M="CLI_OLDER $V $TC: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
   echo "$M" >&2; exit 1
 fi
 OUT=$(mktemp) || exit 1
@@ -89,14 +89,14 @@ Run it exactly as written; don't pipe it through `tail`, `head` or a filter; rea
 
 When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message. When it shows a link you already sent, don't send it again; run the block again on the owner's next message. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
 
-- **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, send the done line ("TinyCloud is set up."), then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. For setup only, step 1 installs no action skill. Before the done line, run `"$TC" space list` once as the test read. On exit 0, send the done line, then what the owner can ask next: records, sharing, stored API keys or meetings. Create no records. Any other exit: the shared table.
+- **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, send the done line ("TinyCloud is set up."), then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. Before the done line, run `"$TC" space list` once as the test read. On exit 0, send the done line, then what the owner can ask next: records, sharing, stored API keys or meetings. Create no records. Any other exit: the shared table.
 - **The command stopped first** (a tool timeout, a restart): rerun the identical command/profile. It preserves completed approvals and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.
 
 Never run `onboard --code` in place of the link: onboarding's automatic links don't produce a code, and the approval is retrieved automatically, including from a phone. That is why onboarding is a live-conversation flow: send its link only to the owner in the chat, never on a card or in an inbox.
 
 **If something goes wrong:** exit codes go by the [shared table](#exit-codes-and-owner-lines), with `<what>` = "TinyCloud". These come first:
 
-- **`CLI_OLDER <version> <path>`:** the selected CLI is older than `1.6.6` and the block stopped before `onboard`. Follow [the CLI setup](tinycloud.md) once (it upgrades a CLI the agent installed), use its new `TC_SELECTED` path as `<TC_BIN>`, then rerun the block. Ask the owner first in one line ("I need to update the TinyCloud CLI to finish this. OK?") and wait for their yes. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI; the guide's installer (/cli) handles upgrades.
+- **`CLI_OLDER <version> <path>`:** the CLI is older than `1.6.6` and the block stopped before `onboard`. Stop and tell the owner what it printed.
 - **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.6.6`, and stop; don't replace it.
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **Exit 6:** a network error. Follow the shared table: run the same command again once, without a new link or reporting it to the owner; if it exits 6 again, tell the owner exactly "I can't set up TinyCloud right now. Please ask me again later.", then put the stderr error code on its own line and stop.
@@ -127,7 +127,7 @@ Fetch the guide for what the owner asked for yourself and follow it from the sta
 | Let you work with another person's agent | [/courier](courier.md) |
 | Something not listed here | The ability list at [/setup](README.md) |
 
-With MCP, use the connected TinyCloud tools for the goal. The hosted MCP has no meeting tools yet, so meetings use the CLI route. For meetings, or anything else the tools don't cover, tell the owner it needs an agent that can install and run the TinyCloud CLI.
+For meetings, or anything else the connected tools don't cover, tell the owner it needs an agent that can run the TinyCloud CLI.
 
 ### Asking for more later
 

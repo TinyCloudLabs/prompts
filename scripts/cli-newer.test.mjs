@@ -76,7 +76,7 @@ test("/onboarding step 2 (built): older than the pin prints CLI_OLDER and stops;
     if (older) {
       assert.notEqual(result.status, 0, version);
       assert.equal(c.ran(), "--version\n", version);
-      assert.match(result.stderr, new RegExp(`^CLI_OLDER ${version.replaceAll(".", "\\.")} \\S+: run the CLI setup`), version);
+      assert.match(result.stderr, new RegExp(`^CLI_OLDER ${version.replaceAll(".", "\\.")} \\S+: this CLI is older than this skill needs\\. Stop and tell the owner what it printed\\.`), version);
     } else {
       assert.equal(result.status, 0, `${version}: ${result.stderr}`);
       assert.equal(c.ran(), "--version\nonboard --timeout 1s\n", version);
@@ -94,7 +94,7 @@ test("tc-apps skill §1 (built): older than the pin prints CLI_OLDER and stops; 
     assert.equal(c.ran(), "--version\n", version);
     if (older) {
       assert.notEqual(result.status, 0, version);
-      assert.match(last, new RegExp(`^CLI_OLDER ${version.replaceAll(".", "\\.")} \\S+: run the CLI setup`), version);
+      assert.match(last, new RegExp(`^CLI_OLDER ${version.replaceAll(".", "\\.")} \\S+: this CLI is older than this skill needs\\. Stop and tell the owner what it printed\\.`), version);
     } else {
       assert.equal(result.status, 0, `${version}: ${result.stdout}${result.stderr}`);
       assert.doesNotMatch(result.stdout + result.stderr, /CLI_OLDER|TC_OLDER/, version);
@@ -104,8 +104,8 @@ test("tc-apps skill §1 (built): older than the pin prints CLI_OLDER and stops; 
 });
 
 test("courier guide (built): both version checks refuse older than the pin and accept the pin or newer", () => {
-  const preOnboarding = gate("courier", "## Before installation or approval");
-  const postOnboarding = gate("courier", "## Check the installed CLI");
+  const preOnboarding = gate("courier", "## Before approval");
+  const postOnboarding = gate("courier", "## Check the CLI");
   for (const [version, older] of Object.entries(VERSIONS)) {
     // The pre-installation check preserves an operator's TC_BIN; the official installer owns the default.
     const c1 = setup(version, "process");

@@ -2,7 +2,7 @@
 # Agent-run owner approval: keep stdin attached to the agent's interactive session for the sign-in's chat code.
 # Usage: sh owner-grant.sh healthlog | sh owner-grant.sh recipes
 set -eu
-# The same CLI as every TinyCloud skill: process TC_BIN, then /agent's agent.env, then the shared private install, then `tinycloud` on PATH.
+# The same CLI as every TinyCloud skill: process TC_BIN, then an existing helper's saved value, then the shared private install, then `tinycloud` on PATH.
 if [ -z "${TC_BIN:-}" ]; then
   if [ -r "$HOME/.config/tinycloud/agent-env.mjs" ]; then TC_BIN=$(node "$HOME/.config/tinycloud/agent-env.mjs" get TC_BIN) || { [ $? -eq 1 ] || exit 1; TC_BIN=; }; fi
   [ -n "${TC_BIN:-}" ] || TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"
