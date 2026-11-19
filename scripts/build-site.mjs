@@ -181,7 +181,7 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.6`: https://agents.tinycloud.xyz/cli installs it, or upgrades a CLI the agent installed. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.6.6`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
         [
           "Shares live in the owner's `default` space, so publish from a dedicated profile with one paste sign-in. Send the owner the link and pass their code to the CLI exactly as sent:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --method openkey --paste --manifest builtin:share-publishing --expiry 30d\n```",
