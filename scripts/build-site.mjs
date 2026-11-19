@@ -102,7 +102,7 @@ const PAGES = [
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
   { url: "connect", src: "setup/connect.md", html: true },
-  ...["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes", "cli"].map((client) => ({
+  ...["claude-code", "codex", "opencode", "gemini-cli", "grok-bot", "chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes", "cli"].map((client) => ({
     url: `connect/${client}`, src: `setup/connect/${client}.md`, html: true,
     browserFetch: ["chatgpt", "claude", "gemini", "grok", "muse", "perplexity"].includes(client),
   })),
@@ -310,14 +310,14 @@ const SKILLS = [
   },
 ];
 
-// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line, which
-// fetches `fetch` when the guide's Markdown lives at another URL than its page (/onboarding.md).
+// Abilities shown on the front page, in order. `task` follows the owner prompt's fetch line.
 const ABILITIES = [
   {
     title: "Set up TinyCloud",
-    url: "onboarding",
-    fetch: "onboarding.md",
-    text: "Your agent sets you up so it can act for you in your own TinyCloud: you sign in (or create an account) with OpenKey and approve what it may do.",
+    url: "connect",
+    fetch: "connect.md",
+    text: "Your agent opens the page for its client, then sets you up through the TinyCloud CLI or hosted MCP with OpenKey.",
+    minimal: true,
     task: "Set me up with TinyCloud.",
   },
   {
@@ -388,10 +388,9 @@ if (watchPinElsewhere.length) throw new Error(`${WATCH_TOKEN} belongs to setup/c
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const url = (p) => `${BASE}/${p}`;
-// Every owner prompt names the guide to fetch raw and the installer it runs: Claude Code's auto mode
-// runs a downloaded installer when the owner's own prompt asked for it, and may refuse it otherwise.
-const ownerPrompt = (path, task) => `Fetch ${url(path)} with curl and follow it, including running its installer. ${task}`;
-const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task);
+// The setup router carries no installer mechanics. Existing task guides retain their owner-approved prompts.
+const ownerPrompt = (path, task, installer = true) => `Fetch ${url(path)} with curl and follow it${installer ? ", including running its installer" : ""}. ${task}`;
+const abilityPrompt = (a) => ownerPrompt(a.fetch ?? a.url, a.task, !a.minimal);
 
 function walk(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -792,11 +791,11 @@ const listedPages = indexed.filter((p) => p.url !== "setup");
 const llms = [
   "# TinyCloud agent abilities",
   "",
-  "> Setup guides for any AI agent, backed by the owner's own TinyCloud space: the TinyCloud CLI when the agent can install and run it, otherwise the hosted MCP. Fetch the guide for the task and follow it in the same conversation. /onboarding and /connect serve HTML by default and Markdown when explicitly requested; other guides are plain Markdown.",
+  "> Setup guides for any AI agent, backed by the owner's own TinyCloud space: the TinyCloud CLI when the agent can run commands, otherwise the hosted MCP. Fetch the page for the client and follow it in the same conversation. /connect serves HTML by default and Markdown when explicitly requested.",
   "",
-  `Start at ${url("onboarding")} to set up TinyCloud for the owner; it then sends you to the guide for the owner's goal. Agents that can install and run the TinyCloud CLI use it (Node.js 20 or later and npm); agents that support remote MCP connect through ${url("connect")}. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
+  `Start at ${url("connect")} to select the page for this client. ${url("setup")} lists every ability, what it does, and what the owner approves.`,
   "",
-  "Read every guide raw: if you can run a shell, fetch it with `curl -fsSL -H 'Accept: text/markdown' <its URL>` and copy its shell blocks from that output. A web-fetch tool that summarizes pages drops or rewrites the blocks, and they only work exactly as written.",
+  "Read every guide raw. Fetch its explicit `.md` URL without adding an `Accept` header.",
   "",
   "Send the owner every link exactly as the CLI printed it, copied from the output: never retype, shorten or rebuild it.",
   "",
@@ -807,8 +806,8 @@ const llms = [
   "## Guides",
   "",
   `- [${page("setup").title}](${url("setup")}): ${page("setup").desc}`,
-  // /onboarding is where setup starts, so its guide entry carries the set-up example too.
-  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}${p.url === "onboarding" ? ` Example prompt: "${abilityPrompt(ABILITIES.find((a) => a.url === "onboarding"))}"` : ""}`),
+  // /connect is where setup starts, so its guide entry carries the set-up example too.
+  ...listedPages.map((p) => `- [${p.title}](${url(p.url)}): ${p.desc}${p.url === "connect" ? ` Example prompt: "${abilityPrompt(ABILITIES.find((a) => a.url === "connect"))}"` : ""}`),
   "",
   "## Skills",
   "",
@@ -817,7 +816,7 @@ const llms = [
   "## Optional",
   "",
   `- [Full text](${url("llms-full.txt")}): every guide and skill above in one file.`,
-  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums. Install one by downloading the installer, then running it in a separate shell call: \`mkdir -p "$HOME/.local/share/tinycloud" && curl -fsSL -o "$HOME/.local/share/tinycloud/install.js" ${url("skills/install.js")}\`, then \`node "$HOME/.local/share/tinycloud/install.js" <short name> --agent <claude-code|codex|opencode>\` (any other agent: \`codex\`).`,
+  `- [Skill index](${url("skills/index.json")}): every skill's version and files with sha256 checksums.`,
   `- [Source repository](https://github.com/TinyCloudLabs/prompts): where the guides and TinyCloud's own skills are written.`,
   "",
 ].join("\n");
