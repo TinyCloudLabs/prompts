@@ -990,7 +990,7 @@ ${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<co
     </ul>
 
     <h2>Skills</h2>
-    <p>The guides install these for you. Each links to its <code>SKILL.md</code>.</p>
+    <p>Each links to its <code>SKILL.md</code>.</p>
     <ul>
 ${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
