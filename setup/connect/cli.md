@@ -1,12 +1,19 @@
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/connect/cli.md` and follow that text. Summaries drop the shell blocks you must run.
 
+Read this page as raw text, not a summary; if your fetch tool summarizes it, fetch this page's `.md` URL itself.
+
 # Set up TinyCloud in another CLI agent
 
 Use this page only in a CLI-capable agent without a named TinyCloud page.
 
 The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.
 
-Before you send the owner the first OpenKey link, tell them word for word: "I'll set up TinyCloud so I can act for you. OpenKey (openkey.so) is TinyCloud's sign-in service, where you approve my access. Your apps, like a todo list or meal log, keep their data in TinyCloud spaces you control. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days. Each approval names what it covers, and you can end it any time at account.tinycloud.xyz/delegations."
+Send the owner this message, then the link:
+
+> I'll set up TinyCloud so I can act for you. You'll approve two screens in OpenKey, TinyCloud's sign-in service:
+> 1. Sign in, then let me read, change and delete your apps' data.
+> 2. Let me see which spaces and apps you have, read-only.
+> On each screen you choose how long the approval lasts, from one hour up to 30 days. You can end either approval at account.tinycloud.xyz/delegations.
 
 `npx --prefix "$HOME" -y -p @tinycloud/cli@{{CLI_VERSION}} tinycloud onboard --timeout 1s`
 

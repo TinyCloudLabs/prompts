@@ -79,7 +79,13 @@ const minimalClients = new Map([
   ["grok-bot", { title: "Set up TinyCloud in Grok Bot", use: "Use this page only in Grok Bot with a persistent terminal." }],
   ["cli", { title: "Set up TinyCloud in another CLI agent", use: "Use this page only in a CLI-capable agent without a named TinyCloud page." }],
 ]);
-const cliOwnerIntro = `Before you send the owner the first OpenKey link, tell them word for word: "I'll set up TinyCloud so I can act for you. OpenKey (openkey.so) is TinyCloud's sign-in service, where you approve my access. Your apps, like a todo list or meal log, keep their data in TinyCloud spaces you control. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data for 30 days; then let me see which spaces and apps you have, read-only, for 30 days. Each approval names what it covers, and you can end it any time at account.tinycloud.xyz/delegations."`;
+const cliRawText = "Read this page as raw text, not a summary; if your fetch tool summarizes it, fetch this page's `.md` URL itself.";
+const cliOwnerIntro = `Send the owner this message, then the link:
+
+> I'll set up TinyCloud so I can act for you. You'll approve two screens in OpenKey, TinyCloud's sign-in service:
+> 1. Sign in, then let me read, change and delete your apps' data.
+> 2. Let me see which spaces and apps you have, read-only.
+> On each screen you choose how long the approval lasts, from one hour up to 30 days. You can end either approval at account.tinycloud.xyz/delegations.`;
 const cliRouteOn = "When it prints `\"onboarded\": true` or `Onboarded:`, fetch the guide for the owner's request and follow it: records, meals, weight, workouts or todos, https://agents.tinycloud.xyz/apps; sharing, https://agents.tinycloud.xyz/share; publishing, https://agents.tinycloud.xyz/publish; API keys or secrets, https://agents.tinycloud.xyz/secrets; meetings, https://agents.tinycloud.xyz/chat; the Feed, https://agents.tinycloud.xyz/feed; another person's agent, https://agents.tinycloud.xyz/courier; anything else, https://agents.tinycloud.xyz/setup (skip its /onboarding step: that's done).";
 const existingClients = ["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes"];
 
@@ -120,9 +126,10 @@ test("each new CLI page is a minimal progressive entry with validated literal co
   for (const [route, expected] of minimalClients) {
     const text = readFileSync(join(root, "_site/connect", `${route}.md`), "utf8");
     const nonblank = text.split("\n").filter((line) => line.trim());
-    assert.ok(nonblank.length <= 10, `${route}: ${nonblank.length} nonblank lines`);
+    assert.ok(nonblank.length <= 15, `${route}: ${nonblank.length} nonblank lines`);
     assert.ok(Buffer.byteLength(text) <= 2_500, `${route}: ${Buffer.byteLength(text)} bytes`);
     for (const line of [
+      cliRawText,
       `# ${expected.title}`,
       expected.use,
       "The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.",
@@ -132,6 +139,7 @@ test("each new CLI page is a minimal progressive entry with validated literal co
       "Wherever it says `tinycloud`, run `npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.6.6 tinycloud` instead.",
       cliRouteOn,
     ]) assert.ok(text.includes(`\n${line}\n`) || text.endsWith(`\n${line}\n`), `${route}: ${line}`);
+    assert.ok(text.includes(`${cliOwnerIntro}\n\n\`npx --prefix "$HOME" -y -p @tinycloud/cli@1.6.6 tinycloud onboard --timeout 1s\``), `${route}: owner intro directly above onboard`);
     const source = readFileSync(join(root, "setup/connect", `${route}.md`), "utf8");
     assert.equal(source.split("@{{CLI_VERSION}}").length - 1, 2, `${route}: version token`);
     assert.doesNotMatch(text.split("\n").slice(1).join("\n"), /\b(?:curl|sudo)\b|install\.js/, `${route}: install mechanics`);
