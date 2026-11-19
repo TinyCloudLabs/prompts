@@ -1,16 +1,28 @@
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { test } from "node:test";
+import { after, before, test } from "node:test";
 import { CLI_VERSION } from "./install-cli.mjs";
 
 // Task guides with no CLI found use `npx -y @tinycloud/cli@<pin>` through a launcher file, not /cli.
-// Run `node scripts/build-site.mjs` first, as for every test that reads `_site`.
+// Build a repository copy so this test never reads or writes the shared _site.
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const served = (file) => readFileSync(join(root, "_site", file), "utf8");
+const work = mkdtempSync(join(realpathSync(tmpdir()), "tc-npx-form-"));
+after(() => rmSync(work, { recursive: true, force: true }));
+let site;
+before(async () => {
+  const dir = join(work, "repo");
+  cpSync(root, dir, { recursive: true, filter: (src) => src === root || dirname(src) !== root || ![".git", "_site", "node_modules"].includes(basename(src)) });
+  symlinkSync(join(root, "node_modules"), join(dir, "node_modules"));
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(CF_PAGES.*|SITE_URL)$/.test(key)));
+  await promisify(execFile)(process.execPath, [join(dir, "scripts/build-site.mjs")], { env });
+  site = join(dir, "_site");
+});
+const served = (file) => readFileSync(join(site, file), "utf8");
 const LAUNCHER = ".local/share/tinycloud/npx/tinycloud";
 const PINNED = `npx --prefix "$HOME" -y -p @tinycloud/cli@${CLI_VERSION} tinycloud`;
 
@@ -33,7 +45,7 @@ const firstBlock = (text, heading) => {
 
 // A home with no TinyCloud install, and a PATH whose only `npx` is a stand-in that records its arguments.
 function sandbox() {
-  const dir = mkdtempSync(join(tmpdir(), "npx-form-"));
+  const dir = mkdtempSync(join(work, "sandbox-"));
   const home = join(dir, "home");
   const bin = join(dir, "bin");
   mkdirSync(home);
