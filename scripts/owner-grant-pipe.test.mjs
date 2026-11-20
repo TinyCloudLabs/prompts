@@ -64,7 +64,7 @@ function session(name) {
   writeFileSync(join(state, "meal-request.json"), "{}");
   writeFileSync(join(state, "meal-grant.json"), '{"previous":true}\n');
   const sh = (script) => {
-    const run = spawnSync("sh", ["-c", script.replaceAll("<TC_BIN>", cli).replaceAll("<STATE>", state)],
+    const run = spawnSync("sh", ["-c", script.replaceAll("<TC_BIN>", cli).replaceAll("<STATE>", state).replaceAll("<SKILL_DIR>", skill)],
       { encoding: "utf8", timeout: 20000, env: { PATH: process.env.PATH, HOME: home, TZ: "UTC" } });
     assert.equal(run.status, 0, run.stderr);
     return run.stdout;
