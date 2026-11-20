@@ -53,14 +53,18 @@ Use the timezone the Health Log page saves on open (`xyz.tinycloud.sample.health
 ```sh
 STATE='<STATE>'; umask 077
 for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ] && [ -f "$d/healthlog-context.mjs" ] && [ -f "$d/announce.sh" ] && [ -f "$d/owner-grant.sh" ]; then printf '%s\n' "$d"; exit 0; fi; done
-D="$STATE/served-skill"; mkdir -p "$D"
+D="$STATE/served-skill"; mkdir -p "$STATE"
+T=$(mktemp -d "$STATE/served-skill.XXXXXX") || exit 1
 for f in app-context.mjs healthlog-context.mjs announce.sh owner-grant.sh; do
-  curl -fsSL "https://agents.tinycloud.xyz/skills/apps/$f" -o "$D/$f" || exit 1
+  curl -fsSL "https://agents.tinycloud.xyz/skills/apps/$f" -o "$T/$f" || { rm -rf "$T"; exit 1; }
 done
+rm -rf "$D" && mv "$T" "$D" || { rm -rf "$T"; exit 1; }
 printf '%s\n' "$D"
 ```
 
-Append `/healthlog-context.mjs` to that path and copy it as `<HEALTHLOG_CONTEXT>`. In §4 use `agent-meal` as `<CATALOG_PROFILE>` and its configured host as `<CATALOG_HOST>`; never pass the onboarded profile. The helper verifies the saved owner and full applications space against official CLI metadata, then reads the page's timezone key and returns `{spaceId,day,now,utc,timeZone}` using a fresh clock. It reads no private session files. On an account failure, stop and run no SQL; never replace the saved owner to make a grant fit.
+If this block fails, stop and tell the owner.
+
+Copy that path as `<SKILL_DIR>`, and use `<SKILL_DIR>/healthlog-context.mjs` as `<HEALTHLOG_CONTEXT>`. In §4 use `agent-meal` as `<CATALOG_PROFILE>` and its configured host as `<CATALOG_HOST>`; never pass the onboarded profile. The helper verifies the saved owner and full applications space against official CLI metadata, then reads the page's timezone key and returns `{spaceId,day,now,utc,timeZone}` using a fresh clock. It reads no private session files. On an account failure, stop and run no SQL; never replace the saved owner to make a grant fit.
 
 0. **Check the app-specific grant (no screen).** The probe below checks only `agent-meal`; never check or use an onboarded profile for Health Log. If the app grant is live, continue to §4; otherwise renew it below.
 
@@ -98,14 +102,14 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 
 ```sh
 STATE='<STATE>'; export TC_APPS_STATE="$STATE"; umask 077
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill" "$STATE/served-skill"; do if [ -n "$d" ] && [ -f "$d/announce.sh" ]; then sh "$d/announce.sh" healthlog; break; fi; done
+sh '<SKILL_DIR>/announce.sh' healthlog
 ```
 
    Copy only the text between `BEGIN OWNER MESSAGE` and `END OWNER MESSAGE` into your reply once, exactly as printed. The `STATE:` line is for you. Then start the grant script yourself in a live interactive tool session (PTY), with stdin available across replies:
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"; umask 077
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill" "$STATE/served-skill"; do if [ -n "$d" ] && [ -f "$d/owner-grant.sh" ]; then sh "$d/owner-grant.sh" healthlog; break; fi; done
+sh '<SKILL_DIR>/owner-grant.sh' healthlog
 ```
 
    At startup the helper prints `OWNER_GRANT_PID=<number>`. Record that exact PID as `<OWNER_GRANT_PID>` for this tool session; the line is for the agent, not the owner. If the owner cancels, stop only that process, and only while the same tool session is still running:
@@ -123,7 +127,7 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; export TC_BIN; export TC_APPS_STATE="$STATE"
 S="$STATE/owner-grant-session"
 P=$(cat "$S/pid" 2>/dev/null); if [ -n "$P" ] && ps -p "$P" -o args= 2>/dev/null | grep -q 'owner-grant\.sh'; then echo "HELPER_RUNNING"; cat "$S/out"; else
 mkdir -p "$S"; [ -p "$S/in" ] || mkfifo "$S/in"
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill" "$STATE/served-skill"; do if [ -n "$d" ] && [ -f "$d/owner-grant.sh" ]; then G="$d/owner-grant.sh"; break; fi; done
+G='<SKILL_DIR>/owner-grant.sh'
 nohup sh -c 'exec 3<>"$1"; exec sh "$2" healthlog <&3' _ "$S/in" "$G" > "$S/out" 2>&1 < /dev/null &
 echo "$!" > "$S/pid"; sleep 2; cat "$S/out"; fi
 ```

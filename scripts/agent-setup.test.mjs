@@ -211,30 +211,43 @@ test("apps route reaches every file needed for a first meal without a local skil
   assert.equal(readResults.map((result) => result.stdout).join(""), catalog);
 
   const state = join(dir, "state");
-  const resolver = block(catalog, "**Resolve the Health Log helper files once per conversation.**")
-    .replaceAll("<STATE>", state)
-    .replaceAll(remote, local);
+  const partial = join(dir, ".agents/skills/tc-apps");
+  mkdirSync(partial, { recursive: true });
+  writeFileSync(join(partial, "owner-grant.sh"), "partial local helper\n");
+  const resolverBlock = block(catalog, "**Resolve the Health Log helper files once per conversation.**");
+  const resolver = resolverBlock.replaceAll("<STATE>", state).replaceAll(remote, local);
   const resolved = shell(resolver, { HOME: dir });
   assert.equal(resolved.status, 0, resolved.stderr);
   const skillDir = resolved.stdout.trim();
+  assert.notEqual(skillDir, partial);
   for (const file of ["announce.sh", "app-context.mjs", "healthlog-context.mjs", "owner-grant.sh"]) {
     assert.deepEqual(readFileSync(join(skillDir, file)), readFileSync(join(site, "skills/apps", file)), file);
   }
+
+  const failedHome = home();
+  const failedState = join(failedHome, "state");
+  const failed = shell(
+    resolverBlock.replaceAll("<STATE>", failedState).replaceAll(remote, `file://${join(failedHome, "missing")}`),
+    { HOME: failedHome },
+  );
+  assert.notEqual(failed.status, 0);
+  assert.equal(existsSync(join(failedState, "served-skill")), false);
+  assert.equal(readdirSync(failedState).some((name) => name.startsWith("served-skill.")), false);
+
   const firstMealBlocks = [...catalog.split("\n## 5. The generic store\n")[0].matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
   const helperConsumers = new Map([
-    ["announce.sh", ['sh "$d/announce.sh"']],
-    ["owner-grant.sh", ['sh "$d/owner-grant.sh"', 'G="$d/owner-grant.sh"']],
+    ["announce.sh", ["sh '<SKILL_DIR>/announce.sh'"]],
+    ["owner-grant.sh", ["sh '<SKILL_DIR>/owner-grant.sh'", "G='<SKILL_DIR>/owner-grant.sh'"]],
   ]);
   for (const [file, needles] of helperConsumers) {
     for (const needle of needles) {
       const script = firstMealBlocks.find((candidate) => candidate.includes(needle));
       assert.ok(script, `${file}: ${needle}`);
-      assert.match(script, /STATE='<STATE>'/, file);
-      assert.match(script, /"\$STATE\/served-skill"/, file);
+      assert.doesNotMatch(script, /for d in/, file);
     }
   }
-  const announce = firstMealBlocks.find((script) => script.includes('sh "$d/announce.sh"'));
-  const announced = shell(announce.replaceAll("<STATE>", state), { HOME: dir });
+  const announce = firstMealBlocks.find((script) => script.includes("sh '<SKILL_DIR>/announce.sh'"));
+  const announced = shell(announce.replaceAll("<STATE>", state).replaceAll("<SKILL_DIR>", skillDir), { HOME: dir });
   assert.equal(announced.status, 0, announced.stderr);
   assert.match(announced.stdout, /^STATE: FIRST$/m);
   const firstMealPath = catalog.split("\n## 5. The generic store\n")[0];
