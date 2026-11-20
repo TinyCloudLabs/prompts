@@ -28,6 +28,7 @@ Use a CLI page only when the actual runtime can run commands in a persistent wor
 - [Claude web, Desktop or mobile](https://agents.tinycloud.xyz/connect/claude.md)
 - [Gemini Apps](https://agents.tinycloud.xyz/connect/gemini.md)
 - [Grok chat](https://agents.tinycloud.xyz/connect/grok.md)
+- [Mistral Vibe](https://agents.tinycloud.xyz/connect/mistral.md)
 - [Meta Muse](https://agents.tinycloud.xyz/connect/muse.md)
 - [Perplexity](https://agents.tinycloud.xyz/connect/perplexity.md)
 
