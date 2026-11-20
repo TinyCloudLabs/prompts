@@ -192,6 +192,56 @@ test("tc-apps onboards generic apps first and keeps Health Log on its dedicated 
   assert.match(recipeOnboarding, /Never use this check or its profile for Health Log/);
 });
 
+test("apps route reaches every file needed for a first meal without a local skill", () => {
+  const site = join(root, "_site");
+  const guide = readFileSync(join(site, "apps"), "utf8");
+  const skill = readFileSync(join(site, "skills/apps.md"), "utf8");
+  const catalog = readFileSync(join(site, "skills/apps/TINY-APPS.md"), "utf8");
+  const remote = "https://agents.tinycloud.xyz/skills/apps";
+  const local = `file://${join(site, "skills/apps")}`;
+  const dir = home();
+
+  assert.match(guide, /https:\/\/agents\.tinycloud\.xyz\/skills\/apps\.md/);
+  const catalogSection = skill.split("**Meal, food, calorie, body-weight and recipe requests: catalog first.**")[1]
+    .split("**Read installed skill files with the shell, never your client's file-read tool.**")[0];
+  const catalogReads = [...catalogSection.matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+  assert.equal(catalogReads.length, 2);
+  const readResults = catalogReads.map((script) => shell(script.replaceAll(remote, local), { HOME: dir }));
+  for (const result of readResults) assert.equal(result.status, 0, result.stderr);
+  assert.equal(readResults.map((result) => result.stdout).join(""), catalog);
+
+  const state = join(dir, "state");
+  const resolver = block(catalog, "**Resolve the Health Log helper files once per conversation.**")
+    .replaceAll("<STATE>", state)
+    .replaceAll(remote, local);
+  const resolved = shell(resolver, { HOME: dir });
+  assert.equal(resolved.status, 0, resolved.stderr);
+  const skillDir = resolved.stdout.trim();
+  for (const file of ["announce.sh", "app-context.mjs", "healthlog-context.mjs", "owner-grant.sh"]) {
+    assert.deepEqual(readFileSync(join(skillDir, file)), readFileSync(join(site, "skills/apps", file)), file);
+  }
+  const firstMealBlocks = [...catalog.split("\n## 5. The generic store\n")[0].matchAll(/```sh\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+  const helperConsumers = new Map([
+    ["announce.sh", ['sh "$d/announce.sh"']],
+    ["owner-grant.sh", ['sh "$d/owner-grant.sh"', 'G="$d/owner-grant.sh"']],
+  ]);
+  for (const [file, needles] of helperConsumers) {
+    for (const needle of needles) {
+      const script = firstMealBlocks.find((candidate) => candidate.includes(needle));
+      assert.ok(script, `${file}: ${needle}`);
+      assert.match(script, /STATE='<STATE>'/, file);
+      assert.match(script, /"\$STATE\/served-skill"/, file);
+    }
+  }
+  const announce = firstMealBlocks.find((script) => script.includes('sh "$d/announce.sh"'));
+  const announced = shell(announce.replaceAll("<STATE>", state), { HOME: dir });
+  assert.equal(announced.status, 0, announced.stderr);
+  assert.match(announced.stdout, /^STATE: FIRST$/m);
+  const firstMealPath = catalog.split("\n## 5. The generic store\n")[0];
+  const referencedHelpers = new Set([...firstMealPath.matchAll(/\b([a-z][a-z-]+\.(?:mjs|sh))\b/g)].map((match) => match[1]));
+  assert.deepEqual(referencedHelpers, new Set(["announce.sh", "app-context.mjs", "healthlog-context.mjs", "owner-grant.sh"]));
+});
+
 
 test("served setup pages keep code fences balanced", () => {
   const pages = ["cli", "onboarding.md", "setup", "agent", "apps", "connect.md", "chat", "feed", "publish", "share", "secrets", "courier", "openkey"];
