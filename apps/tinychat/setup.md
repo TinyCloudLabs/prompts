@@ -1,17 +1,17 @@
 > **Agents: read this file raw, not summarized.** If your fetch tool returned a summary, fetch it again with `curl -fsSL https://agents.tinycloud.xyz/chat` and follow that text. Summaries drop the shell blocks you must run.
 
-# Use TinyChat with your agent
+# Use TinyCloud One meetings with your agent
 
 ## For the owner
 
-- **What it does:** your agent answers questions about the meetings TinyChat has already synced, such as recaps, follow-ups and what was said, citing the transcript.
+- **What it does:** your agent answers questions about the meetings TinyCloud One has already synced, such as recaps, follow-ups and what was said, citing the transcript.
 - **Paste into any agent that can run the TinyCloud CLI** (for example Claude Code, Codex or OpenCode): `Fetch https://agents.tinycloud.xyz/chat with curl and follow it. How did my last meeting go?`
-- **You approve:** TinyCloud onboarding if this computer isn't set up yet, then at most one OpenKey link that lets your agent read your TinyChat meeting list and transcripts for up to 30 days. Send your agent the short code OpenKey shows.
+- **You approve:** TinyCloud onboarding if this computer isn't set up yet, then at most one OpenKey link that lets your agent read your TinyCloud One meeting list and transcripts for up to 30 days. Send your agent the short code OpenKey shows.
 - **Undo:** delete the skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. §6 below has both.
 
 ## For the agent
 
-Answer from the user's existing TinyChat account and synced meetings with the TinyCloud CLI. Do not reconnect sources, copy meetings or clone a repository.
+Answer from the user's existing TinyCloud One account and synced meetings with the TinyCloud CLI. Do not reconnect sources, copy meetings or clone a repository.
 
 Keep the user's original request and current client throughout setup. Setup is a prerequisite, not a replacement task. After setup becomes ready, continue the original request in this same conversation without asking the user to paste another prompt.
 
@@ -19,9 +19,9 @@ Keep the user's original request and current client throughout setup. Setup is a
 
 If CLI onboarding has not completed in this conversation, read and follow https://agents.tinycloud.xyz/connect for the current client, then return here with the user's original request.
 
-Do not run the separate OpenKey CLI setup. TinyChat does not invoke the standalone `openkey` binary.
+Do not run the separate OpenKey CLI setup. The meetings skill does not invoke the standalone `openkey` binary.
 
-## 2. Use the TinyChat retrieval skill
+## 2. Use the meetings skill
 
 Read and follow the published [skill](https://agents.tinycloud.xyz/skills/chat.md), [setup recovery](https://agents.tinycloud.xyz/skills/chat/references/setup.md), [meeting contract](https://agents.tinycloud.xyz/skills/chat/references/meetings.md) and [session handoff](https://agents.tinycloud.xyz/skills/chat/references/session-handoff.md).
 
@@ -39,13 +39,13 @@ If the caller supplied separate app context with an `expectedOwner`, write it to
 
 - `ready`: go to §5.
 - `onboarding-required`: follow [onboarding](../../setup/onboarding.md), then run `prepare` again.
-- `access-required`: the profile can't read TinyChat yet. Get the link:
+- `access-required`: the profile can't read TinyCloud One meetings yet. Get the link:
 
   ```sh
   node "$PACK/scripts/setup.mjs" authorize
   ```
 
-  Send the owner its `approvalUrl` with this line: "Open this link and approve TinyChat access, then send me the short code OpenKey shows (like ABCD-EFGH)." When they reply with the code, run this with the code exactly as they sent it:
+  Send the owner its `approvalUrl` with this line: "Open this link and approve TinyCloud One access, then send me the short code OpenKey shows (like ABCD-EFGH)." When they reply with the code, run this with the code exactly as they sent it:
 
   ```sh
   node "$PACK/scripts/setup.mjs" login --code '<the code>'
@@ -53,7 +53,7 @@ If the caller supplied separate app context with an `expectedOwner`, write it to
 
   In OpenCode, `tinychat_authorize` with no arguments returns the link, and `tinychat_authorize` with `code` takes the code.
 
-The owner can open the link on any device, their phone included. Each code works once and expires after 5 minutes; if it's refused, run `authorize` again and send the new link. The approval lets the agent read the owner's TinyChat meeting list and transcripts for up to 30 days.
+The owner can open the link on any device, their phone included. Each code works once and expires after 5 minutes; if it's refused, run `authorize` again and send the new link. The approval lets the agent read the owner's TinyCloud One meeting list and transcripts for up to 30 days.
 
 If the user requested setup or login only, stop at the ready result. Otherwise resume the original task now.
 
@@ -71,14 +71,14 @@ Keep coverage limits visible:
 - The pinned OpenCode adapter records `coverage.visibleComplete` after client handling. Saved output alone does not establish delivery, and any client truncation must be repaired before claiming complete coverage.
 - The 96 KiB compact response budget is an adapter limit, not a TinyCloud service limit.
 - Later continuation reads private historical evidence. Remote revocation and source or body changes remain unobserved until a fresh acquisition.
-- The release discovers the SQL-indexed legacy catalog. User-space KV-only and unreconciled backend-only meetings are outside scope, so absence here is not proof that the user's entire TinyChat library is empty.
+- The release discovers the SQL-indexed legacy catalog. User-space KV-only and unreconciled backend-only meetings are outside scope, so absence here is not proof that the user's entire TinyCloud One meeting library is empty.
 - Missing bodies, unsupported formats, denied permissions, expired sessions and unavailable hosts are distinct failures.
 
 Browsing uses `discover`, an explicit displayed 1-based meeting selection with `read`, then the same `next` flow. Topic discovery requires bounded literal body search rather than title or summary matching. Follow the installed skill and pinned meeting contract for command details, provenance, continuation and error handling.
 
 ## Exit codes and owner lines
 
-TinyChat's own steps report statuses and still use a pasted code (see the exceptions below); onboarding's CLI commands go by the shared table. Its owner lines are the shared ones, with `<what>` = "TinyChat".
+This guide's own steps report statuses and still use a pasted code (see the exceptions below); onboarding's CLI commands go by the shared table. Its owner lines are the shared ones, with `<what>` = "TinyCloud One meetings".
 
 {{std:errors}}
 
