@@ -225,7 +225,13 @@ test("every home-page hero route supplies the local files its shell blocks read"
     rmSync(join(dest, "SHA256SUMS"), { force: true });
   }
   const loadSkill = "async function loadSkill(skill) {\n";
+  const loadFiles = "  let files;\n  if (skill.tarball) {";
+  const expandLocal = "  if (!skill.tarball) {\n    // Repo-authored skills";
+  const transformCourier = '  if (skill.short === "courier") {';
   assert.equal(builder.split(loadSkill).length, 2, "loadSkill insertion point");
+  assert.equal(builder.split(loadFiles).length, 2, "tarball load insertion point");
+  assert.equal(builder.split(expandLocal).length, 2, "local skill expansion insertion point");
+  assert.equal(builder.split(transformCourier).length, 3, "Courier transform insertion points");
   builder = builder.replace(
     loadSkill,
     `${loadSkill}  if (skill.tarball) {\n` +
@@ -235,11 +241,11 @@ test("every home-page hero route supplies the local files its shell blocks read"
   );
   builder = builder
     .replace(
-      "  let files;\n  if (skill.tarball) {",
+      loadFiles,
       "  let files;\n  if (skill.offlineExpanded) {\n    files = walk(skill.dir).map((path) => [path.slice(skill.dir.length + 1), readFileSync(join(ROOT, path))]);\n  } else if (skill.tarball) {",
     )
-    .replace("  if (!skill.tarball) {\n    // Repo-authored skills", "  if (!skill.tarball && !skill.offlineExpanded) {\n    // Repo-authored skills")
-    .replaceAll('  if (skill.short === "courier") {', '  if (skill.short === "courier" && !skill.offlineExpanded) {');
+    .replace(expandLocal, "  if (!skill.tarball && !skill.offlineExpanded) {\n    // Repo-authored skills")
+    .replaceAll(transformCourier, '  if (skill.short === "courier" && !skill.offlineExpanded) {');
   writeFileSync(builderPath, builder);
   const built = spawnSync(process.execPath, [builderPath], {
     cwd: copy,
@@ -359,12 +365,12 @@ test("every home-page hero route supplies the local files its shell blocks read"
     { page: "skills/apps/CONTEXT.md", file: "session-check.sh", block: "session-check.sh\" remove", reason: "TC-3559: context cleanup has no served session-check.sh fallback." },
     { page: "skills/apps/SQL.md", file: "app-context.mjs", block: "'<APP>' --sql --write", reason: "TC-3559: SQL setup has no served app-context.mjs fallback." },
     { page: "skills/apps.md", file: "app-context.mjs", block: "'<APP>' --write", reason: "TC-3559: generic app setup has no served app-context.mjs fallback." },
+    { page: "skills/apps.md", file: "CONTEXT.md", block: "cat \"$d/CONTEXT.md\"", reason: "TC-3559: context dispatch has no served CONTEXT.md fallback." },
+    { page: "skills/apps.md", file: "layout.sh", block: "layout.sh\" '<APP>'", reason: "TC-3559: layout detection has no served layout.sh fallback." },
   ];
   const optional = [
     { page: "apps", file: "owner-undo.sh", block: "OWNER_UNDO_PID", reason: "Undo is best-effort when the optional local helper is installed." },
     { page: "apps", file: "session-check.sh", block: "session-check.sh\" remove", reason: "Undo removes optional local session instructions only when installed." },
-    { page: "skills/apps.md", file: "CONTEXT.md", block: "cat \"$d/CONTEXT.md\"", reason: "The meal hero example does not take the context-request branch." },
-    { page: "skills/apps.md", file: "layout.sh", block: "layout.sh\" '<APP>'", reason: "The meal hero example takes the catalog branch, not generic layout detection." },
     { page: "skills/apps.md", file: "migrate.sh", block: "migrate.sh\" --dry-run", reason: "Migration runs only after an explicit move request." },
   ];
   const allowance = (items, page, file, body) =>
