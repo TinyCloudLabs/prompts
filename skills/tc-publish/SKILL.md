@@ -252,6 +252,8 @@ A folder with an `index.html` publishes as one self-contained page, which must b
 
 **File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`); the link shows that stored name.
 
+**Files that are not text** (audio, images, PDF, ZIP): set `MEDIA_TYPE` in the block below to the file's type, for example `audio/mpeg`. The block then adds `--binary --media-type`; without `--binary` the CLI refuses a file that is not valid UTF-8, and a link share holds up to 95 MiB.
+
 Run EXACTLY this block; do not write your own `share publish` command.
 
 ```sh
@@ -266,9 +268,11 @@ mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -ty
 PROFILE=publisher   # unless the owner names another profile
 FILE='<absolute path of the file>'
 EXPIRES=24h
+MEDIA_TYPE=   # empty for text and HTML; for any other file set its type, for example audio/mpeg
 
 rm -f "$STATE/publish.json" "$STATE/publish.err" "$STATE/last-url"
-if "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to anyone --expires "$EXPIRES" --json \
+if [ -n "$MEDIA_TYPE" ]; then set -- --binary --media-type "$MEDIA_TYPE"; else set --; fi
+if "$TC_BIN" --profile "$PROFILE" share publish "$FILE" --to anyone --expires "$EXPIRES" "$@" --json \
      > "$STATE/publish.json" 2>"$STATE/publish.err" && [ -s "$STATE/publish.json" ]; then
   id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["metadata"]["shareId"])' "$STATE/publish.json")
   echo "PUBLISHED link share id $id file $(basename "$FILE") expires $EXPIRES"
