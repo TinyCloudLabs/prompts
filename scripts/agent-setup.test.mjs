@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { marked } from "marked";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
 
@@ -190,6 +190,227 @@ test("tc-apps onboards generic apps first and keeps Health Log on its dedicated 
   assert.match(recipeOnboarding, /Ask the owner first in one line \("I need to set up TinyCloud here/);
   assert.match(recipeOnboarding, /rerun the check above/);
   assert.match(recipeOnboarding, /Never use this check or its profile for Health Log/);
+});
+
+// Hero-route matching is deliberately small and static:
+// - cards come from the built home page's abilities list; their `Fetch` URL starts each route;
+// - a route follows built, same-origin pages named by a direct read/fetch/follow instruction,
+//   a client-selection list, or a shell fallback; inline `FILE.md` references resolve inside a skill;
+// - shell inputs are literal .md/.sh/.mjs/.js/.json names on local-path probe/read/run lines;
+// - an input is available when an earlier block on its page creates it or its block has a built same-origin fallback.
+// Conditional undo/migration branches are allow-listed below with one-line reasons. TC-3559's existing
+// fresh-machine gaps have their own list, so any newly unmatched input still fails this test.
+test("every home-page hero route supplies the local files its shell blocks read", () => {
+  const origin = "https://agents.tinycloud.xyz";
+  const work = home();
+  const freshHome = join(work, "home");
+  const copy = join(work, "repo");
+  const offline = ".hero-route-offline-skills";
+  mkdirSync(freshHome);
+  assert.deepEqual(readdirSync(freshHome), [], "fresh HOME must start empty");
+  cpSync(root, copy, {
+    recursive: true,
+    filter: (src) => src === root || dirname(src) !== root || ![".git", "_site", "node_modules"].includes(basename(src)),
+  });
+  symlinkSync(join(root, "node_modules"), join(copy, "node_modules"));
+
+  const builderPath = join(copy, "scripts/build-site.mjs");
+  let builder = readFileSync(builderPath, "utf8");
+  const remoteSkills = [...builder.matchAll(/\n\s+tarball:/g)].map((tarball) =>
+    [...builder.slice(0, tarball.index).matchAll(/\n\s+short: "([^"]+)"/g)].at(-1)[1]);
+  assert.ok(remoteSkills.length, "tarball-backed skills");
+  for (const short of remoteSkills) {
+    const dest = join(copy, offline, short);
+    cpSync(join(root, "_site/skills", short), dest, { recursive: true });
+    rmSync(join(dest, "SHA256SUMS"), { force: true });
+  }
+  const loadSkill = "async function loadSkill(skill) {\n";
+  const loadFiles = "  let files;\n  if (skill.tarball) {";
+  const expandLocal = "  if (!skill.tarball) {\n    // Repo-authored skills";
+  const transformCourier = '  if (skill.short === "courier") {';
+  assert.equal(builder.split(loadSkill).length, 2, "loadSkill insertion point");
+  assert.equal(builder.split(loadFiles).length, 2, "tarball load insertion point");
+  assert.equal(builder.split(expandLocal).length, 2, "local skill expansion insertion point");
+  assert.equal(builder.split(transformCourier).length, 3, "Courier transform insertion points");
+  builder = builder.replace(
+    loadSkill,
+    `${loadSkill}  if (skill.tarball) {\n` +
+      `    if (!process.env.HERO_ROUTE_OFFLINE_SKILLS) throw new Error("network disabled in hero-route test");\n` +
+      `    skill = { ...skill, tarball: undefined, integrity: undefined, changes: undefined, offlineExpanded: true, dir: join(process.env.HERO_ROUTE_OFFLINE_SKILLS, skill.short) };\n` +
+      `  }\n`,
+  );
+  builder = builder
+    .replace(
+      loadFiles,
+      "  let files;\n  if (skill.offlineExpanded) {\n    files = walk(skill.dir).map((path) => [path.slice(skill.dir.length + 1), readFileSync(join(ROOT, path))]);\n  } else if (skill.tarball) {",
+    )
+    .replace(expandLocal, "  if (!skill.tarball && !skill.offlineExpanded) {\n    // Repo-authored skills")
+    .replaceAll(transformCourier, '  if (skill.short === "courier" && !skill.offlineExpanded) {');
+  writeFileSync(builderPath, builder);
+  const built = spawnSync(process.execPath, [builderPath], {
+    cwd: copy,
+    encoding: "utf8",
+    env: { HOME: freshHome, PATH: process.env.PATH, HERO_ROUTE_OFFLINE_SKILLS: offline },
+  });
+  assert.equal(built.status, 0, built.stderr);
+  const site = join(copy, "_site");
+
+  const served = new Set();
+  const listServed = (dir = "") => {
+    for (const entry of readdirSync(join(site, dir), { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) listServed(path);
+      else served.add(path);
+    }
+  };
+  listServed();
+  const canonical = (path) => {
+    const skillMain = path.match(/^skills\/([^/]+)\/SKILL\.md$/);
+    const alias = skillMain && `skills/${skillMain[1]}.md`;
+    return alias && served.has(alias) ? alias : path;
+  };
+  const resolveServed = (raw, from) => {
+    try {
+      const value = raw.replace(/&amp;/g, "&").replace(/[.,;:]+$/, "");
+      const url = new URL(value, new URL(`/${from}`, origin));
+      if (url.origin !== origin) return null;
+      const path = decodeURIComponent(url.pathname).replace(/^\/|\/$/g, "");
+      const found = served.has(path) ? path : served.has(`${path}.md`) ? `${path}.md` : null;
+      return found && canonical(found);
+    } catch {
+      return null;
+    }
+  };
+  const markdownRoute = (path) => !/\.(?:html|json|js|mjs|sh|css|xml|txt)$/i.test(path);
+  const routeReferences = (text, page) => {
+    const found = new Set();
+    let chooseClient = false;
+    for (const line of text.split("\n")) {
+      if (/\bchoose the page for the client\b/i.test(line)) chooseClient = true;
+      const direct = chooseClient
+        || /\bread and follow\b|\bfetch\b.*\bfollow\b|\bread\b.*\b(?:guide|page|file)\b|\bfollow\b.*\b(?:guide|page|file|steps?)\b/i.test(line)
+        || (/\b(?:read|follow)\b/i.test(line) && /`[^`]+\.md`/.test(line))
+        || (/\bcurl\b/.test(line) && line.includes(origin));
+      if (!direct) continue;
+      const targets = [
+        ...[...line.matchAll(/\]\(([^)\s]+)(?:\s+[^)]*)?\)/g)].map((match) => match[1]),
+        ...[...line.matchAll(/https:\/\/agents\.tinycloud\.xyz\/[^\s)`'"<>,;]+/g)].map((match) => match[0]),
+      ];
+      for (const match of line.matchAll(/`([^`/\s]+\.md)`/g)) {
+        const skill = page.match(/^skills\/([^/]+)\.md$/);
+        targets.push(skill ? `/${`skills/${skill[1]}`}/${match[1]}` : match[1]);
+      }
+      for (const target of targets) {
+        const path = resolveServed(target, page);
+        if (path && markdownRoute(path)) found.add(path);
+      }
+    }
+    return found;
+  };
+
+  const index = readFileSync(join(site, "index.html"), "utf8");
+  const abilities = index.split('<ul class="abilities">')[1]?.split("</ul>")[0];
+  assert.ok(abilities, "built home-page abilities list");
+  const cards = [...abilities.matchAll(/<li>[\s\S]*?<h3><a href="[^"]+">([^<]+)<\/a><\/h3>[\s\S]*?<p>Try: <code>Fetch (https:\/\/agents\.tinycloud\.xyz\/[^\s<]+) with curl/g)]
+    .map((match) => ({ title: match[1], start: resolveServed(match[2], "index.html") }));
+  assert.ok(cards.length, "home-page hero tiles");
+  assert.ok(cards.every((card) => card.start), "every hero tile has a built Fetch URL");
+
+  const shellBlocks = (text) => {
+    const blocks = [];
+    for (const match of text.matchAll(/^ {0,3}```(?:sh|bash|shell)\s*\n([\s\S]*?)^ {0,3}```/gm)) {
+      blocks.push({
+        body: match[1],
+        line: text.slice(0, match.index).split("\n").length,
+        number: blocks.length + 1,
+      });
+    }
+    return blocks;
+  };
+  const fileNames = (line) =>
+    [...line.matchAll(/\b([A-Za-z][A-Za-z0-9._-]*\.(?:md|sh|mjs|js|json))\b/gi)].map((match) => match[1]);
+  const localInputs = (body) => {
+    const inputs = new Set();
+    for (const line of body.split("\n")) {
+      const local = /\$HOME|CLAUDE_(?:SKILL|CONFIG)_DIR|SKILL_DIR|\$d\/|<SKILL_DIR>/.test(line);
+      const reads = /\[\s+-[frx]\b|\b(?:cat|sed|awk|head|tail|source|sh|bash|node)\b/.test(line);
+      if (local && reads) for (const file of fileNames(line)) inputs.add(file);
+    }
+    return inputs;
+  };
+  const createdFiles = (blocks) => {
+    const created = new Set();
+    for (const { body } of blocks) {
+      for (const match of body.matchAll(/\bfor f in ([^;\n]+); do/g)) {
+        if (!body.includes("/$f") || !/[>]|(?:^|\s)-o\s/.test(body)) continue;
+        for (const file of fileNames(match[1])) created.add(file);
+      }
+      for (const line of body.split("\n")) {
+        if (/(?:^|\s)(?:>|-o)\s/.test(line)) for (const file of fileNames(line)) created.add(file);
+      }
+    }
+    return created;
+  };
+  const hasFallback = (body, file) => {
+    for (const match of body.matchAll(/https:\/\/agents\.tinycloud\.xyz\/[^\s'"|;)]+/g)) {
+      const raw = match[0].replace(/\$(?:f|\{f\})/g, file);
+      const target = resolveServed(raw, "index.html");
+      if (target && basename(new URL(raw).pathname) === file) return true;
+    }
+    return false;
+  };
+  const knownGaps = [
+    { page: "skills/apps/TINY-APPS.md", file: "app-context.mjs", block: "recipes --catalog --write", reason: "TC-3559: Recipes has no served app-context.mjs fallback." },
+    { page: "skills/apps/CONTEXT.md", file: "app-context.mjs", block: "context --sql", reason: "TC-3559: context SQL check has no served app-context.mjs fallback." },
+    { page: "skills/apps/CONTEXT.md", file: "session-check.sh", block: "session-check.sh\" remove", reason: "TC-3559: context cleanup has no served session-check.sh fallback." },
+    { page: "skills/apps/SQL.md", file: "app-context.mjs", block: "'<APP>' --sql --write", reason: "TC-3559: SQL setup has no served app-context.mjs fallback." },
+    { page: "skills/apps.md", file: "app-context.mjs", block: "'<APP>' --write", reason: "TC-3559: generic app setup has no served app-context.mjs fallback." },
+    { page: "skills/apps.md", file: "CONTEXT.md", block: "cat \"$d/CONTEXT.md\"", reason: "TC-3559: context dispatch has no served CONTEXT.md fallback." },
+    { page: "skills/apps.md", file: "layout.sh", block: "layout.sh\" '<APP>'", reason: "TC-3559: layout detection has no served layout.sh fallback." },
+  ];
+  const optional = [
+    { page: "apps", file: "owner-undo.sh", block: "OWNER_UNDO_PID", reason: "Undo is best-effort when the optional local helper is installed." },
+    { page: "apps", file: "session-check.sh", block: "session-check.sh\" remove", reason: "Undo removes optional local session instructions only when installed." },
+    { page: "skills/apps.md", file: "migrate.sh", block: "migrate.sh\" --dry-run", reason: "Migration runs only after an explicit move request." },
+  ];
+  const allowance = (items, page, file, body) =>
+    items.find((item) => item.page === page && item.file === file && body.includes(item.block));
+  const matchedKnownGaps = new Set();
+  const failures = new Set();
+
+  for (const card of cards) {
+    const route = new Set();
+    const queue = [card.start];
+    while (queue.length) {
+      const page = queue.shift();
+      if (!page || route.has(page)) continue;
+      route.add(page);
+      const text = readFileSync(join(site, page), "utf8");
+      for (const next of routeReferences(text, page)) queue.push(next);
+    }
+    const blocks = [...route].flatMap((page) =>
+      shellBlocks(readFileSync(join(site, page), "utf8")).map((block) => ({ ...block, page })));
+    for (const block of blocks) {
+      const created = createdFiles(blocks.filter((candidate) =>
+        candidate.page === block.page && candidate.number < block.number));
+      for (const file of localInputs(block.body)) {
+        if (created.has(file) || hasFallback(block.body, file)) continue;
+        const known = allowance(knownGaps, block.page, file, block.body);
+        if (known) {
+          matchedKnownGaps.add(known.reason);
+          continue;
+        }
+        if (allowance(optional, block.page, file, block.body)) continue;
+        failures.add(`${card.title}: ${block.page} shell block ${block.number} (line ${block.line}) reads missing ${file}; no route block creates it and no same-origin served fallback exists`);
+      }
+    }
+  }
+  assert.deepEqual(
+    matchedKnownGaps,
+    new Set(knownGaps.map((gap) => gap.reason)),
+    "TC-3559 known-gaps list is stale or its route is no longer reachable",
+  );
+  assert.deepEqual([...failures], [], [...failures].join("\n"));
 });
 
 test("apps route reaches every file needed for a first meal without a local skill", () => {
