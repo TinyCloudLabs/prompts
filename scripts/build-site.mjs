@@ -320,7 +320,7 @@ const SKILLS = [
   },
   {
     short: "chat",
-    tarball: "https://tinycloud.chat/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz",
+    tarball: "https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz",
     integrity: "sha512-o+kAbwivfO7kKQUyoaOlrYIREX7RUpb8X91SeBa/SjQkP01PcpmIei5n8N6B15UaFu8ftrajjgRt2eeUxtjG2Q==",
     dir: "package",
     checkCli: true,
@@ -385,7 +385,7 @@ const ABILITIES = [
   {
     title: "Meetings",
     url: "chat",
-    text: "Ask about your TinyChat meetings: recaps, follow-ups and what was said.",
+    text: "Ask about your TinyCloud One meetings: recaps, follow-ups and what was said.",
     task: "How did my last meeting go?",
   },
 ];
@@ -752,7 +752,7 @@ const skillQueries = {
     "How do I track a Courier task and assess a peer's request?",
   ],
   chat: [
-    "How can my agent recap a TinyChat meeting?",
+    "How can my agent recap a TinyCloud One meeting?",
     "How do I find a phrase in my connected meeting transcripts?",
   ],
   mcp: [

@@ -39,7 +39,7 @@
 Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner's next message, rerun the identical command; it resumes the saved request. Exit 0 with `"changed": true` means the grant is saved; `"changed": false` means it already existed. `auth retry --last` doesn't find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid.
 
 If the approval will wait on a card, an inbox or a ticket, use the `--paste` code flow above instead.
-- TinyChat (`tinychat-retrieval`): it reports statuses, not these codes, and still asks for the code OpenKey shows. The TinyChat guide says how.
+- Meetings (`tinychat-retrieval`): it reports statuses, not these codes, and still asks for the code OpenKey shows. The meetings guide says how.
 - Helper scripts (`agent-env.mjs`, the apps skill's `.sh` helpers) have their own exit codes, listed where they run. For example, `layout.sh` exits 3 when `jq` is missing.
 
 <!-- std:connect-hosted -->
@@ -63,7 +63,7 @@ Use the tools this connection actually exposes. The [MCP reference skill](https:
 | Personal records or apps | Use `tinycloud_apps_context`, then its returned rules and the live tool schemas. [Apps](https://agents.tinycloud.xyz/apps) and the [apps skill](https://agents.tinycloud.xyz/skills/apps.md) describe the CLI workflow; their layout detection, `LEGACY.md`, migration and shell installation steps are not hosted-tool instructions. |
 | A named secret | Use `tinycloud_secrets_get` only for the owner's requested task and follow its approval instructions. [Secrets](https://agents.tinycloud.xyz/secrets) is the CLI workflow; the [MCP skill](https://agents.tinycloud.xyz/skills/mcp.md) distinguishes hosted access. Never display the value or put it in prompts, memory or reports. The client may retain tool results; do not promise that a secret never reaches the host. |
 | Publish or share | The hosted MCP has **no publishing or sharing tools yet**. Keep the request and use a persistent CLI-capable agent with [publish](https://agents.tinycloud.xyz/publish) or [share](https://agents.tinycloud.xyz/share). A chat prompt link does not create a share or publish anything. |
-| Meetings | The hosted MCP has **no meeting tools yet**. Use a CLI-capable agent with [TinyChat meetings](https://agents.tinycloud.xyz/chat) and its retrieval skill. |
+| Meetings | The hosted MCP has **no meeting tools yet**. Use a CLI-capable agent with [TinyCloud One meetings](https://agents.tinycloud.xyz/chat) and its retrieval skill. |
 
 The [skill index](https://agents.tinycloud.xyz/skills/index.json) identifies the task's reference material; hosted clients use connected tools, not downloaded CLI skill bodies. If a needed tool is absent, report the observed limitation instead of claiming CLI parity.
 
@@ -80,7 +80,7 @@ For `SPACE_NOT_HOSTED`, follow the [new-account guidance](https://agents.tinyclo
 | Personal records, context or a small app | [Apps](https://agents.tinycloud.xyz/apps), with `tc-apps` (`apps`). |
 | A named API key or other secret | [Secrets](https://agents.tinycloud.xyz/secrets), with `tc-secrets` (`secrets`). Use it for the requested operation without displaying or copying the value into chat, memory or reports. |
 | Publish or share a document/page | [Publish](https://agents.tinycloud.xyz/publish) or [share](https://agents.tinycloud.xyz/share), with `tc-publish` (`publish`). Make the link only with the owner's permission. |
-| Meeting recap, follow-ups or transcript search | [TinyChat meetings](https://agents.tinycloud.xyz/chat), with `tinychat-retrieval` (`chat`). |
+| Meeting recap, follow-ups or transcript search | [TinyCloud One meetings](https://agents.tinycloud.xyz/chat), with `tinychat-retrieval` (`chat`). |
 
 The hosted server at `https://mcp.tinycloud.xyz/mcp` is a separate remote OAuth surface. Unlike the CLI route, it has **no publishing, sharing or meeting tools yet**. A locally installed stdio MCP process is not that hosted connection; neither a vendor directory listing nor a prompt link establishes either one.
 

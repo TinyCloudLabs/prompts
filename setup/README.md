@@ -28,9 +28,9 @@ The CLI route needs Node.js 20 or later and npm. The hosted MCP has no meeting t
 
 ## Meetings: [/chat](../apps/tinychat/setup.md)
 
-- **What it does:** your agent answers questions about your TinyChat meetings: recaps, follow-ups and what was said, with references to the transcript.
+- **What it does:** your agent answers questions about your TinyCloud One meetings: recaps, follow-ups and what was said, with references to the transcript.
 - **Paste into your agent:** `Fetch https://agents.tinycloud.xyz/chat with curl and follow it. How did my last meeting go?`
-- **You approve:** after [/onboarding](onboarding.md), at most one OpenKey link that lets your agent read your TinyChat meetings for up to 30 days. TinyChat also needs the code OpenKey shows, pasted back to your agent.
+- **You approve:** after [/onboarding](onboarding.md), at most one OpenKey link that lets your agent read your TinyCloud One meetings for up to 30 days. The meetings skill also needs the code OpenKey shows, pasted back to your agent.
 - **Undo:** delete the `tinychat-retrieval` skill folder; to end access sooner, revoke it at https://account.tinycloud.xyz/delegations. [§6 of the page](../apps/tinychat/setup.md#6-return-hand-off-update-or-remove) has both.
 
 ## Publish and share: [/publish](publish.md)
