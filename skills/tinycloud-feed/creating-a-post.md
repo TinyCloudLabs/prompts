@@ -20,7 +20,9 @@ O=$B; [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=proces
 [ -n "$B" ] || B="$P/node_modules/.bin/tinycloud"
 [ -x "$B" ] || B=$(command -v tinycloud) || B="$HOME/.local/share/tinycloud/npx/tinycloud"
 [ "$B" != "$HOME/.local/share/tinycloud/npx/tinycloud" ] || { mkdir -p "${B%/*}" && printf '#!/bin/sh\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@1.8.0 tinycloud "$@"\n' > "$B" && chmod 700 "$B"; }
-V=$("$B" --version); printf '%s\n%s\n' "$B" "$V"
+V=$("$B" --version)
+[ -n "$V" ] || { echo "TC_NOT_FOUND: $B doesn't run; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
+printf '%s\n%s\n' "$B" "$V"
 if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.8.0; keeping this operator-selected CLI"
   else echo "CLI_OLDER $V $B: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
