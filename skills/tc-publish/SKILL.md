@@ -252,7 +252,7 @@ A folder with an `index.html` publishes as one self-contained page, which must b
 
 **File names:** a name with spaces, `..`, or characters other than letters, digits, `.`, `_` and `-` is stored under a readable safe name that keeps the extension (`Q3 plan (draft).md` → `Q3-plan-draft.md`); the link shows that stored name.
 
-**Files that are not text** (audio, images, PDF, ZIP): set `MEDIA_TYPE` in the block below to the file's type, for example `audio/mpeg`. The block then adds `--binary --media-type`; without `--binary` the CLI refuses a file that is not valid UTF-8, and a link share holds up to 95 MiB.
+**Files that are not text** (audio, images, PDF, ZIP): set `MEDIA_TYPE` in the block below to the file's type, for example `audio/mpeg`. The block then adds `--binary --media-type`. Without `--binary`, the CLI refuses any file that isn't valid UTF-8. A link share holds up to 95 MiB.
 
 Run EXACTLY this block; do not write your own `share publish` command.
 
