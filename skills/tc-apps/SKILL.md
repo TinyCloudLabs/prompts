@@ -76,7 +76,9 @@ printf '%s\n' "$B"
 { [ -n "${TC_APPS_STATE:-}" ] && echo "$TC_APPS_STATE"; } || echo "$HOME/.local/state/tc-apps"
 date +%Y-%m-%dT%H:%M%z | sed 's/..$/:&/'
 date -u +%FT%TZ
-V=$("$B" --version); printf '%s\n' "$V"
+V=$("$B" --version)
+[ -n "$V" ] || { echo "TC_NOT_FOUND: $B doesn't run; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
+printf '%s\n' "$V"
 if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   if [ "$B" = "$O" ]; then echo "TC_OLDER $V $B is older than the pinned 1.8.0; keeping this operator-selected CLI"
   else echo "CLI_OLDER $V $B: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
