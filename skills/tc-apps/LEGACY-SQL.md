@@ -24,10 +24,13 @@ TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 mkdir -p "$STATE"
 printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":"Personal apps index (agent)","space":"default","defaults":false,"permissions":[{"service":"tinycloud.sql","path":"xyz.tinycloud.agent-data.index","skipPrefix":true,"actions":["read","write","schema"]}]}' > "$STATE/agent-data-sql.json"
 "$TC_BIN" context --json --profile agent-data-sql 2>&1 | grep -q PROFILE_NOT_FOUND && "$TC_BIN" init --name agent-data-sql --key-only > /dev/null
-"$TC_BIN" --profile agent-data-sql auth login --method openkey --no-popup --manifest "$STATE/agent-data-sql.json" --expiry 30d
+"$TC_BIN" --profile agent-data-sql auth login --method openkey --no-popup --manifest "$STATE/agent-data-sql.json" --expiry 30d < /dev/null 2> "$STATE/sql-login.err" &
+P=$!; for i in $(seq 1 10); do grep -q 'complete link' "$STATE/sql-login.err" && break; sleep 2; done
+kill "$P" 2>/dev/null; wait "$P" 2>/dev/null
+L=$(grep -A1 'complete link' "$STATE/sql-login.err" | tail -n 1); [ -n "$L" ] && echo "$L" || grep -o '"code": "[A-Z_]*"' "$STATE/sql-login.err"
 ```
 
-- **A short approval link** → expected: the command waits for the owner's approval. After your answer, add, with `<N>` the number of records you just read:
+- **A short approval link** → expected: the block prints the link and stops waiting; the sign-in stays pending until the owner approves. After your answer, add, with `<N>` the number of records you just read:
 
   > That took a while: I read your <N> records one at a time. With one more approval I can keep a fast, searchable copy of them in your TinyCloud, and questions like this will be much quicker. Open <link> and sign in to OpenKey; it lists this as SQL access to `xyz.tinycloud.agent-data.index` in your `default` space for up to 30 days. Approve, then tell me here in chat. I'll finish the sign-in.
 
@@ -35,15 +38,17 @@ printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":
 
 - **Any other code** → `LEGACY.md` §8; `SESSION_IN_USE` means the index is already signed in.
 
-Don't open the link yourself, and run 1a only once per approval. After you send the message, end your turn.
+Don't open the link yourself, and run 1a only once per approval. Send the message, then end your turn: the sign-in stays pending until the owner approves.
 
 If a tool result says a step was denied, stop. Tell the owner what the step does and ask them to reply naming it, for example "Go ahead: get the approval link for the searchable copy of your records." Then wait. Don't edit their settings files or suggest changing them, and don't run it another way.
 
-**1b. Finish once the owner says they approved.** Rerun the identical 1a command, with the same profile and manifest, to resume the waiting sign-in. No code is needed. Do not add `--paste`, which selects the older manual-code flow. Fill `<TC_BIN>` and `<STATE>` as in 1a:
+**1b. Finish once the owner says they approved.** Run the same sign-in again, with the same profile and manifest, to resume the pending request. It waits up to 60 seconds for the approval. No code is needed. Do not add `--paste`, which selects the older manual-code flow. Fill `<TC_BIN>` and `<STATE>` as in 1a:
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-"$TC_BIN" --profile agent-data-sql auth login --method openkey --no-popup --manifest "$STATE/agent-data-sql.json" --expiry 30d
+"$TC_BIN" --profile agent-data-sql auth login --method openkey --no-popup --manifest "$STATE/agent-data-sql.json" --expiry 30d < /dev/null 2> "$STATE/sql-login.err" &
+P=$!; for i in $(seq 1 30); do kill -0 "$P" 2>/dev/null || break; sleep 2; done
+kill "$P" 2>/dev/null; wait "$P" 2>/dev/null; true
 ```
 
 After running 1b, check the sign-in yourself:
@@ -54,7 +59,7 @@ TC_BIN='<TC_BIN>'; umask 077
 ```
 
 - **`"authenticated": true`** → §2, then §6 for every kind the catalog lists, skipping §6 step 2 because the copy is still empty. Then tell the owner in one short line, without counts or dates, for example: "Done: questions over many records will be quicker from now on."
-- **`"authenticated": false`** → ask the owner whether they approved the link, rerun the 1b command once, then check once more. Don't start a new 1a.
+- **`"authenticated": false`** → ask the owner whether they approved the link. Once they say yes, rerun the 1b command once, then check again. Don't start a new 1a.
 - **The owner reports `tinycloud.sql/schema` declined** → they unchecked it. If the index already exists, carry on (§2 will fail harmlessly); otherwise tell them §2 needs it.
 
 ## 2. Create the table and the view
