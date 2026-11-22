@@ -29,7 +29,7 @@ for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-
   ```
   Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner's next message, rerun the identical command; it resumes the saved request. Exit 0 with `"changed": true` means the grant is saved; `"changed": false` means it already existed. `auth retry --last` doesn't find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid.
 
-- `sign-in-required`: sign in the returned index profile with an applications-space manifest for `tinycloud.sql` on `xyz.tinycloud.tinyapps.<APP>/index`, containing only the required `read`, `write` and, for a new table, `schema` actions. Use `auth login --method openkey --no-popup --manifest FILE --expiry 30d`, creating a key-only profile only if it is absent.
+- `sign-in-required`: sign in the returned index profile with an applications-space manifest for `tinycloud.sql` on `xyz.tinycloud.tinyapps.<APP>/index`, containing only the required `read`, `write` and, for a new table, `schema` actions. Run `auth login --method openkey --no-popup --manifest FILE --expiry 30d` with the start and finish blocks in `SKILL.md` §4, using this profile and manifest file, because `auth login` keeps waiting for the approval; create a key-only profile only if it is absent.
 
   ```json
   {
