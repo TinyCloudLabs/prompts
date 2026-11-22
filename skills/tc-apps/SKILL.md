@@ -208,7 +208,7 @@ The helper reads official CLI context and status, checks live primary and additi
 
 For `SPACE_NOT_HOSTED`, a new account may still be provisioning. Tell the owner, then repeat only the failed read after 5, 10, 20, 40 and 60 seconds, stopping on success. If still unavailable, report that storage is not ready and stop. Never invent an approval URL, request a broader grant, use `--replace-session`, or host a space to bypass that error.
 
-Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval with a short link. It is for an owner who is not onboarded (§3). It prints a link and returns; the owner approves on OpenKey and tells you. No code is needed, on every computer and for every agent.
+Do this when §3 or §8 sends you here, once per app. The block writes this app's request, creates its profile if it doesn't exist yet (`PROFILE_NOT_FOUND`), and asks OpenKey for approval with a short link. It is for an owner who is not onboarded (§3). It prints a link and waits for the approval; the owner approves on OpenKey and tells you. No code is needed, on every computer and for every agent.
 
 When creating or updating an app, read its discovery entry `xyz.tinycloud.tinyapps.catalog/<APP>/entry` with §5. If missing after a verified migration, stop rather than recreating data. Otherwise follow §2's catalog-first rule. A read-only request for a known app uses that app's own catalog: it does not require catalog-wide discovery or another grant. Keep legacy apps in their old layout.
 
