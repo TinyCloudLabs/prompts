@@ -258,7 +258,6 @@ const WORDING_EXCEPTIONS = {
   "skills/tc-publish/SKILL.md": "publish sign-in: the owner tells the agent when they have approved the link",
   "apps/tinychat/setup.md": "TinyChat's pack (authorize, then login --code)",
   "skills/tc-secrets/SKILL.md": "Secrets owner message asks the owner to say they are done after approving; no code",
-  "skills/tc-apps/LEGACY-SQL.md": "older SQL index sign-in (auth login --paste) asks the owner to paste the code",
   "skills/tc-apps/announce.sh": "the older Health Log fallback's owner sign-in (init --name owner --paste)",
   "skills/tc-apps/owner-grant.sh": "the older Health Log fallback's owner sign-in (init --name owner --paste)",
 };
