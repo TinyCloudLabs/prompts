@@ -114,14 +114,27 @@ The output is the layout; use the same `<TC_BIN>` in either layout.
 - `new` → use §2 to §8 below with the same CLI. If the owner says they used this app before, with an earlier version on any computer, don't set it up as new. Request read-only access to the old catalog with the sign-in block under `ask` below, send its link as §4 says, and run §1a again.
 - `ask` → this computer has an earlier sign-in for the old place that is expired or lacks the grant, so it can't list the old catalog; or step 2 was skipped and the old catalog holds the app. **Never ask the owner whether the app is new or had earlier records:** their request is the go-ahead, and they can't know what an earlier version or another client stored.
   - The request makes an app ("make me a Gene Keys app", "start a reading log"), or it is the setup guide's default `todos` record → use `new`.
-  - Otherwise (the owner means an app this computer can't find) → request read-only access to the old catalog with the block below, and send its link as §4 says. When it exits with `"authenticated": true`, run §1a again. Write nothing until it prints `new` or `legacy`.
+  - Otherwise (the owner means an app this computer can't find) → request read-only access to the old catalog with the start block below, which prints the approval link because `auth login` keeps waiting for the approval, and send that link as §4 says. When the owner says they approved, run the finish block after it; when it shows `"authenticated": true`, run §1a again. Write nothing until it prints `new` or `legacy`.
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
 mkdir -p "$STATE"
 printf '%s\n' '{"manifest_version":1,"app_id":"xyz.tinycloud.agent-data","name":"Personal apps (agent)","space":"default","defaults":false,"permissions":[{"service":"tinycloud.kv","path":"xyz.tinycloud.agent-data/catalog/","skipPrefix":true,"actions":["get","list"]}]}' > "$STATE/agent-data-catalog.json"
 "$TC_BIN" context --json --profile agent-data 2>&1 | grep -q PROFILE_NOT_FOUND && "$TC_BIN" init --name agent-data --key-only > /dev/null
-"$TC_BIN" auth login --method openkey --no-popup --manifest "$STATE/agent-data-catalog.json" --expiry 30d --profile agent-data
+"$TC_BIN" auth login --method openkey --no-popup --manifest "$STATE/agent-data-catalog.json" --expiry 30d --profile agent-data < /dev/null 2> "$STATE/login-catalog.err" &
+P=$!; for i in $(seq 1 10); do kill -0 "$P" 2>/dev/null || break; grep -q 'complete link' "$STATE/login-catalog.err" && break; sleep 2; done
+kill "$P" 2>/dev/null; wait "$P" 2>/dev/null
+L=$(grep -A1 'complete link' "$STATE/login-catalog.err" | tail -n 1); [ -n "$L" ] && echo "$L" || grep -o '"code": "[A-Z_]*"' "$STATE/login-catalog.err"
+```
+
+When the owner says they approved, run this finish block. It runs the same sign-in again, waits up to 60 seconds for the approval, then shows the sign-in state:
+
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+"$TC_BIN" auth login --method openkey --no-popup --manifest "$STATE/agent-data-catalog.json" --expiry 30d --profile agent-data < /dev/null 2> "$STATE/login-catalog.err" &
+P=$!; for i in $(seq 1 30); do kill -0 "$P" 2>/dev/null || break; sleep 2; done
+kill "$P" 2>/dev/null; wait "$P" 2>/dev/null; true
+"$TC_BIN" --profile agent-data auth status --json
 ```
 
 - `check-failed` → the old place could not be checked, for example because of the network. If a sandbox blocked the read, request the client's network approval and rerun that same read once. If it still fails, report it and write nothing.
@@ -240,14 +253,26 @@ For `sign-in-required`, use the returned profile name. Create it with `init --na
 }
 ```
 
-Populate `permissions` from the helper's `missing` entries, keeping their exact service, path and actions, with `skipPrefix: true`. The example is read-only: a write adds only the reported `put` actions and app-specific discovery entry; a deletion adds only the reported `del`. Then run:
+Populate `permissions` from the helper's `missing` entries, keeping their exact service, path and actions, with `skipPrefix: true`. The example is read-only: a write adds only the reported `put` actions and app-specific discovery entry; a deletion adds only the reported `del`. Then run the sign-in. `auth login` prints the link and keeps waiting for the approval, so this start block runs it in the background, waits up to 20 seconds for the link, stops that run and prints the link; the request stays pending:
 
 ```sh
 TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
-"$TC_BIN" --profile '<APP_PROFILE>' auth login --method openkey --no-popup --manifest "$STATE/tinyapp-<APP>.json" --expiry 30d
+"$TC_BIN" --profile '<APP_PROFILE>' auth login --method openkey --no-popup --manifest "$STATE/tinyapp-<APP>.json" --expiry 30d < /dev/null 2> "$STATE/login-<APP>.err" &
+P=$!; for i in $(seq 1 10); do kill -0 "$P" 2>/dev/null || break; grep -q 'complete link' "$STATE/login-<APP>.err" && break; sleep 2; done
+kill "$P" 2>/dev/null; wait "$P" 2>/dev/null
+L=$(grep -A1 'complete link' "$STATE/login-<APP>.err" | tail -n 1); [ -n "$L" ] && echo "$L" || grep -o '"code": "[A-Z_]*"' "$STATE/login-<APP>.err"
 ```
 
-Say in one line what the permission is for, then send the complete short approval URL returned by the command as its own message line, followed by: "Open this link and approve, then tell me." End your turn. When the owner next writes, rerun the identical command with the same profile and request to resume it. **No code is needed.** Do not add `--paste`, which explicitly selects the older manual-code flow and long URL.
+Say in one line what the permission is for, then send the complete short approval URL the block printed as its own message line, followed by: "Open this link and approve, then tell me." End your turn. When the owner next writes, run this finish block with the same profile and request. It runs the same sign-in again and waits up to 60 seconds for the approval:
+
+```sh
+TC_BIN='<TC_BIN>'; STATE='<STATE>'; umask 077
+"$TC_BIN" --profile '<APP_PROFILE>' auth login --method openkey --no-popup --manifest "$STATE/tinyapp-<APP>.json" --expiry 30d < /dev/null 2> "$STATE/login-<APP>.err" &
+P=$!; for i in $(seq 1 30); do kill -0 "$P" 2>/dev/null || break; sleep 2; done
+kill "$P" 2>/dev/null; wait "$P" 2>/dev/null; true
+```
+
+**No code is needed.** Do not add `--paste`, which explicitly selects the older manual-code flow and long URL.
 
 After success, rerun §3 and continue the original request. Its exit codes go by the shared table in §10. A declined scope or an error stops the write. Do not approve for the owner, invent a URL, ask for a new account, replace a session, or broaden the request. If the agent client denies a command, explain it and wait for that client's approval instead of changing settings or running it another way.
 
