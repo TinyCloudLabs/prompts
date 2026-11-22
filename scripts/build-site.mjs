@@ -320,8 +320,8 @@ const SKILLS = [
   },
   {
     short: "chat",
-    tarball: "https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz",
-    integrity: "sha512-o+kAbwivfO7kKQUyoaOlrYIREX7RUpb8X91SeBa/SjQkP01PcpmIei5n8N6B15UaFu8ftrajjgRt2eeUxtjG2Q==",
+    tarball: "https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.30/tinychat-retrieval-0.1.1-onboarding.30.tgz",
+    integrity: "sha512-TWvgrPrvOi8v1GjGmlf+jpr+Bg+s1OIDkXQTmTkzdUS3eU3FIGO/YiaFrKr8++WuqcpUXiartetVASyzjDZA9Q==",
     dir: "package",
     checkCli: true,
     changes: {

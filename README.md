@@ -72,7 +72,7 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
 | `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.8.0`](https://www.npmjs.com/package/@tinycloud/cli/v/1.8.0) (js-sdk), with the overlays below |
 | `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.7.0`](https://www.npmjs.com/package/@tinycloud/courier/v/0.7.0) (js-sdk), with changes (below) |
-| `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.25`](https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz), unchanged |
+| `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.30`](https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.30/tinychat-retrieval-0.1.1-onboarding.30.tgz), unchanged |
 | `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.9.0`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) (js-sdk), with the onboarding-profile overlay below |
 
 Skills written for these guides live in `skills/`. Skills owned by another repository stay authored there: the build downloads the exact release tarball named in `SKILLS` in `scripts/build-site.mjs` and refuses it unless its sha512 matches the pinned `integrity`, so every build, locally or on Cloudflare Pages, serves the same files. Nothing floats on a branch.
@@ -128,7 +128,7 @@ Courier inspects the complete installed skill before invoking an installer and p
 | Courier for the automatic-pickup watcher only | `COURIER_WATCH_VERSION` in [`scripts/build-site.mjs`](scripts/build-site.mjs), a pre-release of `@tinycloud/courier` | `/courier` installs it in `~/.local/share/tinycloud/courier-watch` when the owner asks for automatic pickup; the pinned CLI is untouched. Temporary: once the pinned CLI's own Courier has `watch --agent-cli`, delete it and its `{{COURIER_WATCH_VERSION}}` token and make that section run `"$TC" courier` |
 | `courier` skill | `@tinycloud/courier@0.7.0` | [npm package](https://www.npmjs.com/package/@tinycloud/courier/v/0.7.0) |
 | `mcp` skill | `@tinycloud/mcp@0.9.0` | [npm package](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) |
-| TinyChat retrieval pack | `0.1.1-onboarding.25` | [TinyChat release](https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.25/tinychat-retrieval-0.1.1-onboarding.25.tgz) |
+| TinyChat retrieval pack | `0.1.1-onboarding.30` | [TinyChat release](https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.30/tinychat-retrieval-0.1.1-onboarding.30.tgz) |
 | OpenKey CLI | `@openkey/cli@0.1.5` | [npm package](https://www.npmjs.com/package/@openkey/cli/v/0.1.5), [OpenKey source](https://github.com/TinyCloudLabs/openkey/tree/54e3bfc5b7626e1a288e2cf54eed9a06ae3c0140/packages/cli) |
 
 ## Release checklist
