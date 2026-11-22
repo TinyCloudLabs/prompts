@@ -72,7 +72,7 @@ Every TinyCloud agent skill is published here, so what the site serves is what t
 | `tc-secrets` | `secrets` | [`skills/tc-secrets`](skills/tc-secrets), in this repository |
 | `tinycloud-cli` | `cli` | `skills/tinycloud-cli` in the pinned npm package [`@tinycloud/cli@1.8.0`](https://www.npmjs.com/package/@tinycloud/cli/v/1.8.0) (js-sdk), with the overlays below |
 | `courier` | `courier` | `skills/courier` in [`@tinycloud/courier@0.7.0`](https://www.npmjs.com/package/@tinycloud/courier/v/0.7.0) (js-sdk), with changes (below) |
-| `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.30`](https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.30/tinychat-retrieval-0.1.1-onboarding.30.tgz), unchanged |
+| `tinychat-retrieval` | `chat` | TinyChat's released pack [`0.1.1-onboarding.30`](https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.30/tinychat-retrieval-0.1.1-onboarding.30.tgz), with its two OpenCode overlays |
 | `tinycloud-delegated-secrets` | `mcp` | `skills/tinycloud-delegated-secrets` in [`@tinycloud/mcp@0.9.0`](https://www.npmjs.com/package/@tinycloud/mcp/v/0.9.0) (js-sdk), with the onboarding-profile overlay below |
 
 Skills written for these guides live in `skills/`. Skills owned by another repository stay authored there: the build downloads the exact release tarball named in `SKILLS` in `scripts/build-site.mjs` and refuses it unless its sha512 matches the pinned `integrity`, so every build, locally or on Cloudflare Pages, serves the same files. Nothing floats on a branch.
