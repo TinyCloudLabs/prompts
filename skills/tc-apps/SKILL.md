@@ -445,7 +445,7 @@ Owner lines here are the shared ones, with `<what>` = "your <app> app" (for exam
 
 ## 11. Tasks (Ledger)
 
-Ledger is an optional log behind the owner's task cards, not a replacement for asking or answering them. Record actual milestones, not guesses. It holds agent work, including non-code work; an ordinary personal todo still belongs in `todos`. Use the dedicated Tasks layout below, not §1a or §2 to §9's generic record envelope, field naming, catalog helper, SQL copy or item moves.
+Ledger is an optional log behind the owner's task cards, not a replacement for asking or answering them. Record actual milestones, not guesses. It holds agent work, including non-code work; an ordinary personal todo belongs in `todos`. Use the dedicated Tasks layout below, not §1a or §2 to §9's generic record envelope, field naming, catalog helper, SQL copy or item moves.
 
 ### Identity and own-folder permission
 
@@ -555,7 +555,7 @@ Order each task's valid snapshots lexically by fixed-width event id; use the las
 
 ### Check another agent's work
 
-A doer's own `Checked` event **never** counts as done: the view shows **"Done by agent, not checked yet"** until a different agent supplies a check. Owner checking is not yet supported. Verify the result yourself using evidence available through the task handoff or your already-authorized sources; an own-folder grant does not let you read the doer's ledger. Do not request a sibling grant just to check it.
+A doer's own `Checked` event **never** counts as done: the view shows **"Done by agent, not checked yet"** until a different agent supplies a check. A check comes from a different agent. Verify the result yourself using evidence available through the task handoff or your already-authorized sources; an own-folder grant does not let you read the doer's ledger. Do not request a sibling grant just to check it.
 
 The checker writes inside **its own folder**, not the doer's:
 
