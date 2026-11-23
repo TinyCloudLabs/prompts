@@ -8,10 +8,13 @@ This file is the first thing to read for any request about the owner's data. It 
 |---|---|---|
 | meals, food, eating, breakfast, lunch, dinner, snack, calories, kcal, body weight, weigh-in | `xyz.tinycloud.sample.healthlog` (Health Log) | `https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.healthlog` |
 | recipes, cooking, ingredients, dishes | `xyz.tinycloud.sample.recipes` (Recipes) | `https://share.tinycloud.xyz/apps/run#xyz.tinycloud.sample.recipes` |
+| agent work, agent task progress, ledger | `xyz.tinycloud.tinyapps.tasks` (Ledger) | Built into `https://tinycloud.one` |
 
 A domain is owned by a catalog app when one of its words matches the request. If two apps match, ask one question that names both. If no catalog app matches, the request belongs to the generic store (§5).
 
 ## 2. Routing rule
+
+**Ledger is a dedicated route.** For agent work/progress, follow `SKILL.md` §1, then §11 (Tasks), not this file's catalog installation or logging blocks. Ordinary personal todos still use the generic `todos` app. Ledger uses raw append-only events in each agent's own folder in `applications`, not the sample-app installer or the generic item layout. Its catalog/discovery records are created by the owner/installer; an agent's permission never covers those records.
 
 1. A catalog app owns the domain: that app is the target. Set the app up if needed (§3), log the record (§4), show the result (§4), and offer the tiny-app link. Don't ask before the first write, and don't send the owner away.
 2. No catalog app owns the domain: use the generic `tc-apps` store (`SKILL.md` §1a to §9). Each new-layout app has its own folder in `applications`, `xyz.tinycloud.tinyapps.<slug>/`. Reuse onboarding access; request only missing permissions. An app with earlier records in `default` stays in that layout (`LEGACY.md`) until the owner requests and verifies a move. Never ask the owner whether an app had earlier records: when §1a prints `ask`, follow its rule there.
