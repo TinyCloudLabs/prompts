@@ -18,6 +18,7 @@ The site's URLs are short and flat. The repository layout below is only for auth
 | `/share` | Share an artifact (`tc-publish`): a link anyone with it can open, made only after the owner says yes; set an expiry, revoke | [`setup/share.md`](setup/share.md) |
 | `/secrets` | TinyCloud Secrets (`tc-secrets`): owner setup | [`setup/secrets.md`](setup/secrets.md) |
 | `/courier` | One-link Courier discovery, restricted setup and verified messaging/background readiness | [`setup/courier.md`](setup/courier.md) |
+| `/delegate` | Agent-to-agent delegation: once two agents share a private channel, one hands the other a narrow, expiring TinyCloud grant bound to its key, checks the boundary and revokes it | [`setup/agent-delegation.md`](setup/agent-delegation.md) |
 | `/cli` | Building block: the TinyCloud CLI, its `tinycloud` command and its `tinycloud-cli` skill | [`setup/tinycloud.md`](setup/tinycloud.md) |
 | `/openkey` | Building block: the standalone OpenKey CLI, installed into its own folder, `~/.local/share/tinycloud/openkey` | [`setup/openkey.md`](setup/openkey.md) |
 | `/skills/<skill>.md` | A skill's `SKILL.md` to read, for `apps`, `feed`, `chat`, `publish`, `secrets`, `courier`, `cli` and `mcp`; its relative links point into `/skills/<skill>/` | see [Skills](#skills) |
