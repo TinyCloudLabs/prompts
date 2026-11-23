@@ -8,22 +8,22 @@ Both agents need the TinyCloud CLI ([`/cli`](tinycloud.md)). The commands below 
 
 ## Rules
 
-- A grant is made out to one key. The recipient sends you only its **DID**, a public identifier. Never send or ask for a private key, a session file or a bearer token.
+- A grant is made out to one key. The recipient sends you only its **DID**, a public identifier. Nothing else changes hands: no private key, session file or token.
 - The DID must belong to the `tinycloud` profile that will use the grant. A messaging identity (such as a Courier key) is a different key, and `auth import` refuses a grant made out to any other key.
 - Grant the least that does the job: one path prefix ending in `/`, only the actions needed (leave out `del` unless deleting is the job), no sub-delegation, and the shortest expiry that fits (days, not the 30-day default).
 - Get a second agent to review the exact scope before you issue, when your team has a reviewer.
-- Keep grant files `0600` and send them only as attachments over the private channel, never pasted into chat, tickets or logs. A grant is useless without the recipient's key, but treat it as private anyway.
+- Send grant files as attachments over the private channel rather than pasting them: they are long JSON. A grant holds no key, and `auth import` accepts it only on the profile whose key it names, so a copy is useless to anyone else.
 
 ## 1. Recipient: make a profile and send its DID
 
 ```sh
 tinycloud profile create <profile> --posture delegate-session --operator agent --host https://tee.node.tinycloud.xyz
-tinycloud --profile <profile> auth whoami      # send the "did" value
+tinycloud --profile <profile> auth whoami      # send the "sessionDid" value, or "did" if there is no sessionDid
 ```
 
 `tinycloud context` fails on a profile with no grant yet (`ADDRESS_UNKNOWN`); use `auth whoami`.
 
-The recipient can instead send a request artifact (`tinycloud.auth.request`). It carries its key and the exact scope it asks for. `<space>` is a space name such as `default` or `applications`; the granter's profile resolves it to the granter's full space id:
+The recipient can instead send a request artifact (`tinycloud.auth.request`). It carries its key, the exact scope and expiry it asks for (30 days if `--expiry` is left out), and the command line and folder it was made in (a path, not a secret). `<space>` is a space name such as `default` or `applications`; the granter's profile resolves it to the granter's full space id:
 
 ```sh
 tinycloud --profile <profile> auth request --cap 'tinycloud.kv:<space>:<path-prefix>/:tinycloud.kv/get,tinycloud.kv/list' --expiry 7d --emit request.json
@@ -31,13 +31,18 @@ tinycloud --profile <profile> auth request --cap 'tinycloud.kv:<space>:<path-pre
 
 ## 2. Granter: issue the grant
 
-Say the scope back in plain words before issuing: who (the DID), what (path prefix and actions), where (the full space id), until when.
+Say the scope back in plain words before issuing: who (the DID), what (path prefix and actions), where (the full space id), until when. If you were sent a request file, read what it actually asks for and compare it with what you agreed, entry by entry; `auth grant` signs what the file asks for without a confirmation step:
+
+```sh
+jq '{sessionDid, requested, requestedExpiry}' request.json
+```
 
 Which command depends on how your own profile holds its access (`jq -r .authMethod ~/.tinycloud/profiles/<your-profile>/profile.json`):
 
-- **Your profile signs for itself** (`authMethod` is not `openkey`): `tinycloud --profile <your-profile> auth grant request.json --timeout 60s > grant.json` prints the scope in plain words, checks that your own access covers it, and signs with your own key. No human step. The result does **not** disable sub-delegation (`disableSubDelegation: false`): the recipient could pass it on within the same scope. When that matters, use the SDK route below.
-- **Your profile is `openkey`-backed**: `auth grant` asks the space owner to approve in OpenKey and prints the approval link while the request is pending. Send the owner that one link, together with the scope in plain words, and run the same command again after they approve.
-- **To sub-delegate from an `openkey` profile without asking the owner**, sign with the SDK. `@tinycloud/node-sdk`'s `TinyCloudNode.delegateTo(did, [{ service, space, path, actions }], { expiry, disableSubDelegation: true })` uses your session key, inside what your grant allows. Fix the scope in code, not in arguments, and write the result with `serializeDelegation` to a new `0600` file. A worked example is `scripts/delegate-financials.mjs` in TinyCloudLabs/dataroom.
+- **Your profile signs for itself** (`authMethod` is not `openkey`): `tinycloud --profile <your-profile> auth grant request.json --timeout 60s > grant.json` prints the scope in plain words and signs it with your own key. No human step. With an owner key it signs any scope that key holds, so it does not narrow a request for you: the `jq` check above is what keeps the grant narrow.
+- **Your profile is `openkey`-backed**: `auth grant` asks the space owner to approve in OpenKey. While it waits it prints the pending request with its approval link on standard output, so `grant.json` then holds that request, not a grant. Send the owner that one link, together with the scope in plain words, and run the same command again after they approve. Before sending a file on, check it is a grant: `jq -e .delegation grant.json`.
+- Grants from `auth grant`, in either case, do not disable sub-delegation (`disableSubDelegation: false`): the recipient could pass it on within the same scope. When that matters, use the SDK route below.
+- **To sub-delegate from an `openkey` profile without asking the owner**, sign with the SDK. `@tinycloud/node-sdk`'s `TinyCloudNode.delegateTo(did, [{ service, space, path, actions }], { expiry, disableSubDelegation: true })` uses your session key, inside what your grant allows. Fix the scope in code, not in arguments, and write the result with `serializeDelegation` to a new file. A worked example is [`scripts/delegate-financials.mjs`](https://github.com/TinyCloudLabs/dataroom/blob/dataroom-v1/scripts/delegate-financials.mjs) on the `dataroom-v1` branch of TinyCloudLabs/dataroom.
 - `tinycloud delegation create` always targets the `default` space, so it cannot grant into any other space (for example `applications`).
 
 If the node or your grant refuses the sub-delegation, stop. Ask the space owner for one approval link and describe the exact scope; do not widen anything to make it work.
