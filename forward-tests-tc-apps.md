@@ -9,11 +9,26 @@ Every client uses one shared profile store and the same selected CLI. Run the ba
 
 The generic-store scenarios below use an explicitly chosen custom fitness app, not a replacement for catalog Health Log routing. Test ordinary meal/weight requests separately through `TINY-APPS.md`. The optional SQL index has its own checks below.
 
+## Ledger tasks (loopback only)
+
+Use a fresh isolated `HOME`/`TC_HOME`, a repo-built CLI selected explicitly as `TC_BIN`, a real node bound to `127.0.0.1` with a fresh datadir, and a loopback location-registry fixture. Refuse non-loopback fetches. No production writes or existing profiles. Run §1 before all other CLI commands.
+
+1. Create a synthetic local owner, sign in locally and create its `applications` space. Record its full space URI. This substitutes only local owner approval for OpenKey, not storage or grant enforcement.
+2. Run §11's profile creation, DID hash and emitted-request blocks for two distinct agents, using the full owner space URI and each agent's exact folder. Owner-grant and import each request. Inspect official import metadata for exactly `get,list,put` on that folder. An imported delegate may report `ownerDid: null`; its full `spaceId` must match the expected owner's applications space.
+3. With the test owner's separate permission, run the three catalog creation blocks in order and read all three objects back. Neither agent gets catalog access.
+4. Run the documented event-id and snapshot blocks: Asked → Planned → Building, then a condition-only snapshot with `Waiting on you` retaining Building's `stageSince`. Include `agentName` and valid `blockedBy`/`blocks` arrays. Read every exact key back and compare objects. Generate nine fractional digits plus eight lowercase random hex digits in every event id.
+5. Append a doer-only Checked event; it remains unverified. With the second agent's profile, run the check block inside its own folder referring to the first agent/task, then read it back as both checker and owner. Evidence is plain text, not a clickable link. The independent-check display is verified by the One view's tests, not this CLI-only proof.
+6. Each agent lists only its own folder with `--all`. The owner lists the whole Tasks prefix, reads events and confirms both folders and catalog objects. Attempt a sibling write and a catalog write as the doer: both must fail with `PERMISSION_DENIED`, no new permission request. Attempt reusing an existing event key with `--if-none-match '*'`: must fail with `KV_ALREADY_EXISTS`, and the earlier object must remain unchanged.
+7. Run the documented blocks from both a Claude Code skill installation and a Codex/OpenCode skill installation, without assuming a vendor-specific path or client. Record whether actual model conversations were exercised separately from shell-block execution.
+
+Save command outputs, grant scope metadata (no private session files), exact readbacks and the contacted loopback origins outside the repository. Report the CLI/node versions and limits: no production OpenKey consent rendering, browser view or owner-check UI was proved. Stop the dedicated services afterward; never delete production records.
+
+
 ## Preconditions
 
 - **Setup link:** `https://agents.tinycloud.xyz/apps`. The site deploys from `main`, and the setup installs the skill from the same site, so the page and the skill always come from one deployment.
   - **Before merge:** use the pull request's Cloudflare Pages preview instead, `https://<hash>.tinycloud-agents.pages.dev/apps`. On a preview, the page's URLs and the installer point at the preview, so it installs that branch's skill as-is.
-  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.4.5 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.8.0` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected CLI stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
+  - **Check the install:** a fresh install reports `SKILL_INSTALLED tc-apps 0.4.6 …`, with checksummed files matching that site's `/skills/index.json`. `TC_SELECTED` identifies the one CLI; a clean install, or an older private copy, ends at `1.8.0` (`node_modules/.bin/tinycloud`), while a newer CLI is kept and an older operator-selected CLI stops setup with `TC_OLDER`. There is no app-local beta or retry wrapper.
 - **A stock home per client, `$H`.** Either a new folder holding a copy of `/etc/skel`, or a logged-in stock home from an earlier test.
   - Give it a new, empty project folder with `git init`, so no project-level skill from an earlier test is in reach.
   - The skill installs into the home's `~/.claude/skills` and `~/.agents/skills`, for each client the home has (setup §2), which must not hold `tc-apps` yet. The private CLI and the state folder go into the home too.

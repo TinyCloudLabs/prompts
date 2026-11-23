@@ -107,6 +107,8 @@ Released-skill overlays are listed as `changes` in `SKILLS` and `changed` in `/s
 
 A skill's version is its `SKILL.md`'s `metadata.version`, or, for a package skill without one, the package version. Only the current version of each skill is published.
 
+`tc-apps` 0.4.6 adds Ledger task snapshots and independent checks (§11), an own-folder agent permission and owner-installed catalog/discovery records. Ledger's dedicated route does not reuse generic item moves or broad onboarding access. The loopback-only forward scenario is in [`forward-tests-tc-apps.md`](forward-tests-tc-apps.md#ledger-tasks-loopback-only).
+
 To install a skill without a guide:
 
 ```sh
