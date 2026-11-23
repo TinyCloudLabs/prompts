@@ -68,23 +68,24 @@ if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$
   else M="CLI_OLDER $V $TC: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
   echo "$M" >&2; exit 1
 fi
+set +x
 RC=0
-OUT=$("$TC" --json onboard --timeout 1s) || RC=$?
-HAS_PENDING=
+OUT=$("$TC" onboard --timeout 1s) || RC=$?
+URL=
 if [ "$RC" = 8 ]; then
-  HAS_PENDING=$(printf '%s\n' "$OUT" | node -e 'try{const p=JSON.parse(require("fs").readFileSync(0,"utf8")).pending;if(p&&typeof p.approvalUrl==="string"&&p.approvalUrl)console.log("yes")}catch{}')
+  URL=$(printf '%s\n' "$OUT" | node -e 'try{const p=JSON.parse(require("fs").readFileSync(0,"utf8")).pending;if(p&&typeof p.approvalUrl==="string")console.log(p.approvalUrl)}catch{}')
 fi
 [ -z "$OUT" ] || printf '%s\n' "$OUT"
 unset OUT
-if [ "$RC" = 0 ]; then echo "NEXT: follow the exit-0 instructions below."
-elif [ "$RC" = 8 ] && [ "$HAS_PENDING" = yes ]; then echo "NEXT: send pending.approvalUrl to the owner once. When the owner next writes, run this block again."
+if [ "$RC" = 0 ]; then echo "NEXT: onboarding is done; continue with the owner's goal."
+elif [ "$RC" = 8 ] && [ -n "$URL" ]; then echo "NEXT: send the owner this link in your reply now, on its own line, with the onboarding guide's line: $URL When the owner next writes to you, run this block again. If you already sent this exact link, don't send it again."
 elif [ "$RC" = 6 ]; then echo "NEXT: exit 6 is a network error; run this same block again once. If an approval request was saved, it resumes; do not create a new link. If that rerun also exits 6, follow the shared table."
 elif [ "$RC" = 3 ]; then echo "ONBOARD_EXIT 3"; echo "NEXT: Before doing anything else, compare now with pending.expiresAt from the earlier exit-8 JSON. If more than 2 minutes remain, do not run a command or create a link; ask exactly \"Did you decline that request? If not, I'll send you a fresh link.\" and wait. If 2 minutes or less remain, it's a real expiry: run this block again to create a fresh link. If you do not have the earlier exit-8 JSON, ask the owner the decline question and wait."
 else echo "ONBOARD_EXIT $RC"; fi
 exit "$RC"
 ```
 
-Run it exactly as written and read the whole output in memory. The shell prints the CLI result followed by its status line. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below and the [shared table](#exit-codes-and-owner-lines). Run the block again until it exits 0, and go by its exit code each time.
+Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints its final status lines. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below and the [shared table](#exit-codes-and-owner-lines). Run the block again until it exits 0, and go by its exit code each time.
 
 **Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.** The owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve, then tell me." Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval. Before the first link, say this text word for word:
 
