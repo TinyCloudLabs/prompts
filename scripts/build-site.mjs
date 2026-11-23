@@ -112,6 +112,7 @@ const PAGES = [
   { url: "share", src: "setup/share.md" },
   { url: "secrets", src: "setup/secrets.md" },
   { url: "courier", src: "setup/courier.md" },
+  { url: "delegate", src: "setup/agent-delegation.md" },
   { url: "cli", src: "setup/tinycloud.md" },
   { url: "openkey", src: "setup/openkey.md" },
 ];
