@@ -20,7 +20,8 @@ test("onboarding runs one bounded foreground command, with no background run, fi
   assert.ok(run, "the onboarding guide must have its run step");
   // One block: the skill and CLI-version gates, then the one bounded onboard run.
   assert.equal(blocks(run).length, 1);
-  assert.ok(blocks(run)[0].includes('\n{ "$TC" onboard --timeout 1s; echo "$?" > "$OUT.rc"; } | tee "$OUT"\n'));
+  assert.match(blocks(run)[0], /(?:^|\n)OUT=\$\("\$TC" onboard --timeout 1s\) \|\| RC=\$\?(?:\n|$)/);
+  assert.doesNotMatch(blocks(run)[0], /\b(?:tee|mktemp)\b|\$OUT\.rc/);
   assert.equal(blocks(run)[0].split("\n").at(-1), 'exit "$RC"');
   assert.doesNotMatch(blocks(run)[0], /&\s*$|\bnohup\b|\bwhile\b|\buntil\b/m);
   assert.match(run, /Run this in the foreground, as its own shell call\./);
@@ -29,7 +30,7 @@ test("onboarding runs one bounded foreground command, with no background run, fi
 
 test("the --timeout is one #822 accepts and keeps a call under a 2-minute tool limit", () => {
   // #822 accepts Ns or Nm, more than 0, at most 9m; a call ends within timeout + 30 s grace + 3 s + one 10 s link request.
-  const durations = [...guide.matchAll(/onboard --timeout (\S+?)[`;\s]/g)].map((match) => match[1]);
+  const durations = [...guide.matchAll(/onboard --timeout (\S+?)[`;)\s]/g)].map((match) => match[1]);
   assert.ok(durations.length >= 2);
   for (const duration of durations) {
     const match = /^(\d+)([sm])$/.exec(duration);

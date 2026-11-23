@@ -68,13 +68,16 @@ if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$
   else M="CLI_OLDER $V $TC: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
   echo "$M" >&2; exit 1
 fi
-OUT=$(mktemp) || exit 1
-{ "$TC" onboard --timeout 1s; echo "$?" > "$OUT.rc"; } | tee "$OUT"
-RC=$(cat "$OUT.rc")
-URL=$(node -e 'try{const p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).pending;if(p&&typeof p.approvalUrl==="string")console.log(p.approvalUrl)}catch{}' "$OUT")
-rm -f "$OUT" "$OUT.rc"
+set +x
+RC=0
+OUT=$("$TC" onboard --timeout 1s) || RC=$?
+URL=
+if [ "$RC" = 8 ]; then
+  URL=$(printf '%s\n' "$OUT" | node -e 'try{const p=JSON.parse(require("fs").readFileSync(0,"utf8")).pending;if(p&&typeof p.approvalUrl==="string")console.log(p.approvalUrl)}catch{}')
+fi
+[ -z "$OUT" ] || printf '%s\n' "$OUT"
+unset OUT
 if [ "$RC" = 0 ]; then echo "NEXT: onboarding is done; continue with the owner's goal."
-
 elif [ "$RC" = 8 ] && [ -n "$URL" ]; then echo "NEXT: send the owner this link in your reply now, on its own line, with the onboarding guide's line: $URL When the owner next writes to you, run this block again. If you already sent this exact link, don't send it again."
 elif [ "$RC" = 6 ]; then echo "NEXT: exit 6 is a network error; run this same block again once. If an approval request was saved, it resumes; do not create a new link. If that rerun also exits 6, follow the shared table."
 elif [ "$RC" = 3 ]; then echo "ONBOARD_EXIT 3"; echo "NEXT: Before doing anything else, compare now with pending.expiresAt from the earlier exit-8 JSON. If more than 2 minutes remain, do not run a command or create a link; ask exactly \"Did you decline that request? If not, I'll send you a fresh link.\" and wait. If 2 minutes or less remain, it's a real expiry: run this block again to create a fresh link. If you do not have the earlier exit-8 JSON, ask the owner the decline question and wait."
@@ -90,7 +93,7 @@ Run it exactly as written; don't pipe it through `tail`, `head` or a filter; rea
 
 When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message. When it shows a link you already sent, don't send it again; run the block again on the owner's next message. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
 
-- **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`, send the done line ("TinyCloud is set up."), then continue [the owner's goal](#the-owners-goal). Do not create another app profile or request permissions already covered. A stored session alone is not proof of storage access; the app guide checks an actual read. Before the done line, run `"$TC" space list` once as the test read. On exit 0, send the done line, then what the owner can ask next: records, sharing, stored API keys or meetings. Create no records. Any other exit: the shared table.
+- **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`. If there is a `handoff.url`, say: "This opens your setup page in TinyCloud One, TinyCloud's own app. It shows your connected agent and app list. Don't share this link." Then relay the complete URL on its own line, once, only to the owner in this private conversation. If the link lasts less than 24 hours, tell them when it ends using `handoff.expiresAt`. Keep the URL out of notes, files, diagnostics and other commands. If there is a `handoff.message` instead, relay that line. If the CLI returned no `handoff` field, run `"$TC" space list` once: on exit 0 say "TinyCloud is set up."; on any other exit use the shared table. Then continue [the owner's goal](#the-owners-goal) with this profile. Do not request permissions it already has. Details: TC-3302
 - **The command stopped first** (a tool timeout, a restart): rerun the identical command/profile. It preserves completed approvals and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.
 
 Never run `onboard --code` in place of the link: onboarding's automatic links don't produce a code, and the approval is retrieved automatically, including from a phone. That is why onboarding is a live-conversation flow: send its link only to the owner in the chat, never on a card or in an inbox.
