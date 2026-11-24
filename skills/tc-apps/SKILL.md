@@ -18,7 +18,8 @@ metadata:
 **Context: what the owner told an agent before.** When the owner asks you to remember something about them, asks about something they told an agent before ("what's my …", "as usual"), asks you to continue or pick up an earlier task, or a line in your instructions asks you to check their TinyCloud context, read `CONTEXT.md` in full and follow it. It needs no catalog read. Read whichever path exists:
 
 ```sh
-for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/CONTEXT.md" ]; then cat "$d/CONTEXT.md"; break; fi; done
+for d in "${CLAUDE_SKILL_DIR}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/CONTEXT.md" ]; then cat "$d/CONTEXT.md"; exit; fi; done
+curl -fsSL https://agents.tinycloud.xyz/skills/apps/CONTEXT.md
 ```
 
 **Meal, food, calorie, body-weight and recipe requests: catalog first.** If the owner asks to log or look up something in a catalog app's domain (`TINY-APPS.md` §1 lists them: meals, food, calories, body weight, recipes), STOP. Do not start any other sign-in or access request, including the per-app sign-in in §4. Read the catalog now and follow it, with these two shell calls in order; together they are the whole file:
@@ -95,10 +96,14 @@ It prints `<TC_BIN>`, `<STATE>`, `<NOW>`, `<UTC>` and the CLI version, one per l
 
 ## 1a. Which layout does this app use?
 
-Do this first for every app you are about to read or write, once per conversation, except `context`, which is always in the new layout (`CONTEXT.md`). `<APP>` is the app's name. It prints one word and creates no profile, grant or record:
+Do this first for every app you are about to read or write, once per conversation, except `context`, which is always in the new layout (`CONTEXT.md`). `<APP>` is the app's name. It prints one word and creates no profile, grant or record. Without an installed skill it first fetches the published helpers into `<STATE>`; if that fails, stop and tell the owner:
 
 ```sh
-for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/layout.sh" ]; then sh "$d/layout.sh" '<APP>'; break; fi; done
+for d in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps"; do if [ -f "$d/layout.sh" ]; then sh "$d/layout.sh" '<APP>'; exit; fi; done
+STATE='<STATE>'; umask 077; D="$STATE/served-layout"; mkdir -p "$STATE"; T=$(mktemp -d "$D.XXXXXX") || exit 1
+for f in layout.sh app-context.mjs; do curl -fsSL "https://agents.tinycloud.xyz/skills/apps/$f" -o "$T/$f" || { rm -rf "$T"; exit 1; }; done
+rm -rf "$D" && mv "$T" "$D" || { rm -rf "$T"; exit 1; }
+sh "$D/layout.sh" '<APP>'
 ```
 
 The CLI checks, in this order, and stops at the first that applies:
@@ -210,11 +215,15 @@ Pick the app first: `<APP>` is its name, `<ID>` is `xyz.tinycloud.tinyapps.<APP>
 
 ## 3. Reuse access, find the app and read its catalog
 
-For a generic app in the new layout, resolve `app-context.mjs` from the installed skill and run it once per request. Add `--write` for creating or changing records, and `--delete` only if the requested operation deletes a key. Add `--remove-entry` only for §9's going back, which deletes the app's discovery entry. Omit all three for a read-only request, including a temporary delegated read:
+For a generic app in the new layout, resolve `app-context.mjs` from the installed skill (or the published copy when no skill is installed; if fetching it fails, stop and tell the owner) and run it once per request. Add `--write` for creating or changing records, and `--delete` only if the requested operation deletes a key. Add `--remove-entry` only for §9's going back, which deletes the app's discovery entry. Omit all three for a read-only request, including a temporary delegated read:
 
 
 ```sh
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --write; exit; fi; done
+STATE='<STATE>'; umask 077; D="$STATE/served-app-context"; mkdir -p "$STATE"; T=$(mktemp -d "$D.XXXXXX") || exit 1
+curl -fsSL https://agents.tinycloud.xyz/skills/apps/app-context.mjs -o "$T/app-context.mjs" || { rm -rf "$T"; exit 1; }
+rm -rf "$D" && mv "$T" "$D" || { rm -rf "$T"; exit 1; }
+node "$D/app-context.mjs" '<TC_BIN>' '<APP>' --write
 ```
 
 The helper reads official CLI context and status, checks live primary and additional grants, and verifies access with an actual catalog listing. It creates no profile, approval or record.
