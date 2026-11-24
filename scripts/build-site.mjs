@@ -321,6 +321,8 @@ const SKILLS = [
   },
   {
     short: "chat",
+    // Index link label; the skill id stays tinychat-retrieval.
+    label: "TinyCloud One meetings",
     tarball: "https://tinycloud.one/agents/tinychat-retrieval/0.1.1-onboarding.30/tinychat-retrieval-0.1.1-onboarding.30.tgz",
     integrity: "sha512-TWvgrPrvOi8v1GjGmlf+jpr+Bg+s1OIDkXQTmTkzdUS3eU3FIGO/YiaFrKr8++WuqcpUXiartetVASyzjDZA9Q==",
     dir: "package",
@@ -1011,7 +1013,7 @@ ${listedPages.map((p) => `      <li><a href="/${p.url}">${esc(p.title)}</a> (<co
     <h2>Skills</h2>
     <p>Each links to its <code>SKILL.md</code>.</p>
     <ul>
-${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
+${skills.map((s) => `      <li><a href="/skills/${s.short}.md">${esc(s.label ? `${s.label} (${s.name})` : s.name)}</a> ${esc(s.version)}</li>`).join("\n")}
     </ul>
   </main>
   <footer>Agents: start at <a href="/onboarding">/onboarding</a>, or <a href="/llms.txt">/llms.txt</a> for a plain-text index of every guide and skill on this site.</footer>
