@@ -92,8 +92,7 @@ export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 
 `SKILL_MISSING courier` means the required skill has not been read: read the two files above, set `COURIER_SKILL=read`, then rerun the block. The other checks are version/help probes only. The later commands use the CLI's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
 
-Some supported versions, including the pinned CLI, do not list `invite`
-or `invite serve` in help. Both commands work. Do not fall back
+`invite` and `invite serve` both work. Do not fall back
 to exchanging manual pairing files.
 
 ## Incoming invitation takes priority
