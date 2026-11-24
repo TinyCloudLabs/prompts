@@ -76,7 +76,7 @@ printf '%s\n' "$B"
 { [ -n "${TC_APPS_STATE:-}" ] && echo "$TC_APPS_STATE"; } || echo "$HOME/.local/state/tc-apps"
 date +%Y-%m-%dT%H:%M%z | sed 's/..$/:&/'
 date -u +%FT%TZ
-V=$("$B" --version)
+V=$("$B" --version) || V=
 [ -n "$V" ] || { echo "TC_NOT_FOUND: $B doesn't run; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
 printf '%s\n' "$V"
 if printf '%s\n' "$V" | awk -F. -v p=1.9.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then

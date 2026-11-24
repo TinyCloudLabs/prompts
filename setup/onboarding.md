@@ -58,7 +58,7 @@ TC='<TC_BIN>'
 
 ```sh
 TC='<TC_BIN>'
-V=$("$TC" --version)
+V=$("$TC" --version) || V=
 [ -n "$V" ] || { echo "TC_NOT_FOUND: $TC doesn't run; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
 if printf '%s\n' "$V" | awk -F. -v p=1.9.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   O=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"

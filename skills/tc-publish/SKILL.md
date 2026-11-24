@@ -69,7 +69,7 @@ PROFILE=publisher   # unless the owner names another profile
 
 TC_VERSION=
 if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
-  TC_VERSION=$("$TC_BIN" --version)
+  TC_VERSION=$("$TC_BIN" --version) || TC_VERSION=
   [ -n "$TC_VERSION" ] || { echo "TC_NOT_FOUND: $TC_BIN doesn't run; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
   if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.9.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
     if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.9.1; keeping this operator-selected CLI"
