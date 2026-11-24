@@ -32,7 +32,7 @@ const fresh = () => {
   writeFileSync(cli, `#!/bin/sh
 echo "$*" >> ${JSON.stringify(calls)}
 case "$*" in
-  --version) echo 1.9.0 ;;
+  --version) echo 1.9.1 ;;
   "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
   "onboard --timeout 1s") echo '{"onboarded":true}' ;;
   "onboard --help") exit 0 ;;
@@ -63,7 +63,7 @@ const addNpx = (fixture) => {
 echo "$*" >> ${JSON.stringify(fixture.calls)}
 shift 6
 case "$*" in
-  --version) echo 1.9.0 ;;
+  --version) echo 1.9.1 ;;
   "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
   "onboard --help") exit 0 ;;
   "auth login --help") echo '--owner --expiry' ;;
@@ -85,7 +85,7 @@ test("publish preamble uses process variables without agent.env and falls back t
   const used = run(script, fallback, { PATH: addNpx(fallback) });
   assert.equal(used.status, 0, used.stderr);
   assert.match(used.stdout, /^CLI_OK$/m);
-  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.9.0 tinycloud`;
+  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.9.1 tinycloud`;
   assert.equal(calls(fallback), `${prefix} --version\n${prefix} onboard --help\n${prefix} auth login --help\n`);
 });
 
@@ -99,7 +99,7 @@ test("Courier preamble uses process TC_BIN without agent.env and falls back to t
   const fallback = fresh();
   const used = run(script, fallback, { PATH: addNpx(fallback) });
   assert.equal(used.status, 0, used.stderr);
-  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.9.0 tinycloud`;
+  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.9.1 tinycloud`;
   assert.equal(calls(fallback), `${prefix} --version\n${prefix} courier --help\n`);
 });
 
@@ -123,7 +123,7 @@ test("apps preamble uses process TC_BIN without agent.env and falls back to the 
   const fallback = fresh();
   const used = run(script, fallback, { PATH: addNpx(fallback) });
   assert.equal(used.status, 0, used.stderr);
-  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.9.0 tinycloud`;
+  const prefix = `--prefix ${fallback.home} -y -p @tinycloud/cli@1.9.1 tinycloud`;
   assert.match(used.stdout, new RegExp(join(fallback.home, ".local/share/tinycloud/npx/tinycloud").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(calls(fallback), `${prefix} --version\n`);
 });

@@ -16,8 +16,8 @@ const work = mkdtempSync(join(realpathSync(tmpdir()), "tc-cli-newer-"));
 after(() => rmSync(work, { recursive: true, force: true }));
 
 // version -> true when it is older than the pin (a prerelease of the pin is older).
-const VERSIONS = { "1.5.9": true, "1.6.0": true, "1.6.2": true, "1.6.3": true, "1.6.4-beta.2": true, "1.6.5-beta.2": true, "1.6.6-beta.2": true, "1.6.4": true, "1.6.5": true, "1.6.6": true, "1.7.0": true, "1.8.0": true, "1.9.0-beta.21": true, "1.9.0": false, "1.10.0": false };
-assert.equal(CLI_VERSION, "1.9.0");
+const VERSIONS = { "1.5.9": true, "1.6.0": true, "1.6.2": true, "1.6.3": true, "1.6.4-beta.2": true, "1.6.5-beta.2": true, "1.6.6-beta.2": true, "1.6.4": true, "1.6.5": true, "1.6.6": true, "1.7.0": true, "1.8.0": true, "1.9.0-beta.21": true, "1.9.0": true, "1.9.1-beta.0": true, "1.9.1": false, "1.10.0": false };
+assert.equal(CLI_VERSION, "1.9.1");
 
 let site;
 before(async () => {

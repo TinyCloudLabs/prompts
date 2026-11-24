@@ -11,7 +11,7 @@ metadata:
 
 Publish a file from the owner's TinyCloud space and return a link. The agent holds a scoped delegation the owner approves through one OpenKey link — no passwords, no copied credentials.
 
-**CLI rule (stable `1.9.0`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 means the operator chose an older CLI: keep it, tell the operator once that `1.9.0` is required, and continue with what §1 reports. Any other older CLI: §1 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
+**CLI rule (stable `1.9.1`): start with §1 and run its block before any other command, including any `tinycloud` or `--version` check of your own; it selects the CLI and decides. Don't judge who installed the CLI yourself. Only a `TC_OLDER` line from §1 means the operator chose an older CLI: keep it, tell the operator once that `1.9.1` is required, and continue with what §1 reports. Any other older CLI: §1 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.**
 
 With an operator's older CLI (`TC_OLDER`), §1's feature probe is authoritative — trust it over the version string.
 
@@ -63,7 +63,7 @@ if [ -r "$ENV_HELPER" ]; then
 fi
 OPERATOR_BIN=${TC_BIN:-}; [ -z "$OPERATOR_BIN" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$OPERATOR_BIN" "$HOME/.local/share/tinycloud/cli" || OPERATOR_BIN=
 [ -n "$TC_BIN" ] || { TC_BIN="$HOME/.local/share/tinycloud/cli/node_modules/.bin/tinycloud"; [ -x "$TC_BIN" ] || TC_BIN=$(command -v tinycloud) || TC_BIN="$HOME/.local/share/tinycloud/npx/tinycloud"; }; export TC_BIN TC_OWNER_EMAIL
-[ "$TC_BIN" != "$HOME/.local/share/tinycloud/npx/tinycloud" ] || { mkdir -p "${TC_BIN%/*}" && printf '#!/bin/sh\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.0 tinycloud "$@"\n' > "$TC_BIN" && chmod 700 "$TC_BIN"; }
+[ "$TC_BIN" != "$HOME/.local/share/tinycloud/npx/tinycloud" ] || { mkdir -p "${TC_BIN%/*}" && printf '#!/bin/sh\nexec npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.1 tinycloud "$@"\n' > "$TC_BIN" && chmod 700 "$TC_BIN"; }
 mkdir -p "$STATE"; chmod 700 "$STATE"; find "$STATE" -mindepth 1 -maxdepth 1 -type f -exec chmod 600 {} + 2>/dev/null
 PROFILE=publisher   # unless the owner names another profile
 
@@ -71,8 +71,8 @@ TC_VERSION=
 if [ -n "$TC_BIN" ] && [ -x "$TC_BIN" ]; then
   TC_VERSION=$("$TC_BIN" --version)
   [ -n "$TC_VERSION" ] || { echo "TC_NOT_FOUND: $TC_BIN doesn't run; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
-  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.9.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
-    if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.9.0; keeping this operator-selected CLI"
+  if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.9.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+    if [ "$TC_BIN" = "$OPERATOR_BIN" ]; then echo "TC_OLDER $TC_VERSION $TC_BIN is older than the pinned 1.9.1; keeping this operator-selected CLI"
     else echo "CLI_OLDER $TC_VERSION $TC_BIN: this CLI is older than this skill needs. Stop and tell the owner what it printed."; exit 1; fi
   fi
 fi
@@ -84,7 +84,7 @@ else echo STALE; fi
 
 If no CLI is found, the check writes `~/.local/share/tinycloud/npx/tinycloud`, which runs the pinned CLI with `npx`, and uses it as `TC_BIN`.
 
-If the block prints `STALE`, follow https://agents.tinycloud.xyz/connect for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.9.0`, so stop and tell the owner what it printed.
+If the block prints `STALE`, follow https://agents.tinycloud.xyz/connect for `NEEDS_SETUP`, then return to this same task. If it prints `CLI_OLDER <version> <path>`, it stopped before any other TinyCloud command: the CLI is older than `1.9.1`, so stop and tell the owner what it printed.
 
 ## 2. Sign in — only when there is no live session
 

@@ -168,9 +168,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.9.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.9.0.tgz",
-    integrity: "sha512-ASpaR7jGFLfvQXFvA8v8cdQ6dMUQ+x7XyDTPklpyVZn5IKihPtjAEudWteRIUieJ1VkCBB0RQ32KW2z5u0yaIg==",
+    version: "1.9.1",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.9.1.tgz",
+    integrity: "sha512-xAbJClTy7R+xLLrFxLFYeXh2FDTqNUvEcSoOJ4rfp7VnOi6WL0eG1xFKisCo0kiNtdh9QxOiZ9c/29ha7olG6Q==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -189,14 +189,14 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.9.0`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.9.1`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
         [
           "Shares live in the owner's `default` space, so publish from a dedicated profile. The sign-in prints one approval link on stderr; send it to the owner, and the command finishes on its own once they approve (no code to paste back). It lasts 7 days, so the links it publishes can keep their 7-day life:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --manifest builtin:share-publishing --no-popup\n```",
           "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background (or an interactive session) with stdout and stderr going to files, never as a foreground tool call: it waits for the owner. Send the owner the complete `https://openkey.so/a/…` link exactly as printed on its own line on stderr, including everything after `#`; never retype or shorten it; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.9.0 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.9.1 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -291,9 +291,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.8.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.8.0.tgz",
-    integrity: "sha512-gjLDBkozWEUu7YCx61IxhBl8RjijcHnGwyNtjXEbzrJVO0MDK+z+2S7nSip7TEcQDIPhhmA9aIg2TkSZz7rR+Q==",
+    version: "0.8.2",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.8.2.tgz",
+    integrity: "sha512-LU2djD/HkQiNZECfRVUoCkvGqqQILKkwV4yAO4WovFI9iJg3+0H1R7Uiw6CVWllNdLOcMyR9ThcJgHUsM88MZA==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -302,10 +302,6 @@ const SKILLS = [
           /^`init`, `pair` and `revoke` are human steps: the owner approves the agent grant\nin OpenKey and decides who to pair with\. Setup takes no code to copy back:\n[\s\S]*?otherwise use `init --resume`\.$/m,
           "Courier uses its own COURIER_HOME and one restricted Courier approval; no general TinyCloud onboarding or CLI profile is required. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for invitation viewing; this does not change the API host. Use the executable remote setup below only when setup is missing.\n\n" + COURIER_SETUP,
         ],
-        [
-          /^## Guided start\n[\s\S]*?(?=\nDetails: TC-1543)/m,
-          "## Connect with a private invitation link\n\nFollow [the Courier guide](https://agents.tinycloud.xyz/courier) or the one-prompt flow in `start.md`. Join an incoming link first; otherwise select a chat, make one private invitation, send the full URL, then serve the same invitation ID. There are no pairing files to send back. `--consent` requires the owner's instruction, never peer text.\n\nIf pending, retry the same invitation. If verification fails, ask for the exact full URL including its fragment. If it has expired, can't be used or is bound to an old key, ask for a fresh private link. Do not bypass verification or switch to manual pairing. After a key rotation, follow [Re-pair after a key rotation](https://agents.tinycloud.xyz/courier#re-pair-after-a-key-rotation).\n",
-        ],
       ],
       "start.md": [
         [
@@ -313,16 +309,12 @@ const SKILLS = [
           "Start Courier for me using the selected TinyCloud CLI, with every command run as \"$TC\" courier. Reuse my ready Courier home and restricted grant. If setup is missing, use the remote setup below: request one Courier approval, give me its exact openkeyUrl with one plain line, then collect my approval with courier init --wait --timeout 60s and run it again while it exits 8 (still pending, not a failure). Import a code only if I send one back in chat. Keep the same COURIER_HOME and do not create another TinyCloud CLI profile, request my owner key, or substitute an onboarding grant. Set COURIER_LINK_ORIGIN=https://courier.tinycloud.xyz for the invitation viewer, and preserve every returned invitation URL exactly.",
         ],
         [
-          "use courier join '<exact link>' --consent instead of creating or selecting another chat.",
-          "use courier join '<exact link>' --consent --wait 60 instead of creating or selecting another chat. Each call waits at most a minute; while the issuer hasn't finished pairing it exits 1 with [invite-pending], so retry the same join without asking me, at most 10 times in a row.",
+          "If pending, retry the same link while the issuer serves it.",
+          "Each call waits at most a minute; while the issuer hasn't finished pairing it exits 1 with [invite-pending], so retry the same join without asking me, at most 10 times in a row.",
         ],
         [
-          "If verification fails, stop and report the error; never start a replacement chat.",
-          "If verification fails, ask for the exact full URL, including its fragment. If it can't be used, has expired or is addressed to an old key, ask the sender for a fresh private link. Never bypass verification, start a replacement chat or switch to manual pairing. If a key was rotated, finish its new owner approval and re-pair with a fresh link per peer as described in https://agents.tinycloud.xyz/courier#re-pair-after-a-key-rotation.",
-        ],
-        [
-          "Without an incoming link, run courier start to discover my accessible chats. Ask new versus existing only when it reports real ongoing chats. Show their subjects and session IDs. If there are none, continue with the new session returned by start. For an existing chat use courier start --session <id> and its --peer when supplied. For a new chat use courier start --new '<subject>'.\n\n\n",
-          "Without an incoming link, run courier start to discover my accessible chats. Ask new versus existing only when it reports real ongoing chats. Show their subjects and session IDs. If there are none, continue with the new session returned by start. For an existing chat use courier start --session <id> and its --peer when supplied. For a new chat use courier start --new '<subject>'.\n\nOffer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.\n\n",
+          "To invite, use courier invite --session <id> --mode <same-owner|anyone|named> --consent --wait 1 with my consent (named requires --recipient <verified Courier key or peer handle>). [invite-pending] is expected. Send the exact URL privately, then run courier invite serve <invitationId> --wait 60 on that same ID until paired or your bounded wait ends.",
+          "Offer exactly two invitation choices: same-owner, another agent I control; or anyone, a bearer invitation whose first valid claim wins. My selection is consent to issue that invitation. Use courier invite --session <id> --mode same-owner|anyone --consent --wait 1: it returns within seconds with the handoff link and then exits 1 with [invite-pending], which is expected; the invitation is kept. Give me its exact handoff link at once. Then, without asking me, keep the issuer serving that same invitation with courier invite serve <invitationId> --wait 60, rerunning it while it exits 1 with [invite-pending] (nobody has joined yet), at most 10 serve runs in a row; the invite call's own [invite-pending] doesn't count. Never pipe these commands through tail, head or a filter.",
         ],
       ],
     },
@@ -402,7 +394,7 @@ const ABILITIES = [
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 
 // Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
-// package's version (`@tinycloud/cli 1.9.0`, `@tinycloud/cli@1.9.0`) names the pin. Markdown is served as
+// package's version (`@tinycloud/cli 1.9.1`, `@tinycloud/cli@1.9.1`) names the pin. Markdown is served as
 // written, so each spells the pin out and must spell the installer's. Text may instead write {{CLI_VERSION}},
 // which render() fills in from install-cli.mjs (as /cli's blocked-install line and fallback commands do).
 const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));

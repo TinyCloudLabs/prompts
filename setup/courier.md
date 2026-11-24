@@ -42,11 +42,11 @@ if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
   TC="$TC_BIN"
 else
-  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.0 tinycloud "$@"; }
+  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.1 tinycloud "$@"; }
   TC=tc_courier_cli
 fi
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
-if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.9.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.9.0 or newer; binary left unchanged" >&2; exit 1; fi
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.9.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.9.1 or newer; binary left unchanged" >&2; exit 1; fi
 ```
 
 Keep the owner's original request and any incoming invitation URL exactly as supplied. Never ask for an owner key, hidden approval files, owner-run commands or hand-constructed grant JSON. Send approval and invitation URLs exactly as printed, only to their intended recipient.
@@ -59,7 +59,7 @@ Read and follow the Courier [`SKILL.md`](https://agents.tinycloud.xyz/skills/cou
 
 ## Check the CLI
 
-After reading the skill, use Node.js 20 or later. This block preserves a process or saved `TC_BIN`; otherwise it selects the pinned `npx` command. It checks CLI `1.9.0` or newer and that `courier --help` lists `start` and `join`.
+After reading the skill, use Node.js 20 or later. This block preserves a process or saved `TC_BIN`; otherwise it selects the pinned `npx` command. It checks CLI `1.9.1` or newer and that `courier --help` lists `start` and `join`.
 
 Run this in the same shell as the later commands:
 
@@ -78,11 +78,11 @@ if [ "${TC_BIN+x}" = x ]; then
   [ -x "$TC_BIN" ] || { echo "TC_BIN_NOT_EXECUTABLE: $TC_BIN; binary left unchanged" >&2; exit 1; }
   TC="$TC_BIN"
 else
-  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.0 tinycloud "$@"; }
+  tc_courier_cli() { npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.1 tinycloud "$@"; }
   TC=tc_courier_cli
 fi
 TC_VERSION=$("$TC" --version) || { echo "COURIER_CLI_FAILED: $TC" >&2; exit 1; }
-if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.9.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.9.0 or newer; binary left unchanged" >&2; exit 1; fi
+if printf '%s\n' "$TC_VERSION" | awk -F. -v p=1.9.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then echo "COURIER_CLI_VERSION: $TC reports $TC_VERSION; need 1.9.1 or newer; binary left unchanged" >&2; exit 1; fi
 COURIER_HELP=$("$TC" courier --help) || { echo "COURIER_CLI_FEATURES: $TC" >&2; exit 1; }
 for FEATURE in '  start ' '  join '; do
   case "$COURIER_HELP" in *"$FEATURE"*) ;; *) echo "COURIER_CLI_FEATURES: missing $FEATURE; binary left unchanged" >&2; exit 1 ;; esac

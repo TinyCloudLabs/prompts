@@ -81,7 +81,7 @@ test("user PATH append preserves long raw values and is idempotent across Window
 });
 
 test("automatic reuse needs the pinned release and never downgrades a newer one", () => {
-  assert.equal(CLI_VERSION, "1.9.0");
+  assert.equal(CLI_VERSION, "1.9.1");
   assert.equal(compatible("1.5.0-beta.23"), false);
   assert.equal(compatible("1.5.2"), false);
   assert.equal(compatible("1.5.9"), false);
@@ -92,9 +92,10 @@ test("automatic reuse needs the pinned release and never downgrades a newer one"
   assert.equal(compatible("1.6.5"), false);
   assert.equal(compatible("1.7.0"), false);
   assert.equal(compatible("1.8.0"), false);
-  assert.equal(compatible("1.9.0-beta.0"), false);
-  assert.equal(compatible("1.9.0-beta.21"), false);
-  assert.equal(compatible("1.9.0-rc.0"), false);
+  assert.equal(compatible("1.9.0"), false);
+  assert.equal(compatible("1.9.1-beta.0"), false);
+  assert.equal(compatible("1.9.1-beta.21"), false);
+  assert.equal(compatible("1.9.1-rc.0"), false);
   assert.equal(compatible(CLI_VERSION), true);
   assert.equal(compatible("1.9.2"), true);
   assert.equal(compatible("2.0.0"), true);
@@ -273,7 +274,7 @@ for (const version of ["1.9.2", "1.10.0"]) test(`a newer CLI (${version}) on PAT
   assert.deepEqual(readFileSync(target), before);
 });
 
-for (const [version, kept] of [["1.5.9", false], ["1.6.0", false], ["1.6.2", false], ["1.6.2-beta.2", false], ["1.6.3", false], ["1.6.4", false], ["1.6.5", false], ["1.6.7", false], ["1.7.0", false], ["1.8.0", false], [CLI_VERSION, true], ["1.9.2", true], ["1.10.0", true]]) test(`an operator TC_BIN at ${version} is kept untouched${kept ? "" : " with a TC_OLDER notice"}`, { skip: windows }, () => {
+for (const [version, kept] of [["1.5.9", false], ["1.6.0", false], ["1.6.2", false], ["1.6.2-beta.2", false], ["1.6.3", false], ["1.6.4", false], ["1.6.5", false], ["1.6.7", false], ["1.7.0", false], ["1.8.0", false], ["1.9.0", false], [CLI_VERSION, true], ["1.9.2", true], ["1.10.0", true]]) test(`an operator TC_BIN at ${version} is kept untouched${kept ? "" : " with a TC_OLDER notice"}`, { skip: windows }, () => {
   const dir = home();
   const operator = join(dir, "operator", "tinycloud");
   executable(operator, version);
