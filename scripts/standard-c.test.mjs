@@ -115,7 +115,7 @@ test("the CLI 1.6.3 table matches the approval exits, including one-line error r
   assert.match(courier, /`init --request`, exit 0 may still create and print an approval link/);
   assert.match(courier, /follow every stderr `Next:` line by the shared relay rule, regardless of the exit code/);
   assert.match(courier, /`init --wait`, exit 8 is pending only when stdout contains a non-empty `pending\.approvalUrl`/);
-  assert.match(courier, /Courier 0\.7\.0 exits only 0, 1, 2 or 8; exit 6 is not a Courier code/);
+  assert.match(courier, /Courier 0\.8\.0 exits only 0, 1, 2 or 8; exit 6 is not a Courier code/);
   const courierGuide = read("setup/courier.md");
   const waitAgain = courierGuide.split("Any other non-zero exit is an error:")[1].split("\n  - **A refused grant:")[0];
   assert.match(waitAgain, /\[approval-rejected\].*\[approval-unavailable\].*exit 1/s);
@@ -128,7 +128,7 @@ test("the CLI 1.6.3 table matches the approval exits, including one-line error r
 const GRANT_PENDING_BLOCK =
   'Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner\'s next message, rerun the identical command; it resumes the saved request. Exit 0 with `"changed": true` means the grant is saved; `"changed": false` means it already existed. `auth retry --last` doesn\'t find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid.';
 
-test("seven grant-request surfaces copy the CLI 1.8.0 pending block byte-for-byte", () => {
+test("seven grant-request surfaces copy the CLI 1.9.0 pending block byte-for-byte", () => {
   const copies = [
     ["onboarding", read("setup/onboarding.md")],
     ["tc-apps", read("skills/tc-apps/SKILL.md")],
@@ -146,7 +146,7 @@ test("seven grant-request surfaces copy the CLI 1.8.0 pending block byte-for-byt
 test("tc-apps catalog keeps request artifacts separate from the blocking app grant", () => {
   const catalog = read("skills/tc-apps/TINY-APPS.md");
   assert.match(catalog, /auth request --preset apps-agent --write --app xyz\.tinycloud\.sample\.healthlog --emit/);
-  assert.match(catalog, /`auth grant` in CLI `1\.8\.0` prints a short OpenKey link and waits until the owner approves it/);
+  assert.match(catalog, /`auth grant` in CLI `1\.9\.0` prints a short OpenKey link and waits until the owner approves it/);
   assert.match(catalog, /Do not close stdin, hide stderr, or run it as a non-interactive one-shot shell call/);
 });
 
@@ -195,7 +195,7 @@ test("the real built onboarding block sends exit 3 through the agent-side expiry
   writeFileSync(join(home, ".agents/skills/tinycloud-cli/SKILL.md"), "installed");
   const cli = join(work, "fake-tinycloud");
   writeFileSync(cli, `#!/bin/sh
-if [ "$*" = "--version" ]; then echo 1.8.0; exit 0; fi
+if [ "$*" = "--version" ]; then echo 1.9.0; exit 0; fi
 if [ "$*" = "onboard --timeout 1s" ]; then
   printf '%s\\n' "$PENDING_JSON"
   exit 3

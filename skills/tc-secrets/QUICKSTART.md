@@ -2,7 +2,7 @@
 
 Background and walkthrough for the `tc-secrets` skill. The runnable blocks live in `SKILL.md`; run them from there, in order, one block per tool call.
 
-Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.8.0`; https://agents.tinycloud.xyz/connect sets it up for the current client. An older CLI the operator selected is kept, and the skill's feature checks decide: a CLI without `secrets request` and `secrets wait` is `STALE`.
+Works in Codex, Claude Code, OpenCode, or OMP. Requires Node **20 or later** and `@tinycloud/cli` `1.9.0`; https://agents.tinycloud.xyz/connect sets it up for the current client. An older CLI the operator selected is kept, and the skill's feature checks decide: a CLI without `secrets request` and `secrets wait` is `STALE`.
 
 ## 0. Operator setup (once, not run by the agent)
 

@@ -168,9 +168,9 @@ const SKILLS = [
   { short: "secrets", dir: "skills/tc-secrets" },
   {
     short: "cli",
-    version: "1.8.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.8.0.tgz",
-    integrity: "sha512-xu6+If50KGY+AXb2spSWUNFpjn5aYp7g7KWK0VaOxwK4iFf+u2yYDpqroUY+/Y8jU6GrlmBK+7OrICTDBhKjQg==",
+    version: "1.9.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/cli/-/cli-1.9.0.tgz",
+    integrity: "sha512-ASpaR7jGFLfvQXFvA8v8cdQ6dMUQ+x7XyDTPklpyVZn5IKihPtjAEudWteRIUieJ1VkCBB0RQ32KW2z5u0yaIg==",
     dir: "package/skills/tinycloud-cli",
     checkCli: true,
     changes: {
@@ -180,8 +180,8 @@ const SKILLS = [
           "Need more than onboarding grants? Keep the selected owner, profile and host. Ask once with `tinycloud auth request --cap SPEC --grant --timeout 60s --no-popup --expiry 30d`. Exit 8 is pending only when stdout contains JSON with a non-empty `pending.approvalUrl`. Send each new URL once, exactly as printed, on its own line. Keep `pending.expiresAt` and end your turn. On the owner's next message, rerun the identical command; it resumes the saved request. Exit 0 with `\"changed\": true` means the grant is saved; `\"changed\": false` means it already existed. `auth retry --last` doesn't find grant requests. Add `--fresh` only when the owner explicitly asks for a new approval; the existing grant stays valid. See [AUTH.md](AUTH.md).",
         ],
         [
-          "each for 30 days",
-          "each for the time the owner chooses, up to 30 days",
+          "space, for 30 days.",
+          "space, for the time the owner chooses, up to 30 days.",
         ],
         [
           "Install a catalog app on the onboarding profile:\n\n1. `tinycloud apps install xyz.tinycloud.sample.healthlog` installs",
@@ -189,14 +189,14 @@ const SKILLS = [
         ],
         [
           "TinyCloud's agent guides use Node.js 22.20 or later. Check [release.json](release.json) for the CLI range this skill describes.",
-          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.8.0`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
+          "TinyCloud's agent guides use Node.js 20 or later and CLI `1.9.0`. If the CLI is missing, read and follow https://agents.tinycloud.xyz/connect for the current client. Check [release.json](release.json) for the CLI range this skill describes.",
         ],
         [
           "Shares live in the owner's `default` space, so publish from a dedicated profile. The sign-in prints one approval link on stderr; send it to the owner, and the command finishes on its own once they approve (no code to paste back). It lasts 7 days, so the links it publishes can keep their 7-day life:\n\n```bash\ntinycloud init --name publisher --key-only\ntinycloud --profile publisher auth login --manifest builtin:share-publishing --no-popup\n```",
           "Shares live in the owner's `default` space, so publish from a dedicated `publisher` profile with one sign-in. Its manifest has four entries: the capability read OpenKey requires and the three share folders (no decryption, which links don't use). Run the login in the background (or an interactive session) with stdout and stderr going to files, never as a foreground tool call: it waits for the owner. Send the owner the complete `https://openkey.so/a/…` link exactly as printed on its own line on stderr, including everything after `#`; never retype or shorten it; it exits 0 with JSON once they approve, and there's no code to send back. The full flow is the [publish guide](https://agents.tinycloud.xyz/publish):\n\n```bash\ntinycloud init --name publisher --key-only\ncat > share-publishing.json <<'JSON'\n{ \"app_id\": \"xyz.tinycloud.share\", \"name\": \"TinyCloud Share publishing\", \"space\": \"default\", \"permissions\": [\n  { \"service\": \"tinycloud.capabilities\", \"path\": \"\", \"skipPrefix\": true, \"actions\": [\"tinycloud.capabilities/read\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"xyz.tinycloud.share/shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/put\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"shares/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] },\n  { \"service\": \"tinycloud.kv\", \"path\": \"artifacts/\", \"skipPrefix\": true, \"actions\": [\"tinycloud.kv/get\", \"tinycloud.kv/metadata\", \"tinycloud.kv/put\", \"tinycloud.kv/list\"] }\n] }\nJSON\ntinycloud --profile publisher auth login --method openkey --no-popup --manifest share-publishing.json --expiry 30d > login.out 2> login.err < /dev/null &\n```",
         ],
       ],
-      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.8.0 <2.0.0"']],
+      "release.json": [['"cli": ">=1.0.0-beta.17 <2.0.0"', '"cli": ">=1.9.0 <2.0.0"']],
       "AUTH.md": [
         [
           /^Keep the user's existing profiles:[^\n]*$/m,
@@ -291,9 +291,9 @@ const SKILLS = [
   },
   {
     short: "courier",
-    version: "0.7.0",
-    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.7.0.tgz",
-    integrity: "sha512-7I3Bn2hkR5Imkx4mtJPSV9b36nS7G2w76LEt7me+PbCWlbCvHniAGkI8fb+bN8AfPaVCMjRGz4QjiP33AMO0Dg==",
+    version: "0.8.0",
+    tarball: "https://registry.npmjs.org/@tinycloud/courier/-/courier-0.8.0.tgz",
+    integrity: "sha512-gjLDBkozWEUu7YCx61IxhBl8RjijcHnGwyNtjXEbzrJVO0MDK+z+2S7nSip7TEcQDIPhhmA9aIg2TkSZz7rR+Q==",
     dir: "package/skills/courier",
     checkCli: true,
     changes: {
@@ -402,7 +402,7 @@ const ABILITIES = [
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 
 // Guide and skill blocks stop with CLI_OLDER/TC_OLDER below the installer's pin, and text that names the
-// package's version (`@tinycloud/cli 1.8.0`, `@tinycloud/cli@1.8.0`) names the pin. Markdown is served as
+// package's version (`@tinycloud/cli 1.9.0`, `@tinycloud/cli@1.9.0`) names the pin. Markdown is served as
 // written, so each spells the pin out and must spell the installer's. Text may instead write {{CLI_VERSION}},
 // which render() fills in from install-cli.mjs (as /cli's blocked-install line and fallback commands do).
 const pinFiles = [...new Set([...PAGES.map((p) => p.src), ...SKILLS.filter((s) => !s.tarball).flatMap((s) => walk(s.dir))])].filter((p) => p.endsWith(".md"));
