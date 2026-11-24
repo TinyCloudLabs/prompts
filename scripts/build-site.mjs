@@ -37,7 +37,8 @@ const PRODUCTION_BRANCH = "main";
 const preview = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH && process.env.CF_PAGES_URL;
 const BASE = (process.env.SITE_URL || preview || SITE).replace(/\/$/, "");
 // docs/: internal notes, kept in the repository, never published.
-const SKIP = new Set([".git", ".github", ".gitignore", ".smithers", ".wrangler", "AGENTS.md", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills", "standard"]);
+// .agents/, .claude/: authoring skills for agents working in this repository, never published.
+const SKIP = new Set([".agents", ".claude", ".git", ".github", ".gitignore", ".smithers", ".wrangler", "AGENTS.md", "_site", "docs", "functions", "matrix", "node_modules", "package.json", "package-lock.json", "README.md", "scripts", "skills", "standard"]);
 // Coordinator runbooks: kept in the repository, never published.
 const UNPUBLISHED = /^forward-tests.*\.md$/;
 
