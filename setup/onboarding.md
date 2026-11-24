@@ -8,13 +8,13 @@ Give any AI agent this page, and it sets you up so it can act for you in your ow
 
 > Fetch https://agents.tinycloud.xyz/onboarding.md with curl and follow it. Set me up with TinyCloud.
 
-- **You approve:** two OpenKey screens. The first signs you in, or creates your account, and lets the agent read, change and delete your apps' data for the time you choose on the approval screen, up to 30 days. The second lets it see which spaces and apps you have, read-only, for the time you choose on the approval screen, up to 30 days. Each screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
+- **You approve:** one OpenKey screen. It signs you in, or creates your account, and lets the agent read, change and delete your apps' data and see which spaces and apps you have, read-only. The approval lasts up to 30 days. The screen shows exactly what it grants before you approve. There's no code to send back: tell your agent when you've approved.
 - **Then:** the agent continues with your request. If it needs more, it asks you on another OpenKey screen.
 - **Undo:** see [Undo](#undo).
 
 ## How this works
 
-The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves two OpenKey screens on any device. Each short link names a signed request; only the requesting CLI can collect and verify the encrypted result. The agent sends the link, and reruns the command when the owner next writes. No pasted code or localhost callback is needed, including from a phone or a remote agent. The owner tells the agent when approval is complete; hosted MCP uses approval links too.
+The agent's TinyCloud CLI makes a key on the computer it runs on: the owner's computer, or the agent's own workspace. The owner approves one OpenKey screen on any device. Each short link names a signed request; only the requesting CLI can collect and verify the encrypted result. The agent sends the link, and reruns the command when the owner next writes. No pasted code or localhost callback is needed, including from a phone or a remote agent. The owner tells the agent when approval is complete; hosted MCP uses approval links too.
 
 After an interruption, rerun the same command with the same profile to resume the pending approval. The owner can revoke a grant at https://account.tinycloud.xyz/delegations.
 
@@ -52,19 +52,19 @@ TC='<TC_BIN>'
 "$TC" onboard --help | grep -qF -- --timeout && echo ONBOARD_READY
 ```
 
-**CLI rule (stable `1.8.0`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.8.0`, and stop. Any other older CLI: step 2 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
+**CLI rule (stable `1.9.1`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.9.1`, and stop. Any other older CLI: step 2 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.
 
-**2. Run onboarding.** It asks for both approvals, step 1 first, then step 2. It uses the selected default profile, or `TC_PROFILE` if set. Run this in the foreground, as its own shell call. Each run prints the pending link and exits, unless the owner has already approved; a rerun resumes the same link, and a resumed run can spend up to about 10 seconds checking the approval:
+**2. Run onboarding.** It asks for one approval. It uses the selected default profile, or `TC_PROFILE` if set. Run this in the foreground, as its own shell call. Each run prints the pending link and exits, unless the owner has approved; a rerun resumes the same link, and a resumed run can spend up to about 10 seconds checking the approval:
 
 ```sh
 TC='<TC_BIN>'
 V=$("$TC" --version)
 [ -n "$V" ] || { echo "TC_NOT_FOUND: $TC doesn't run; follow https://agents.tinycloud.xyz/connect for this client or set TC_BIN" >&2; exit 1; }
-if printf '%s\n' "$V" | awk -F. -v p=1.8.0 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
+if printf '%s\n' "$V" | awk -F. -v p=1.9.1 '{split(p,q,".");for(i=1;i<4;i++){n=$i+0;if(n!=q[i]+0)exit(n>q[i]+0)};exit($3!~/^[0-9]+-/)}'; then
   O=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
   if [ -z "$O" ] && [ -r "$H" ]; then O=$(node "$H" get TC_BIN) || O=; fi
   [ -z "$O" ] || ! node -e 'const{realpathSync:r}=require("fs"),[f,d]=process.argv.slice(1),i=(a,b)=>a.startsWith(b+"/");let x=i(f,d);try{x=x||i(r(f),r(d))}catch{}process.exit(x?0:1)' "$O" "$HOME/.local/share/tinycloud/cli" || O=
-  if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.8.0; keeping this operator-selected CLI"
+  if [ "$TC" = "$O" ]; then M="TC_OLDER $V $TC is older than the pinned 1.9.1; keeping this operator-selected CLI"
   else M="CLI_OLDER $V $TC: this CLI is older than this skill needs. Stop and tell the owner what it printed."; fi
   echo "$M" >&2; exit 1
 fi
@@ -87,11 +87,11 @@ exit "$RC"
 
 Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints its final status lines. Do what a `NEXT:` line says. `ONBOARD_EXIT <code>` means: use "If something goes wrong" below and the [shared table](#exit-codes-and-owner-lines). Run the block again until it exits 0, and go by its exit code each time.
 
-**Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.** The owner hasn't approved yet. The object has `step` (1 or 2), `of` (2), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Step 2's link appears only after the owner approves step 1. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve, then tell me." Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval. Before the first link, say this text word for word:
+**Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.** The owner hasn't approved yet. The object has `step` (1), `of` (1), `approvalUrl` (the link) and `expiresAt`; stderr shows the same link on the line after `Approve in OpenKey (open the complete link):`. Send each new link as the **complete URL on its own line** (do not shorten, re-encode, split or strip its fragment), followed by: "Open this link and approve, then tell me." Then end your turn. When the owner next writes to you, run the block again: the command itself sees the approval. Before the first link, say this text word for word:
 
-> I'll set up TinyCloud so I can act for you. OpenKey (openkey.so) is TinyCloud's sign-in service, where you approve my access. Your apps, like a todo list or meal log, keep their data in TinyCloud spaces you control. You'll approve two OpenKey screens: first, sign in (or create your account) and let me read, change and delete your apps' data; then let me see which spaces and apps you have, read-only. On each screen you choose how long the approval lasts, up to 30 days. Each approval names what it covers, and you can end it any time at account.tinycloud.xyz/delegations.
+> I'll set up TinyCloud so I can act for you. OpenKey (openkey.so) is TinyCloud's sign-in service, where you approve my access. Your apps, like a todo list or meal log, keep their data in TinyCloud spaces you control. You'll approve one OpenKey screen: sign in (or create your account) and let me read, change and delete your apps' data, and see which spaces and apps you have, read-only. The approval lasts up to 30 days. It names what it covers, and you can end it any time at account.tinycloud.xyz/delegations.
 
-When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message. When it shows a link you already sent, don't send it again; run the block again on the owner's next message. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
+When a rerun shows a link you already sent, don't send it again; run the block again on the owner's next message. This exit 8 is the normal wait, not a failure: it never counts toward a retry limit.
 
 - **Exit 0, stdout `"onboarded": true`:** retain the returned `profile`, `ownerDid` and `host`. If there is a `handoff.url`, say: "This opens your setup page in TinyCloud One, TinyCloud's own app. It shows your connected agent and app list. Don't share this link." Then relay the complete URL on its own line, once, only to the owner in this private conversation. If the link lasts less than 24 hours, tell them when it ends using `handoff.expiresAt`. Keep the URL out of notes, files, diagnostics and other commands. If there is a `handoff.message` instead, relay that line. If the CLI returned no `handoff` field, run `"$TC" space list` once: on exit 0 say "TinyCloud is set up."; on any other exit use the shared table. Then continue [the owner's goal](#the-owners-goal) with this profile. Do not request permissions it already has. Details: TC-3302
 - **The command stopped first** (a tool timeout, a restart): rerun the identical command/profile. It preserves completed approvals and shows the pending link again; if it's a link you already sent, don't send it again. If it says `PROFILE_LOCK_TIMEOUT`, wait 30 seconds and run it again.
@@ -100,8 +100,8 @@ Never run `onboard --code` in place of the link: onboarding's automatic links do
 
 **If something goes wrong:** exit codes go by the [shared table](#exit-codes-and-owner-lines), with `<what>` = "TinyCloud". These come first:
 
-- **`CLI_OLDER <version> <path>`:** the CLI is older than `1.8.0` and the block stopped before `onboard`. Stop and tell the owner what it printed.
-- **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.8.0`, and stop; don't replace it.
+- **`CLI_OLDER <version> <path>`:** the CLI is older than `1.9.1` and the block stopped before `onboard`. Stop and tell the owner what it printed.
+- **`TC_OLDER <version> <path>`:** the operator selected that older CLI. Tell the owner in one line that it is older than the required `1.9.1`, and stop; don't replace it.
 - **Your client asks the owner to confirm the command:** show them the step and this reply to send: "Go ahead: run `tinycloud onboard` to set up TinyCloud." Run it again once they agree. Don't change their settings or run it another way.
 - **Exit 6:** a network error. Follow the shared table: run the same command again once, without a new link or reporting it to the owner; if it exits 6 again, tell the owner exactly "I can't set up TinyCloud right now. Please ask me again later.", then put the stderr error code on its own line and stop.
 - **`SPACE_SETUP_PENDING`:** a new account's storage can take a moment after the first approval. Tell the owner, wait a minute, and run the same command again. Don't ask for another approval.

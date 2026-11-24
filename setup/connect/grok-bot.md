@@ -11,10 +11,8 @@ The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.
 
 Send the owner this message, then the link:
 
-> I'll set up TinyCloud so I can act for you. You'll approve two screens in OpenKey, TinyCloud's sign-in service:
-> 1. Sign in, then let me read, change and delete your apps' data.
-> 2. Let me see which spaces and apps you have, read-only.
-> On each screen you choose how long the approval lasts, up to 30 days. You can end either approval at account.tinycloud.xyz/delegations.
+> I'll set up TinyCloud so I can act for you. You'll approve one screen in OpenKey, TinyCloud's sign-in service: sign in, then let me read, change and delete your apps' data, and see which spaces and apps you have, read-only.
+> The approval lasts up to 30 days. You can end it at account.tinycloud.xyz/delegations.
 
 `npx --prefix "$HOME" -y -p @tinycloud/cli@{{CLI_VERSION}} tinycloud onboard --timeout 1s`
 

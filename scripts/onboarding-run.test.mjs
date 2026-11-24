@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 
 // TC-2238: /onboarding runs `onboard --timeout 1s` in the foreground; each run prints the pending link and exits, and the agent
-// sends the link and reruns when the owner next writes (js-sdk #822). The real-CLI tests run the pinned devDependency (1.8.0, with #822 and #824).
+// sends the link and reruns when the owner next writes (js-sdk #822). The real-CLI tests run the pinned devDependency (1.9.1, with #822 and #824).
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(root, "node_modules/.bin/tinycloud");
 const guide = readFileSync(join(root, "setup/onboarding.md"), "utf8");
@@ -49,9 +49,8 @@ test("every onboarding run in the guide is bounded; only --help and the owner's 
 test("exit 8 with a pending link: send each new link at once, rerun, never resend, never count it as a retry", () => {
   const pending = run.split("**Exit 8 is pending only when stdout contains a non-empty `pending.approvalUrl`.**")[1]?.split("\n- **Exit 0")[0];
   assert.ok(pending, "the guide must handle exit 8 with a pending object");
-  assert.match(pending, /`step` \(1 or 2\), `of` \(2\), `approvalUrl` \(the link\) and `expiresAt`/);
-  assert.match(pending, /When a rerun shows step 2's link, send it in your reply at once, without the step-1 text, and run the block again on the owner's next message\./);
-  assert.match(pending, /When it shows a link you already sent, don't send it again; run the block again on the owner's next message\./);
+  assert.match(pending, /`step` \(1\), `of` \(1\), `approvalUrl` \(the link\) and `expiresAt`/);
+  assert.match(pending, /When a rerun shows a link you already sent, don't send it again; run the block again on the owner's next message\./);
   assert.match(pending, /never counts toward a retry limit/);
   for (const code of ["SPACE_SETUP_PENDING", "PROFILE_NOT_ONBOARDABLE"]) assert.ok(run.includes(`**\`${code}\``), code);
   // Standard C's expiry, exit-6 and exit-8 prose is supplied by the shared standard block.
@@ -149,7 +148,7 @@ test("the real CLI's first run exits 8 with step 1's pending link, and a rerun w
   const { pending } = JSON.parse(cliStdout(first));
   assert.equal(lastLine(first), next(pending.approvalUrl));
   assert.deepEqual(Object.keys(pending), ["step", "of", "approvalUrl", "expiresAt"]);
-  assert.deepEqual({ step: pending.step, of: pending.of }, { step: 1, of: 2 });
+  assert.deepEqual({ step: pending.step, of: pending.of }, { step: 1, of: 1 });
   assert.match(pending.approvalUrl, /^https:\/\/openkey\.example\.invalid\/a\/[a-z2-7]{26}#v=4&/);
   assert.ok(Date.parse(pending.expiresAt) > Date.now(), pending.expiresAt);
   const lines = first.stderr.split("\n");

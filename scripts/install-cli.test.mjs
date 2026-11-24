@@ -81,7 +81,7 @@ test("user PATH append preserves long raw values and is idempotent across Window
 });
 
 test("automatic reuse needs the pinned release and never downgrades a newer one", () => {
-  assert.equal(CLI_VERSION, "1.8.0");
+  assert.equal(CLI_VERSION, "1.9.1");
   assert.equal(compatible("1.5.0-beta.23"), false);
   assert.equal(compatible("1.5.2"), false);
   assert.equal(compatible("1.5.9"), false);
@@ -91,11 +91,13 @@ test("automatic reuse needs the pinned release and never downgrades a newer one"
   assert.equal(compatible("1.6.4"), false);
   assert.equal(compatible("1.6.5"), false);
   assert.equal(compatible("1.7.0"), false);
-  assert.equal(compatible("1.8.0-beta.0"), false);
-  assert.equal(compatible("1.8.0-beta.16"), false);
-  assert.equal(compatible("1.8.0-rc.0"), false);
+  assert.equal(compatible("1.8.0"), false);
+  assert.equal(compatible("1.9.0"), false);
+  assert.equal(compatible("1.9.1-beta.0"), false);
+  assert.equal(compatible("1.9.1-beta.21"), false);
+  assert.equal(compatible("1.9.1-rc.0"), false);
   assert.equal(compatible(CLI_VERSION), true);
-  assert.equal(compatible("1.8.1"), true);
+  assert.equal(compatible("1.9.2"), true);
   assert.equal(compatible("2.0.0"), true);
   assert.equal(compatible("not-a-cli-version"), false);
 });
@@ -239,7 +241,7 @@ test("an older CLI on PATH is left alone while the private pin is installed and 
   assert.deepEqual(readFileSync(target), before);
 });
 
-for (const version of [CLI_VERSION, "1.8.1", "1.9.0"]) test(`a private CLI at ${version} is reused without npm or a downgrade`, { skip: windows }, () => {
+for (const version of [CLI_VERSION, "1.9.2", "1.10.0"]) test(`a private CLI at ${version} is reused without npm or a downgrade`, { skip: windows }, () => {
   const dir = home();
   const bin = privateCli(dir, version);
   const log = [];
@@ -257,7 +259,7 @@ for (const version of ["1.5.9", "1.6.0", "1.6.2", "1.6.2-beta.2", "1.6.7", "1.7.
   assert.deepEqual(npmCalls(dir).map((args) => args.at(-1)), [`@tinycloud/cli@${CLI_VERSION}`]);
 });
 
-for (const version of ["1.8.1", "1.9.0"]) test(`a newer CLI (${version}) on PATH is reused: nothing is installed and its files stay`, { skip: windows }, () => {
+for (const version of ["1.9.2", "1.10.0"]) test(`a newer CLI (${version}) on PATH is reused: nothing is installed and its files stay`, { skip: windows }, () => {
   const dir = home();
   const global = join(dir, "global");
   const target = join(global, "lib/node_modules/@tinycloud/cli/cli.js");
@@ -272,7 +274,7 @@ for (const version of ["1.8.1", "1.9.0"]) test(`a newer CLI (${version}) on PATH
   assert.deepEqual(readFileSync(target), before);
 });
 
-for (const [version, kept] of [["1.5.9", false], ["1.6.0", false], ["1.6.2", false], ["1.6.2-beta.2", false], ["1.6.3", false], ["1.6.4", false], ["1.6.5", false], ["1.6.7", false], ["1.7.0", false], [CLI_VERSION, true], ["1.8.1", true], ["1.9.0", true]]) test(`an operator TC_BIN at ${version} is kept untouched${kept ? "" : " with a TC_OLDER notice"}`, { skip: windows }, () => {
+for (const [version, kept] of [["1.5.9", false], ["1.6.0", false], ["1.6.2", false], ["1.6.2-beta.2", false], ["1.6.3", false], ["1.6.4", false], ["1.6.5", false], ["1.6.7", false], ["1.7.0", false], ["1.8.0", false], ["1.9.0", false], [CLI_VERSION, true], ["1.9.2", true], ["1.10.0", true]]) test(`an operator TC_BIN at ${version} is kept untouched${kept ? "" : " with a TC_OLDER notice"}`, { skip: windows }, () => {
   const dir = home();
   const operator = join(dir, "operator", "tinycloud");
   executable(operator, version);
@@ -287,10 +289,10 @@ for (const [version, kept] of [["1.5.9", false], ["1.6.0", false], ["1.6.2", fal
 
 test("resolver reuses a newer private CLI without creating launchers or installations", () => {
   const dir = home();
-  const bin = privateCli(dir, "1.8.1");
+  const bin = privateCli(dir, "1.9.2");
   const selected = resolveCli({ env: envFor(dir), searchPath: "" });
   assert.equal(selected.bin, bin);
-  assert.equal(selected.version, "1.8.1");
+  assert.equal(selected.version, "1.9.2");
   assert.equal(selected.source, "private");
   assert.equal(existsSync(join(dir, ".local/bin")), false);
 });
@@ -442,10 +444,10 @@ test("private install refuses to overwrite an unrelated executable", { skip: win
 test("--needs-install keeps a newer private copy, asks for the pin in an empty home, and refuses a private folder holding other packages, changing nothing", { skip: windows }, () => {
   const run = (dir) => spawnSync(process.execPath, [installer, "--needs-install"], { env: { ...envFor(dir), PATH: "" }, encoding: "utf8" });
   const newer = home();
-  const bin = privateCli(newer, "1.8.1");
+  const bin = privateCli(newer, "1.9.2");
   let result = run(newer);
   assert.equal(result.status, 1, result.stderr);
-  assert.equal(result.stdout.trim(), `TC_INSTALL_NOT_NEEDED 1.8.1 ${bin}`);
+  assert.equal(result.stdout.trim(), `TC_INSTALL_NOT_NEEDED 1.9.2 ${bin}`);
   const empty = home();
   result = run(empty);
   assert.equal(result.status, 0, result.stderr);

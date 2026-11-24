@@ -36,7 +36,7 @@ test("CLI setup respects an operator binary without replacing a conflicting tc",
   const result = spawnSync("sh", [join(root, "_site/skills/install-cli.sh")], { encoding: "utf8", env: { HOME: dir, TC_BIN: selected, PATH: `${bin}:${process.env.PATH}` } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /TC_CONFLICT tc other/);
-  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.8\.0; keeping this operator-selected CLI$/m);
+  assert.match(result.stdout, /^TC_OLDER 1\.5\.0 \S+custom-cli is older than the pinned 1\.9\.1; keeping this operator-selected CLI$/m);
   assert.deepEqual(readFileSync(conflicting), original);
   assert.equal(existsSync(join(dir, ".local/share/tinycloud/cli")), false);
 });
@@ -82,10 +82,8 @@ const minimalClients = new Map([
 const cliRawText = "Read this page as raw text, not a summary; if your fetch tool summarizes it, fetch this page's `.md` URL itself.";
 const cliOwnerIntro = `Send the owner this message, then the link:
 
-> I'll set up TinyCloud so I can act for you. You'll approve two screens in OpenKey, TinyCloud's sign-in service:
-> 1. Sign in, then let me read, change and delete your apps' data.
-> 2. Let me see which spaces and apps you have, read-only.
-> On each screen you choose how long the approval lasts, up to 30 days. You can end either approval at account.tinycloud.xyz/delegations.`;
+> I'll set up TinyCloud so I can act for you. You'll approve one screen in OpenKey, TinyCloud's sign-in service: sign in, then let me read, change and delete your apps' data, and see which spaces and apps you have, read-only.
+> The approval lasts up to 30 days. You can end it at account.tinycloud.xyz/delegations.`;
 const cliRouteOn = "When it prints `\"onboarded\": true` or `Onboarded:`, fetch the guide for the owner's request and follow it: records, meals, weight, workouts or todos, https://agents.tinycloud.xyz/apps; sharing, https://agents.tinycloud.xyz/share; publishing, https://agents.tinycloud.xyz/publish; API keys or secrets, https://agents.tinycloud.xyz/secrets; meetings, https://agents.tinycloud.xyz/chat; the Feed, https://agents.tinycloud.xyz/feed; another person's agent, https://agents.tinycloud.xyz/courier; anything else, https://agents.tinycloud.xyz/setup (skip its /onboarding step: that's done).";
 const existingClients = ["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes"];
 
@@ -134,12 +132,12 @@ test("each new CLI page is a minimal progressive entry with validated literal co
       expected.use,
       "The TinyCloud CLI is TinyCloud's own tool, published on npm as `@tinycloud/cli`.",
       cliOwnerIntro,
-      "`npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.8.0 tinycloud onboard --timeout 1s`",
+      "`npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.9.1 tinycloud onboard --timeout 1s`",
       "Follow what it prints.",
-      "Wherever it says `tinycloud`, run `npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.8.0 tinycloud` instead.",
+      "Wherever it says `tinycloud`, run `npx --prefix \"$HOME\" -y -p @tinycloud/cli@1.9.1 tinycloud` instead.",
       cliRouteOn,
     ]) assert.ok(text.includes(`\n${line}\n`) || text.endsWith(`\n${line}\n`), `${route}: ${line}`);
-    assert.ok(text.includes(`${cliOwnerIntro}\n\n\`npx --prefix "$HOME" -y -p @tinycloud/cli@1.8.0 tinycloud onboard --timeout 1s\``), `${route}: owner intro directly above onboard`);
+    assert.ok(text.includes(`${cliOwnerIntro}\n\n\`npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.1 tinycloud onboard --timeout 1s\``), `${route}: owner intro directly above onboard`);
     const source = readFileSync(join(root, "setup/connect", `${route}.md`), "utf8");
     assert.equal(source.split("@{{CLI_VERSION}}").length - 1, 2, `${route}: version token`);
     assert.doesNotMatch(text.split("\n").slice(1).join("\n"), /\b(?:curl|sudo)\b|install\.js/, `${route}: install mechanics`);
@@ -533,9 +531,9 @@ test("Courier selection resolves saved TC_BIN before approval and preserves proc
     const saved = scenario === "private" ? join(dir, ".local/share/tinycloud/cli/node_modules/.bin/tinycloud") : join(bin, "saved-cli");
     const override = join(bin, "process-cli");
     mkdirSync(dirname(saved), { recursive: true });
-    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.2" : "1.8.0"} ;; esac`);
-    executable(override, 'case "$*" in --version) echo 1.8.0 ;; esac');
-    executable(join(bin, "npx"), `case "$*" in "--prefix ${dir} -y -p @tinycloud/cli@1.8.0 tinycloud --version") echo 1.8.0 ;; *) exit 90 ;; esac`);
+    executable(saved, `case "$*" in --version) echo ${scenario === "old" || scenario === "private" ? "1.5.2" : "1.9.1"} ;; esac`);
+    executable(override, 'case "$*" in --version) echo 1.9.1 ;; esac');
+    executable(join(bin, "npx"), `case "$*" in "--prefix ${dir} -y -p @tinycloud/cli@1.9.1 tinycloud --version") echo 1.9.1 ;; *) exit 90 ;; esac`);
     const envFile = join(dir, "owner/agent.env");
     const config = join(dir, ".config/tinycloud");
     mkdirSync(config, { recursive: true, mode: 0o700 });
@@ -572,7 +570,7 @@ test("Courier preview resolver preserves an explicitly selected binary and check
     mkdirSync(join(dir, ".agents/skills/courier"), { recursive: true });
     writeFileSync(join(dir, ".agents/skills/courier/SKILL.md"), "");
     const body = `case "$*" in
-      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.2" : "1.8.0"}`} ;;
+      --version) ${scenario === "broken" ? "exit 23" : `echo ${scenario === "old" ? "1.5.2" : "1.9.1"}`} ;;
       "courier --help") printf '%s\\n' '  start [--new subject | --session id]' '  invite --session id --mode same-owner|anyone --consent' '  invite serve id' ${scenario === "no-join" ? "" : "'  join link --consent'"} ;;
       *) exit 90 ;;
     esac`;
@@ -602,7 +600,7 @@ test("Courier without TC_BIN uses the pinned home-prefix CLI for probes and setu
 printf '%s\\n' "$*" >> ${JSON.stringify(calls)}
 shift 6
 case "$*" in
-  --version) echo 1.8.0 ;;
+  --version) echo 1.9.1 ;;
   "courier --help") printf '%s\\n' '  start ' '  invite --session ' '  invite serve ' '  join ' ;;
   "courier init --request") echo '{"openkeyUrl":"https://openkey.so/a/test"}' ;;
   *) exit 90 ;;
@@ -612,7 +610,7 @@ ${beforeApproval}
 ${cliCheck}
 ${setup}`, { HOME: dir, PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin` });
   assert.equal(result.status, 0, result.stderr);
-  const prefix = `--prefix ${dir} -y -p @tinycloud/cli@1.8.0 tinycloud`;
+  const prefix = `--prefix ${dir} -y -p @tinycloud/cli@1.9.1 tinycloud`;
   assert.deepEqual(readFileSync(calls, "utf8").trim().split("\n"), [
     `${prefix} --version`,
     `${prefix} --version`,
@@ -849,7 +847,7 @@ test("Courier invite block prints INVITATION_ID and a send-the-link NEXT line on
 test("the pinned CLI's Courier ends an unclaimed invite wait with exit 1 [invite-pending], and --wait is 1–604800 s", () => {
   const bundle = readFileSync(join(root, "node_modules/@tinycloud/cli/dist/courier-entry.js"), "utf8");
   assert.ok(bundle.includes('throw new CourierError("invite-pending", `No claim received. Resume with courier invite serve ${body.id}; the same invitation and winner reservation are preserved.`);'));
-  assert.ok(bundle.includes('throw new CourierError("invite-expired", "Invitation expired; no session was created or substituted.");'));
+  assert.ok(bundle.includes('throw new CourierError("invite-expired", `Invitation expired; no session was created or substituted.${hint}`);'));
   assert.ok(bundle.includes('throw new CourierError("invite-pending", "Issuer has not completed pairing yet. Ask them to resume invite serve, then join the same link; no different session was created.");'));
   assert.ok(bundle.includes('if (!Number.isInteger(value2) || value2 < 1 || value2 > 604800)'));
   assert.match(bundle, /console\.error\(`\$\{programName\(\)\}: \$\{info\.code \? `\[\$\{info\.code\}\] ` : ""\}\$\{info\.message\}`\);\n\s*return 1;/);
@@ -877,7 +875,7 @@ const requested = (issued, courierHome, surface) => {
 };
 // The real-CLI tests run the pinned CLI; COURIER_TEST_TC points them at a candidate build before a pin bump.
 const COURIER_CLI = process.env.COURIER_TEST_TC || join(root, "node_modules/.bin/tinycloud");
-// js-sdk #821 (TC-2300) adds `courier init --wait`; the pinned 1.8.0 has it. A COURIER_TEST_TC without it skips the real-CLI test.
+// js-sdk #821 (TC-2300) adds `courier init --wait`; the pinned 1.9.1 has it. A COURIER_TEST_TC without it skips the real-CLI test.
 const COURIER_SHORT_LINK = spawnSync(COURIER_CLI, ["courier", "--help"], { encoding: "utf8" }).stdout?.includes("init [--request | --wait") ?? false;
 const OPENKEY = "https://openkey.example.invalid";
 const LINKS_API = "https://links.example.invalid";

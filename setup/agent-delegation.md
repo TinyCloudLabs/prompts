@@ -4,7 +4,7 @@
 
 Use this when you (the granting agent) hold a TinyCloud grant and another agent needs part of it, and the two of you already have a private channel (for example a paired [Courier](courier.md) thread). It covers who sends what, how to issue the narrowest grant, how to check it, and how to end it.
 
-Both agents need the TinyCloud CLI ([`/cli`](tinycloud.md)). The commands below were run with `@tinycloud/cli` 1.9.0-beta.17 against `https://tee.node.tinycloud.xyz`; the pinned 1.8.0 has the same commands.
+Both agents need the TinyCloud CLI ([`/cli`](tinycloud.md)). The commands below were run with `@tinycloud/cli` 1.9.0-beta.17 against `https://tee.node.tinycloud.xyz`; the pinned 1.9.1 has the same commands.
 
 ## Rules
 
