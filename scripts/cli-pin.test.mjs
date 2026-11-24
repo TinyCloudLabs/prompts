@@ -43,6 +43,7 @@ const blocks = [
 // private: the agent's own install, found by the resolver; saved-private: agent.env names that private install;
 // process-private: a process TC_BIN names that private install (as /cli's PowerShell flow exports it);
 // process: an operator TC_BIN in the environment; saved: an operator TC_BIN in agent.env.
+// `failVersion`: true makes --version exit 1 with no output; a string makes it print that line, then exit 1.
 function fresh(block, where, version, failVersion = false) {
   const dir = join(work, `run-${++runs}`);
   const home = join(dir, "home");
@@ -55,7 +56,7 @@ function fresh(block, where, version, failVersion = false) {
   writeFileSync(bin, `#!/bin/sh
 echo "$*" >> ${JSON.stringify(calls)}
 case "$*" in
-  --version) ${failVersion ? "exit 1" : `echo ${version}`} ;;
+  --version) ${failVersion === true ? "exit 1" : failVersion ? `echo ${JSON.stringify(failVersion)}; exit 1` : `echo ${version}`} ;;
   "secrets get --help") echo '  --raw' ;;
   "auth login --help") echo '  --owner --expiry' ;;
   "secrets wait --help") echo '  --timeout' ;;
@@ -137,6 +138,15 @@ for (const block of blocks) {
   test(`${block.name}: an operator TC_BIN that doesn't run for --version prints TC_NOT_FOUND`, () => {
     for (const where of ["process", "saved"]) {
       const { bin, result, calls } = fresh(block, where, CLI_VERSION, true);
+      assert.notEqual(result.status, 0, where);
+      assert.equal(calls, "--version\n", where);
+      assert.match(result.stdout + result.stderr, new RegExp(`TC_NOT_FOUND: ${bin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} doesn't run; follow https://agents\\.tinycloud\\.xyz/connect for this client or set TC_BIN`), where);
+      assert.doesNotMatch(result.stdout + result.stderr, /TC_OLDER|CLI_OLDER|CLI_OK|STALE/, where);
+    }
+  });
+  test(`${block.name}: a CLI whose --version exits non-zero with output prints TC_NOT_FOUND, not an older CLI`, () => {
+    for (const where of ["process", "saved", "private"]) {
+      const { bin, result, calls } = fresh(block, where, CLI_VERSION, "Error: Cannot find module 'commander'");
       assert.notEqual(result.status, 0, where);
       assert.equal(calls, "--version\n", where);
       assert.match(result.stdout + result.stderr, new RegExp(`TC_NOT_FOUND: ${bin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} doesn't run; follow https://agents\\.tinycloud\\.xyz/connect for this client or set TC_BIN`), where);
