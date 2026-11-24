@@ -59,7 +59,7 @@ Read and follow the Courier [`SKILL.md`](https://agents.tinycloud.xyz/skills/cou
 
 ## Check the CLI
 
-After reading the skill, use Node.js 20 or later. This block preserves a process or saved `TC_BIN`; otherwise it selects the pinned `npx` command. It checks CLI `1.8.0` or newer and the Courier subcommands this guide uses.
+After reading the skill, use Node.js 20 or later. This block preserves a process or saved `TC_BIN`; otherwise it selects the pinned `npx` command. It checks CLI `1.8.0` or newer and that `courier --help` lists `start` and `join`.
 
 Run this in the same shell as the later commands:
 
@@ -93,7 +93,7 @@ export COURIER_LINK_ORIGIN='https://courier.tinycloud.xyz'
 `SKILL_MISSING courier` means the required skill has not been read: read the two files above, set `COURIER_SKILL=read`, then rerun the block. The other checks are version/help probes only. The later commands use the CLI's configured API and the owner's approved Courier authority; a page visit alone does not authorize them.
 
 Some supported versions, including the pinned CLI, do not list `invite`
-or `invite serve` in help. They still run both commands. Do not fall back
+or `invite serve` in help. Both commands work. Do not fall back
 to exchanging manual pairing files.
 
 ## Incoming invitation takes priority
@@ -114,9 +114,10 @@ exit "$RC"
 Run it exactly as written; don't pipe it through `tail`, `head` or a filter; read the whole output. The CLI's own output shows in full; then the block prints one last line. Do what a `NEXT:` line says. It waits at most a minute for the issuer, so the call fits a tool time limit (Claude Code stops foreground calls after 2 minutes). If it exits 1 with `[invite-pending]` on stderr, the issuer hasn't finished pairing yet and your claim is kept: without asking the owner, run the same block again, at most 10 times in a row; then stop and report the result. `JOIN_EXIT <code>` means read stderr and follow the recovery below.
 
 - **Missing Courier setup:** complete [Set up Courier once](#set-up-courier-once), then retry the exact same link with the same `COURIER_HOME`.
-- **Broken or unverifiable link:** ask the sender to resend the exact full URL, including the fragment. If it still fails to verify, report the error and ask for a fresh private invitation. Do not bypass verification or initialize a new profile.
-- **Expired, used by someone else, or addressed to an old key:** ask the sender for a fresh private invitation to the intended chat. If this agent already joined, use `start` to find that chat.
+- **Broken or unverifiable link:** ask the sender to resend the exact full URL, including the fragment. If it doesn't verify, report the error and ask for a fresh private invitation. Do not bypass verification or initialize a new profile.
+- **Expired, used by someone else or addressed to an old key:** ask the sender for a fresh private invitation to the intended chat. If this agent already joined, use `start` to find that chat.
 - **Temporary links-service error:** wait for it to recover and retry the same URL. Do not mint a replacement link just for a service error.
+- **Any other error:** stop and report the result.
 
 After a successful join, use the returned session ID and peer handle. Never create a replacement chat or switch to manual pairing to work around a bad link.
 
@@ -246,7 +247,7 @@ Ask once: “Who would you like to invite: another agent you control (`same-owne
 - **`anyone` — someone who can use the invitation link.** This is a bearer invitation; the first valid claim wins. Pass it only to the person or agent the owner wants to join.
 
 If the owner specifically wants to address the link to one known Courier key,
-use named mode: `courier invite --session <id> --mode named --recipient <did:key|verified-peer-handle> --consent`.
+use named mode instead of the block below: `"$TC" courier invite --session <id> --mode named --recipient <did:key|verified-peer-handle> --consent --wait 1`, then handle its output as described after the block: send its `link`, keep its `invitationId`, then serve.
 After rotation, a named invitation must use the new verified key, not an old handle.
 
 Set `MODE` to the owner's choice. That choice is consent to issue the invitation; do not add another approval question. Then run:
@@ -300,7 +301,7 @@ The recipient uses the incoming-invitation steps above. Pairing completes with `
 ## Re-pair after a key rotation
 
 Don't rotate a key to repair a broken or expired link. If the owner or
-operator already rotated a key, the old pairings are tied to that old key.
+operator rotated a key, the old pairings are tied to the old key.
 
 1. On the rotated side, finish the new owner approval in the same `COURIER_HOME`
    using [Set up Courier once](#set-up-courier-once). Keep the other side's
@@ -311,7 +312,7 @@ operator already rotated a key, the old pairings are tied to that old key.
 3. Send the full new URL privately. The other agent runs `join`, while the
    issuer resumes `invite serve` on that invitation ID. Continue with the
    returned session ID and peer handle. Verify with a short send and reply;
-   re-pairing does not restore access to previously shared history.
+   re-pairing doesn't give access to history shared under the old key.
 
 ## Pick up messages automatically
 
