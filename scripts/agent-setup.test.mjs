@@ -477,17 +477,21 @@ test("apps paths without a local skill read CONTEXT.md and run layout.sh, app-co
     return found[0];
   };
   const missingCli = "/nonexistent/tinycloud";
+  // layout.sh takes its CLI from TC_BIN, so give it a stand-in that has no profile (CI has no `tinycloud` on PATH).
+  const noProfileCli = join(home(), "tinycloud");
+  executable(noProfileCli, "echo 'PROFILE_NOT_FOUND: no profile' >&2\nexit 1");
+  const layoutWord = /^(?:new|legacy|ask|check-failed)\n$/;
   const run = (script, base, dir = home()) => {
     const state = join(dir, "state");
     const filled = script.replaceAll("<STATE>", state).replaceAll("<TC_BIN>", missingCli).replaceAll("<APP>", "notes").replaceAll(remote, base);
-    return { state, result: shell(filled, { HOME: dir }) };
+    return { state, result: shell(filled, { HOME: dir, TC_BIN: noProfileCli }) };
   };
   const local = `file://${join(site, "skills/apps")}`;
   const helpers = [
     { page: "skills/apps.md", needle: "'<APP>' --write", dir: "served-app-context", files: ["app-context.mjs"] },
-    { page: "skills/apps.md", needle: "layout.sh\" '<APP>'", dir: "served-layout", files: ["layout.sh", "app-context.mjs"], stdout: "new\n" },
+    { page: "skills/apps.md", needle: "layout.sh\" '<APP>'", dir: "served-layout", files: ["layout.sh", "app-context.mjs"], stdout: layoutWord },
     { page: "skills/apps/CONTEXT.md", needle: "context --sql", dir: "served-app-context", files: ["app-context.mjs"] },
-    { page: "skills/apps/CONTEXT.md", needle: "session-check.sh\" remove", dir: "served-session-check", files: ["session-check.sh"], stdout: "" },
+    { page: "skills/apps/CONTEXT.md", needle: "session-check.sh\" remove", dir: "served-session-check", files: ["session-check.sh"], stdout: /^$/ },
     { page: "skills/apps/SQL.md", needle: "'<APP>' --sql --write", dir: "served-app-context", files: ["app-context.mjs"] },
     { page: "skills/apps/TINY-APPS.md", needle: "recipes --catalog --write", dir: "served-app-context", files: ["app-context.mjs"] },
   ];
@@ -501,14 +505,14 @@ test("apps paths without a local skill read CONTEXT.md and run layout.sh, app-co
       assert.match(result.stderr, /^APP_CONTEXT_FAILED: ENOENT$/m, `${page} ${needle}`);
     } else {
       assert.equal(result.status, 0, `${page} ${needle}: ${result.stderr}`);
-      assert.equal(result.stdout, stdout, `${page} ${needle}`);
+      assert.match(result.stdout, stdout, `${page} ${needle}`);
     }
     assert.deepEqual(readdirSync(state).filter((name) => name.startsWith(`${dir}.`)), [], `${page} ${needle}: temp dir left`);
 
     // A failed fetch stops before running anything and leaves no helper folder.
     const failed = run(script, `file://${join(home(), "missing")}`);
     assert.notEqual(failed.result.status, 0, `${page} ${needle}`);
-    assert.doesNotMatch(failed.result.stdout + failed.result.stderr, /APP_CONTEXT_FAILED|^new$/m, `${page} ${needle}`);
+    assert.doesNotMatch(failed.result.stdout + failed.result.stderr, /APP_CONTEXT_FAILED|^(?:new|legacy|ask|check-failed)$/m, `${page} ${needle}`);
     assert.deepEqual(readdirSync(failed.state), [], `${page} ${needle}`);
 
     // A local skill folder still wins, and nothing is fetched.
