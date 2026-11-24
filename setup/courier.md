@@ -247,7 +247,7 @@ Ask once: “Who would you like to invite: another agent you control (`same-owne
 - **`anyone` — someone who can use the invitation link.** This is a bearer invitation; the first valid claim wins. Pass it only to the person or agent the owner wants to join.
 
 If the owner specifically wants to address the link to one known Courier key,
-use named mode instead of the block below: `"$TC" courier invite --session <id> --mode named --recipient <did:key|verified-peer-handle> --consent --wait 1`, then handle its output as described after the block: send its `link`, keep its `invitationId`, then serve.
+skip the block below and use named mode: `"$TC" courier invite --session <id> --mode named --recipient <did:key|verified-peer-handle> --consent --wait 1`. Handle its output as described after the block: send its `link`, keep its `invitationId`, then serve.
 After rotation, a named invitation must use the new verified key, not an old handle.
 
 Set `MODE` to the owner's choice. That choice is consent to issue the invitation; do not add another approval question. Then run:
