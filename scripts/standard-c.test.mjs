@@ -209,7 +209,7 @@ exit 90
       env: {
         ...process.env,
         HOME: home,
-        PENDING_JSON: JSON.stringify({ pending: { step: 1, of: 2, approvalUrl: "https://openkey.example/link", expiresAt } }),
+        PENDING_JSON: JSON.stringify({ pending: { step: 1, of: 1, approvalUrl: "https://openkey.example/link", expiresAt } }),
       },
     });
     assert.equal(result.status, 3, expiresAt);
