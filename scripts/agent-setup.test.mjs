@@ -196,8 +196,8 @@ test("tc-apps onboards generic apps first and keeps Health Log on its dedicated 
 //   a client-selection list, or a shell fallback; inline `FILE.md` references resolve inside a skill;
 // - shell inputs are literal .md/.sh/.mjs/.js/.json names on local-path probe/read/run lines;
 // - an input is available when an earlier block on its page creates it or its block has a built same-origin fallback.
-// Conditional undo/migration branches are allow-listed below with one-line reasons. TC-3559's existing
-// fresh-machine gaps have their own list, so any newly unmatched input still fails this test.
+// Conditional undo/migration branches are allow-listed below with one-line reasons. Known fresh-machine gaps
+// go in their own list (empty since TC-3559), so any newly unmatched input still fails this test.
 test("every home-page hero route supplies the local files its shell blocks read", () => {
   const origin = "https://agents.tinycloud.xyz";
   const work = home();
@@ -357,15 +357,7 @@ test("every home-page hero route supplies the local files its shell blocks read"
     }
     return false;
   };
-  const knownGaps = [
-    { page: "skills/apps/TINY-APPS.md", file: "app-context.mjs", block: "recipes --catalog --write", reason: "TC-3559: Recipes has no served app-context.mjs fallback." },
-    { page: "skills/apps/CONTEXT.md", file: "app-context.mjs", block: "context --sql", reason: "TC-3559: context SQL check has no served app-context.mjs fallback." },
-    { page: "skills/apps/CONTEXT.md", file: "session-check.sh", block: "session-check.sh\" remove", reason: "TC-3559: context cleanup has no served session-check.sh fallback." },
-    { page: "skills/apps/SQL.md", file: "app-context.mjs", block: "'<APP>' --sql --write", reason: "TC-3559: SQL setup has no served app-context.mjs fallback." },
-    { page: "skills/apps.md", file: "app-context.mjs", block: "'<APP>' --write", reason: "TC-3559: generic app setup has no served app-context.mjs fallback." },
-    { page: "skills/apps.md", file: "CONTEXT.md", block: "cat \"$d/CONTEXT.md\"", reason: "TC-3559: context dispatch has no served CONTEXT.md fallback." },
-    { page: "skills/apps.md", file: "layout.sh", block: "layout.sh\" '<APP>'", reason: "TC-3559: layout detection has no served layout.sh fallback." },
-  ];
+  const knownGaps = [];
   const optional = [
     { page: "apps", file: "owner-undo.sh", block: "OWNER_UNDO_PID", reason: "Undo is best-effort when the optional local helper is installed." },
     { page: "apps", file: "session-check.sh", block: "session-check.sh\" remove", reason: "Undo removes optional local session instructions only when installed." },
@@ -472,6 +464,69 @@ test("apps route reaches every file needed for a first meal without a local skil
   const firstMealPath = catalog.split("\n## 5. The generic store\n")[0];
   const referencedHelpers = new Set([...firstMealPath.matchAll(/\b([a-z][a-z-]+\.(?:mjs|sh))\b/g)].map((match) => match[1]));
   assert.deepEqual(referencedHelpers, new Set(["announce.sh", "app-context.mjs", "healthlog-context.mjs", "owner-grant.sh"]));
+});
+
+test("apps paths without a local skill read CONTEXT.md and run layout.sh, app-context.mjs and session-check.sh from the served files", () => {
+  const site = join(root, "_site");
+  const remote = "https://agents.tinycloud.xyz/skills/apps";
+  const pages = Object.fromEntries(["skills/apps.md", "skills/apps/CONTEXT.md", "skills/apps/SQL.md", "skills/apps/TINY-APPS.md"]
+    .map((page) => [page, readFileSync(join(site, page), "utf8")]));
+  const servedBlock = (page, needle) => {
+    const found = [...pages[page].matchAll(/^ {0,3}```sh\n([\s\S]*?)\n {0,3}```/gm)].map((match) => match[1]).filter((body) => body.includes(needle));
+    assert.equal(found.length, 1, `${page}: ${needle}`);
+    return found[0];
+  };
+  const missingCli = "/nonexistent/tinycloud";
+  const run = (script, base, dir = home()) => {
+    const state = join(dir, "state");
+    const filled = script.replaceAll("<STATE>", state).replaceAll("<TC_BIN>", missingCli).replaceAll("<APP>", "notes").replaceAll(remote, base);
+    return { state, result: shell(filled, { HOME: dir }) };
+  };
+  const local = `file://${join(site, "skills/apps")}`;
+  const helpers = [
+    { page: "skills/apps.md", needle: "'<APP>' --write", dir: "served-app-context", files: ["app-context.mjs"] },
+    { page: "skills/apps.md", needle: "layout.sh\" '<APP>'", dir: "served-layout", files: ["layout.sh", "app-context.mjs"], stdout: "new\n" },
+    { page: "skills/apps/CONTEXT.md", needle: "context --sql", dir: "served-app-context", files: ["app-context.mjs"] },
+    { page: "skills/apps/CONTEXT.md", needle: "session-check.sh\" remove", dir: "served-session-check", files: ["session-check.sh"], stdout: "" },
+    { page: "skills/apps/SQL.md", needle: "'<APP>' --sql --write", dir: "served-app-context", files: ["app-context.mjs"] },
+    { page: "skills/apps/TINY-APPS.md", needle: "recipes --catalog --write", dir: "served-app-context", files: ["app-context.mjs"] },
+  ];
+  for (const { page, needle, dir, files, stdout } of helpers) {
+    const script = servedBlock(page, needle);
+    const { state, result } = run(script, local);
+    for (const file of files) assert.deepEqual(readFileSync(join(state, dir, file)), readFileSync(join(site, "skills/apps", file)), `${page} ${needle}: ${file}`);
+    if (stdout === undefined) {
+      // app-context.mjs ran: the stand-in CLI path doesn't exist, so the served helper reports that.
+      assert.notEqual(result.status, 0, `${page} ${needle}`);
+      assert.match(result.stderr, /^APP_CONTEXT_FAILED: ENOENT$/m, `${page} ${needle}`);
+    } else {
+      assert.equal(result.status, 0, `${page} ${needle}: ${result.stderr}`);
+      assert.equal(result.stdout, stdout, `${page} ${needle}`);
+    }
+    assert.deepEqual(readdirSync(state).filter((name) => name.startsWith(`${dir}.`)), [], `${page} ${needle}: temp dir left`);
+
+    // A failed fetch stops before running anything and leaves no helper folder.
+    const failed = run(script, `file://${join(home(), "missing")}`);
+    assert.notEqual(failed.result.status, 0, `${page} ${needle}`);
+    assert.doesNotMatch(failed.result.stdout + failed.result.stderr, /APP_CONTEXT_FAILED|^new$/m, `${page} ${needle}`);
+    assert.deepEqual(readdirSync(failed.state), [], `${page} ${needle}`);
+
+    // A local skill folder still wins, and nothing is fetched.
+    const withSkill = home();
+    const skill = join(withSkill, ".agents/skills/tc-apps");
+    mkdirSync(skill, { recursive: true });
+    for (const file of files) writeFileSync(join(skill, file), file.endsWith(".mjs") ? "console.log('local');\n" : "echo local\n");
+    const localRun = run(script, `file://${join(withSkill, "missing")}`, withSkill);
+    assert.equal(localRun.result.status, 0, `${page} ${needle}: ${localRun.result.stderr}`);
+    assert.equal(localRun.result.stdout, "local\n", `${page} ${needle}`);
+    assert.equal(existsSync(localRun.state), false, `${page} ${needle}`);
+  }
+
+  const context = servedBlock("skills/apps.md", "cat \"$d/CONTEXT.md\"");
+  const read = run(context, local);
+  assert.equal(read.result.status, 0, read.result.stderr);
+  assert.equal(read.result.stdout, readFileSync(join(site, "skills/apps/CONTEXT.md"), "utf8"));
+  assert.notEqual(run(context, `file://${join(home(), "missing")}`).result.status, 0);
 });
 
 

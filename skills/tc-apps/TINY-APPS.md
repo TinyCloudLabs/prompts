@@ -27,7 +27,11 @@ Health Log always uses its own app-scoped profile and approval below. Do not reu
 For Recipes only, the catalog-access check may reuse existing onboarding access:
 
 ```sh
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' recipes --catalog --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' recipes --catalog --write; exit; fi; done
+STATE='<STATE>'; umask 077; D="$STATE/served-app-context"; mkdir -p "$STATE"; T=$(mktemp -d "$D.XXXXXX") || exit 1
+curl -fsSL https://agents.tinycloud.xyz/skills/apps/app-context.mjs -o "$T/app-context.mjs" || { rm -rf "$T"; exit 1; }
+rm -rf "$D" && mv "$T" "$D" || { rm -rf "$T"; exit 1; }
+node "$D/app-context.mjs" '<TC_BIN>' recipes --catalog --write
 ```
 
 A `ready` result means the selected Recipes profile already has the required access and an actual knowledge listing succeeded. Retain its `profile`, `host`, `spaceId` and `ownerDid` for Recipes. An `onboard-first` result means no profile has an owner or session. For Recipes, fetch the onboarding guide raw with `curl -fsSL -H 'Accept: text/markdown' https://agents.tinycloud.xyz/onboarding` and follow it now, keeping the owner's original request. Ask the owner first in one line ("I need to set up TinyCloud here to finish this. OK?") and wait for their yes; onboarding tells you the rest. When it reports `"onboarded": true`, rerun the check above and continue from its result. Never use this check or its profile for Health Log.

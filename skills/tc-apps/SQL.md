@@ -14,10 +14,14 @@ Use the same literal `<TC_BIN>` and `<STATE>` as `SKILL.md`. Copy `<INDEX_PROFIL
 
 ## 1. Reuse access or ask for the fast copy
 
-Run the installed `app-context.mjs` with `--sql --write`:
+Run `app-context.mjs` from the installed skill, or the published copy when no skill is installed, with `--sql --write`:
 
 ```sh
-for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --sql --write; break; fi; done
+for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' '<APP>' --sql --write; exit; fi; done
+STATE='<STATE>'; umask 077; D="$STATE/served-app-context"; mkdir -p "$STATE"; T=$(mktemp -d "$D.XXXXXX") || exit 1
+curl -fsSL https://agents.tinycloud.xyz/skills/apps/app-context.mjs -o "$T/app-context.mjs" || { rm -rf "$T"; exit 1; }
+rm -rf "$D" && mv "$T" "$D" || { rm -rf "$T"; exit 1; }
+node "$D/app-context.mjs" '<TC_BIN>' '<APP>' --sql --write
 ```
 
 - `ready`: copy its profile as `<INDEX_PROFILE>`. No approval is needed for the read/write access already granted. If `indexPresent` is true, continue with the existing index. If false, repeat the helper with `--sql --write --schema` before §2.

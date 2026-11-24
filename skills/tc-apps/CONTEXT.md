@@ -61,7 +61,11 @@ Part of the `tc-apps` skill: `SKILL.md` has the sign-in, the write and read bloc
 2. Check whether the fast copy is available, using the same helper:
 
    ```sh
-   for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' context --sql; break; fi; done
+   for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/app-context.mjs" ]; then node "$d/app-context.mjs" '<TC_BIN>' context --sql; exit; fi; done
+   STATE='<STATE>'; umask 077; D="$STATE/served-app-context"; mkdir -p "$STATE"; T=$(mktemp -d "$D.XXXXXX") || exit 1
+   curl -fsSL https://agents.tinycloud.xyz/skills/apps/app-context.mjs -o "$T/app-context.mjs" || { rm -rf "$T"; exit 1; }
+   rm -rf "$D" && mv "$T" "$D" || { rm -rf "$T"; exit 1; }
+   node "$D/app-context.mjs" '<TC_BIN>' context --sql
    ```
 
    If it returns `ready` with `indexPresent: true`, use its `profile` as `<CONTEXT_SQL_PROFILE>`; otherwise treat the fast copy as unavailable. This check is informational; don't request another approval for it.
@@ -121,7 +125,11 @@ The setup's one question (setup §4) may have added this line, ending with `<!--
 - If the owner asks you to stop it, run the script in the skill's folder and tell them which files it changed:
 
   ```sh
-  for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" remove; break; fi; done
+  for d in "${CLAUDE_SKILL_DIR:-}" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/tc-apps" "$HOME/.agents/skills/tc-apps" "$HOME/.local/share/tc-apps/skill"; do if [ -n "$d" ] && [ -f "$d/session-check.sh" ]; then sh "$d/session-check.sh" remove; exit; fi; done
+  STATE='<STATE>'; umask 077; D="$STATE/served-session-check"; mkdir -p "$STATE"; T=$(mktemp -d "$D.XXXXXX") || exit 1
+  curl -fsSL https://agents.tinycloud.xyz/skills/apps/session-check.sh -o "$T/session-check.sh" || { rm -rf "$T"; exit 1; }
+  rm -rf "$D" && mv "$T" "$D" || { rm -rf "$T"; exit 1; }
+  sh "$D/session-check.sh" remove
   ```
 
   It removes only the lines that end with `<!-- tinycloud-context -->`. If the step is blocked, give the owner the same command to run in their own terminal.
