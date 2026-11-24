@@ -154,4 +154,4 @@ Don't add `--paste`; it selects the manual code flow.
 
 ## Undo
 
-For the owner. Every approval ends on its own at the time you chose on the approval screen. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations. `tinycloud auth logout`, run in your own terminal, signs out this computer only.
+For the owner. Every approval ends on its own when it expires, at most 30 days after you approve it. To end one sooner, revoke it at https://account.tinycloud.xyz/delegations. `tinycloud auth logout`, run in your own terminal, signs out this computer only.
