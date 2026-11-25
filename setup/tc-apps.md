@@ -44,7 +44,7 @@ If `TC_BIN` is unset and no CLI is found, skip the shared CLI setup: skill §1 w
 
 Read and follow https://agents.tinycloud.xyz/skills/apps.md for the owner's request. Follow its linked references in order and keep `TC_APPS_STATE` unchanged.
 
-If the client does not already have a local file that the skill requires, stop and tell the owner which file is unavailable. Do not download an installer or switch sources.
+Run the skill's blocks as written. When a file is not on this computer, the skill's blocks fetch it from `https://agents.tinycloud.xyz/skills/apps/`; that is part of the skill, not another source. Fetch `SQL.md` the same way (`curl -fsSL https://agents.tinycloud.xyz/skills/apps/SQL.md`). Stop and tell the owner which file is unavailable only if it is not local and cannot be fetched from there. Do not download an installer, run a global `npm install` or switch to any other source.
 
 ## Moving records from an earlier version
 
