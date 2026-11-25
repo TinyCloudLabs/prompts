@@ -1,12 +1,27 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { execFile } from "node:child_process";
+import { cpSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join } from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { test } from "node:test";
+import { after, before, test } from "node:test";
 
 // TC-4317: /apps told agents to stop when a skill file was not local, so Codex with no local
-// tc-apps skill never reached the skill's own served fetches. Reads only built files (npm run build).
-const site = join(dirname(fileURLToPath(import.meta.url)), "../_site");
+// tc-apps skill never reached the skill's own served fetches. Reads only built files, built in a
+// repository copy so this test never reads or writes the shared _site.
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const work = mkdtempSync(join(realpathSync(tmpdir()), "tc-apps-served-"));
+after(() => rmSync(work, { recursive: true, force: true }));
+let site;
+before(async () => {
+  const dir = join(work, "repo");
+  cpSync(root, dir, { recursive: true, filter: (src) => src === root || dirname(src) !== root || ![".git", "_site", "node_modules"].includes(basename(src)) });
+  symlinkSync(join(root, "node_modules"), join(dir, "node_modules"));
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(CF_PAGES.*|SITE_URL)$/.test(key)));
+  await promisify(execFile)(process.execPath, [join(dir, "scripts/build-site.mjs")], { env });
+  site = join(dir, "_site");
+});
 const origin = "https://agents.tinycloud.xyz";
 const prefix = `${origin}/skills/apps/`;
 const files = ["TINY-APPS.md", "CONTEXT.md", "SQL.md", "layout.sh", "app-context.mjs"];
