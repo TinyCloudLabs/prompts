@@ -85,7 +85,7 @@ const cliOwnerIntro = `Send the owner this message, then the link:
 > I'll set up TinyCloud so I can act for you. You'll approve one screen in OpenKey, TinyCloud's sign-in service: sign in, then let me read, change and delete your apps' data, and see which spaces and apps you have, read-only.
 > The approval lasts up to 30 days. You can end it at account.tinycloud.xyz/delegations.`;
 const cliRouteOn = "When it prints `\"onboarded\": true` or `Onboarded:`, fetch the guide for the owner's request and follow it: records, meals, weight, workouts or todos, https://agents.tinycloud.xyz/apps; sharing, https://agents.tinycloud.xyz/share; publishing, https://agents.tinycloud.xyz/publish; API keys or secrets, https://agents.tinycloud.xyz/secrets; meetings, https://agents.tinycloud.xyz/chat; the Feed, https://agents.tinycloud.xyz/feed; another person's agent, https://agents.tinycloud.xyz/courier; anything else, https://agents.tinycloud.xyz/setup (skip its /onboarding step: that's done).";
-const existingClients = ["chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes"];
+const existingClients = ["chatgpt", "claude", "cursor", "gemini", "grok", "mistral", "muse", "perplexity", "openclaw", "hermes"];
 
 test("/connect is a short router to every named client page", () => {
   const router = readFileSync(join(root, "_site/connect.md"), "utf8");

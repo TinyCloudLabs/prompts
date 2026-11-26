@@ -102,9 +102,9 @@ const PAGES = [
   { url: "agent", src: "setup/agent.md" },
   { url: "apps", src: "setup/tc-apps.md" },
   { url: "connect", src: "setup/connect.md", html: true },
-  ...["claude-code", "codex", "opencode", "gemini-cli", "grok-bot", "chatgpt", "claude", "cursor", "gemini", "grok", "muse", "perplexity", "openclaw", "hermes", "cli"].map((client) => ({
+  ...["claude-code", "codex", "opencode", "gemini-cli", "grok-bot", "chatgpt", "claude", "cursor", "gemini", "grok", "mistral", "muse", "perplexity", "openclaw", "hermes", "cli"].map((client) => ({
     url: `connect/${client}`, src: `setup/connect/${client}.md`, html: true,
-    browserFetch: ["chatgpt", "claude", "gemini", "grok", "muse", "perplexity"].includes(client),
+    browserFetch: ["chatgpt", "claude", "gemini", "grok", "mistral", "muse", "perplexity"].includes(client),
   })),
   { url: "chat", src: "apps/tinychat/setup.md" },
   { url: "feed", src: "skills/tinycloud-feed/creating-a-post.md" },
