@@ -42,7 +42,7 @@ test("the --timeout is one #822 accepts and keeps a call under a 2-minute tool l
 
 test("every onboarding run in the guide is bounded; only --help and the owner's reply name onboard without it", () => {
   const runs = [...guide.matchAll(/"\$TC"(?: --profile \S+)? onboard\b[^`\n]*/g)].map((match) => match[0]);
-  assert.deepEqual(runs.filter((line) => !line.includes("--timeout 1s")), ['"$TC" onboard --help | grep -qF -- --timeout && echo ONBOARD_READY']);
+  for (const line of runs) assert.match(line, / onboard (?:--help\b|--timeout 1s\b)/);
   assert.match(run, /Never run `onboard --code`/);
 });
 
@@ -68,14 +68,13 @@ test("the owner sees the same words as before the loop", () => {
 
 test("the readiness check passes for the pinned CLI and only for a CLI whose onboard takes --timeout", () => {
   const check = blocks(guide.split("**1. The CLI.**")[1])[0];
-  assert.ok(check.startsWith("TC='<TC_BIN>'\n"), check);
   const fakes = [["  --timeout <duration>  Wait at most this long", true], ["  --code <code>  Manual fallback", false]].map(([help, ready]) => {
     const cli = join(base, `tinycloud-${ready}`);
     writeFileSync(cli, `#!/bin/sh\n[ "$*" = "onboard --help" ] && printf '%s\\n' 'Usage: tinycloud onboard [options]' '${help}'\n`, { mode: 0o700 });
     return [cli, ready];
   });
   for (const [cli, ready] of [[CLI, true], ...fakes]) {
-    const out = spawnSync("sh", ["-c", check.replace("<TC_BIN>", cli)], { encoding: "utf8", env: { PATH: process.env.PATH, HOME: base } });
+    const out = spawnSync("sh", ["-c", check], { encoding: "utf8", env: { PATH: process.env.PATH, HOME: base, TC_BIN: cli } });
     assert.equal(out.stdout.includes("ONBOARD_READY"), ready, cli);
   }
 });

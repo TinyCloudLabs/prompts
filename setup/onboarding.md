@@ -45,11 +45,15 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Read and follow https://agents.tinycloud.xyz/connect for the current client, then return to step 2 here. Keep the selected CLI command from that flow and replace `<TC_BIN>` in each shell block with it; separate tool calls don't need to share shell variables.
+**1. The CLI.** Read and follow https://agents.tinycloud.xyz/connect for the current client, then return here. Run this block once to select an executable path, keeping a `TC_BIN` that is set or saved; otherwise it resolves the pinned CLI through `npx`. Copy the path after `TC_BIN=` into `<TC_BIN>` in every block after this one, not the multi-word `npx` command. The resolved executable handles these calls directly, without rerunning `npx`; separate tool calls don't need to share shell variables.
 
 ```sh
-TC='<TC_BIN>'
-"$TC" onboard --help | grep -qF -- --timeout && echo ONBOARD_READY
+TC=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
+if [ -z "$TC" ] && [ -r "$H" ]; then TC=$(node "$H" get TC_BIN) || TC=; fi
+[ -n "$TC" ] || TC=$(npx --prefix "$HOME" -y -p @tinycloud/cli@1.9.1 -c 'command -v tinycloud') || exit 1
+[ -x "$TC" ] || { echo "TC_NOT_FOUND: $TC is not executable; set TC_BIN to an executable path" >&2; exit 1; }
+"$TC" onboard --help | grep -qF -- --timeout || exit 1
+printf 'TC_BIN=%s\nONBOARD_READY\n' "$TC"
 ```
 
 **CLI rule (stable `1.9.1`): run step 2's block as written; its check runs before `onboard` and decides. Don't run a `tinycloud` or `--version` check of your own, and don't judge who installed the CLI yourself. Only a `TC_OLDER` line from step 2 means the operator chose an older CLI: tell the owner in one line that it is older than the required `1.9.1`, and stop. Any other older CLI: step 2 prints `CLI_OLDER`; stop and tell the owner what it printed. Never run `tinycloud upgrade` or a global npm install of the TinyCloud CLI. A newer CLI is never downgraded.** No `ONBOARD_READY` means the selected CLI can't onboard: report the selected path and stop.

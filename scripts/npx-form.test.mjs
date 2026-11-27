@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile, spawnSync } from "node:child_process";
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -93,6 +93,61 @@ for (const { name, file, heading } of CHECKS) {
     assert.match(result.stdout + result.stderr, new RegExp(CLI_VERSION.replaceAll(".", "\\.")));
   });
 }
+
+test("onboarding resolves the pinned command to one executable before quoted calls", () => {
+  const { home, bin, run, calls } = sandbox();
+  const cli = join(home, "selected CLI");
+  writeFileSync(cli, `#!/bin/sh
+case "$*" in
+  --version) echo ${CLI_VERSION} ;;
+  "onboard --help") echo "--timeout" ;;
+  "onboard --timeout 1s") echo '{"onboarded":true}' ;;
+esac
+`, { mode: 0o700 });
+  writeFileSync(join(bin, "npx"), `#!/bin/sh
+printf '%s\\n' "$*" >> "${join(dirname(home), "npx.log")}"
+printf '%s\\n' "${cli}"
+`);
+  const page = served("onboarding.md");
+  const check = firstBlock(page, "## CLI").replaceAll("<TC_BIN>", PINNED);
+  const ready = run(check);
+  assert.equal(ready.status, 0, ready.stderr);
+  assert.match(ready.stdout, /ONBOARD_READY/);
+  const selected = ready.stdout.split("\n").find((line) => line.startsWith("TC_BIN="))?.slice(7);
+  assert.equal(selected, cli, "the readiness check prints a single executable path");
+  const onboard = run(firstBlock(page, "**2. Run onboarding.**").replaceAll("<TC_BIN>", selected));
+  assert.equal(onboard.status, 0, onboard.stderr);
+  assert.match(onboard.stdout, /NEXT: onboarding is done/);
+  assert.equal(calls().length, 1, "help, version and onboarding reuse the resolved executable");
+  assert.equal(calls()[0], `--prefix ${home} -y -p @tinycloud/cli@${CLI_VERSION} -c command -v tinycloud`);
+});
+
+test("served guides never assign a multi-word npx command to a quoted command variable", () => {
+  for (const file of readdirSync(site, { recursive: true })) {
+    const path = join(site, file);
+    if (!statSync(path).isFile() || (!file.endsWith(".md") && file.includes("."))) continue;
+    const text = readFileSync(path, "utf8");
+    assert.doesNotMatch(text, /^\s*(?:TC|TC_BIN|B)=['"]npx\s/m, file);
+  }
+});
+
+test("onboarding preserves saved and broken explicit executable selections", () => {
+  const check = firstBlock(served("onboarding.md"), "## CLI");
+  const { home, run, calls } = sandbox();
+  const cli = join(home, "saved CLI");
+  writeFileSync(cli, '#!/bin/sh\necho "--timeout"\n', { mode: 0o700 });
+  const config = join(home, ".config/tinycloud");
+  mkdirSync(config, { recursive: true });
+  writeFileSync(join(config, "agent-env.mjs"), `console.log(${JSON.stringify(cli)});\n`);
+  const saved = run(check);
+  assert.equal(saved.status, 0, saved.stderr);
+  assert.match(saved.stdout, /ONBOARD_READY/);
+  assert.ok(saved.stdout.includes(`TC_BIN=${cli}\n`));
+  const broken = run(check, { TC_BIN: join(home, "missing") });
+  assert.notEqual(broken.status, 0);
+  assert.match(broken.stderr, /TC_NOT_FOUND/);
+  assert.deepEqual(calls(), [], "saved and explicit selections never resolve another CLI");
+});
 
 test("apps and feed checks stop on process and saved broken CLI overrides", () => {
   const checks = CHECKS.filter(({ name }) => ["apps", "feed skill", "feed page"].includes(name));
