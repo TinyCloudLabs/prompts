@@ -45,7 +45,7 @@ Follow these on every TinyCloud page.
 
 ## CLI
 
-**1. The CLI.** Read and follow https://agents.tinycloud.xyz/connect for the current client, then return here. Run this block once to select an executable path, preserving a process or saved `TC_BIN`; otherwise it resolves the pinned CLI through `npx`. Copy the path after `TC_BIN=` into `<TC_BIN>` in every later block, not the multi-word `npx` command. The resolved executable handles later calls directly, without rerunning `npx`; separate tool calls don't need to share shell variables.
+**1. The CLI.** Read and follow https://agents.tinycloud.xyz/connect for the current client, then return here. Run this block once to select an executable path, keeping a `TC_BIN` that is set or saved; otherwise it resolves the pinned CLI through `npx`. Copy the path after `TC_BIN=` into `<TC_BIN>` in every block after this one, not the multi-word `npx` command. The resolved executable handles these calls directly, without rerunning `npx`; separate tool calls don't need to share shell variables.
 
 ```sh
 TC=${TC_BIN:-}; H="$HOME/.config/tinycloud/agent-env.mjs"
